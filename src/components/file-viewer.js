@@ -1,6 +1,10 @@
 import { detectLanguage } from '../utils/file-icons.js';
 import { bus } from '../utils/events.js';
 import { GitChangesView } from './git-changes-view.js';
+import { contextMenu } from './context-menu.js';
+
+// Global pinned files: path -> { name }
+const pinnedFiles = new Map();
 
 export class FileViewer {
   constructor(container, isActive) {
@@ -16,6 +20,8 @@ export class FileViewer {
     this.render();
     this.listen();
   }
+
+  static get pinnedFiles() { return pinnedFiles; }
 
   render() {
     this.container.innerHTML = '';
@@ -81,6 +87,34 @@ export class FileViewer {
       this.gitChanges.setCwd(cwd);
       if (this.mode === 'git') this.gitChanges.loadChanges();
     });
+
+    bus.on('workspace:activated', () => {
+      if (!this.isActive()) return;
+      this.loadPinnedFiles();
+    });
+  }
+
+  async loadPinnedFiles() {
+    for (const [path, info] of pinnedFiles) {
+      if (!this.openFiles.has(path)) {
+        await this.openFile(path, info.name);
+      }
+    }
+  }
+
+  isPinned(filePath) {
+    return pinnedFiles.has(filePath);
+  }
+
+  togglePin(filePath) {
+    const file = this.openFiles.get(filePath);
+    if (!file) return;
+    if (pinnedFiles.has(filePath)) {
+      pinnedFiles.delete(filePath);
+    } else {
+      pinnedFiles.set(filePath, { name: file.name });
+    }
+    this.renderTabs();
   }
 
   switchMode(mode) {
@@ -146,11 +180,19 @@ export class FileViewer {
       tab.className = 'file-tab';
       if (filePath === this.activeFile) tab.classList.add('active');
 
+      const pinned = this.isPinned(filePath);
       const modified = this.isModified(filePath);
+
+      if (pinned) {
+        const pin = document.createElement('span');
+        pin.className = 'file-tab-pin';
+        pin.textContent = '\u{1F4CC}';
+        tab.appendChild(pin);
+      }
 
       const dot = document.createElement('span');
       dot.className = 'file-tab-modified';
-      dot.textContent = modified ? '●' : '';
+      dot.textContent = modified ? '\u25CF' : '';
       tab.appendChild(dot);
 
       const name = document.createElement('span');
@@ -159,7 +201,7 @@ export class FileViewer {
 
       const close = document.createElement('span');
       close.className = 'file-tab-close';
-      close.textContent = '×';
+      close.textContent = '\u00D7';
       close.addEventListener('click', (e) => {
         e.stopPropagation();
         this.closeFile(filePath);
@@ -167,6 +209,19 @@ export class FileViewer {
       tab.appendChild(close);
 
       tab.addEventListener('click', () => this.setActiveTab(filePath));
+
+      tab.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        contextMenu.show(e.clientX, e.clientY, [
+          {
+            label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces',
+            action: () => this.togglePin(filePath),
+          },
+          { separator: true },
+          { label: 'Close', action: () => this.closeFile(filePath) },
+        ]);
+      });
+
       this.tabsBar.appendChild(tab);
     }
   }

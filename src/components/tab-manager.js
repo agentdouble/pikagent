@@ -380,6 +380,8 @@ export class TabManager {
           tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
         }
       }
+      // Load pinned files into this workspace
+      bus.emit('workspace:activated');
     } else {
       // First time rendering this tab
       this.renderWorkspace(tab);
@@ -792,6 +794,9 @@ export class TabManager {
     if (branch) {
       branchBadge.textContent = ` ${branch}`;
     }
+
+    // Load pinned files into this new workspace
+    bus.emit('workspace:activated');
   }
 
   togglePanel(panel, side) {

@@ -224,6 +224,11 @@
   border-bottom: 2px solid var(--accent);
 }
 
+.file-tab-pin {
+  font-size: 9px;
+  opacity: 0.6;
+}
+
 .file-tab-modified {
   font-size: 10px;
   color: var(--accent);
