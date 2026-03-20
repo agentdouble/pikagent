@@ -2,6 +2,7 @@ import { generateId } from '../utils/id.js';
 import { TerminalPanel } from './terminal-panel.js';
 import { FileTree } from './file-tree.js';
 import { FileViewer } from './file-viewer.js';
+import { BoardView } from './board-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 
@@ -10,6 +11,7 @@ class WorkspaceTab {
     this.id = id;
     this.name = name;
     this.cwd = cwd;
+    this.isBoard = false;
     this.fileTree = null;
     this.terminalPanel = null;
     this.fileViewer = null;
@@ -32,12 +34,17 @@ export class TabManager {
     this._restoringConfig = false;
     this.currentConfigName = null;
     this._configBarEl = null;
+    this.boardTabId = null;
+    this.boardView = null;
 
     this.init();
   }
 
   async init() {
     this.defaultCwd = await window.api.fs.homedir();
+
+    // Create the Board tab (always first)
+    this.createBoardTab();
 
     // Auto-restore default config on startup
     try {
@@ -91,6 +98,14 @@ export class TabManager {
     });
   }
 
+  createBoardTab() {
+    const id = generateId('tab');
+    const tab = new WorkspaceTab(id, 'Board', null);
+    tab.isBoard = true;
+    this.tabs.set(id, tab);
+    this.boardTabId = id;
+  }
+
   scheduleAutoSave() {
     if (this._restoringConfig) return;
     if (this._saveTimer) clearTimeout(this._saveTimer);
@@ -114,7 +129,8 @@ export class TabManager {
 
   createTab(name = null) {
     const id = generateId('tab');
-    const tabName = name || `Workspace ${this.tabs.size + 1}`;
+    const workspaceCount = Array.from(this.tabs.values()).filter((t) => !t.isBoard).length;
+    const tabName = name || `Workspace ${workspaceCount + 1}`;
     const tab = new WorkspaceTab(id, tabName, this.defaultCwd || '/');
     this.tabs.set(id, tab);
     this.renderTabBar();
@@ -125,21 +141,22 @@ export class TabManager {
 
   closeTab(id) {
     const tab = this.tabs.get(id);
-    if (!tab) return;
+    if (!tab || tab.isBoard) return;
 
     // Dispose terminal panel
     if (tab.terminalPanel) tab.terminalPanel.dispose();
 
     this.tabs.delete(id);
 
-    if (this.tabs.size === 0) {
+    // Count remaining workspace tabs
+    const workspaceTabs = Array.from(this.tabs.values()).filter((t) => !t.isBoard);
+    if (workspaceTabs.length === 0) {
       this.createTab();
       return;
     }
 
     if (this.activeTabId === id) {
-      const firstId = this.tabs.keys().next().value;
-      this.switchTo(firstId);
+      this.switchTo(workspaceTabs[0].id);
     }
 
     this.renderTabBar();
@@ -149,6 +166,12 @@ export class TabManager {
   switchTo(id) {
     const tab = this.tabs.get(id);
     if (!tab) return;
+
+    // Dispose board view if switching away from board
+    if (this.activeTabId === this.boardTabId && this.boardView) {
+      this.boardView.dispose();
+      this.boardView = null;
+    }
 
     // Save state of outgoing tab before destroying it
     this.snapshotActiveTab();
@@ -161,7 +184,7 @@ export class TabManager {
   snapshotActiveTab() {
     if (!this.activeTabId) return;
     const prev = this.tabs.get(this.activeTabId);
-    if (!prev || !prev.terminalPanel) return;
+    if (!prev || prev.isBoard || !prev.terminalPanel) return;
 
     prev._restoreData = prev._restoreData || {};
     prev._restoreData.splitTree = prev.terminalPanel.serialize();
@@ -186,18 +209,25 @@ export class TabManager {
   renderTabBar() {
     this.tabBar.innerHTML = '';
 
+    const workspaceTabs = Array.from(this.tabs.values()).filter((t) => !t.isBoard);
+
     for (const [id, tab] of this.tabs) {
       const tabEl = document.createElement('div');
       tabEl.className = 'tab';
+      if (tab.isBoard) tabEl.classList.add('tab-board');
       if (id === this.activeTabId) tabEl.classList.add('active');
 
       const nameEl = document.createElement('span');
       nameEl.className = 'tab-name';
       nameEl.textContent = tab.name;
-      nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
+
+      if (!tab.isBoard) {
+        nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
+      }
       tabEl.appendChild(nameEl);
 
-      if (this.tabs.size > 1) {
+      // Show close button for workspace tabs when there are more than 1
+      if (!tab.isBoard && workspaceTabs.length > 1) {
         const closeEl = document.createElement('span');
         closeEl.className = 'tab-close';
         closeEl.textContent = '×';
@@ -209,20 +239,23 @@ export class TabManager {
       }
 
       tabEl.addEventListener('click', () => this.switchTo(id));
-      tabEl.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        contextMenu.show(e.clientX, e.clientY, [
-          {
-            label: 'Rename',
-            action: () => this.renameTab(id, nameEl),
-          },
-          { separator: true },
-          {
-            label: 'Close',
-            action: () => this.closeTab(id),
-          },
-        ]);
-      });
+
+      if (!tab.isBoard) {
+        tabEl.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          contextMenu.show(e.clientX, e.clientY, [
+            {
+              label: 'Rename',
+              action: () => this.renameTab(id, nameEl),
+            },
+            { separator: true },
+            {
+              label: 'Close',
+              action: () => this.closeTab(id),
+            },
+          ]);
+        });
+      }
       this.tabBar.appendChild(tabEl);
     }
 
@@ -258,6 +291,12 @@ export class TabManager {
 
   async renderWorkspace(tab) {
     this.workspaceContainer.innerHTML = '';
+
+    // Board tab: render board view instead of workspace
+    if (tab.isBoard) {
+      this.boardView = new BoardView(this.workspaceContainer, this);
+      return;
+    }
 
     // Build 3-panel layout
     const layout = document.createElement('div');
@@ -492,6 +531,7 @@ export class TabManager {
     let i = 0;
 
     for (const [id, tab] of this.tabs) {
+      if (tab.isBoard) continue;
       if (id === this.activeTabId) activeTabIndex = i;
 
       const isActive = id === this.activeTabId;
@@ -537,11 +577,14 @@ export class TabManager {
 
     this._restoringConfig = true;
 
-    // Dispose all existing tabs
+    // Dispose all existing workspace tabs (preserve Board)
+    const boardTab = this.tabs.get(this.boardTabId);
     for (const [id, tab] of this.tabs) {
+      if (tab.isBoard) continue;
       if (tab.terminalPanel) tab.terminalPanel.dispose();
     }
     this.tabs.clear();
+    if (boardTab) this.tabs.set(this.boardTabId, boardTab);
     this.activeTabId = null;
 
     // Create tabs from config
@@ -554,10 +597,12 @@ export class TabManager {
 
     this.renderTabBar();
 
-    // Switch to the active tab
-    const tabIds = Array.from(this.tabs.keys());
-    const activeIdx = Math.min(config.activeTabIndex || 0, tabIds.length - 1);
-    this.switchTo(tabIds[activeIdx]);
+    // Switch to the active workspace tab
+    const workspaceIds = Array.from(this.tabs.entries())
+      .filter(([, t]) => !t.isBoard)
+      .map(([id]) => id);
+    const activeIdx = Math.min(config.activeTabIndex || 0, workspaceIds.length - 1);
+    this.switchTo(workspaceIds[activeIdx]);
 
     this._restoringConfig = false;
   }
@@ -569,11 +614,14 @@ export class TabManager {
 
     this.currentConfigName = name;
 
-    // Dispose all existing tabs
+    // Dispose all existing workspace tabs (preserve Board)
+    const boardTab = this.tabs.get(this.boardTabId);
     for (const [id, tab] of this.tabs) {
+      if (tab.isBoard) continue;
       if (tab.terminalPanel) tab.terminalPanel.dispose();
     }
     this.tabs.clear();
+    if (boardTab) this.tabs.set(this.boardTabId, boardTab);
     this.activeTabId = null;
 
     this.createTab('Workspace 1');
