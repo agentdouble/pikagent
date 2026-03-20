@@ -86,6 +86,20 @@
   border-bottom-color: var(--text-muted);
 }
 
+.tab.tab-dragging {
+  opacity: 0.3;
+}
+
+.tab-drop-indicator {
+  position: fixed;
+  width: 2px;
+  background: var(--accent);
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 1px;
+  box-shadow: 0 0 4px var(--accent);
+}
+
 .tab-rename-input {
   background: var(--bg-primary);
   color: var(--text-primary);

@@ -278,10 +278,12 @@ export class TabManager {
     this.tabBar.innerHTML = '';
 
     const nonBoardCount = Array.from(this.tabs.values()).filter((t) => !t.isBoard).length;
+    this._tabElements = new Map(); // id -> DOM element (for drag targeting)
 
     for (const [id, tab] of this.tabs) {
       const tabEl = document.createElement('div');
       tabEl.className = 'tab';
+      tabEl.dataset.tabId = id;
       if (tab.isBoard) tabEl.classList.add('tab-board');
       if (id === this.activeTabId) tabEl.classList.add('active');
       if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
@@ -309,6 +311,11 @@ export class TabManager {
 
       tabEl.addEventListener('click', () => this.switchTo(id));
 
+      // Drag to reorder (non-board tabs only)
+      if (!tab.isBoard) {
+        this.setupTabDrag(tabEl, id);
+      }
+
       if (!tab.isBoard) {
         tabEl.addEventListener('contextmenu', (e) => {
           e.preventDefault();
@@ -325,6 +332,7 @@ export class TabManager {
       }
 
       this.tabBar.appendChild(tabEl);
+      this._tabElements.set(id, tabEl);
     }
 
     // Add tab button
@@ -333,6 +341,111 @@ export class TabManager {
     addBtn.textContent = '+';
     addBtn.addEventListener('click', () => this.createTab());
     this.tabBar.appendChild(addBtn);
+  }
+
+  // ===== Tab Drag & Drop Reorder =====
+
+  setupTabDrag(tabEl, tabId) {
+    let startX = 0;
+    let dragging = false;
+
+    tabEl.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      startX = e.clientX;
+      dragging = false;
+
+      const onMouseMove = (ev) => {
+        if (!dragging && Math.abs(ev.clientX - startX) > 5) {
+          dragging = true;
+          tabEl.classList.add('tab-dragging');
+          document.body.style.cursor = 'grabbing';
+          document.body.style.userSelect = 'none';
+          this._createTabDropIndicator();
+        }
+        if (dragging) {
+          this._updateTabDropTarget(ev.clientX, tabId);
+        }
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+
+        if (dragging) {
+          tabEl.classList.remove('tab-dragging');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          this._removeTabDropIndicator();
+
+          if (this._tabDropTargetId && this._tabDropTargetId !== tabId) {
+            this.reorderTab(tabId, this._tabDropTargetId, this._tabDropBefore);
+          }
+          this._tabDropTargetId = null;
+          this._tabDropBefore = null;
+        }
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+
+  _createTabDropIndicator() {
+    this._tabDropIndicator = document.createElement('div');
+    this._tabDropIndicator.className = 'tab-drop-indicator';
+    this.tabBar.appendChild(this._tabDropIndicator);
+  }
+
+  _removeTabDropIndicator() {
+    if (this._tabDropIndicator) {
+      this._tabDropIndicator.remove();
+      this._tabDropIndicator = null;
+    }
+  }
+
+  _updateTabDropTarget(mx, dragId) {
+    this._tabDropTargetId = null;
+    this._tabDropBefore = true;
+    if (this._tabDropIndicator) this._tabDropIndicator.style.display = 'none';
+
+    for (const [id, el] of this._tabElements) {
+      const tab = this.tabs.get(id);
+      if (tab.isBoard || id === dragId) continue;
+
+      const rect = el.getBoundingClientRect();
+      if (mx >= rect.left && mx <= rect.right) {
+        const midX = rect.left + rect.width / 2;
+        const before = mx < midX;
+        this._tabDropTargetId = id;
+        this._tabDropBefore = before;
+
+        if (this._tabDropIndicator) {
+          this._tabDropIndicator.style.display = 'block';
+          const x = before ? rect.left : rect.right;
+          this._tabDropIndicator.style.left = `${x - 1}px`;
+          this._tabDropIndicator.style.top = `${rect.top}px`;
+          this._tabDropIndicator.style.height = `${rect.height}px`;
+        }
+        return;
+      }
+    }
+  }
+
+  reorderTab(fromId, toId, before) {
+    if (fromId === toId) return;
+
+    // Rebuild the Map in new order
+    const entries = Array.from(this.tabs.entries());
+    const fromIdx = entries.findIndex(([id]) => id === fromId);
+    const fromEntry = entries.splice(fromIdx, 1)[0];
+
+    let toIdx = entries.findIndex(([id]) => id === toId);
+    if (!before) toIdx++;
+    entries.splice(toIdx, 0, fromEntry);
+
+    this.tabs = new Map(entries);
+    this.renderTabBar();
+    this.scheduleAutoSave();
   }
 
   renameTab(id, nameEl) {
