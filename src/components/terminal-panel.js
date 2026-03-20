@@ -137,6 +137,12 @@ export class TerminalPanel {
     this.activeTerminal = null;
     this.terminals = new Map();
 
+    // Drag and drop state
+    this._dragSourceId = null;
+    this._dropIndicator = null;
+    this._dropTarget = null;
+    this._dropSide = null;
+
     this.init();
   }
 
@@ -208,7 +214,15 @@ export class TerminalPanel {
     const wrapper = document.createElement('div');
     wrapper.className = 'terminal-wrapper';
 
-    // Close button (top-right)
+    // Top bar with drag handle and close button
+    const topBar = document.createElement('div');
+    topBar.className = 'terminal-top-bar';
+
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'terminal-drag-handle';
+    dragHandle.title = 'Drag to move';
+    dragHandle.innerHTML = '<span class="drag-grip">⠿</span>';
+
     const closeBtn = document.createElement('button');
     closeBtn.className = 'terminal-close-btn';
     closeBtn.textContent = '×';
@@ -217,7 +231,10 @@ export class TerminalPanel {
       e.stopPropagation();
       this.removeTerminal(node.terminal.id);
     });
-    wrapper.appendChild(closeBtn);
+
+    topBar.appendChild(dragHandle);
+    topBar.appendChild(closeBtn);
+    wrapper.appendChild(topBar);
 
     const termContainer = document.createElement('div');
     termContainer.className = 'terminal-container';
@@ -233,7 +250,263 @@ export class TerminalPanel {
       this.setActive(node);
     });
 
+    // --- Drag setup on the handle ---
+    this.setupDrag(dragHandle, node);
+
     return node;
+  }
+
+  // ===== Drag & Drop =====
+
+  setupDrag(handle, sourceNode) {
+    handle.addEventListener('mousedown', (e) => {
+      if (this.terminals.size < 2) return; // nothing to reorder
+      e.preventDefault();
+      e.stopPropagation();
+
+      this._dragSourceId = sourceNode.terminal.id;
+      sourceNode.element.classList.add('dragging');
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+
+      // Create floating indicator
+      this._createDropIndicator();
+
+      const onMouseMove = (ev) => {
+        this._updateDropTarget(ev.clientX, ev.clientY);
+      };
+
+      const onMouseUp = (ev) => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        sourceNode.element.classList.remove('dragging');
+        this._removeDropIndicator();
+
+        if (this._dropTarget && this._dropSide && this._dropTarget !== this._dragSourceId) {
+          this.moveTerminal(this._dragSourceId, this._dropTarget, this._dropSide);
+        }
+
+        this._dragSourceId = null;
+        this._dropTarget = null;
+        this._dropSide = null;
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+
+  _createDropIndicator() {
+    this._dropIndicator = document.createElement('div');
+    this._dropIndicator.className = 'drop-indicator';
+    this.container.appendChild(this._dropIndicator);
+  }
+
+  _removeDropIndicator() {
+    if (this._dropIndicator) {
+      this._dropIndicator.remove();
+      this._dropIndicator = null;
+    }
+    // Remove all hover highlights
+    this.container.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
+  }
+
+  _updateDropTarget(mx, my) {
+    this._dropTarget = null;
+    this._dropSide = null;
+    if (this._dropIndicator) this._dropIndicator.style.display = 'none';
+
+    // Remove previous highlights
+    this.container.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
+
+    for (const [termId, node] of this.terminals) {
+      if (termId === this._dragSourceId) continue;
+
+      const rect = node.element.getBoundingClientRect();
+      if (mx < rect.left || mx > rect.right || my < rect.top || my > rect.bottom) continue;
+
+      // Determine which side (edge zone = 30% from each edge)
+      const relX = (mx - rect.left) / rect.width;
+      const relY = (my - rect.top) / rect.height;
+
+      let side;
+      const edgeThreshold = 0.3;
+
+      if (relX < edgeThreshold && relX < relY && relX < (1 - relY)) {
+        side = 'left';
+      } else if (relX > (1 - edgeThreshold) && (1 - relX) < relY && (1 - relX) < (1 - relY)) {
+        side = 'right';
+      } else if (relY < edgeThreshold) {
+        side = 'top';
+      } else if (relY > (1 - edgeThreshold)) {
+        side = 'bottom';
+      } else {
+        side = 'center'; // swap
+      }
+
+      this._dropTarget = termId;
+      this._dropSide = side;
+      node.element.classList.add('drop-hover');
+
+      // Position the indicator
+      if (this._dropIndicator) {
+        this._dropIndicator.style.display = 'block';
+        const pad = 2;
+        if (side === 'left') {
+          this._dropIndicator.style.left = `${rect.left}px`;
+          this._dropIndicator.style.top = `${rect.top + pad}px`;
+          this._dropIndicator.style.width = `${rect.width / 2}px`;
+          this._dropIndicator.style.height = `${rect.height - pad * 2}px`;
+        } else if (side === 'right') {
+          this._dropIndicator.style.left = `${rect.left + rect.width / 2}px`;
+          this._dropIndicator.style.top = `${rect.top + pad}px`;
+          this._dropIndicator.style.width = `${rect.width / 2}px`;
+          this._dropIndicator.style.height = `${rect.height - pad * 2}px`;
+        } else if (side === 'top') {
+          this._dropIndicator.style.left = `${rect.left + pad}px`;
+          this._dropIndicator.style.top = `${rect.top}px`;
+          this._dropIndicator.style.width = `${rect.width - pad * 2}px`;
+          this._dropIndicator.style.height = `${rect.height / 2}px`;
+        } else if (side === 'bottom') {
+          this._dropIndicator.style.left = `${rect.left + pad}px`;
+          this._dropIndicator.style.top = `${rect.top + rect.height / 2}px`;
+          this._dropIndicator.style.width = `${rect.width - pad * 2}px`;
+          this._dropIndicator.style.height = `${rect.height / 2}px`;
+        } else {
+          // center = full
+          this._dropIndicator.style.left = `${rect.left + pad}px`;
+          this._dropIndicator.style.top = `${rect.top + pad}px`;
+          this._dropIndicator.style.width = `${rect.width - pad * 2}px`;
+          this._dropIndicator.style.height = `${rect.height - pad * 2}px`;
+        }
+      }
+      return;
+    }
+  }
+
+  moveTerminal(sourceId, targetId, side) {
+    const sourceNode = this.terminals.get(sourceId);
+    const targetNode = this.terminals.get(targetId);
+    if (!sourceNode || !targetNode) return;
+    if (sourceNode === targetNode) return;
+
+    const sourceEl = sourceNode.element;
+    const targetEl = targetNode.element;
+    const sourceFlex = sourceEl.style.flex;
+
+    // --- Detach source from its current container ---
+    this._detachElement(sourceEl);
+
+    // --- Insert at target ---
+    if (side === 'center') {
+      // Swap positions: put source where target is, target where source was
+      // Since source is already detached, just insert source before target, then done
+      // Actually for center, let's just place source before target in the same container
+      targetEl.parentElement.insertBefore(sourceEl, targetEl);
+      sourceEl.style.flex = targetEl.style.flex;
+    } else {
+      const direction = (side === 'left' || side === 'right') ? 'horizontal' : 'vertical';
+      const insertBefore = (side === 'left' || side === 'top');
+
+      const parentEl = targetEl.parentElement;
+      const parentIsSameDirection =
+        parentEl &&
+        parentEl.classList.contains('split-container') &&
+        parentEl.classList.contains(`split-${direction}`);
+
+      if (parentIsSameDirection) {
+        // Insert into existing split container
+        const handle = document.createElement('div');
+        handle.className = `split-handle split-handle-${direction}`;
+        this.setupResizeHandle(handle, parentEl, direction);
+
+        if (insertBefore) {
+          targetEl.insertAdjacentElement('beforebegin', sourceEl);
+          sourceEl.insertAdjacentElement('afterend', handle);
+        } else {
+          targetEl.insertAdjacentElement('afterend', handle);
+          handle.insertAdjacentElement('afterend', sourceEl);
+        }
+        this.equalizeChildren(parentEl);
+      } else {
+        // Wrap target in a new split container
+        const splitEl = document.createElement('div');
+        splitEl.className = `split-container split-${direction}`;
+        splitEl.style.flex = targetEl.style.flex || '1';
+
+        parentEl.replaceChild(splitEl, targetEl);
+        targetEl.style.flex = '1';
+        sourceEl.style.flex = '1';
+
+        const handle = document.createElement('div');
+        handle.className = `split-handle split-handle-${direction}`;
+        this.setupResizeHandle(handle, splitEl, direction);
+
+        if (insertBefore) {
+          splitEl.appendChild(sourceEl);
+          splitEl.appendChild(handle);
+          splitEl.appendChild(targetEl);
+        } else {
+          splitEl.appendChild(targetEl);
+          splitEl.appendChild(handle);
+          splitEl.appendChild(sourceEl);
+        }
+      }
+    }
+
+    this.fitAll();
+    this.setActive(sourceNode);
+    bus.emit('layout:changed');
+  }
+
+  _detachElement(el) {
+    const parentEl = el.parentElement;
+    if (!parentEl) return;
+
+    el.remove();
+
+    if (parentEl.classList.contains('split-container')) {
+      // Remove one adjacent handle
+      const handles = Array.from(parentEl.querySelectorAll(':scope > .split-handle'));
+      if (handles.length > 0) {
+        handles[handles.length - 1].remove();
+      }
+
+      const remainingPanels = Array.from(parentEl.children).filter(
+        (c) => !c.classList.contains('split-handle')
+      );
+
+      if (remainingPanels.length === 1) {
+        // Unwrap: replace split container with sole remaining child
+        const survivor = remainingPanels[0];
+        const grandParent = parentEl.parentElement;
+        if (grandParent) {
+          survivor.style.flex = parentEl.style.flex || '1';
+          grandParent.replaceChild(survivor, parentEl);
+          // Recursively check if grandParent also needs unwrapping
+          this._cleanupContainer(grandParent);
+        }
+      } else if (remainingPanels.length === 0) {
+        parentEl.remove();
+      }
+    }
+  }
+
+  _cleanupContainer(el) {
+    if (!el || !el.classList.contains('split-container')) return;
+    const panels = Array.from(el.children).filter(
+      (c) => !c.classList.contains('split-handle')
+    );
+    if (panels.length === 1) {
+      const survivor = panels[0];
+      const parent = el.parentElement;
+      if (parent) {
+        survivor.style.flex = el.style.flex || '1';
+        parent.replaceChild(survivor, el);
+      }
+    }
   }
 
   setActive(node) {

@@ -16,7 +16,7 @@
   flex-direction: column;
   position: relative;
   border: 1px solid transparent;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, opacity 0.15s;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -26,12 +26,52 @@
   border-color: var(--accent-dim);
 }
 
+.terminal-wrapper.dragging {
+  opacity: 0.4;
+}
+
+/* ===== Top Bar (drag handle + close) ===== */
+.terminal-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.terminal-wrapper:hover .terminal-top-bar {
+  opacity: 1;
+}
+
+.terminal-drag-handle {
+  cursor: grab;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.terminal-drag-handle:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.terminal-drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-grip {
+  letter-spacing: 1px;
+}
+
 /* ===== Close Button ===== */
 .terminal-close-btn {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  z-index: 10;
   width: 22px;
   height: 22px;
   border: none;
@@ -44,17 +84,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s, color 0.15s;
-}
-
-.terminal-wrapper:hover .terminal-close-btn {
-  opacity: 1;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
 }
 
 .terminal-close-btn:hover {
   background: var(--accent);
   color: #fff;
+}
+
+/* ===== Drop Indicator ===== */
+.drop-indicator {
+  position: fixed;
+  z-index: 100;
+  background: rgba(116, 192, 252, 0.15);
+  border: 2px solid var(--blue, #74c0fc);
+  border-radius: 6px;
+  pointer-events: none;
+  display: none;
+  transition: left 0.1s, top 0.1s, width 0.1s, height 0.1s;
+}
+
+.terminal-wrapper.drop-hover {
+  border-color: var(--blue, #74c0fc);
 }
 
 .terminal-container {
