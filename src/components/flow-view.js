@@ -111,8 +111,14 @@ export class FlowView {
 
     // Dispose terminals that are no longer needed before clearing DOM
     for (const [flowId] of this._liveTerminals) {
-      if (!this._expandedCards.has(flowId) && !this._runningMap[flowId]) {
+      if (!this._runningMap[flowId]) {
         this._disposeLiveTerminal(flowId);
+      }
+    }
+    // Dispose inline log terminals before re-render
+    if (this._logTerminals) {
+      for (const [flowId] of this._logTerminals) {
+        this._disposeLogTerminal(flowId);
       }
     }
 
@@ -177,19 +183,17 @@ export class FlowView {
     const right = document.createElement('div');
     right.className = 'flow-card-right';
 
-    // Run history dots (clickable to view past logs)
+    // Run history dots (all clickable to view logs)
     const dots = document.createElement('div');
     dots.className = 'flow-card-dots';
     const runs = (flow.runs || []).slice(-5);
     for (const run of runs) {
       const dot = document.createElement('button');
       dot.className = `flow-dot flow-dot-${run.status}`;
-      dot.title = `${run.date} — ${run.status}\nCliquer pour voir le log`;
+      dot.title = `${run.date} — ${run.status === 'success' ? 'Succès' : 'Erreur'}\nCliquer pour voir le log`;
       dot.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (run.logTimestamp) {
-          this._showRunLog(flow, run);
-        }
+        this._showRunLog(flow, run);
       });
       dots.appendChild(dot);
     }
@@ -249,17 +253,37 @@ export class FlowView {
 
     card.appendChild(headerRow);
 
-    // === Terminal area (shown when running or expanded) ===
+    // === Terminal area ===
     if (isRunning) {
+      // Live terminal for running flows
       const termArea = this._createLiveTerminal(flow.id, this._runningMap[flow.id]);
       card.appendChild(termArea);
+    } else if (isExpanded) {
+      // Show last run log inline
+      const lastRun = (flow.runs || []).slice(-1)[0];
+      if (lastRun) {
+        const termArea = document.createElement('div');
+        termArea.className = 'flow-card-terminal';
+        card.appendChild(termArea);
+        this._loadLogIntoContainer(flow.id, lastRun, termArea);
+      }
     }
 
-    // Click header to toggle expand (only meaningful when not running — for running it's always expanded)
+    // Click header to toggle expand/collapse (show last log)
     headerRow.addEventListener('click', () => {
       if (isRunning) return;
-      // Edit modal on click
-      this._openModal(flow);
+      const hasRuns = flow.runs && flow.runs.length > 0;
+      if (!hasRuns) {
+        this._openModal(flow);
+        return;
+      }
+      if (this._expandedCards.has(flow.id)) {
+        this._expandedCards.delete(flow.id);
+        this._disposeLogTerminal(flow.id);
+      } else {
+        this._expandedCards.add(flow.id);
+      }
+      this._renderList();
     });
 
     return card;
@@ -326,7 +350,56 @@ export class FlowView {
     this._liveTerminals.delete(flowId);
   }
 
-  // === Past Run Log Viewer ===
+  // === Inline Log Terminal (expanded card) ===
+
+  async _loadLogIntoContainer(flowId, run, containerEl) {
+    const log = run.logTimestamp
+      ? await window.api.flow.getRunLog(flowId, run.logTimestamp)
+      : null;
+
+    const term = new Terminal({
+      theme: TERM_THEME,
+      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
+      fontSize: 12,
+      lineHeight: 1.3,
+      cursorBlink: false,
+      scrollback: 50000,
+      disableStdin: true,
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(containerEl);
+
+    if (log) {
+      term.write(log);
+    } else {
+      term.write('\r\n  Log non disponible pour ce run.\r\n');
+    }
+
+    const resizeObs = new ResizeObserver(() => {
+      try { fitAddon.fit(); } catch {}
+    });
+    resizeObs.observe(containerEl);
+
+    this._logTerminals = this._logTerminals || new Map();
+    this._logTerminals.set(flowId, { term, fitAddon, resizeObs });
+
+    setTimeout(() => {
+      try { fitAddon.fit(); } catch {}
+    }, 50);
+  }
+
+  _disposeLogTerminal(flowId) {
+    if (!this._logTerminals) return;
+    const data = this._logTerminals.get(flowId);
+    if (!data) return;
+    if (data.resizeObs) data.resizeObs.disconnect();
+    data.term.dispose();
+    this._logTerminals.delete(flowId);
+  }
+
+  // === Past Run Log Viewer (modal) ===
 
   async _showRunLog(flow, run) {
     const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
@@ -617,6 +690,11 @@ export class FlowView {
     if (this._unsubComplete) this._unsubComplete();
     for (const [flowId] of this._liveTerminals) {
       this._disposeLiveTerminal(flowId);
+    }
+    if (this._logTerminals) {
+      for (const [flowId] of this._logTerminals) {
+        this._disposeLogTerminal(flowId);
+      }
     }
   }
 }
