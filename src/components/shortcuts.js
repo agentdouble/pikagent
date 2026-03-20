@@ -166,7 +166,7 @@ export class ShortcutManager {
   }
 
   // Actions that still work even in NoShortcut mode
-  static ALWAYS_ALLOWED = new Set(['nextTab', 'prevTab', 'showBoard', 'showWork']);
+  static ALWAYS_ALLOWED = new Set(['nextTab', 'prevTab', 'showBoard', 'showWork', 'splitVertical', 'splitHorizontal']);
 
   listen() {
     window.addEventListener('keydown', (e) => {
