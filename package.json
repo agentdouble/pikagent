@@ -1,13 +1,16 @@
 {
-  "name": "terminal-app",
+  "name": "pickagent",
   "version": "1.0.0",
-  "description": "Terminal workspace manager with split panels",
+  "description": "pickagent terminal workspace manager with split panels",
   "main": "main.js",
+  "productName": "Pickagent",
   "scripts": {
     "build": "node build.js",
     "start": "node build.js && electron .",
     "dev": "node build.js --watch & electron . &",
-    "rebuild": "npx @electron/rebuild"
+    "rebuild": "npx @electron/rebuild",
+    "package": "npm run build && electron-builder --mac dir",
+    "package:dmg": "npm run build && electron-builder --mac dmg"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +19,7 @@
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "electron": "^41.0.3",
+    "electron-builder": "^26.0.12",
     "esbuild": "^0.27.4"
   },
   "dependencies": {
@@ -24,5 +28,30 @@
     "@xterm/xterm": "^6.0.0",
     "highlight.js": "^11.11.1",
     "node-pty": "^1.1.0"
+  },
+  "build": {
+    "appId": "com.rekta.pickagent",
+    "productName": "Pickagent",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "main/**/*",
+      "src/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.icns",
+      "target": [
+        "dir"
+      ]
+    }
   }
 }

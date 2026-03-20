@@ -2,6 +2,8 @@ const { app } = require('electron');
 const window = require('./main/window');
 const ipcHandlers = require('./main/ipc-handlers');
 
+app.setName('Pickagent');
+
 app.whenReady().then(() => {
   const win = window.create();
   ipcHandlers.register(() => window.get());

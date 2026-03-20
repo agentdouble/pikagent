@@ -9,6 +9,7 @@ function create() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
+    title: 'Pickagent',
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a2e',
     webPreferences: {
