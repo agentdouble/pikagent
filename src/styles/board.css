@@ -30,10 +30,29 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
   background: var(--bg-surface);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.board-card-running {
+  border-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+}
+
+.board-card-completed {
+  border-color: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.25);
+}
+
+.board-card-running .board-card-header {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.board-card-completed .board-card-header {
+  background: rgba(34, 197, 94, 0.08);
 }
 
 .board-card-hidden {
@@ -50,10 +69,41 @@
   flex-shrink: 0;
 }
 
+.board-card-name-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .board-card-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.board-card-status {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+.board-status-running {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.board-status-completed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
 }
 
 .board-card-btns {

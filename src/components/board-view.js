@@ -8,7 +8,8 @@ export class BoardView {
   constructor(container, tabManager) {
     this.container = container;
     this.tabManager = tabManager;
-    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs }
+    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs, info, status }
+    this._completedTerms = new Map(); // termId -> timestamp when completed
     this.disposed = false;
 
     this.render();
@@ -53,10 +54,21 @@ export class BoardView {
     try {
       const agents = await window.api.pty.checkAgents();
 
-      // Remove cards for terminals that no longer have agents
-      for (const [termId] of this.cards) {
-        if (!agents[termId]) {
-          this.removeCard(termId);
+      // Mark cards as completed when agent disappears (instead of removing)
+      for (const [termId, data] of this.cards) {
+        if (!agents[termId] && data.status === 'running') {
+          data.status = 'completed';
+          data.element.classList.remove('board-card-running');
+          data.element.classList.add('board-card-completed');
+          this._completedTerms.set(termId, Date.now());
+
+          // Add a status badge in the header
+          const badge = data.element.querySelector('.board-card-status');
+          if (badge) {
+            badge.textContent = 'Done';
+            badge.classList.remove('board-status-running');
+            badge.classList.add('board-status-completed');
+          }
         }
       }
 
@@ -66,6 +78,21 @@ export class BoardView {
           const tabName = this._getTabNameForTerminal(termId);
           if (tabName) {
             this.addCard(termId, { tabName, agent: agentName });
+          }
+        } else {
+          // Agent restarted in a terminal that was marked completed
+          const data = this.cards.get(termId);
+          if (data.status === 'completed') {
+            data.status = 'running';
+            data.element.classList.remove('board-card-completed');
+            data.element.classList.add('board-card-running');
+            this._completedTerms.delete(termId);
+            const badge = data.element.querySelector('.board-card-status');
+            if (badge) {
+              badge.textContent = 'Running';
+              badge.classList.remove('board-status-completed');
+              badge.classList.add('board-status-running');
+            }
           }
         }
       }
@@ -88,16 +115,26 @@ export class BoardView {
 
   addCard(termId, info) {
     const card = document.createElement('div');
-    card.className = 'board-card';
+    card.className = 'board-card board-card-running';
 
     // Header with agent name and "go to workspace" button
     const header = document.createElement('div');
     header.className = 'board-card-header';
 
+    const nameGroup = document.createElement('div');
+    nameGroup.className = 'board-card-name-group';
+
     const name = document.createElement('span');
     name.className = 'board-card-name';
     name.textContent = `${info.agent} \u2014 ${info.tabName}`;
-    header.appendChild(name);
+    nameGroup.appendChild(name);
+
+    const statusBadge = document.createElement('span');
+    statusBadge.className = 'board-card-status board-status-running';
+    statusBadge.textContent = 'Running';
+    nameGroup.appendChild(statusBadge);
+
+    header.appendChild(nameGroup);
 
     const headerBtns = document.createElement('div');
     headerBtns.className = 'board-card-btns';
@@ -181,7 +218,7 @@ export class BoardView {
     const resizeObs = new ResizeObserver(fitOnly);
     resizeObs.observe(termContainer);
 
-    this.cards.set(termId, { element: card, term, fitAddon, unsubData, resizeObs, info });
+    this.cards.set(termId, { element: card, term, fitAddon, unsubData, resizeObs, info, status: 'running' });
 
     // Fit after layout settles
     setTimeout(fitOnly, 100);
@@ -195,6 +232,7 @@ export class BoardView {
     data.term.dispose();
     data.element.remove();
     this.cards.delete(termId);
+    this._completedTerms.delete(termId);
     if (this._hiddenTerms) this._hiddenTerms.delete(termId);
     this._updateHiddenBar();
   }
@@ -234,7 +272,22 @@ export class BoardView {
       this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
     };
     this._onExited = ({ id }) => {
-      this.removeCard(id);
+      const data = this.cards.get(id);
+      if (data && data.status === 'running') {
+        // Terminal exited while agent was running — mark as completed
+        data.status = 'completed';
+        data.element.classList.remove('board-card-running');
+        data.element.classList.add('board-card-completed');
+        this._completedTerms.set(id, Date.now());
+        const badge = data.element.querySelector('.board-card-status');
+        if (badge) {
+          badge.textContent = 'Done';
+          badge.classList.remove('board-status-running');
+          badge.classList.add('board-status-completed');
+        }
+      } else {
+        this.removeCard(id);
+      }
       this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
     };
 
