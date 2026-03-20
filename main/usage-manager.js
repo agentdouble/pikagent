@@ -2,22 +2,42 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
+const sessionManager = require('./session-manager');
 
 const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const FLOWS_DIR = path.join(BASE_DIR, 'flows');
-const LOGS_DIR = path.join(FLOWS_DIR, 'logs');
+
+// ===== Helpers =====
 
 function parseLogTimestamp(logTs) {
-  // Format: 2024-03-20T10-30-00-000Z → 2024-03-20T10:30:00.000Z
   const parts = logTs.split('T');
   if (parts.length !== 2) return null;
   const timePart = parts[1].replace(/-/g, (m, offset) => {
-    // First two dashes → colons, third → dot
     if (offset <= 5) return ':';
     return '.';
   });
   return new Date(`${parts[0]}T${timePart}`);
 }
+
+function dateStr(iso) {
+  return iso ? iso.slice(0, 10) : null;
+}
+
+function dayLabels(days = 30) {
+  const result = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    result.push({
+      date: d.toISOString().slice(0, 10),
+      label: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+    });
+  }
+  return result;
+}
+
+// ===== Flow data =====
 
 function getAllFlows() {
   try {
@@ -37,7 +57,7 @@ function getAllFlows() {
   }
 }
 
-function getAllRuns(flows) {
+function getFlowRuns(flows) {
   const runs = [];
   for (const flow of flows) {
     if (!flow.runs) continue;
@@ -53,119 +73,150 @@ function getAllRuns(flows) {
   return runs;
 }
 
-function getRunsPerDay(runs, days = 30) {
-  const result = [];
-  const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const dayRuns = runs.filter((r) => r.date === dateStr);
-    result.push({
-      date: dateStr,
-      label: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-      total: dayRuns.length,
-      success: dayRuns.filter((r) => r.status === 'success').length,
-      error: dayRuns.filter((r) => r.status === 'error').length,
-    });
-  }
-  return result;
+function getFlowRunDuration(run) {
+  if (!run.logTimestamp || !run.timestamp) return null;
+  const start = parseLogTimestamp(run.logTimestamp);
+  const end = new Date(run.timestamp);
+  if (!start || isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+  const ms = end.getTime() - start.getTime();
+  return ms > 0 && ms < 24 * 60 * 60 * 1000 ? Math.round(ms / 1000) : null;
 }
 
-function getSuccessRate(runs) {
-  if (runs.length === 0) return { total: 0, success: 0, error: 0, rate: 0 };
-  const success = runs.filter((r) => r.status === 'success').length;
-  const error = runs.filter((r) => r.status === 'error').length;
+// ===== Generic stats =====
+
+function computeRate(items, statusField = 'status') {
+  if (items.length === 0) return { total: 0, success: 0, error: 0, rate: 0 };
+  const success = items.filter((r) => r[statusField] === 'success' || r[statusField] === 'completed').length;
+  const error = items.filter((r) => r[statusField] === 'error' || r[statusField] === 'exited').length;
   return {
-    total: runs.length,
+    total: items.length,
     success,
     error,
-    rate: Math.round((success / runs.length) * 100),
+    rate: items.length > 0 ? Math.round((success / items.length) * 100) : 0,
   };
 }
 
-function getAverageDuration(runs) {
-  const durations = [];
-  for (const run of runs) {
-    if (!run.logTimestamp || !run.timestamp) continue;
-    const start = parseLogTimestamp(run.logTimestamp);
-    const end = new Date(run.timestamp);
-    if (!start || isNaN(start.getTime()) || isNaN(end.getTime())) continue;
-    const durationMs = end.getTime() - start.getTime();
-    if (durationMs > 0 && durationMs < 24 * 60 * 60 * 1000) {
-      durations.push(durationMs);
-    }
-  }
-  if (durations.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
-  const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+function computeDuration(durations) {
+  const valid = durations.filter((d) => d != null && d > 0);
+  if (valid.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
+  const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
   return {
-    avg: Math.round(avg / 1000),
-    min: Math.round(Math.min(...durations) / 1000),
-    max: Math.round(Math.max(...durations) / 1000),
-    count: durations.length,
+    avg: Math.round(avg),
+    min: Math.round(Math.min(...valid)),
+    max: Math.round(Math.max(...valid)),
+    count: valid.length,
   };
 }
 
-function getMostModifiedFiles(runs) {
-  // Collect unique cwds from runs
-  const cwds = [...new Set(runs.map((r) => r.cwd).filter(Boolean))];
-  const fileCount = {};
+function perDay(items, dateExtractor, days = 30) {
+  const labels = dayLabels(days);
+  return labels.map((day) => {
+    const dayItems = items.filter((r) => dateExtractor(r) === day.date);
+    return {
+      ...day,
+      total: dayItems.length,
+      success: dayItems.filter((r) => r.status === 'success' || r.status === 'completed').length,
+      error: dayItems.filter((r) => r.status === 'error' || r.status === 'exited').length,
+    };
+  });
+}
 
+// ===== Files =====
+
+function getMostModifiedFiles(cwds) {
+  const fileCount = {};
   for (const cwd of cwds) {
     try {
-      // Get files changed in recent git commits (last 30 days)
       const output = execSync(
         'git log --since="30 days ago" --name-only --pretty=format: --diff-filter=ACMR 2>/dev/null',
         { cwd, encoding: 'utf-8', timeout: 5000 }
       );
-      const files = output
-        .split('\n')
-        .map((l) => l.trim())
-        .filter(Boolean);
+      const files = output.split('\n').map((l) => l.trim()).filter(Boolean);
       for (const f of files) {
         const key = `${path.basename(path.dirname(cwd))}/${path.basename(cwd)}/${f}`;
         fileCount[key] = (fileCount[key] || 0) + 1;
       }
-    } catch {
-      // Not a git repo or error — skip
-    }
+    } catch {}
   }
-
   return Object.entries(fileCount)
     .map(([file, count]) => ({ file, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 15);
 }
 
-function getFlowStats(flows, runs) {
-  return flows.map((flow) => {
-    const flowRuns = runs.filter((r) => r.flowId === flow.id);
-    const stats = getSuccessRate(flowRuns);
-    const duration = getAverageDuration(flowRuns);
-    return {
-      id: flow.id,
-      name: flow.name,
-      enabled: flow.enabled,
-      totalRuns: stats.total,
-      successRate: stats.rate,
-      avgDuration: duration.avg,
-    };
-  });
-}
+// ===== Main =====
 
 function getMetrics() {
+  // --- Flow metrics ---
   const flows = getAllFlows();
-  const runs = getAllRuns(flows);
+  const flowRuns = getFlowRuns(flows);
+  const flowDurations = flowRuns.map(getFlowRunDuration);
 
-  return {
-    runsPerDay: getRunsPerDay(runs, 30),
-    successRate: getSuccessRate(runs),
-    duration: getAverageDuration(runs),
-    mostModifiedFiles: getMostModifiedFiles(runs),
-    flowStats: getFlowStats(flows, runs),
+  const flowMetrics = {
+    rate: computeRate(flowRuns),
+    duration: computeDuration(flowDurations),
+    perDay: perDay(flowRuns, (r) => r.date, 30),
+    flowStats: flows.map((flow) => {
+      const runs = flowRuns.filter((r) => r.flowId === flow.id);
+      const rate = computeRate(runs);
+      const dur = computeDuration(runs.map(getFlowRunDuration));
+      return {
+        id: flow.id,
+        name: flow.name,
+        enabled: flow.enabled,
+        totalRuns: rate.total,
+        successRate: rate.rate,
+        avgDuration: dur.avg,
+      };
+    }),
     totalFlows: flows.length,
     activeFlows: flows.filter((f) => f.enabled).length,
   };
+
+  // --- Agent session metrics ---
+  const sessions = sessionManager.getSessions();
+  const activeSessions = sessionManager.getActiveSessions();
+  const allSessions = [...sessions, ...activeSessions];
+
+  const agentMetrics = {
+    rate: computeRate(allSessions),
+    duration: computeDuration(allSessions.map((s) => s.durationSec)),
+    perDay: perDay(allSessions, (s) => dateStr(s.startedAt), 30),
+    byAgent: getByAgent(allSessions),
+    totalSessions: allSessions.length,
+    activeSessions: activeSessions.length,
+  };
+
+  // --- Combined files from all cwds ---
+  const allCwds = [
+    ...new Set([
+      ...flowRuns.map((r) => r.cwd),
+      ...allSessions.map((s) => s.cwd),
+    ].filter(Boolean)),
+  ];
+
+  return {
+    flow: flowMetrics,
+    agent: agentMetrics,
+    mostModifiedFiles: getMostModifiedFiles(allCwds),
+    hasData: flows.length > 0 || allSessions.length > 0,
+  };
+}
+
+function getByAgent(sessions) {
+  const grouped = {};
+  for (const s of sessions) {
+    const name = s.agent || 'Unknown';
+    if (!grouped[name]) grouped[name] = [];
+    grouped[name].push(s);
+  }
+  return Object.entries(grouped).map(([agent, items]) => ({
+    agent,
+    totalSessions: items.length,
+    successRate: computeRate(items).rate,
+    avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
+    active: items.filter((s) => s.status === 'running').length,
+  }));
 }
 
 module.exports = { getMetrics };

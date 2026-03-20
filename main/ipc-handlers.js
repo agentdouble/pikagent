@@ -4,6 +4,7 @@ const fsManager = require('./fs-manager');
 const gitManager = require('./git-manager');
 const configManager = require('./config-manager');
 const flowManager = require('./flow-manager');
+const sessionManager = require('./session-manager');
 const usageManager = require('./usage-manager');
 
 const ptyManager = new PtyManager();
@@ -22,6 +23,7 @@ function register(getWindow) {
 
     proc.onExit(({ exitCode }) => {
       ptyManager.processes.delete(id);
+      sessionManager.onTerminalExit(id);
       if (win && !win.isDestroyed()) {
         win.webContents.send('pty:exit', { id, exitCode });
       }
@@ -203,11 +205,13 @@ function register(getWindow) {
     return usageManager.getMetrics();
   });
 
-  // Start flow scheduler
+  // Start flow scheduler & session tracker
   flowManager.start(getWindow, ptyManager);
+  sessionManager.start(ptyManager);
 }
 
 function cleanup() {
+  sessionManager.stop();
   flowManager.stop();
   ptyManager.killAll();
   fsManager.unwatchAll();

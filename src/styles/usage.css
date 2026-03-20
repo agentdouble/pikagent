@@ -44,6 +44,37 @@
   padding: 0 24px 24px;
 }
 
+/* ===== Section Heading ===== */
+.usage-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.usage-section-heading-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.usage-section-heading-badge {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+/* ===== Separator ===== */
+.usage-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 28px 0;
+}
+
 /* ===== Usage Dashboard ===== */
 
 .usage-overview {
