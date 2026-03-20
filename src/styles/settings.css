@@ -164,6 +164,7 @@
 .settings-modal {
   width: 680px;
   max-width: 90vw;
+  height: 70vh;
   max-height: 80vh;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
