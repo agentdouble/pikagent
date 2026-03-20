@@ -6,6 +6,12 @@ const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const FLOWS_DIR = path.join(BASE_DIR, 'flows');
 const LOGS_DIR = path.join(FLOWS_DIR, 'logs');
 
+const AGENT_COMMANDS = {
+  claude: (prompt) => `claude --permission-mode auto -p '${prompt}'`,
+  codex: (prompt) => `codex --approval-mode full-auto --quiet '${prompt}'`,
+  opencode: (prompt) => `opencode -p '${prompt}'`,
+};
+
 function ensureDir() {
   fs.mkdirSync(FLOWS_DIR, { recursive: true });
   fs.mkdirSync(LOGS_DIR, { recursive: true });
@@ -236,8 +242,9 @@ class FlowManager {
 
       // Build the prompt — escape single quotes for shell safety
       const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
-      // Use claude in print mode with auto permissions for automation
-      const cmd = `claude --permission-mode auto -p '${escapedPrompt}'; exit\n`;
+      const agent = flow.agent || 'claude';
+      const buildCmd = AGENT_COMMANDS[agent] || AGENT_COMMANDS.claude;
+      const cmd = `${buildCmd(escapedPrompt)}; exit\n`;
 
       // Small delay to let the shell initialize
       setTimeout(() => {

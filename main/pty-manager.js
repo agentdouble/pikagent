@@ -64,6 +64,7 @@ class PtyManager {
             .trim().toLowerCase();
           if (args.includes('claude')) { agents[id] = 'Claude'; break; }
           if (args.includes('codex')) { agents[id] = 'Codex'; break; }
+          if (args.includes('opencode')) { agents[id] = 'OpenCode'; break; }
         }
       } catch {}
     }

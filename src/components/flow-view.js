@@ -2,6 +2,12 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { generateId } from '../utils/id.js';
 
+const AGENT_OPTIONS = {
+  claude: 'Claude',
+  codex: 'Codex',
+  opencode: 'OpenCode',
+};
+
 const SCHEDULE_LABELS = {
   daily: 'Tous les jours',
   weekdays: 'Jours de la semaine',
@@ -540,7 +546,7 @@ export class FlowView {
     promptGroup.className = 'flow-modal-group';
     const promptArea = document.createElement('textarea');
     promptArea.className = 'flow-modal-textarea';
-    promptArea.placeholder = 'Prompt à envoyer à Claude...\n\nExemple:\nSummarize yesterday\'s git activity for standup.\n\nGrounding rules:\n- Anchor statements to commits/PRs/files\n- Keep it scannable and team-ready.';
+    promptArea.placeholder = 'Prompt à envoyer à l\'agent...\n\nExemple:\nSummarize yesterday\'s git activity for standup.\n\nGrounding rules:\n- Anchor statements to commits/PRs/files\n- Keep it scannable and team-ready.';
     promptArea.rows = 8;
     promptArea.value = existing?.prompt || '';
     promptGroup.appendChild(promptArea);
@@ -573,6 +579,24 @@ export class FlowView {
       }
     });
     bottomBar.appendChild(cwdChip);
+
+    // Agent selector
+    const agentChip = document.createElement('div');
+    agentChip.className = 'flow-modal-chip';
+    const agentIcon = document.createElement('span');
+    agentIcon.textContent = '\u{1F916}';
+    agentChip.appendChild(agentIcon);
+    const agentSelect = document.createElement('select');
+    agentSelect.className = 'flow-modal-select';
+    for (const [value, label] of Object.entries(AGENT_OPTIONS)) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      agentSelect.appendChild(opt);
+    }
+    agentSelect.value = existing?.agent || 'claude';
+    agentChip.appendChild(agentSelect);
+    bottomBar.appendChild(agentChip);
 
     // Schedule type
     const scheduleChip = document.createElement('div');
@@ -654,6 +678,7 @@ export class FlowView {
         id: existing?.id || generateId(),
         name,
         prompt,
+        agent: agentSelect.value,
         cwd: selectedCwd || undefined,
         schedule: {
           type: schedSelect.value,
