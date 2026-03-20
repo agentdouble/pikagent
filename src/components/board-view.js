@@ -1,5 +1,6 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
 import { bus } from '../utils/events.js';
 
 const THEME = {
@@ -30,7 +31,7 @@ export class BoardView {
   constructor(container, tabManager) {
     this.container = container;
     this.tabManager = tabManager;
-    this.cards = new Map(); // termId -> { element, term, fitAddon, unsub, resizeObs }
+    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs }
     this.disposed = false;
 
     this.render();
@@ -62,7 +63,6 @@ export class BoardView {
     if (this.disposed) return;
 
     try {
-      // Ask main process which terminals have agent child processes
       const agents = await window.api.pty.checkAgents();
 
       // Remove cards for terminals that no longer have agents
@@ -82,7 +82,6 @@ export class BoardView {
         }
       }
 
-      // Toggle empty state
       this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
     } catch (e) {
       console.warn('Board: agent scan failed', e);
@@ -103,108 +102,94 @@ export class BoardView {
     const card = document.createElement('div');
     card.className = 'board-card';
 
-    // Header
+    // Header with agent name and "go to workspace" button
     const header = document.createElement('div');
     header.className = 'board-card-header';
 
     const name = document.createElement('span');
     name.className = 'board-card-name';
-    name.textContent = `${info.agent} — ${info.tabName}`;
+    name.textContent = `${info.agent} \u2014 ${info.tabName}`;
     header.appendChild(name);
 
-    const sendBtn = document.createElement('button');
-    sendBtn.className = 'board-card-send';
-    sendBtn.innerHTML = '&#9654;';
-    sendBtn.title = 'Send';
-    header.appendChild(sendBtn);
+    const goBtn = document.createElement('button');
+    goBtn.className = 'board-card-send';
+    goBtn.innerHTML = '&#8599;';
+    goBtn.title = 'Go to workspace';
+    goBtn.addEventListener('click', () => {
+      // Switch to the workspace that owns this terminal
+      for (const [tabId, tab] of this.tabManager.tabs) {
+        if (tab.isBoard) continue;
+        if (tab.terminalPanel?.terminals?.has(termId)) {
+          this.tabManager.switchTo(tabId);
+          break;
+        }
+      }
+    });
+    header.appendChild(goBtn);
 
     card.appendChild(header);
 
-    // Terminal output area (read-only mirror)
+    // Full interactive terminal connected directly to the PTY
     const termContainer = document.createElement('div');
     termContainer.className = 'board-card-terminal';
     card.appendChild(termContainer);
 
-    // Input row
-    const inputRow = document.createElement('div');
-    inputRow.className = 'board-card-input-row';
-
-    const prompt = document.createElement('span');
-    prompt.className = 'board-card-prompt';
-    prompt.textContent = '\u203a';
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'board-card-input';
-    input.placeholder = 'Send to agent...';
-
-    inputRow.appendChild(prompt);
-    inputRow.appendChild(input);
-    card.appendChild(inputRow);
-
-    // Create mini xterm (read-only mirror of the agent terminal)
     const term = new Terminal({
       theme: THEME,
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 11,
-      lineHeight: 1.2,
-      cursorBlink: false,
+      fontSize: 12,
+      lineHeight: 1.3,
+      cursorBlink: true,
       cursorStyle: 'bar',
-      scrollback: 1000,
-      disableStdin: true,
+      scrollback: 5000,
+      allowProposedApi: true,
     });
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
+    term.loadAddon(new WebLinksAddon((e, url) => {
+      e.preventDefault();
+      window.api.shell.openExternal(url);
+    }));
     term.open(termContainer);
 
-    // Subscribe to PTY data for this terminal
-    const unsub = window.api.pty.onData(({ id, data }) => {
+    // Bidirectional connection: type in board → goes to PTY
+    term.onData((data) => {
+      window.api.pty.write({ id: termId, data });
+    });
+
+    // PTY output → render in board terminal
+    const unsubData = window.api.pty.onData(({ id, data }) => {
       if (id === termId) {
         term.write(data);
       }
     });
 
-    // Send handler
-    const send = () => {
-      const cmd = input.value;
-      if (cmd) {
-        window.api.pty.write({ id: termId, data: cmd + '\r' });
-        input.value = '';
-      }
+    // Resize the PTY when the board card terminal resizes
+    const syncSize = () => {
+      try {
+        fitAddon.fit();
+        const { cols, rows } = term;
+        window.api.pty.resize({ id: termId, cols, rows });
+      } catch {}
     };
-
-    sendBtn.addEventListener('click', send);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') send();
-      e.stopPropagation(); // Prevent shortcuts from firing
-    });
 
     // Insert before empty state element
     this.boardEl.insertBefore(card, this.emptyEl);
 
-    // Observe resizes for fit
-    const resizeObs = new ResizeObserver(() => {
-      try {
-        fitAddon.fit();
-      } catch {}
-    });
+    const resizeObs = new ResizeObserver(syncSize);
     resizeObs.observe(termContainer);
 
-    this.cards.set(termId, { element: card, term, fitAddon, unsub, resizeObs });
+    this.cards.set(termId, { element: card, term, fitAddon, unsubData, resizeObs });
 
     // Fit after layout settles
-    setTimeout(() => {
-      try {
-        fitAddon.fit();
-      } catch {}
-    }, 100);
+    setTimeout(syncSize, 100);
   }
 
   removeCard(termId) {
     const data = this.cards.get(termId);
     if (!data) return;
-    if (data.unsub) data.unsub();
+    if (data.unsubData) data.unsubData();
     if (data.resizeObs) data.resizeObs.disconnect();
     data.term.dispose();
     data.element.remove();
@@ -212,7 +197,6 @@ export class BoardView {
   }
 
   setupListeners() {
-    // Refresh when terminals change
     this._onCreated = () => {
       if (!this.disposed) this.scanAgents();
     };
@@ -243,7 +227,7 @@ export class BoardView {
     bus.off('terminal:exited', this._onExited);
 
     for (const [, data] of this.cards) {
-      if (data.unsub) data.unsub();
+      if (data.unsubData) data.unsubData();
       if (data.resizeObs) data.resizeObs.disconnect();
       data.term.dispose();
     }

@@ -21,7 +21,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 520px;
+  max-width: 680px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
@@ -60,53 +60,15 @@
   border-color: var(--text-secondary);
 }
 
-/* ===== Card Terminal ===== */
+/* ===== Card Terminal (fully interactive) ===== */
 .board-card-terminal {
-  height: 180px;
+  height: 320px;
   overflow: hidden;
 }
 
 .board-card-terminal .xterm {
   height: 100%;
   padding: 4px;
-}
-
-/* ===== Card Input ===== */
-.board-card-input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-}
-
-.board-card-prompt {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 1;
-}
-
-.board-card-input {
-  flex: 1;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 5px 8px;
-  border-radius: 4px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.board-card-input:focus {
-  border-color: var(--accent);
-}
-
-.board-card-input::placeholder {
-  color: var(--text-muted);
 }
 
 /* ===== Board Tab Style ===== */
