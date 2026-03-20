@@ -187,25 +187,22 @@ export class BoardView {
       }
     });
 
-    // Resize the PTY when the board card terminal resizes
-    const syncSize = () => {
-      try {
-        fitAddon.fit();
-        const { cols, rows } = term;
-        window.api.pty.resize({ id: termId, cols, rows });
-      } catch {}
+    // Fit the xterm to the card container but do NOT resize the PTY.
+    // The workspace terminal is the master that controls PTY dimensions.
+    const fitOnly = () => {
+      try { fitAddon.fit(); } catch {}
     };
 
     // Insert before hidden bar
     this.boardEl.insertBefore(card, this.hiddenBarEl);
 
-    const resizeObs = new ResizeObserver(syncSize);
+    const resizeObs = new ResizeObserver(fitOnly);
     resizeObs.observe(termContainer);
 
     this.cards.set(termId, { element: card, term, fitAddon, unsubData, resizeObs, info });
 
     // Fit after layout settles
-    setTimeout(syncSize, 100);
+    setTimeout(fitOnly, 100);
   }
 
   removeCard(termId) {
