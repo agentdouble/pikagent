@@ -1,0 +1,359 @@
+/* ===== Usage Dashboard ===== */
+
+.usage-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.usage-stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.usage-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.usage-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.usage-stat-value-green {
+  color: var(--green);
+}
+
+.usage-stat-value-red {
+  color: #ff6b6b;
+}
+
+.usage-stat-value-blue {
+  color: var(--blue);
+}
+
+.usage-stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ===== Chart Section ===== */
+.usage-section {
+  margin-bottom: 24px;
+}
+
+.usage-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+/* ===== Bar Chart ===== */
+.usage-chart {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.usage-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+  min-width: min-content;
+}
+
+.usage-chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 14px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.usage-chart-bar-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  overflow: hidden;
+}
+
+.usage-chart-bar-success {
+  background: var(--green);
+  transition: height 0.3s;
+}
+
+.usage-chart-bar-error {
+  background: #ff6b6b;
+  transition: height 0.3s;
+}
+
+.usage-chart-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  white-space: nowrap;
+  transform: rotate(-45deg);
+  transform-origin: top center;
+}
+
+.usage-chart-tooltip {
+  position: relative;
+}
+
+.usage-chart-col:hover .usage-chart-bar-success {
+  background: #6bd882;
+}
+
+.usage-chart-col:hover .usage-chart-bar-error {
+  background: #ff8585;
+}
+
+/* ===== Success Rate Gauge ===== */
+.usage-rate-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.usage-rate-card {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.usage-rate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.usage-rate-title {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.usage-rate-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.usage-rate-bar {
+  height: 6px;
+  background: rgba(255, 107, 107, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.usage-rate-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 3px;
+  transition: width 0.5s;
+}
+
+.usage-rate-legend {
+  display: flex;
+  gap: 16px;
+}
+
+.usage-rate-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.usage-rate-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ===== Duration Stats ===== */
+.usage-duration-row {
+  display: flex;
+  gap: 12px;
+}
+
+.usage-duration-stat {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+}
+
+.usage-duration-val {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.usage-duration-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ===== Files Table ===== */
+.usage-files-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.usage-files-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.usage-files-table td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.usage-files-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.usage-file-name {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.usage-file-count {
+  color: var(--blue);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.usage-file-bar-cell {
+  width: 40%;
+}
+
+.usage-file-bar {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.usage-file-bar-fill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* ===== Flow Stats Table ===== */
+.usage-flow-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.usage-flow-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.usage-flow-table td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.usage-flow-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.usage-flow-name {
+  font-weight: 500;
+}
+
+.usage-flow-disabled {
+  color: var(--text-muted);
+}
+
+.usage-flow-rate {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.usage-flow-duration {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+/* ===== Empty State ===== */
+.usage-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+}
+
+.usage-empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.usage-empty-text {
+  font-size: 13px;
+}
+
+.usage-empty-sub {
+  font-size: 12px;
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+/* ===== Table wrapper ===== */
+.usage-table-wrap {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.usage-table-wrap table {
+  margin: 0;
+}

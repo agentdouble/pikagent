@@ -81,6 +81,11 @@ contextBridge.exposeInMainWorld('api', {
     },
   },
 
+  // Usage Metrics
+  usage: {
+    getMetrics: () => ipcRenderer.invoke('usage:getMetrics'),
+  },
+
   // Workspace Configs
   config: {
     save: (name, data) => ipcRenderer.invoke('config:save', { name, data }),

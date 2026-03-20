@@ -4,6 +4,7 @@ const fsManager = require('./fs-manager');
 const gitManager = require('./git-manager');
 const configManager = require('./config-manager');
 const flowManager = require('./flow-manager');
+const usageManager = require('./usage-manager');
 
 const ptyManager = new PtyManager();
 
@@ -195,6 +196,11 @@ function register(getWindow) {
 
   ipcMain.handle('flow:getRunLog', (event, { flowId, logTimestamp }) => {
     return flowManager.getRunLog(flowId, logTimestamp);
+  });
+
+  // --- Usage Metrics ---
+  ipcMain.handle('usage:getMetrics', () => {
+    return usageManager.getMetrics();
   });
 
   // Start flow scheduler
