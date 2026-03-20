@@ -3,6 +3,7 @@ import { TerminalPanel } from './terminal-panel.js';
 import { FileTree } from './file-tree.js';
 import { FileViewer } from './file-viewer.js';
 import { BoardView } from './board-view.js';
+import { FlowView } from './flow-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 
@@ -38,6 +39,8 @@ export class TabManager {
     this._configBarEl = null;
     this.boardView = null;
     this._boardContainerEl = null;
+    this.flowView = null;
+    this._flowContainerEl = null;
     this.sidebarMode = 'work';
 
     this.init();
@@ -129,6 +132,14 @@ export class TabManager {
     boardBtn.addEventListener('click', () => this.setSidebarMode('board'));
     topSection.appendChild(boardBtn);
 
+    // Flow button
+    const flowBtn = document.createElement('button');
+    flowBtn.className = 'activity-btn';
+    if (this.sidebarMode === 'flow') flowBtn.classList.add('active');
+    flowBtn.textContent = 'FLOW';
+    flowBtn.addEventListener('click', () => this.setSidebarMode('flow'));
+    topSection.appendChild(flowBtn);
+
     // More button
     const moreBtn = document.createElement('button');
     moreBtn.className = 'activity-btn';
@@ -155,10 +166,11 @@ export class TabManager {
   setSidebarMode(mode) {
     if (mode === this.sidebarMode) return;
 
+    const prevMode = this.sidebarMode;
     this.sidebarMode = mode;
 
-    if (mode === 'board') {
-      // Detach current workspace tab (keep alive)
+    // Detach previous view
+    if (prevMode === 'work') {
       if (this.activeTabId) {
         const prev = this.tabs.get(this.activeTabId);
         if (prev && prev.layoutElement) {
@@ -166,13 +178,19 @@ export class TabManager {
           prev.layoutElement.remove();
         }
       }
+    } else if (prevMode === 'board') {
+      if (this._boardContainerEl) this._boardContainerEl.remove();
+    } else if (prevMode === 'flow') {
+      if (this._flowContainerEl) this._flowContainerEl.remove();
+    }
+
+    // Attach new view
+    if (mode === 'board') {
       this.renderBoard();
+    } else if (mode === 'flow') {
+      this.renderFlow();
     } else {
-      // Detach board (keep alive)
-      if (this._boardContainerEl) {
-        this._boardContainerEl.remove();
-      }
-      // Reattach active workspace tab
+      // work
       const tab = this.tabs.get(this.activeTabId);
       if (tab) {
         if (tab.layoutElement) {
@@ -229,6 +247,23 @@ export class TabManager {
       this.workspaceContainer.appendChild(container);
       this._boardContainerEl = container;
       this.boardView = new BoardView(container, this);
+    }
+  }
+
+  // ===== Flow =====
+
+  renderFlow() {
+    this.workspaceContainer.innerHTML = '';
+
+    if (this.flowView && this._flowContainerEl) {
+      this.workspaceContainer.appendChild(this._flowContainerEl);
+      this.flowView.refresh();
+    } else {
+      const container = document.createElement('div');
+      container.style.height = '100%';
+      this.workspaceContainer.appendChild(container);
+      this._flowContainerEl = container;
+      this.flowView = new FlowView(container, this);
     }
   }
 

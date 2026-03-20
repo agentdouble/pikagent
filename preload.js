@@ -56,6 +56,26 @@ contextBridge.exposeInMainWorld('api', {
     fileDiff: (cwd, filePath, isStaged) => ipcRenderer.invoke('git:fileDiff', { cwd, filePath, isStaged }),
   },
 
+  // Flows
+  flow: {
+    save: (flow) => ipcRenderer.invoke('flow:save', flow),
+    get: (id) => ipcRenderer.invoke('flow:get', id),
+    list: () => ipcRenderer.invoke('flow:list'),
+    delete: (id) => ipcRenderer.invoke('flow:delete', id),
+    toggle: (id) => ipcRenderer.invoke('flow:toggle', id),
+    runNow: (id) => ipcRenderer.invoke('flow:runNow', id),
+    onRunStarted: (cb) => {
+      const listener = (event, payload) => cb(payload);
+      ipcRenderer.on('flow:runStarted', listener);
+      return () => ipcRenderer.removeListener('flow:runStarted', listener);
+    },
+    onRunComplete: (cb) => {
+      const listener = (event, payload) => cb(payload);
+      ipcRenderer.on('flow:runComplete', listener);
+      return () => ipcRenderer.removeListener('flow:runComplete', listener);
+    },
+  },
+
   // Workspace Configs
   config: {
     save: (name, data) => ipcRenderer.invoke('config:save', { name, data }),

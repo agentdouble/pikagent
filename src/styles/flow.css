@@ -1,0 +1,380 @@
+/* ===== Flow View ===== */
+.flow-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.flow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.flow-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.flow-add-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.flow-add-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+/* ===== Flow List ===== */
+.flow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flow-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* ===== Flow Card ===== */
+.flow-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.flow-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.flow-card-disabled {
+  opacity: 0.5;
+}
+
+.flow-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.flow-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-card-schedule {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.flow-card-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+/* ===== Run Status Dots ===== */
+.flow-card-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.flow-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.flow-dot-success {
+  background: #51cf66;
+}
+
+.flow-dot-error {
+  background: #ff6b6b;
+}
+
+/* ===== Card Actions ===== */
+.flow-card-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.flow-card:hover .flow-card-actions {
+  opacity: 1;
+}
+
+.flow-card-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.flow-card-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.flow-card-btn-danger:hover {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+}
+
+/* ===== Flow Modal ===== */
+.flow-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.flow-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 560px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.flow-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+}
+
+.flow-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.flow-modal-clear-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+
+.flow-modal-clear-btn:hover {
+  color: var(--text-secondary);
+}
+
+/* ===== Modal Form ===== */
+.flow-modal-group {
+  padding: 0 20px 12px;
+}
+
+.flow-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-ui);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.flow-modal-input:focus {
+  border-color: var(--accent);
+}
+
+.flow-modal-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  outline: none;
+  resize: vertical;
+  min-height: 120px;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.flow-modal-textarea:focus {
+  border-color: var(--accent);
+}
+
+.flow-modal-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* ===== Modal Bottom Bar ===== */
+.flow-modal-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 20px 16px;
+  align-items: center;
+}
+
+.flow-modal-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.flow-modal-chip-input {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  outline: none;
+  width: 140px;
+}
+
+.flow-modal-select {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  outline: none;
+  cursor: pointer;
+}
+
+.flow-modal-select option {
+  background: var(--bg-primary);
+}
+
+.flow-modal-time {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  outline: none;
+}
+
+.flow-modal-time::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+/* ===== Custom Day Buttons ===== */
+.flow-modal-days {
+  gap: 2px;
+}
+
+.flow-day-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: var(--font-ui);
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.flow-day-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.flow-day-btn:hover:not(.active) {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
+
+/* ===== Modal Actions ===== */
+.flow-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.flow-modal-btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+
+.flow-modal-btn-cancel {
+  background: none;
+  color: var(--text-muted);
+}
+
+.flow-modal-btn-cancel:hover {
+  color: var(--text-secondary);
+}
+
+.flow-modal-btn-create {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.flow-modal-btn-create:hover {
+  background: var(--accent-dim);
+}

@@ -3,6 +3,7 @@ const PtyManager = require('./pty-manager');
 const fsManager = require('./fs-manager');
 const gitManager = require('./git-manager');
 const configManager = require('./config-manager');
+const flowManager = require('./flow-manager');
 
 const ptyManager = new PtyManager();
 
@@ -153,9 +154,38 @@ function register(getWindow) {
   ipcMain.handle('config:loadDefault', () => {
     return configManager.loadDefault();
   });
+
+  // --- Flows ---
+  ipcMain.handle('flow:save', (event, flow) => {
+    return flowManager.save(flow);
+  });
+
+  ipcMain.handle('flow:get', (event, id) => {
+    return flowManager.get(id);
+  });
+
+  ipcMain.handle('flow:list', () => {
+    return flowManager.list();
+  });
+
+  ipcMain.handle('flow:delete', (event, id) => {
+    return flowManager.remove(id);
+  });
+
+  ipcMain.handle('flow:toggle', (event, id) => {
+    return flowManager.toggleEnabled(id);
+  });
+
+  ipcMain.handle('flow:runNow', (event, id) => {
+    return flowManager.runNow(id);
+  });
+
+  // Start flow scheduler
+  flowManager.start(getWindow, ptyManager);
 }
 
 function cleanup() {
+  flowManager.stop();
   ptyManager.killAll();
   fsManager.unwatchAll();
 }
