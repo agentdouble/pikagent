@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
     resize: (opts) => ipcRenderer.invoke('pty:resize', opts),
     kill: (opts) => ipcRenderer.invoke('pty:kill', opts),
     getCwd: (opts) => ipcRenderer.invoke('pty:getcwd', opts),
+    checkAgents: () => ipcRenderer.invoke('pty:checkAgents'),
     onData: (cb) => {
       const listener = (event, payload) => cb(payload);
       ipcRenderer.on('pty:data', listener);

@@ -31,10 +31,16 @@ export class BoardView {
     this.container = container;
     this.tabManager = tabManager;
     this.cards = new Map(); // termId -> { element, term, fitAddon, unsub, resizeObs }
+    this.disposed = false;
 
     this.render();
     this.setupListeners();
-    this.refreshCards();
+    this.scanAgents();
+
+    // Poll for agent detection every 3 seconds
+    this._pollTimer = setInterval(() => {
+      if (!this.disposed) this.scanAgents();
+    }, 3000);
   }
 
   render() {
@@ -46,46 +52,51 @@ export class BoardView {
 
     this.emptyEl = document.createElement('div');
     this.emptyEl.className = 'board-empty';
-    this.emptyEl.textContent = 'No agents running. Open a workspace tab to start agents.';
+    this.emptyEl.textContent = 'No agents running. Start Claude or Codex in a workspace terminal.';
     board.appendChild(this.emptyEl);
 
     this.container.appendChild(board);
   }
 
-  refreshCards() {
-    const allTerminals = this.getAllTerminals();
+  async scanAgents() {
+    if (this.disposed) return;
 
-    // Remove cards for terminals that no longer exist
-    for (const [termId] of this.cards) {
-      if (!allTerminals.has(termId)) {
-        this.removeCard(termId);
+    try {
+      // Ask main process which terminals have agent child processes
+      const agents = await window.api.pty.checkAgents();
+
+      // Remove cards for terminals that no longer have agents
+      for (const [termId] of this.cards) {
+        if (!agents[termId]) {
+          this.removeCard(termId);
+        }
       }
-    }
 
-    // Add cards for new terminals
-    for (const [termId, info] of allTerminals) {
-      if (!this.cards.has(termId)) {
-        this.addCard(termId, info);
+      // Add cards for newly detected agents
+      for (const [termId, agentName] of Object.entries(agents)) {
+        if (!this.cards.has(termId)) {
+          const tabName = this._getTabNameForTerminal(termId);
+          if (tabName) {
+            this.addCard(termId, { tabName, agent: agentName });
+          }
+        }
       }
-    }
 
-    // Toggle empty state
-    this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
+      // Toggle empty state
+      this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
+    } catch (e) {
+      console.warn('Board: agent scan failed', e);
+    }
   }
 
-  getAllTerminals() {
-    const terminals = new Map();
-    for (const [tabId, tab] of this.tabManager.tabs) {
+  _getTabNameForTerminal(termId) {
+    for (const [, tab] of this.tabManager.tabs) {
       if (tab.isBoard) continue;
-      if (!tab.terminalPanel) continue;
-      for (const [termId, node] of tab.terminalPanel.terminals) {
-        terminals.set(termId, {
-          tabName: tab.name,
-          cwd: node.terminal.cwd,
-        });
+      if (tab.terminalPanel?.terminals?.has(termId)) {
+        return tab.name;
       }
     }
-    return terminals;
+    return null;
   }
 
   addCard(termId, info) {
@@ -98,17 +109,18 @@ export class BoardView {
 
     const name = document.createElement('span');
     name.className = 'board-card-name';
-    name.textContent = info.tabName;
+    name.textContent = `${info.agent} — ${info.tabName}`;
     header.appendChild(name);
 
     const sendBtn = document.createElement('button');
     sendBtn.className = 'board-card-send';
     sendBtn.innerHTML = '&#9654;';
+    sendBtn.title = 'Send';
     header.appendChild(sendBtn);
 
     card.appendChild(header);
 
-    // Terminal output area
+    // Terminal output area (read-only mirror)
     const termContainer = document.createElement('div');
     termContainer.className = 'board-card-terminal';
     card.appendChild(termContainer);
@@ -119,18 +131,18 @@ export class BoardView {
 
     const prompt = document.createElement('span');
     prompt.className = 'board-card-prompt';
-    prompt.textContent = '\u203A';
+    prompt.textContent = '\u203a';
 
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'board-card-input';
-    input.placeholder = 'Send command...';
+    input.placeholder = 'Send to agent...';
 
     inputRow.appendChild(prompt);
     inputRow.appendChild(input);
     card.appendChild(inputRow);
 
-    // Create mini xterm
+    // Create mini xterm (read-only mirror of the agent terminal)
     const term = new Terminal({
       theme: THEME,
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
@@ -146,7 +158,7 @@ export class BoardView {
     term.loadAddon(fitAddon);
     term.open(termContainer);
 
-    // Subscribe to PTY data
+    // Subscribe to PTY data for this terminal
     const unsub = window.api.pty.onData(({ id, data }) => {
       if (id === termId) {
         term.write(data);
@@ -165,7 +177,7 @@ export class BoardView {
     sendBtn.addEventListener('click', send);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') send();
-      e.stopPropagation();
+      e.stopPropagation(); // Prevent shortcuts from firing
     });
 
     // Insert before empty state element
@@ -173,7 +185,9 @@ export class BoardView {
 
     // Observe resizes for fit
     const resizeObs = new ResizeObserver(() => {
-      try { fitAddon.fit(); } catch {}
+      try {
+        fitAddon.fit();
+      } catch {}
     });
     resizeObs.observe(termContainer);
 
@@ -181,7 +195,9 @@ export class BoardView {
 
     // Fit after layout settles
     setTimeout(() => {
-      try { fitAddon.fit(); } catch {}
+      try {
+        fitAddon.fit();
+      } catch {}
     }, 100);
   }
 
@@ -196,9 +212,18 @@ export class BoardView {
   }
 
   setupListeners() {
-    this._onCreated = () => this.refreshCards();
-    this._onRemoved = () => this.refreshCards();
-    this._onExited = () => this.refreshCards();
+    // Refresh when terminals change
+    this._onCreated = () => {
+      if (!this.disposed) this.scanAgents();
+    };
+    this._onRemoved = ({ id }) => {
+      this.removeCard(id);
+      this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
+    };
+    this._onExited = ({ id }) => {
+      this.removeCard(id);
+      this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
+    };
 
     bus.on('terminal:created', this._onCreated);
     bus.on('terminal:removed', this._onRemoved);
@@ -206,6 +231,13 @@ export class BoardView {
   }
 
   dispose() {
+    this.disposed = true;
+
+    if (this._pollTimer) {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
+    }
+
     bus.off('terminal:created', this._onCreated);
     bus.off('terminal:removed', this._onRemoved);
     bus.off('terminal:exited', this._onExited);

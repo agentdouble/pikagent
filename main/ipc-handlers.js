@@ -44,6 +44,10 @@ function register(getWindow) {
     return ptyManager.getCwd(id);
   });
 
+  ipcMain.handle('pty:checkAgents', () => {
+    return ptyManager.checkAgents();
+  });
+
   // --- File System ---
   ipcMain.handle('fs:readdir', (event, dirPath) => {
     return fsManager.readDirectory(dirPath);

@@ -53,6 +53,23 @@ class PtyManager {
     }
   }
 
+  checkAgents() {
+    const agents = {};
+    for (const [id, proc] of this.processes) {
+      try {
+        const childPids = execSync(`pgrep -P ${proc.pid}`, { encoding: 'utf8', timeout: 1000 })
+          .trim().split('\n').filter(Boolean);
+        for (const childPid of childPids) {
+          const args = execSync(`ps -o args= -p ${childPid.trim()}`, { encoding: 'utf8', timeout: 1000 })
+            .trim().toLowerCase();
+          if (args.includes('claude')) { agents[id] = 'Claude'; break; }
+          if (args.includes('codex')) { agents[id] = 'Codex'; break; }
+        }
+      } catch {}
+    }
+    return agents;
+  }
+
   killAll() {
     for (const [id, proc] of this.processes) {
       proc.kill();

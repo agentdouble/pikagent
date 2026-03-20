@@ -57,6 +57,11 @@ const DEFAULT_BINDINGS = [
     label: 'Previous Workspace',
     keys: ['shift+control+tab'],
   },
+  {
+    id: 'showBoard',
+    label: 'Show Board',
+    keys: ['meta+b', 'control+b'],
+  },
 ];
 
 export class ShortcutManager {
@@ -89,6 +94,7 @@ export class ShortcutManager {
     this.actions.set('focusDown', () => this.tabManager.focusDirection('down'));
     this.actions.set('nextTab', () => this.tabManager.nextTab());
     this.actions.set('prevTab', () => this.tabManager.prevTab());
+    this.actions.set('showBoard', () => this.tabManager.switchToBoard());
   }
 
   loadBindings() {
