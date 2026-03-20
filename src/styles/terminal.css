@@ -23,7 +23,7 @@
 }
 
 .terminal-wrapper.active {
-  border-color: var(--accent-dim);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .terminal-wrapper.dragging {
