@@ -1,0 +1,60 @@
+/* ===== Context Menu ===== */
+.context-menu {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  min-width: 180px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+
+.context-menu-item:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.context-menu-shortcut {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 20px;
+  font-family: var(--font-mono);
+}
+
+.context-menu-item:hover .context-menu-shortcut {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+/* ===== New File Inline Input ===== */
+.file-tree-new-input {
+  width: calc(100% - 24px);
+  margin: 2px 12px;
+  padding: 3px 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  outline: none;
+}

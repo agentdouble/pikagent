@@ -1,0 +1,111 @@
+/* ===== Terminal Area ===== */
+.terminal-area {
+  flex: 1;
+  overflow: hidden;
+}
+
+.terminal-panel {
+  height: 100%;
+  width: 100%;
+}
+
+.terminal-wrapper {
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.terminal-wrapper.active {
+  border-color: var(--accent-dim);
+}
+
+/* ===== Close Button ===== */
+.terminal-close-btn {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 10;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.terminal-wrapper:hover .terminal-close-btn {
+  opacity: 1;
+}
+
+.terminal-close-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.terminal-container {
+  flex: 1;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.terminal-container .xterm {
+  height: 100%;
+}
+
+.terminal-container .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+/* ===== Split Containers ===== */
+.split-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.split-horizontal {
+  flex-direction: row;
+}
+
+.split-vertical {
+  flex-direction: column;
+}
+
+.split-handle {
+  flex-shrink: 0;
+  background: var(--border-color);
+  transition: background 0.15s;
+  z-index: 5;
+}
+
+.split-handle:hover {
+  background: var(--accent);
+}
+
+.split-handle-horizontal {
+  width: 3px;
+  cursor: col-resize;
+}
+
+.split-handle-vertical {
+  height: 3px;
+  cursor: row-resize;
+}

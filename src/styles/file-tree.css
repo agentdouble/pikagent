@@ -1,0 +1,109 @@
+/* ===== File Tree ===== */
+.file-tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+
+.file-tree-content {
+  min-width: max-content;
+}
+
+.file-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.file-tree-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.file-tree-item.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.file-tree-chevron {
+  width: 12px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.file-tree-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.file-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-tree-children {
+  /* no extra styling needed, nesting handled by padding */
+}
+
+/* ===== File Tree Sections (one per terminal) ===== */
+.file-tree-section {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.file-tree-section:last-child {
+  border-bottom: none;
+}
+
+.file-tree-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  transition: background 0.1s;
+}
+
+.file-tree-section-header:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.file-tree-section-chevron {
+  font-size: 10px;
+  width: 10px;
+  color: var(--text-muted);
+}
+
+.file-tree-section-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree-section-content {
+  overflow: hidden;
+}
+
+.file-tree-section-content.collapsed {
+  display: none;
+}
