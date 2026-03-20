@@ -84,9 +84,11 @@
   padding: 4px;
 }
 
-/* Fix cursor bleed outside card bounds */
+/* Hide the board xterm cursor — it's always mispositioned because
+   the board card has different cols/rows than the PTY (controlled
+   by the workspace terminal). The real cursor is in the workspace. */
 .board-card-terminal .xterm-cursor-layer {
-  clip-path: inset(0);
+  display: none !important;
 }
 
 /* ===== Hidden bar (minimized agents) ===== */
