@@ -4,6 +4,7 @@ import { FileTree } from './file-tree.js';
 import { FileViewer } from './file-viewer.js';
 import { BoardView } from './board-view.js';
 import { FlowView } from './flow-view.js';
+import { UsageView } from './usage-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
@@ -138,6 +139,14 @@ export class TabManager {
     flowBtn.addEventListener('click', () => this.setSidebarMode('flow'));
     topSection.appendChild(flowBtn);
 
+    // Usage button
+    const usageBtn = document.createElement('button');
+    usageBtn.className = 'activity-btn';
+    if (this.sidebarMode === 'usage') usageBtn.classList.add('active');
+    usageBtn.textContent = 'USAGE';
+    usageBtn.addEventListener('click', () => this.setSidebarMode('usage'));
+    topSection.appendChild(usageBtn);
+
     // More button
     const moreBtn = document.createElement('button');
     moreBtn.className = 'activity-btn';
@@ -180,10 +189,14 @@ export class TabManager {
       if (this._boardContainerEl) this._boardContainerEl.remove();
     } else if (prevMode === 'flow') {
       if (this._flowContainerEl) this._flowContainerEl.remove();
+    } else if (prevMode === 'usage') {
+      if (this._usageContainerEl) this._usageContainerEl.remove();
     }
 
     // Attach new view
-    if (mode === 'board') {
+    if (mode === 'usage') {
+      this.renderUsage();
+    } else if (mode === 'board') {
       this.renderBoard();
     } else if (mode === 'flow') {
       this.renderFlow();
@@ -262,6 +275,23 @@ export class TabManager {
       this.workspaceContainer.appendChild(container);
       this._flowContainerEl = container;
       this.flowView = new FlowView(container, this);
+    }
+  }
+
+  // ===== Usage =====
+
+  renderUsage() {
+    this.workspaceContainer.innerHTML = '';
+
+    if (this.usageView && this._usageContainerEl) {
+      this.workspaceContainer.appendChild(this._usageContainerEl);
+      this.usageView.refresh();
+    } else {
+      const container = document.createElement('div');
+      container.style.height = '100%';
+      this.workspaceContainer.appendChild(container);
+      this._usageContainerEl = container;
+      this.usageView = new UsageView(container);
     }
   }
 
