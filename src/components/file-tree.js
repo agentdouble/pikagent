@@ -1,4 +1,3 @@
-import { getFileIcon } from '../utils/file-icons.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 
@@ -283,10 +282,6 @@ export class FileTree {
       row.className = 'file-tree-item';
       row.style.paddingLeft = `${12 + depth * 16}px`;
 
-      const icon = document.createElement('span');
-      icon.className = 'file-tree-icon';
-      icon.textContent = getFileIcon(entry.name, entry.isDirectory);
-
       const chevron = document.createElement('span');
       chevron.className = 'file-tree-chevron';
 
@@ -301,7 +296,6 @@ export class FileTree {
       name.textContent = entry.name;
 
       row.appendChild(chevron);
-      row.appendChild(icon);
       row.appendChild(name);
       parentEl.appendChild(row);
 
