@@ -1,44 +1,7 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
-import { generateId } from '../utils/id.js';
-
-const AGENT_OPTIONS = {
-  claude: 'Claude',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-};
-
-const SCHEDULE_LABELS = {
-  daily: 'Tous les jours',
-  weekdays: 'Jours de la semaine',
-  custom: 'Personnalisé',
-};
-
-const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-
-const TERM_THEME = {
-  background: '#1a1a2e',
-  foreground: '#e0e0e0',
-  cursor: '#e0e0e0',
-  cursorAccent: '#1a1a2e',
-  selectionBackground: '#3a3a5e',
-  black: '#1a1a2e',
-  red: '#ff6b6b',
-  green: '#51cf66',
-  yellow: '#ffd43b',
-  blue: '#74c0fc',
-  magenta: '#da77f2',
-  cyan: '#66d9e8',
-  white: '#e0e0e0',
-  brightBlack: '#555577',
-  brightRed: '#ff8787',
-  brightGreen: '#69db7c',
-  brightYellow: '#ffe066',
-  brightBlue: '#91d5ff',
-  brightMagenta: '#e599f7',
-  brightCyan: '#99e9f2',
-  brightWhite: '#ffffff',
-};
+import { getTerminalTheme } from '../utils/terminal-themes.js';
+import { openFlowModal, SCHEDULE_LABELS, DAY_NAMES } from './flow-modal.js';
 
 export class FlowView {
   constructor(container, tabManager) {
@@ -297,11 +260,38 @@ export class FlowView {
 
   // === Live Terminal (for running flows) ===
 
+  _createReadonlyTerminal(containerEl, opts = {}) {
+    const term = new Terminal({
+      theme: getTerminalTheme(),
+      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
+      fontSize: 12,
+      lineHeight: 1.3,
+      cursorBlink: false,
+      scrollback: opts.scrollback || 10000,
+      disableStdin: true,
+      ...(opts.cursorStyle ? { cursorStyle: opts.cursorStyle } : {}),
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(containerEl);
+
+    const resizeObs = new ResizeObserver(() => {
+      try { fitAddon.fit(); } catch {}
+    });
+    resizeObs.observe(containerEl);
+
+    setTimeout(() => {
+      try { fitAddon.fit(); } catch {}
+    }, 50);
+
+    return { term, fitAddon, resizeObs };
+  }
+
   _createLiveTerminal(flowId, ptyId) {
     // If we already have a terminal for this flow, reattach it
     const existing = this._liveTerminals.get(flowId);
     if (existing) {
-      // Refit after reattach
       setTimeout(() => {
         try { existing.fitAddon.fit(); } catch {}
       }, 50);
@@ -311,20 +301,10 @@ export class FlowView {
     const containerEl = document.createElement('div');
     containerEl.className = 'flow-card-terminal';
 
-    const term = new Terminal({
-      theme: TERM_THEME,
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 12,
-      lineHeight: 1.3,
-      cursorBlink: false,
-      cursorStyle: 'bar',
+    const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
       scrollback: 10000,
-      disableStdin: true,
+      cursorStyle: 'bar',
     });
-
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(containerEl);
 
     // Subscribe to PTY data
     const unsubData = window.api.pty.onData(({ id, data }) => {
@@ -333,16 +313,7 @@ export class FlowView {
       }
     });
 
-    const resizeObs = new ResizeObserver(() => {
-      try { fitAddon.fit(); } catch {}
-    });
-    resizeObs.observe(containerEl);
-
     this._liveTerminals.set(flowId, { term, fitAddon, unsubData, resizeObs, containerEl, ptyId });
-
-    setTimeout(() => {
-      try { fitAddon.fit(); } catch {}
-    }, 100);
 
     return containerEl;
   }
@@ -363,19 +334,9 @@ export class FlowView {
       ? await window.api.flow.getRunLog(flowId, run.logTimestamp)
       : null;
 
-    const term = new Terminal({
-      theme: TERM_THEME,
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 12,
-      lineHeight: 1.3,
-      cursorBlink: false,
+    const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
       scrollback: 50000,
-      disableStdin: true,
     });
-
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(containerEl);
 
     if (log) {
       term.write(log);
@@ -383,17 +344,8 @@ export class FlowView {
       term.write('\r\n  Log non disponible pour ce run.\r\n');
     }
 
-    const resizeObs = new ResizeObserver(() => {
-      try { fitAddon.fit(); } catch {}
-    });
-    resizeObs.observe(containerEl);
-
     this._logTerminals = this._logTerminals || new Map();
     this._logTerminals.set(flowId, { term, fitAddon, resizeObs });
-
-    setTimeout(() => {
-      try { fitAddon.fit(); } catch {}
-    }, 50);
   }
 
   _disposeLogTerminal(flowId) {
@@ -433,10 +385,6 @@ export class FlowView {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'flow-log-close';
     closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', () => {
-      logTerm.dispose();
-      overlay.remove();
-    });
     header.appendChild(closeBtn);
 
     modal.appendChild(header);
@@ -449,44 +397,26 @@ export class FlowView {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    const logTerm = new Terminal({
-      theme: TERM_THEME,
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 12,
-      lineHeight: 1.3,
-      cursorBlink: false,
+    const { term, resizeObs } = this._createReadonlyTerminal(termContainer, {
       scrollback: 50000,
-      disableStdin: true,
     });
 
-    const logFit = new FitAddon();
-    logTerm.loadAddon(logFit);
-    logTerm.open(termContainer);
-
-    setTimeout(() => {
-      try { logFit.fit(); } catch {}
-    }, 50);
-
-    // Write the log content (raw terminal output with ANSI codes)
     if (log) {
-      logTerm.write(log);
+      term.write(log);
     } else {
-      logTerm.write('\r\n  Log non disponible.\r\n');
+      term.write('\r\n  Log non disponible.\r\n');
     }
 
-    // Close on overlay click
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        logTerm.dispose();
-        overlay.remove();
-      }
-    });
+    const close = () => {
+      resizeObs.disconnect();
+      term.dispose();
+      overlay.remove();
+    };
 
-    // Resize handler
-    const obs = new ResizeObserver(() => {
-      try { logFit.fit(); } catch {}
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
     });
-    obs.observe(termContainer);
   }
 
   _formatSchedule(schedule) {
@@ -502,211 +432,12 @@ export class FlowView {
 
   // ===== Creation / Edit Modal =====
 
-  _openModal(existing = null) {
-    const overlay = document.createElement('div');
-    overlay.className = 'flow-modal-overlay';
-
-    const modal = document.createElement('div');
-    modal.className = 'flow-modal';
-
-    // Header
-    const modalHeader = document.createElement('div');
-    modalHeader.className = 'flow-modal-header';
-
-    const modalTitle = document.createElement('h3');
-    modalTitle.textContent = existing ? 'Modifier le flow' : 'Nouveau flow';
-    modalHeader.appendChild(modalTitle);
-
-    const clearBtn = document.createElement('button');
-    clearBtn.className = 'flow-modal-clear-btn';
-    clearBtn.textContent = 'Clear';
-    clearBtn.addEventListener('click', () => {
-      nameInput.value = '';
-      promptArea.value = '';
-      selectedCwd = '';
-      cwdLabel.textContent = 'Sélectionner un dossier';
-      cwdChip.title = 'Sélectionner un dossier';
-    });
-    modalHeader.appendChild(clearBtn);
-
-    modal.appendChild(modalHeader);
-
-    // Name
-    const nameGroup = document.createElement('div');
-    nameGroup.className = 'flow-modal-group';
-    const nameInput = document.createElement('input');
-    nameInput.className = 'flow-modal-input';
-    nameInput.placeholder = 'Nom du flow';
-    nameInput.value = existing?.name || '';
-    nameGroup.appendChild(nameInput);
-    modal.appendChild(nameGroup);
-
-    // Prompt
-    const promptGroup = document.createElement('div');
-    promptGroup.className = 'flow-modal-group';
-    const promptArea = document.createElement('textarea');
-    promptArea.className = 'flow-modal-textarea';
-    promptArea.placeholder = 'Prompt à envoyer à l\'agent...\n\nExemple:\nSummarize yesterday\'s git activity for standup.\n\nGrounding rules:\n- Anchor statements to commits/PRs/files\n- Keep it scannable and team-ready.';
-    promptArea.rows = 8;
-    promptArea.value = existing?.prompt || '';
-    promptGroup.appendChild(promptArea);
-    modal.appendChild(promptGroup);
-
-    // Bottom bar: cwd + schedule + actions
-    const bottomBar = document.createElement('div');
-    bottomBar.className = 'flow-modal-bottom';
-
-    // CWD folder picker
-    let selectedCwd = existing?.cwd || '';
-    const cwdChip = document.createElement('button');
-    cwdChip.className = 'flow-modal-chip flow-modal-chip-btn';
-    cwdChip.type = 'button';
-    const cwdIcon = document.createElement('span');
-    cwdIcon.textContent = '\u{1F4C2}';
-    cwdChip.appendChild(cwdIcon);
-    const cwdLabel = document.createElement('span');
-    cwdLabel.className = 'flow-modal-chip-label';
-    cwdLabel.textContent = selectedCwd ? selectedCwd.split('/').pop() : 'Sélectionner un dossier';
-    cwdChip.title = selectedCwd || 'Sélectionner un dossier';
-    cwdChip.appendChild(cwdLabel);
-    cwdChip.addEventListener('click', async (e) => {
-      e.preventDefault();
-      const folder = await window.api.dialog.openFolder();
-      if (folder) {
-        selectedCwd = folder;
-        cwdLabel.textContent = folder.split('/').pop();
-        cwdChip.title = folder;
-      }
-    });
-    bottomBar.appendChild(cwdChip);
-
-    // Agent selector
-    const agentChip = document.createElement('div');
-    agentChip.className = 'flow-modal-chip';
-    const agentIcon = document.createElement('span');
-    agentIcon.textContent = '\u{1F916}';
-    agentChip.appendChild(agentIcon);
-    const agentSelect = document.createElement('select');
-    agentSelect.className = 'flow-modal-select';
-    for (const [value, label] of Object.entries(AGENT_OPTIONS)) {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      agentSelect.appendChild(opt);
-    }
-    agentSelect.value = existing?.agent || 'claude';
-    agentChip.appendChild(agentSelect);
-    bottomBar.appendChild(agentChip);
-
-    // Schedule type
-    const scheduleChip = document.createElement('div');
-    scheduleChip.className = 'flow-modal-chip';
-    const schedIcon = document.createElement('span');
-    schedIcon.textContent = '\u{1F550}';
-    scheduleChip.appendChild(schedIcon);
-    const schedSelect = document.createElement('select');
-    schedSelect.className = 'flow-modal-select';
-    for (const [value, label] of Object.entries(SCHEDULE_LABELS)) {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      schedSelect.appendChild(opt);
-    }
-    schedSelect.value = existing?.schedule?.type || 'weekdays';
-    scheduleChip.appendChild(schedSelect);
-    bottomBar.appendChild(scheduleChip);
-
-    // Time
-    const timeChip = document.createElement('div');
-    timeChip.className = 'flow-modal-chip';
-    const timeInput = document.createElement('input');
-    timeInput.type = 'time';
-    timeInput.className = 'flow-modal-time';
-    timeInput.value = existing?.schedule?.time || '09:00';
-    timeChip.appendChild(timeInput);
-    bottomBar.appendChild(timeChip);
-
-    // Custom days
-    const daysChip = document.createElement('div');
-    daysChip.className = 'flow-modal-chip flow-modal-days';
-    daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
-    const selectedDays = new Set(existing?.schedule?.days || [1, 2, 3, 4, 5]);
-    for (let d = 0; d < 7; d++) {
-      const dayBtn = document.createElement('button');
-      dayBtn.className = 'flow-day-btn';
-      if (selectedDays.has(d)) dayBtn.classList.add('active');
-      dayBtn.textContent = DAY_NAMES[d];
-      dayBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (selectedDays.has(d)) {
-          selectedDays.delete(d);
-          dayBtn.classList.remove('active');
-        } else {
-          selectedDays.add(d);
-          dayBtn.classList.add('active');
-        }
-      });
-      daysChip.appendChild(dayBtn);
-    }
-    bottomBar.appendChild(daysChip);
-
-    schedSelect.addEventListener('change', () => {
-      daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
-    });
-
-    modal.appendChild(bottomBar);
-
-    // Action buttons
-    const actionBar = document.createElement('div');
-    actionBar.className = 'flow-modal-actions';
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'flow-modal-btn flow-modal-btn-cancel';
-    cancelBtn.textContent = 'Annuler';
-    cancelBtn.addEventListener('click', () => overlay.remove());
-    actionBar.appendChild(cancelBtn);
-
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'flow-modal-btn flow-modal-btn-create';
-    saveBtn.textContent = existing ? 'Enregistrer' : 'Créer';
-    saveBtn.addEventListener('click', async () => {
-      const name = nameInput.value.trim();
-      const prompt = promptArea.value.trim();
-      if (!name || !prompt) return;
-
-      const flow = {
-        id: existing?.id || generateId(),
-        name,
-        prompt,
-        agent: agentSelect.value,
-        cwd: selectedCwd || undefined,
-        schedule: {
-          type: schedSelect.value,
-          time: timeInput.value || '09:00',
-        },
-        enabled: existing?.enabled ?? true,
-        runs: existing?.runs || [],
-      };
-
-      if (schedSelect.value === 'custom') {
-        flow.schedule.days = [...selectedDays].sort();
-      }
-
+  async _openModal(existing = null) {
+    const flow = await openFlowModal(existing);
+    if (flow) {
       await window.api.flow.save(flow);
-      overlay.remove();
       this.refresh();
-    });
-    actionBar.appendChild(saveBtn);
-
-    modal.appendChild(actionBar);
-
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.remove();
-    });
-
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-    nameInput.focus();
+    }
   }
 
   dispose() {
