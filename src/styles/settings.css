@@ -453,58 +453,31 @@
 }
 
 /* ===== Workspace Configs ===== */
-.config-save-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-}
 
-.config-name-input {
-  flex: 1;
-  padding: 8px 12px;
+/* Current config bar */
+.config-current-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-family: var(--font-ui);
-  outline: none;
-  transition: border-color 0.15s;
+  border-radius: 8px;
+  margin-bottom: 16px;
 }
 
-.config-name-input:focus {
-  border-color: var(--accent);
-}
-
-.config-name-input::placeholder {
-  color: var(--text-muted);
-}
-
-.config-save-btn {
-  padding: 8px 16px;
-  background: var(--accent);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
+.config-current-label {
   font-size: 12px;
-  font-family: var(--font-ui);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity 0.15s;
-}
-
-.config-save-btn:hover {
-  opacity: 0.85;
-}
-
-.config-empty {
-  padding: 24px;
-  text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
 }
 
+.config-current-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Config list */
 .config-list {
   display: flex;
   flex-direction: column;
@@ -517,6 +490,7 @@
   justify-content: space-between;
   padding: 10px 12px;
   border-radius: 6px;
+  cursor: pointer;
   transition: background 0.1s;
 }
 
@@ -524,8 +498,46 @@
   background: var(--bg-hover);
 }
 
-.config-row.config-default {
-  border-left: 2px solid var(--accent);
+.config-row.config-active {
+  background: var(--bg-hover);
+}
+
+.config-row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Radio indicator */
+.config-radio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.config-row.config-active .config-radio {
+  border-color: var(--accent);
+}
+
+.config-row.config-active .config-radio::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.config-radio-default {
+  border-color: var(--accent-dim);
 }
 
 .config-info {
@@ -542,6 +554,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-default-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(233, 69, 96, 0.12);
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .config-meta {
@@ -549,11 +575,18 @@
   color: var(--text-muted);
 }
 
+/* Row actions (visible on hover) */
 .config-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.config-row:hover .config-actions {
+  opacity: 1;
 }
 
 .config-action-btn {
@@ -575,32 +608,42 @@
   border-color: var(--text-muted);
 }
 
-.config-action-btn.config-is-default {
-  border-color: var(--accent);
-  color: var(--accent);
-  cursor: default;
-}
-
-.config-load-btn:hover {
-  border-color: var(--green);
-  color: var(--green);
-  background: rgba(81, 207, 102, 0.1);
-}
-
-.config-overwrite-btn:hover {
-  border-color: var(--yellow, #ffd43b);
-  color: var(--yellow, #ffd43b);
-  background: rgba(255, 212, 59, 0.1);
-}
-
-.config-dup-btn:hover {
-  border-color: var(--blue, #74c0fc);
-  color: var(--blue, #74c0fc);
-  background: rgba(116, 192, 252, 0.1);
+.config-delete-btn {
+  border: none;
+  padding: 4px 8px;
+  font-size: 13px;
 }
 
 .config-delete-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
   background: rgba(233, 69, 96, 0.1);
+}
+
+/* Bottom actions */
+.config-bottom-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 4px;
+}
+
+.config-bottom-btn {
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.config-bottom-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }

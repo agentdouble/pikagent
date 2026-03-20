@@ -360,43 +360,22 @@ export class SettingsModal {
     heading.appendChild(headingTitle);
     this.content.appendChild(heading);
 
-    // Save current workspace form
-    const saveForm = document.createElement('div');
-    saveForm.className = 'config-save-form';
+    // Current loaded config indicator
+    const currentName = this.tabManager?.currentConfigName || 'Default';
+    const currentBar = document.createElement('div');
+    currentBar.className = 'config-current-bar';
+    const currentLabel = document.createElement('span');
+    currentLabel.className = 'config-current-label';
+    currentLabel.textContent = 'Config chargée :';
+    currentBar.appendChild(currentLabel);
+    const currentValue = document.createElement('span');
+    currentValue.className = 'config-current-value';
+    currentValue.textContent = currentName;
+    currentBar.appendChild(currentValue);
+    this.content.appendChild(currentBar);
 
-    const saveInput = document.createElement('input');
-    saveInput.className = 'config-name-input';
-    saveInput.type = 'text';
-    saveInput.placeholder = 'Config name...';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'config-save-btn';
-    saveBtn.textContent = 'Save Current';
-    saveBtn.addEventListener('click', async () => {
-      const name = saveInput.value.trim();
-      if (!name) return;
-      if (!this.tabManager) return;
-      const data = this.tabManager.serialize();
-      await window.api.config.save(name, data);
-      saveInput.value = '';
-      this.renderConfigs();
-    });
-
-    saveForm.appendChild(saveInput);
-    saveForm.appendChild(saveBtn);
-    this.content.appendChild(saveForm);
-
-    // Config list
+    // Config list with radio-style selection
     const configs = await window.api.config.list();
-    const defaultName = await window.api.config.getDefault();
-
-    if (configs.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'config-empty';
-      empty.textContent = 'No saved configs yet. Save your current workspace layout above.';
-      this.content.appendChild(empty);
-      return;
-    }
 
     const list = document.createElement('div');
     list.className = 'config-list';
@@ -404,7 +383,17 @@ export class SettingsModal {
     for (const config of configs) {
       const row = document.createElement('div');
       row.className = 'config-row';
-      if (config.isDefault) row.classList.add('config-default');
+      const isCurrent = config.name === currentName;
+      if (isCurrent) row.classList.add('config-active');
+
+      // Radio + name
+      const left = document.createElement('div');
+      left.className = 'config-row-left';
+
+      const radio = document.createElement('span');
+      radio.className = 'config-radio';
+      if (config.isDefault) radio.classList.add('config-radio-default');
+      left.appendChild(radio);
 
       const info = document.createElement('div');
       info.className = 'config-info';
@@ -412,94 +401,122 @@ export class SettingsModal {
       const nameEl = document.createElement('span');
       nameEl.className = 'config-name';
       nameEl.textContent = config.name;
+      if (config.isDefault) {
+        const defaultTag = document.createElement('span');
+        defaultTag.className = 'config-default-tag';
+        defaultTag.textContent = 'default';
+        nameEl.appendChild(defaultTag);
+      }
+      info.appendChild(nameEl);
 
       const meta = document.createElement('span');
       meta.className = 'config-meta';
       const tabCount = config.tabCount || 0;
       const date = config.updatedAt ? new Date(config.updatedAt).toLocaleDateString() : '';
       meta.textContent = `${tabCount} tab${tabCount !== 1 ? 's' : ''} · ${date}`;
-
-      info.appendChild(nameEl);
       info.appendChild(meta);
 
-      const actions = document.createElement('div');
-      actions.className = 'config-actions';
+      left.appendChild(info);
 
-      // Default toggle
-      const defaultBtn = document.createElement('button');
-      defaultBtn.className = 'config-action-btn';
-      if (config.isDefault) {
-        defaultBtn.classList.add('config-is-default');
-        defaultBtn.textContent = 'Default';
-        defaultBtn.title = 'This is the default config';
-      } else {
-        defaultBtn.textContent = 'Set Default';
-        defaultBtn.title = 'Set as default config (auto-loaded on startup)';
-      }
-      defaultBtn.addEventListener('click', async () => {
-        await window.api.config.setDefault(config.name);
-        this.renderConfigs();
-      });
-
-      // Load button
-      const loadBtn = document.createElement('button');
-      loadBtn.className = 'config-action-btn config-load-btn';
-      loadBtn.textContent = 'Load';
-      loadBtn.title = 'Load this config now';
-      loadBtn.addEventListener('click', async () => {
+      // Click row to load
+      row.addEventListener('click', async () => {
         const data = await window.api.config.load(config.name);
         if (data && this.tabManager) {
           await this.tabManager.restoreConfig(data);
-          this.close();
+          this.tabManager.currentConfigName = config.name;
+          this.renderConfigs();
         }
       });
 
-      // Overwrite button
+      // Actions (shown on hover)
+      const actions = document.createElement('div');
+      actions.className = 'config-actions';
+
+      // Set default
+      if (!config.isDefault) {
+        const defaultBtn = document.createElement('button');
+        defaultBtn.className = 'config-action-btn';
+        defaultBtn.textContent = 'Set Default';
+        defaultBtn.title = 'Charger au démarrage';
+        defaultBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await window.api.config.setDefault(config.name);
+          this.renderConfigs();
+        });
+        actions.appendChild(defaultBtn);
+      }
+
+      // Overwrite
       const overwriteBtn = document.createElement('button');
-      overwriteBtn.className = 'config-action-btn config-overwrite-btn';
+      overwriteBtn.className = 'config-action-btn';
       overwriteBtn.textContent = 'Overwrite';
-      overwriteBtn.title = 'Overwrite with current workspace';
-      overwriteBtn.addEventListener('click', async () => {
+      overwriteBtn.title = 'Écraser avec le workspace actuel';
+      overwriteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         if (!this.tabManager) return;
         const data = this.tabManager.serialize();
         await window.api.config.save(config.name, data);
         this.renderConfigs();
       });
+      actions.appendChild(overwriteBtn);
 
-      // Duplicate button
-      const dupBtn = document.createElement('button');
-      dupBtn.className = 'config-action-btn config-dup-btn';
-      dupBtn.textContent = 'Duplicate';
-      dupBtn.title = 'Duplicate this config';
-      dupBtn.addEventListener('click', async () => {
-        const data = await window.api.config.load(config.name);
-        if (data) {
-          const newName = `${config.name} (copy)`;
-          await window.api.config.save(newName, { tabs: data.tabs, activeTabIndex: data.activeTabIndex });
-          this.renderConfigs();
-        }
-      });
-
-      // Delete button
+      // Delete
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'config-action-btn config-delete-btn';
-      deleteBtn.textContent = 'Delete';
-      deleteBtn.addEventListener('click', async () => {
+      deleteBtn.textContent = '✕';
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         await window.api.config.delete(config.name);
         this.renderConfigs();
       });
-
-      actions.appendChild(defaultBtn);
-      actions.appendChild(loadBtn);
-      actions.appendChild(dupBtn);
-      actions.appendChild(overwriteBtn);
       actions.appendChild(deleteBtn);
 
-      row.appendChild(info);
+      row.appendChild(left);
       row.appendChild(actions);
       list.appendChild(row);
     }
 
     this.content.appendChild(list);
+
+    // Bottom actions: New Config + Duplicate Current
+    const bottomActions = document.createElement('div');
+    bottomActions.className = 'config-bottom-actions';
+
+    const newBtn = document.createElement('button');
+    newBtn.className = 'config-bottom-btn';
+    newBtn.textContent = 'New Config...';
+    newBtn.addEventListener('click', () => this._promptNewConfig());
+    bottomActions.appendChild(newBtn);
+
+    const dupBtn = document.createElement('button');
+    dupBtn.className = 'config-bottom-btn';
+    dupBtn.textContent = 'Duplicate Current...';
+    dupBtn.addEventListener('click', () => this._duplicateCurrent());
+    bottomActions.appendChild(dupBtn);
+
+    this.content.appendChild(bottomActions);
+  }
+
+  _promptNewConfig() {
+    const name = prompt('Nom de la nouvelle config :');
+    if (!name || !name.trim()) return;
+    if (!this.tabManager) return;
+    const data = this.tabManager.serialize();
+    window.api.config.save(name.trim(), data).then(() => {
+      this.tabManager.currentConfigName = name.trim();
+      this.renderConfigs();
+    });
+  }
+
+  _duplicateCurrent() {
+    const currentName = this.tabManager?.currentConfigName || 'Default';
+    const newName = prompt('Nom de la copie :', `${currentName} (copy)`);
+    if (!newName || !newName.trim()) return;
+    if (!this.tabManager) return;
+    const data = this.tabManager.serialize();
+    window.api.config.save(newName.trim(), data).then(() => {
+      this.tabManager.currentConfigName = newName.trim();
+      this.renderConfigs();
+    });
   }
 }
