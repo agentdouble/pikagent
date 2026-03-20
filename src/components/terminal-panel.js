@@ -52,6 +52,12 @@ class TerminalInstance {
       window.api.shell.openExternal(url);
     }));
 
+    // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
+    this.terminal.attachCustomKeyEventHandler((e) => {
+      if (e.key === 'Tab' && e.ctrlKey) return false;
+      return true;
+    });
+
     this.terminal.open(container);
     this.fit();
 
