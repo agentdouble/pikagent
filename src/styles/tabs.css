@@ -87,17 +87,19 @@
 }
 
 .tab.tab-dragging {
-  opacity: 0.3;
+  opacity: 0.15;
 }
 
-.tab-drop-indicator {
+.tab-ghost {
   position: fixed;
-  width: 2px;
-  background: var(--accent);
-  z-index: 100;
+  z-index: 1000;
   pointer-events: none;
-  border-radius: 1px;
-  box-shadow: 0 0 4px var(--accent);
+  opacity: 0.85;
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transform: scale(1.04);
 }
 
 .tab-rename-input {
