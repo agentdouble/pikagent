@@ -1,0 +1,336 @@
+/* ===== Diff Viewer ===== */
+.diff-viewer {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+/* Toolbar */
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  min-height: 30px;
+}
+
+.diff-stats {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+}
+
+.diff-stat-add {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.diff-stat-del {
+  color: #f55;
+  font-weight: 600;
+}
+
+.diff-toggle-group {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-left: auto;
+}
+
+.diff-toggle-btn {
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.diff-toggle-btn:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+}
+
+.diff-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.diff-toggle-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.diff-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.diff-nav-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.diff-nav-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.diff-nav-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Content area */
+.diff-viewer-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.diff-viewer-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.diff-viewer-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diff-viewer-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+/* ===== Split View ===== */
+.diff-table.diff-split {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+}
+
+.diff-split .diff-row {
+  display: flex;
+  min-height: 20px;
+}
+
+.diff-split .diff-cell {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 20px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.diff-separator {
+  width: 1px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
+.diff-line-no {
+  min-width: 42px;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.diff-code {
+  flex: 1;
+  padding: 0 8px;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cell type colors */
+.diff-cell-context {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.diff-cell-add {
+  background: rgba(81, 207, 102, 0.08);
+  color: var(--text-primary);
+}
+
+.diff-cell-add .diff-line-no {
+  background: rgba(81, 207, 102, 0.12);
+  color: var(--green);
+  opacity: 1;
+}
+
+.diff-cell-remove {
+  background: rgba(255, 85, 85, 0.08);
+  color: var(--text-primary);
+}
+
+.diff-cell-remove .diff-line-no {
+  background: rgba(255, 85, 85, 0.12);
+  color: #f55;
+  opacity: 1;
+}
+
+.diff-cell-empty {
+  background: var(--bg-primary);
+  opacity: 0.4;
+}
+
+.diff-cell-hunk {
+  background: rgba(233, 69, 96, 0.06);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.diff-cell-hunk .diff-line-no {
+  visibility: hidden;
+}
+
+/* Word-level highlighting */
+.diff-word-add {
+  background: rgba(81, 207, 102, 0.3);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.diff-word-del {
+  background: rgba(255, 85, 85, 0.3);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Hunk separator rows */
+.diff-row-hunk {
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Hunk navigation flash */
+.diff-hunk-flash {
+  animation: hunkFlash 0.6s ease-out;
+}
+
+@keyframes hunkFlash {
+  0% { background: rgba(233, 69, 96, 0.25); }
+  100% { background: transparent; }
+}
+
+/* ===== Unified View ===== */
+.diff-table.diff-unified {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+}
+
+.diff-unified .diff-row {
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 20px;
+  min-height: 20px;
+}
+
+.diff-unified .diff-line-no {
+  min-width: 38px;
+  padding: 0 6px;
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.diff-unified .diff-prefix {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  user-select: none;
+  font-weight: 600;
+}
+
+.diff-unified .diff-code {
+  flex: 1;
+  padding: 0 8px;
+  white-space: pre;
+}
+
+.diff-unified .diff-row-context {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.diff-unified .diff-row-add {
+  background: rgba(81, 207, 102, 0.08);
+  color: var(--text-primary);
+}
+
+.diff-unified .diff-row-add .diff-prefix {
+  color: var(--green);
+}
+
+.diff-unified .diff-row-add .diff-line-no:last-of-type {
+  color: var(--green);
+  opacity: 1;
+}
+
+.diff-unified .diff-row-remove {
+  background: rgba(255, 85, 85, 0.08);
+  color: var(--text-primary);
+}
+
+.diff-unified .diff-row-remove .diff-prefix {
+  color: #f55;
+}
+
+.diff-unified .diff-row-remove .diff-line-no:first-child {
+  color: #f55;
+  opacity: 1;
+}
+
+.diff-unified .diff-row-hunk .diff-cell-full {
+  flex: 1;
+  background: rgba(233, 69, 96, 0.06);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 12px;
+}
+
+/* Scrollbar for content */
+.diff-table {
+  overflow: visible;
+}

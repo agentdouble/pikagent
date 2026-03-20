@@ -1,4 +1,5 @@
 import { bus } from '../utils/events.js';
+import { DiffViewer } from './diff-viewer.js';
 
 export class GitChangesView {
   constructor(container) {
@@ -144,25 +145,6 @@ export class GitChangesView {
       return;
     }
 
-    const diffBlock = document.createElement('pre');
-    diffBlock.className = 'git-diff-block';
-
-    const lines = diff.split('\n');
-    for (const line of lines) {
-      const lineEl = document.createElement('span');
-      if (line.startsWith('+') && !line.startsWith('+++')) {
-        lineEl.className = 'diff-add';
-      } else if (line.startsWith('-') && !line.startsWith('---')) {
-        lineEl.className = 'diff-remove';
-      } else if (line.startsWith('@@')) {
-        lineEl.className = 'diff-hunk';
-      } else if (line.startsWith('diff --git')) {
-        lineEl.className = 'diff-header';
-      }
-      lineEl.textContent = line + '\n';
-      diffBlock.appendChild(lineEl);
-    }
-
-    container.appendChild(diffBlock);
+    new DiffViewer(container, diff, filePath);
   }
 }

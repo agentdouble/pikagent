@@ -182,53 +182,9 @@
   color: var(--accent);
 }
 
-/* Diff block */
-.git-diff-block {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.5;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  padding: 8px;
-  overflow-x: auto;
-  max-height: 400px;
-  overflow-y: auto;
-  margin: 0;
-  color: var(--text-secondary);
-}
-
-.git-diff-block::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.git-diff-block::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
-}
-
-.diff-add {
-  color: var(--green);
-  background: rgba(81, 207, 102, 0.08);
-  display: block;
-}
-
-.diff-remove {
-  color: #f55;
-  background: rgba(255, 85, 85, 0.08);
-  display: block;
-}
-
-.diff-hunk {
-  color: var(--accent);
-  display: block;
-}
-
-.diff-header {
-  color: var(--text-muted);
-  font-weight: 600;
-  display: block;
+/* Diff container spacing */
+.git-diff-container {
+  padding: 4px 8px 8px;
 }
 
 /* Tabs */
