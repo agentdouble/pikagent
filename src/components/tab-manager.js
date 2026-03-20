@@ -764,7 +764,8 @@ export class TabManager {
     const onMouseMove = (e) => {
       const dx = e.clientX - startX;
       const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-      panel.style.width = `${Math.max(150, Math.min(500, newWidth))}px`;
+      const maxWidth = side === 'right' ? 900 : 500;
+      panel.style.width = `${Math.max(150, Math.min(maxWidth, newWidth))}px`;
       panel.style.flex = 'none';
 
       const tab = this.tabs.get(this.activeTabId);
