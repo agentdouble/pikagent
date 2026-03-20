@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('api', {
     mkdir: (dirPath) => ipcRenderer.invoke('fs:mkdir', dirPath),
     trash: (filePath) => ipcRenderer.invoke('fs:trash', filePath),
     homedir: () => ipcRenderer.invoke('fs:homedir'),
+    copy: (filePath) => ipcRenderer.invoke('fs:copy', filePath),
     watch: (id, dirPath) => ipcRenderer.invoke('fs:watch', { id, dirPath }),
     unwatch: (id) => ipcRenderer.invoke('fs:unwatch', { id }),
     onChanged: (cb) => {
@@ -49,5 +50,16 @@ contextBridge.exposeInMainWorld('api', {
   git: {
     branch: (cwd) => ipcRenderer.invoke('git:branch', cwd),
     remote: (cwd) => ipcRenderer.invoke('git:remote', cwd),
+  },
+
+  // Workspace Configs
+  config: {
+    save: (name, data) => ipcRenderer.invoke('config:save', { name, data }),
+    load: (name) => ipcRenderer.invoke('config:load', name),
+    list: () => ipcRenderer.invoke('config:list'),
+    delete: (name) => ipcRenderer.invoke('config:delete', name),
+    setDefault: (name) => ipcRenderer.invoke('config:setDefault', name),
+    getDefault: () => ipcRenderer.invoke('config:getDefault'),
+    loadDefault: () => ipcRenderer.invoke('config:loadDefault'),
   },
 });

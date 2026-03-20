@@ -13,8 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabManager = new TabManager(tabBar, workspace);
   const shortcuts = new ShortcutManager(tabManager);
   const settingsModal = new SettingsModal(shortcuts);
+  settingsModal.tabManager = tabManager;
 
   // Wire settings open from shortcut manager and tab manager
   shortcuts.onOpenSettings = () => settingsModal.open();
   tabManager.onOpenSettings = () => settingsModal.open();
+
+  // Save on close as a safety net
+  window.addEventListener('beforeunload', () => {
+    tabManager.autoSave();
+  });
 });

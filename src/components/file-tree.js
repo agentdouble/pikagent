@@ -142,6 +142,10 @@ export class FileTree {
       },
       { separator: true },
       {
+        label: 'Duplicate',
+        action: () => window.api.fs.copy(entryPath),
+      },
+      {
         label: 'Reveal in Finder',
         action: () => window.api.shell.showInFolder(entryPath),
       },
@@ -178,6 +182,10 @@ export class FileTree {
           window.api.clipboard.write(this.getRelativePath(dirPath, this.findRootCwd(dirPath))),
       },
       { separator: true },
+      {
+        label: 'Duplicate',
+        action: () => window.api.fs.copy(dirPath),
+      },
       {
         label: 'Reveal in Finder',
         action: () => window.api.shell.showInFolder(dirPath),

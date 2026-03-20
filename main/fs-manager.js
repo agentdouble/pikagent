@@ -84,8 +84,51 @@ async function makeDir(dirPath) {
   }
 }
 
+async function copyEntry(srcPath) {
+  const stat = await fs.promises.stat(srcPath);
+  const dir = path.dirname(srcPath);
+  const ext = path.extname(srcPath);
+  const base = path.basename(srcPath, ext);
+
+  // Find a unique name: "file (copy).txt", "file (copy 2).txt", etc.
+  let destPath;
+  let i = 1;
+  while (true) {
+    const suffix = i === 1 ? ' (copy)' : ` (copy ${i})`;
+    const newName = stat.isDirectory() ? `${base}${suffix}` : `${base}${suffix}${ext}`;
+    destPath = path.join(dir, newName);
+    try {
+      await fs.promises.access(destPath);
+      i++;
+    } catch {
+      break; // doesn't exist, use this name
+    }
+  }
+
+  if (stat.isDirectory()) {
+    await copyDirRecursive(srcPath, destPath);
+  } else {
+    await fs.promises.copyFile(srcPath, destPath);
+  }
+  return { success: true, destPath };
+}
+
+async function copyDirRecursive(src, dest) {
+  await fs.promises.mkdir(dest, { recursive: true });
+  const entries = await fs.promises.readdir(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcChild = path.join(src, entry.name);
+    const destChild = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      await copyDirRecursive(srcChild, destChild);
+    } else {
+      await fs.promises.copyFile(srcChild, destChild);
+    }
+  }
+}
+
 function getHomedir() {
   return os.homedir();
 }
 
-module.exports = { readDirectory, readFile, writeFile, makeDir, getHomedir, watchDir, unwatchDir, unwatchAll };
+module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, getHomedir, watchDir, unwatchDir, unwatchAll };

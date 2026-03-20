@@ -147,7 +147,60 @@ export class TerminalPanel {
     this.setActive(node);
   }
 
-  createTerminalNode() {
+  restoreFromTree(tree) {
+    // Dispose existing terminals created by init()
+    for (const [id, node] of this.terminals) {
+      node.terminal.dispose();
+    }
+    this.terminals.clear();
+
+    this.container.innerHTML = '';
+    this.container.className = 'terminal-panel';
+
+    const node = this.buildFromTree(tree);
+    this.root = node;
+    this.container.appendChild(node.element);
+
+    // Activate the first terminal
+    const first = this.terminals.values().next().value;
+    if (first) this.setActive(first);
+    this.fitAll();
+  }
+
+  buildFromTree(tree) {
+    if (tree.type === 'terminal') {
+      const node = this.createTerminalNode(tree.cwd);
+      node.element.style.flex = String(tree.flex || 1);
+      return node;
+    }
+
+    // Split node
+    const splitEl = document.createElement('div');
+    splitEl.className = `split-container split-${tree.direction}`;
+    splitEl.style.flex = String(tree.flex || 1);
+
+    const splitNode = new SplitNode('split');
+    splitNode.direction = tree.direction;
+    splitNode.element = splitEl;
+
+    for (let i = 0; i < tree.children.length; i++) {
+      if (i > 0) {
+        const handle = document.createElement('div');
+        handle.className = `split-handle split-handle-${tree.direction}`;
+        splitEl.appendChild(handle);
+        this.setupResizeHandle(handle, splitEl, tree.direction);
+      }
+      const childNode = this.buildFromTree(tree.children[i]);
+      splitEl.appendChild(childNode.element);
+      splitNode.children.push(childNode);
+      childNode.parent = splitNode;
+    }
+
+    return splitNode;
+  }
+
+  createTerminalNode(cwd = null) {
+    const spawnCwd = cwd || this.cwd;
     const node = new SplitNode('terminal');
     const wrapper = document.createElement('div');
     wrapper.className = 'terminal-wrapper';
@@ -168,10 +221,10 @@ export class TerminalPanel {
     wrapper.appendChild(termContainer);
 
     node.element = wrapper;
-    node.terminal = new TerminalInstance(termContainer, this.cwd);
+    node.terminal = new TerminalInstance(termContainer, spawnCwd);
     this.terminals.set(node.terminal.id, node);
 
-    bus.emit('terminal:created', { id: node.terminal.id, cwd: this.cwd });
+    bus.emit('terminal:created', { id: node.terminal.id, cwd: spawnCwd });
 
     wrapper.addEventListener('mousedown', () => {
       this.setActive(node);
@@ -205,7 +258,9 @@ export class TerminalPanel {
       parentEl.classList.contains('split-container') &&
       parentEl.classList.contains(`split-${direction}`);
 
-    const newTermNode = this.createTerminalNode();
+    // Inherit cwd from the terminal being split
+    const sourceCwd = targetNode.terminal ? targetNode.terminal.cwd : this.cwd;
+    const newTermNode = this.createTerminalNode(sourceCwd);
 
     if (parentIsSameDirection) {
       // Flat: insert new terminal + handle right after target in existing container
@@ -319,6 +374,7 @@ export class TerminalPanel {
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      bus.emit('layout:changed');
     };
 
     handle.addEventListener('mousedown', (e) => {
@@ -391,6 +447,49 @@ export class TerminalPanel {
 
   setCwd(cwd) {
     this.cwd = cwd;
+  }
+
+  serialize() {
+    // Serialize purely from the DOM to avoid root/node sync issues
+    const rootEl = this.container.firstElementChild;
+    if (!rootEl) return { type: 'terminal', cwd: this.cwd, flex: 1 };
+    return this.serializeElement(rootEl);
+  }
+
+  serializeElement(el) {
+    if (el.classList.contains('split-container')) {
+      const direction = el.classList.contains('split-horizontal') ? 'horizontal' : 'vertical';
+      const children = [];
+
+      for (const child of el.children) {
+        if (child.classList.contains('split-handle')) continue;
+        children.push(this.serializeElement(child));
+      }
+
+      return {
+        type: 'split',
+        direction,
+        flex: parseFloat(el.style.flex) || 1,
+        children,
+      };
+    }
+
+    if (el.classList.contains('terminal-wrapper')) {
+      let termCwd = this.cwd;
+      for (const [id, tNode] of this.terminals) {
+        if (tNode.element === el) {
+          termCwd = tNode.terminal.cwd;
+          break;
+        }
+      }
+      return {
+        type: 'terminal',
+        cwd: termCwd,
+        flex: parseFloat(el.style.flex) || 1,
+      };
+    }
+
+    return { type: 'terminal', cwd: this.cwd, flex: 1 };
   }
 
   dispose() {

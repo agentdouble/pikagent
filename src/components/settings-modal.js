@@ -3,8 +3,10 @@ import { ShortcutManager } from './shortcuts.js';
 export class SettingsModal {
   constructor(shortcutManager) {
     this.shortcutManager = shortcutManager;
+    this.tabManager = null; // Set externally
     this.overlay = null;
     this.recording = null; // { actionId, index, el }
+    this.activeSection = 'keybindings';
     this.build();
   }
 
@@ -44,10 +46,19 @@ export class SettingsModal {
     const nav = document.createElement('div');
     nav.className = 'settings-nav';
 
-    const navItem = document.createElement('div');
-    navItem.className = 'settings-nav-item active';
-    navItem.textContent = 'Keyboard Shortcuts';
-    nav.appendChild(navItem);
+    const navKeybindings = document.createElement('div');
+    navKeybindings.className = 'settings-nav-item active';
+    navKeybindings.textContent = 'Keyboard Shortcuts';
+    navKeybindings.addEventListener('click', () => this.showSection('keybindings'));
+    nav.appendChild(navKeybindings);
+
+    const navConfigs = document.createElement('div');
+    navConfigs.className = 'settings-nav-item';
+    navConfigs.textContent = 'Workspace Configs';
+    navConfigs.addEventListener('click', () => this.showSection('configs'));
+    nav.appendChild(navConfigs);
+
+    this.navItems = { keybindings: navKeybindings, configs: navConfigs };
 
     // Content
     this.content = document.createElement('div');
@@ -79,8 +90,21 @@ export class SettingsModal {
     };
   }
 
+  showSection(section) {
+    this.activeSection = section;
+    // Update nav active state
+    for (const [key, el] of Object.entries(this.navItems)) {
+      el.classList.toggle('active', key === section);
+    }
+    if (section === 'keybindings') {
+      this.renderKeybindings();
+    } else if (section === 'configs') {
+      this.renderConfigs();
+    }
+  }
+
   open() {
-    this.renderKeybindings();
+    this.showSection(this.activeSection);
     document.body.appendChild(this.overlay);
     requestAnimationFrame(() => this.overlay.classList.add('visible'));
     window.addEventListener('keydown', this.keyHandler, true);
@@ -227,5 +251,161 @@ export class SettingsModal {
       this.recording = null;
       this.renderKeybindings();
     }
+  }
+
+  // ===== Workspace Configs Section =====
+
+  async renderConfigs() {
+    this.content.innerHTML = '';
+
+    const heading = document.createElement('div');
+    heading.className = 'settings-section-header';
+
+    const headingTitle = document.createElement('h3');
+    headingTitle.textContent = 'Workspace Configs';
+    heading.appendChild(headingTitle);
+    this.content.appendChild(heading);
+
+    // Save current workspace form
+    const saveForm = document.createElement('div');
+    saveForm.className = 'config-save-form';
+
+    const saveInput = document.createElement('input');
+    saveInput.className = 'config-name-input';
+    saveInput.type = 'text';
+    saveInput.placeholder = 'Config name...';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'config-save-btn';
+    saveBtn.textContent = 'Save Current';
+    saveBtn.addEventListener('click', async () => {
+      const name = saveInput.value.trim();
+      if (!name) return;
+      if (!this.tabManager) return;
+      const data = this.tabManager.serialize();
+      await window.api.config.save(name, data);
+      saveInput.value = '';
+      this.renderConfigs();
+    });
+
+    saveForm.appendChild(saveInput);
+    saveForm.appendChild(saveBtn);
+    this.content.appendChild(saveForm);
+
+    // Config list
+    const configs = await window.api.config.list();
+    const defaultName = await window.api.config.getDefault();
+
+    if (configs.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'config-empty';
+      empty.textContent = 'No saved configs yet. Save your current workspace layout above.';
+      this.content.appendChild(empty);
+      return;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'config-list';
+
+    for (const config of configs) {
+      const row = document.createElement('div');
+      row.className = 'config-row';
+      if (config.isDefault) row.classList.add('config-default');
+
+      const info = document.createElement('div');
+      info.className = 'config-info';
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'config-name';
+      nameEl.textContent = config.name;
+
+      const meta = document.createElement('span');
+      meta.className = 'config-meta';
+      const tabCount = config.tabCount || 0;
+      const date = config.updatedAt ? new Date(config.updatedAt).toLocaleDateString() : '';
+      meta.textContent = `${tabCount} tab${tabCount !== 1 ? 's' : ''} · ${date}`;
+
+      info.appendChild(nameEl);
+      info.appendChild(meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'config-actions';
+
+      // Default toggle
+      const defaultBtn = document.createElement('button');
+      defaultBtn.className = 'config-action-btn';
+      if (config.isDefault) {
+        defaultBtn.classList.add('config-is-default');
+        defaultBtn.textContent = 'Default';
+        defaultBtn.title = 'This is the default config';
+      } else {
+        defaultBtn.textContent = 'Set Default';
+        defaultBtn.title = 'Set as default config (auto-loaded on startup)';
+      }
+      defaultBtn.addEventListener('click', async () => {
+        await window.api.config.setDefault(config.name);
+        this.renderConfigs();
+      });
+
+      // Load button
+      const loadBtn = document.createElement('button');
+      loadBtn.className = 'config-action-btn config-load-btn';
+      loadBtn.textContent = 'Load';
+      loadBtn.title = 'Load this config now';
+      loadBtn.addEventListener('click', async () => {
+        const data = await window.api.config.load(config.name);
+        if (data && this.tabManager) {
+          await this.tabManager.restoreConfig(data);
+          this.close();
+        }
+      });
+
+      // Overwrite button
+      const overwriteBtn = document.createElement('button');
+      overwriteBtn.className = 'config-action-btn config-overwrite-btn';
+      overwriteBtn.textContent = 'Overwrite';
+      overwriteBtn.title = 'Overwrite with current workspace';
+      overwriteBtn.addEventListener('click', async () => {
+        if (!this.tabManager) return;
+        const data = this.tabManager.serialize();
+        await window.api.config.save(config.name, data);
+        this.renderConfigs();
+      });
+
+      // Duplicate button
+      const dupBtn = document.createElement('button');
+      dupBtn.className = 'config-action-btn config-dup-btn';
+      dupBtn.textContent = 'Duplicate';
+      dupBtn.title = 'Duplicate this config';
+      dupBtn.addEventListener('click', async () => {
+        const data = await window.api.config.load(config.name);
+        if (data) {
+          const newName = `${config.name} (copy)`;
+          await window.api.config.save(newName, { tabs: data.tabs, activeTabIndex: data.activeTabIndex });
+          this.renderConfigs();
+        }
+      });
+
+      // Delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'config-action-btn config-delete-btn';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', async () => {
+        await window.api.config.delete(config.name);
+        this.renderConfigs();
+      });
+
+      actions.appendChild(defaultBtn);
+      actions.appendChild(loadBtn);
+      actions.appendChild(dupBtn);
+      actions.appendChild(overwriteBtn);
+      actions.appendChild(deleteBtn);
+
+      row.appendChild(info);
+      row.appendChild(actions);
+      list.appendChild(row);
+    }
+
+    this.content.appendChild(list);
   }
 }

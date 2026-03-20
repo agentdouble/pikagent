@@ -1,0 +1,2 @@
+- Code modulaire
+- Comit push à chaque changement

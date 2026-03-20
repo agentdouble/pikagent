@@ -28,13 +28,33 @@ export class TabManager {
     this.activeTabId = null;
     this.defaultCwd = null;
     this.onOpenSettings = null;
+    this._saveTimer = null;
+    this._restoringConfig = false;
+    this.currentConfigName = null;
+    this._configBarEl = null;
 
     this.init();
   }
 
   async init() {
     this.defaultCwd = await window.api.fs.homedir();
-    this.createTab('Workspace 1');
+
+    // Auto-restore default config on startup
+    try {
+      const defaultName = await window.api.config.getDefault();
+      const defaultConfig = await window.api.config.loadDefault();
+      if (defaultConfig && defaultConfig.tabs && defaultConfig.tabs.length > 0) {
+        this.currentConfigName = defaultName;
+        await this.restoreConfig(defaultConfig);
+      } else {
+        this.currentConfigName = 'Default';
+        this.createTab('Workspace 1');
+      }
+    } catch (e) {
+      console.warn('Failed to restore config:', e);
+      this.currentConfigName = 'Default';
+      this.createTab('Workspace 1');
+    }
 
     // Listen for terminal exits
     bus.on('terminal:exited', ({ id }) => {
@@ -44,6 +64,7 @@ export class TabManager {
     // Listen for cwd changes from any terminal
     bus.on('terminal:cwdChanged', ({ id, cwd }) => {
       this.onTerminalCwdChanged(id, cwd);
+      this.scheduleAutoSave();
     });
 
     // Listen for new terminals created via split
@@ -52,6 +73,7 @@ export class TabManager {
       if (tab && tab.fileTree) {
         tab.fileTree.setTerminalRoot(id, cwd);
       }
+      this.scheduleAutoSave();
     });
 
     // Listen for terminal removals
@@ -60,7 +82,34 @@ export class TabManager {
       if (tab && tab.fileTree) {
         tab.fileTree.removeTerminal(id);
       }
+      this.scheduleAutoSave();
     });
+
+    // Listen for split resize changes
+    bus.on('layout:changed', () => {
+      this.scheduleAutoSave();
+    });
+  }
+
+  scheduleAutoSave() {
+    if (this._restoringConfig) return;
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      this.autoSave();
+    }, 500);
+  }
+
+  async autoSave() {
+    try {
+      const data = this.serialize();
+      const name = this.currentConfigName || 'Default';
+      await window.api.config.save(name, data);
+      await window.api.config.setDefault(name);
+      this.currentConfigName = name;
+      this.updateConfigBar();
+    } catch (e) {
+      console.warn('Auto-save failed:', e);
+    }
   }
 
   createTab(name = null) {
@@ -70,6 +119,7 @@ export class TabManager {
     this.tabs.set(id, tab);
     this.renderTabBar();
     this.switchTo(id);
+    this.scheduleAutoSave();
     return tab;
   }
 
@@ -93,15 +143,44 @@ export class TabManager {
     }
 
     this.renderTabBar();
+    this.scheduleAutoSave();
   }
 
   switchTo(id) {
     const tab = this.tabs.get(id);
     if (!tab) return;
 
+    // Save state of outgoing tab before destroying it
+    this.snapshotActiveTab();
+
     this.activeTabId = id;
     this.renderTabBar();
     this.renderWorkspace(tab);
+  }
+
+  snapshotActiveTab() {
+    if (!this.activeTabId) return;
+    const prev = this.tabs.get(this.activeTabId);
+    if (!prev || !prev.terminalPanel) return;
+
+    prev._restoreData = prev._restoreData || {};
+    prev._restoreData.splitTree = prev.terminalPanel.serialize();
+
+    // Capture panel widths
+    const layout = this.workspaceContainer.querySelector('.workspace-layout');
+    if (layout) {
+      const left = layout.querySelector('.panel-left');
+      const right = layout.querySelector('.panel-right');
+      prev._restoreData.panels = {};
+      if (left) {
+        prev._restoreData.panels.leftWidth = left.getBoundingClientRect().width;
+        prev._restoreData.panels.leftCollapsed = left.classList.contains('collapsed');
+      }
+      if (right) {
+        prev._restoreData.panels.rightWidth = right.getBoundingClientRect().width;
+        prev._restoreData.panels.rightCollapsed = right.classList.contains('collapsed');
+      }
+    }
   }
 
   renderTabBar() {
@@ -167,6 +246,7 @@ export class TabManager {
     const commit = () => {
       tab.name = input.value || tab.name;
       this.renderTabBar();
+      this.scheduleAutoSave();
     };
 
     input.addEventListener('blur', commit);
@@ -195,6 +275,17 @@ export class TabManager {
     const treeContainer = document.createElement('div');
     treeContainer.className = 'file-tree';
     leftPanel.appendChild(treeContainer);
+
+    // Config bar at bottom of left panel
+    const configBar = document.createElement('button');
+    configBar.className = 'config-bar-btn';
+    configBar.innerHTML = `<span class="config-bar-icon">&#9776;</span><span class="config-bar-name">${this.currentConfigName || 'Default'}</span>`;
+    configBar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.showConfigMenu(configBar);
+    });
+    this._configBarEl = configBar;
+    leftPanel.appendChild(configBar);
 
     // Gear button at bottom of left panel
     const gearBtn = document.createElement('button');
@@ -284,13 +375,42 @@ export class TabManager {
 
     // Initialize components
     tab.fileTree = new FileTree(treeContainer);
-    tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
     tab.fileViewer = new FileViewer(viewerContainer);
 
-    // Register the first terminal in the file tree
-    const firstTermId = tab.terminalPanel.activeTerminal?.terminal?.id;
-    if (firstTermId) {
-      tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
+    // Restore split tree if available, otherwise create default
+    if (tab._restoreData && tab._restoreData.splitTree) {
+      tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
+      tab.terminalPanel.restoreFromTree(tab._restoreData.splitTree);
+
+      // Restore panel sizes
+      const panels = tab._restoreData.panels;
+      if (panels) {
+        if (panels.leftWidth && !panels.leftCollapsed) {
+          leftPanel.style.width = `${panels.leftWidth}px`;
+          leftPanel.style.flex = 'none';
+        }
+        if (panels.leftCollapsed) leftPanel.classList.add('collapsed');
+        if (panels.rightWidth && !panels.rightCollapsed) {
+          rightPanel.style.width = `${panels.rightWidth}px`;
+          rightPanel.style.flex = 'none';
+        }
+        if (panels.rightCollapsed) rightPanel.classList.add('collapsed');
+      }
+
+      // Register all terminals in the file tree
+      for (const [termId, node] of tab.terminalPanel.terminals) {
+        tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
+      }
+
+      delete tab._restoreData;
+    } else {
+      tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
+
+      // Register the first terminal in the file tree
+      const firstTermId = tab.terminalPanel.activeTerminal?.terminal?.id;
+      if (firstTermId) {
+        tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
+      }
     }
 
     // Fetch git branch
@@ -307,6 +427,7 @@ export class TabManager {
     if (tab && tab.terminalPanel) {
       setTimeout(() => tab.terminalPanel.fitAll(), 200);
     }
+    this.scheduleAutoSave();
   }
 
   setupPanelResize(handle, panel, side) {
@@ -328,6 +449,7 @@ export class TabManager {
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      this.scheduleAutoSave();
     };
 
     handle.addEventListener('mousedown', (e) => {
@@ -362,6 +484,223 @@ export class TabManager {
         tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
       }
     }
+  }
+
+  serialize() {
+    const tabs = [];
+    let activeTabIndex = 0;
+    let i = 0;
+
+    for (const [id, tab] of this.tabs) {
+      if (id === this.activeTabId) activeTabIndex = i;
+
+      const isActive = id === this.activeTabId;
+      const tabData = {
+        name: tab.name,
+        cwd: tab.cwd,
+        splitTree: null,
+        panels: {},
+      };
+
+      if (isActive && tab.terminalPanel) {
+        // Active tab: serialize live from DOM
+        tabData.splitTree = tab.terminalPanel.serialize();
+
+        const layout = this.workspaceContainer.querySelector('.workspace-layout');
+        if (layout) {
+          const left = layout.querySelector('.panel-left');
+          const right = layout.querySelector('.panel-right');
+          if (left) {
+            tabData.panels.leftWidth = left.getBoundingClientRect().width;
+            tabData.panels.leftCollapsed = left.classList.contains('collapsed');
+          }
+          if (right) {
+            tabData.panels.rightWidth = right.getBoundingClientRect().width;
+            tabData.panels.rightCollapsed = right.classList.contains('collapsed');
+          }
+        }
+      } else if (tab._restoreData) {
+        // Inactive tab: use snapshotted data
+        tabData.splitTree = tab._restoreData.splitTree || null;
+        tabData.panels = tab._restoreData.panels || {};
+      }
+
+      tabs.push(tabData);
+      i++;
+    }
+
+    return { tabs, activeTabIndex };
+  }
+
+  async restoreConfig(config) {
+    if (!config || !config.tabs || config.tabs.length === 0) return;
+
+    this._restoringConfig = true;
+
+    // Dispose all existing tabs
+    for (const [id, tab] of this.tabs) {
+      if (tab.terminalPanel) tab.terminalPanel.dispose();
+    }
+    this.tabs.clear();
+    this.activeTabId = null;
+
+    // Create tabs from config
+    for (const tabData of config.tabs) {
+      const id = generateId('tab');
+      const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || this.defaultCwd || '/');
+      tab._restoreData = tabData; // Stash for renderWorkspace
+      this.tabs.set(id, tab);
+    }
+
+    this.renderTabBar();
+
+    // Switch to the active tab
+    const tabIds = Array.from(this.tabs.keys());
+    const activeIdx = Math.min(config.activeTabIndex || 0, tabIds.length - 1);
+    this.switchTo(tabIds[activeIdx]);
+
+    this._restoringConfig = false;
+  }
+
+  async newConfig(name) {
+    if (!name) return;
+    // Save current config before switching
+    await this.autoSave();
+
+    this.currentConfigName = name;
+
+    // Dispose all existing tabs
+    for (const [id, tab] of this.tabs) {
+      if (tab.terminalPanel) tab.terminalPanel.dispose();
+    }
+    this.tabs.clear();
+    this.activeTabId = null;
+
+    this.createTab('Workspace 1');
+    await window.api.config.setDefault(name);
+    await this.autoSave();
+    this.updateConfigBar();
+  }
+
+  async duplicateConfig(newName) {
+    if (!newName) return;
+    const data = this.serialize();
+    await window.api.config.save(newName, data);
+    this.currentConfigName = newName;
+    await window.api.config.setDefault(newName);
+    this.updateConfigBar();
+  }
+
+  async switchConfig(name) {
+    if (name === this.currentConfigName) return;
+    // Save current before switching
+    await this.autoSave();
+
+    const config = await window.api.config.load(name);
+    if (config && config.tabs && config.tabs.length > 0) {
+      this.currentConfigName = name;
+      await window.api.config.setDefault(name);
+      await this.restoreConfig(config);
+      this.updateConfigBar();
+    }
+  }
+
+  updateConfigBar() {
+    if (this._configBarEl) {
+      const label = this._configBarEl.querySelector('.config-bar-name');
+      if (label) label.textContent = this.currentConfigName || 'Default';
+    }
+  }
+
+  async showConfigMenu(anchorEl) {
+    const configs = await window.api.config.list();
+    const rect = anchorEl.getBoundingClientRect();
+
+    const items = [];
+
+    // List all configs to switch to
+    for (const config of configs) {
+      const isCurrent = config.name === this.currentConfigName;
+      items.push({
+        label: `${isCurrent ? '● ' : ''}${config.name}`,
+        action: () => this.switchConfig(config.name),
+      });
+    }
+
+    if (configs.length > 0) {
+      items.push({ separator: true });
+    }
+
+    // New config
+    items.push({
+      label: 'New Config...',
+      action: () => this.promptConfigName('New Config', (name) => this.newConfig(name)),
+    });
+
+    // Duplicate
+    items.push({
+      label: 'Duplicate Current...',
+      action: () => {
+        const suggested = `${this.currentConfigName || 'Default'} (copy)`;
+        this.promptConfigName(suggested, (name) => this.duplicateConfig(name));
+      },
+    });
+
+    contextMenu.show(rect.left, rect.top - 4, items);
+  }
+
+  promptConfigName(defaultValue, callback) {
+    // Small inline prompt overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'config-prompt-overlay';
+
+    const box = document.createElement('div');
+    box.className = 'config-prompt-box';
+
+    const label = document.createElement('label');
+    label.className = 'config-prompt-label';
+    label.textContent = 'Config name';
+
+    const input = document.createElement('input');
+    input.className = 'config-prompt-input';
+    input.type = 'text';
+    input.value = defaultValue;
+
+    const btns = document.createElement('div');
+    btns.className = 'config-prompt-btns';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'config-prompt-cancel';
+    cancelBtn.textContent = 'Cancel';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'config-prompt-confirm';
+    confirmBtn.textContent = 'Create';
+
+    const close = () => overlay.remove();
+    const confirm = () => {
+      const name = input.value.trim();
+      close();
+      if (name) callback(name);
+    };
+
+    cancelBtn.addEventListener('click', close);
+    confirmBtn.addEventListener('click', confirm);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') confirm();
+      if (e.key === 'Escape') close();
+    });
+
+    btns.appendChild(cancelBtn);
+    btns.appendChild(confirmBtn);
+    box.appendChild(label);
+    box.appendChild(input);
+    box.appendChild(btns);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    input.focus();
+    input.select();
   }
 
   // Called from keyboard shortcut handler

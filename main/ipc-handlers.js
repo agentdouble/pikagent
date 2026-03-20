@@ -2,6 +2,7 @@ const { ipcMain, shell, clipboard } = require('electron');
 const PtyManager = require('./pty-manager');
 const fsManager = require('./fs-manager');
 const gitManager = require('./git-manager');
+const configManager = require('./config-manager');
 
 const ptyManager = new PtyManager();
 
@@ -64,6 +65,10 @@ function register(getWindow) {
     return fsManager.getHomedir();
   });
 
+  ipcMain.handle('fs:copy', (event, filePath) => {
+    return fsManager.copyEntry(filePath);
+  });
+
   ipcMain.handle('fs:watch', (event, { id, dirPath }) => {
     const win = getWindow();
     fsManager.watchDir(id, dirPath, (change) => {
@@ -102,6 +107,35 @@ function register(getWindow) {
 
   ipcMain.handle('git:remote', (event, cwd) => {
     return gitManager.getRemoteUrl(cwd);
+  });
+
+  // --- Workspace Configs ---
+  ipcMain.handle('config:save', (event, { name, data }) => {
+    return configManager.save(name, data);
+  });
+
+  ipcMain.handle('config:load', (event, name) => {
+    return configManager.load(name);
+  });
+
+  ipcMain.handle('config:list', () => {
+    return configManager.list();
+  });
+
+  ipcMain.handle('config:delete', (event, name) => {
+    return configManager.remove(name);
+  });
+
+  ipcMain.handle('config:setDefault', (event, name) => {
+    return configManager.setDefault(name);
+  });
+
+  ipcMain.handle('config:getDefault', () => {
+    return configManager.getDefault();
+  });
+
+  ipcMain.handle('config:loadDefault', () => {
+    return configManager.loadDefault();
   });
 }
 

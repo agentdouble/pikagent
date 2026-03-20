@@ -1,3 +1,121 @@
+/* ===== Config Bar Button ===== */
+.config-bar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+}
+
+.config-bar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.config-bar-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.config-bar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Config Prompt Overlay ===== */
+.config-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.config-prompt-box {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 20px;
+  width: 340px;
+  max-width: 90vw;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-prompt-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.config-prompt-input {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.config-prompt-input:focus {
+  border-color: var(--accent);
+}
+
+.config-prompt-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.config-prompt-cancel,
+.config-prompt-confirm {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  transition: background 0.15s, color 0.15s;
+}
+
+.config-prompt-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.config-prompt-cancel:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.config-prompt-confirm {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.config-prompt-confirm:hover {
+  opacity: 0.85;
+}
+
 /* ===== Settings Gear Button ===== */
 .settings-gear-btn {
   display: flex;
@@ -271,4 +389,157 @@
   border-color: var(--green);
   color: var(--green);
   background: rgba(81, 207, 102, 0.1);
+}
+
+/* ===== Workspace Configs ===== */
+.config-save-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.config-name-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.config-name-input:focus {
+  border-color: var(--accent);
+}
+
+.config-name-input::placeholder {
+  color: var(--text-muted);
+}
+
+.config-save-btn {
+  padding: 8px 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.config-save-btn:hover {
+  opacity: 0.85;
+}
+
+.config-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+
+.config-row:hover {
+  background: var(--bg-hover);
+}
+
+.config-row.config-default {
+  border-left: 2px solid var(--accent);
+}
+
+.config-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.config-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.config-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.config-action-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.config-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.config-action-btn.config-is-default {
+  border-color: var(--accent);
+  color: var(--accent);
+  cursor: default;
+}
+
+.config-load-btn:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(81, 207, 102, 0.1);
+}
+
+.config-overwrite-btn:hover {
+  border-color: var(--yellow, #ffd43b);
+  color: var(--yellow, #ffd43b);
+  background: rgba(255, 212, 59, 0.1);
+}
+
+.config-dup-btn:hover {
+  border-color: var(--blue, #74c0fc);
+  color: var(--blue, #74c0fc);
+  background: rgba(116, 192, 252, 0.1);
+}
+
+.config-delete-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(233, 69, 96, 0.1);
 }
