@@ -4,19 +4,26 @@ export class UsageView {
     this.el = document.createElement('div');
     this.el.className = 'usage-container';
     container.appendChild(this.el);
+    this.activeTab = 'agents';
+    this.metrics = null;
     this.render();
   }
 
   async render() {
     this.el.innerHTML = '';
 
-    // Header
+    // Header with tabs
     const header = document.createElement('div');
     header.className = 'usage-header';
+
+    const left = document.createElement('div');
+    left.className = 'usage-header-left';
     const title = document.createElement('h2');
     title.className = 'usage-title';
-    title.textContent = 'Usage Dashboard';
-    header.appendChild(title);
+    title.textContent = 'Usage';
+    left.appendChild(title);
+    header.appendChild(left);
+
     const refreshBtn = document.createElement('button');
     refreshBtn.className = 'usage-refresh-btn';
     refreshBtn.textContent = 'Refresh';
@@ -24,90 +31,114 @@ export class UsageView {
     header.appendChild(refreshBtn);
     this.el.appendChild(header);
 
+    // Tab bar
+    const tabBar = document.createElement('div');
+    tabBar.className = 'usage-tabs';
+    const tabs = [
+      { id: 'agents', label: 'Agents (Work)' },
+      { id: 'tokens', label: 'Tokens' },
+      { id: 'flows', label: 'Flows' },
+    ];
+    for (const tab of tabs) {
+      const btn = document.createElement('button');
+      btn.className = `usage-tab ${this.activeTab === tab.id ? 'usage-tab-active' : ''}`;
+      btn.textContent = tab.label;
+      btn.addEventListener('click', () => {
+        this.activeTab = tab.id;
+        this._renderBody();
+        tabBar.querySelectorAll('.usage-tab').forEach((t) => t.classList.remove('usage-tab-active'));
+        btn.classList.add('usage-tab-active');
+      });
+      tabBar.appendChild(btn);
+    }
+    this.el.appendChild(tabBar);
+
+    // Body container
+    this.bodyEl = document.createElement('div');
+    this.bodyEl.className = 'usage-body';
+    this.el.appendChild(this.bodyEl);
+
     // Loading
-    const loading = document.createElement('div');
-    loading.className = 'usage-empty';
-    loading.innerHTML = '<div class="usage-empty-text">Chargement des métriques...</div>';
-    this.el.appendChild(loading);
+    this.bodyEl.innerHTML = '<div class="usage-empty"><div class="usage-empty-text">Chargement des métriques...</div></div>';
 
-    let metrics;
     try {
-      metrics = await window.api.usage.getMetrics();
+      this.metrics = await window.api.usage.getMetrics();
     } catch {
-      loading.innerHTML = '<div class="usage-empty-text">Erreur lors du chargement</div>';
+      this.bodyEl.innerHTML = '<div class="usage-empty"><div class="usage-empty-text">Erreur lors du chargement</div></div>';
       return;
     }
 
-    loading.remove();
+    this._renderBody();
+  }
 
-    if (!metrics.hasData) {
-      const empty = document.createElement('div');
-      empty.className = 'usage-empty';
-      empty.innerHTML = `
-        <div class="usage-empty-icon">📊</div>
-        <div class="usage-empty-text">Aucune donnée disponible</div>
-        <div class="usage-empty-sub">Lancez des agents ou créez des flows pour voir les métriques</div>
-      `;
-      this.el.appendChild(empty);
+  _renderBody() {
+    this.bodyEl.innerHTML = '';
+    if (!this.metrics) return;
+
+    if (this.activeTab === 'agents') this._renderAgentsTab();
+    else if (this.activeTab === 'tokens') this._renderTokensTab();
+    else if (this.activeTab === 'flows') this._renderFlowsTab();
+  }
+
+  // ===== Agents Tab =====
+
+  _renderAgentsTab() {
+    const m = this.metrics.agent;
+    this._renderOverviewCards(this.bodyEl, [
+      { label: 'Sessions', value: m.totalSessions, cls: '' },
+      { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
+      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: m.rate.rate >= 70 ? 'usage-stat-value-green' : 'usage-stat-value-red' },
+      { label: 'Durée moy.', value: this._fmt(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${this._fmt(m.duration.min)} · max: ${this._fmt(m.duration.max)}` : '' },
+    ]);
+    this._renderChart(this.bodyEl, m.perDay, 'Sessions par jour');
+    this._renderAgentTable(this.bodyEl, m.byAgent);
+    if (this.metrics.mostModifiedFiles.length > 0) {
+      this._renderFilesTable(this.bodyEl, this.metrics.mostModifiedFiles);
+    }
+  }
+
+  // ===== Tokens Tab =====
+
+  _renderTokensTab() {
+    const t = this.metrics.tokens;
+    if (!t || t.total === 0) {
+      this.bodyEl.innerHTML = `
+        <div class="usage-empty">
+          <div class="usage-empty-text">Aucune donnée de tokens</div>
+          <div class="usage-empty-sub">Les tokens sont lus depuis les sessions Claude (~/.claude/projects/)</div>
+        </div>`;
       return;
     }
-
-    const body = document.createElement('div');
-    body.className = 'usage-body';
-
-    // --- Tokens Section ---
-    if (metrics.tokens.total > 0) {
-      this._renderSectionTitle(body, 'Tokens', this._fmtTokens(metrics.tokens.total) + ' total');
-      this._renderOverviewCards(body, [
-        { label: 'Total', value: this._fmtTokens(metrics.tokens.total), cls: '' },
-        { label: 'Input', value: this._fmtTokens(metrics.tokens.totalInput), cls: 'usage-stat-value-blue' },
-        { label: 'Output', value: this._fmtTokens(metrics.tokens.totalOutput), cls: 'usage-stat-value-green' },
-        { label: 'Cache read', value: this._fmtTokens(metrics.tokens.totalCacheRead), cls: '', sub: metrics.tokens.totalCacheCreate > 0 ? `cache write: ${this._fmtTokens(metrics.tokens.totalCacheCreate)}` : '' },
-      ]);
-      this._renderTokenChart(body, metrics.tokens.perDay);
-      this._renderTokenProjectTable(body, metrics.tokens.perProject);
-
-      const sepTokens = document.createElement('div');
-      sepTokens.className = 'usage-separator';
-      body.appendChild(sepTokens);
-    }
-
-    // --- Agents Section ---
-    this._renderSectionTitle(body, 'Agents (Work)', `${metrics.agent.totalSessions} sessions · ${metrics.agent.activeSessions} active`);
-    this._renderOverviewCards(body, [
-      { label: 'Sessions', value: metrics.agent.totalSessions, cls: '' },
-      { label: 'En cours', value: metrics.agent.activeSessions, cls: metrics.agent.activeSessions > 0 ? 'usage-stat-value-green' : '' },
-      { label: 'Taux succès', value: `${metrics.agent.rate.rate}%`, cls: metrics.agent.rate.rate >= 70 ? 'usage-stat-value-green' : 'usage-stat-value-red' },
-      { label: 'Durée moy.', value: this._fmt(metrics.agent.duration.avg), cls: 'usage-stat-value-blue', sub: metrics.agent.duration.count > 0 ? `min: ${this._fmt(metrics.agent.duration.min)} · max: ${this._fmt(metrics.agent.duration.max)}` : '' },
+    this._renderOverviewCards(this.bodyEl, [
+      { label: 'Total', value: this._fmtTokens(t.total), cls: '' },
+      { label: 'Input', value: this._fmtTokens(t.totalInput), cls: 'usage-stat-value-blue' },
+      { label: 'Output', value: this._fmtTokens(t.totalOutput), cls: 'usage-stat-value-green' },
+      { label: 'Cache read', value: this._fmtTokens(t.totalCacheRead), cls: '', sub: t.totalCacheCreate > 0 ? `cache write: ${this._fmtTokens(t.totalCacheCreate)}` : '' },
     ]);
-    this._renderChart(body, metrics.agent.perDay, 'Sessions agents par jour');
-    this._renderAgentTable(body, metrics.agent.byAgent);
+    this._renderTokenChart(this.bodyEl, t.perDay);
+    this._renderTokenProjectTable(this.bodyEl, t.perProject);
+  }
 
-    // --- Separator ---
-    const sep = document.createElement('div');
-    sep.className = 'usage-separator';
-    body.appendChild(sep);
+  // ===== Flows Tab =====
 
-    // --- Flows Section ---
-    this._renderSectionTitle(body, 'Flows', `${metrics.flow.totalFlows} flows · ${metrics.flow.activeFlows} actifs`);
-    this._renderOverviewCards(body, [
-      { label: 'Total Runs', value: metrics.flow.rate.total, cls: '' },
-      { label: 'Flows actifs', value: `${metrics.flow.activeFlows}/${metrics.flow.totalFlows}`, cls: '' },
-      { label: 'Taux succès', value: `${metrics.flow.rate.rate}%`, cls: metrics.flow.rate.rate >= 70 ? 'usage-stat-value-green' : 'usage-stat-value-red' },
-      { label: 'Durée moy.', value: this._fmt(metrics.flow.duration.avg), cls: 'usage-stat-value-blue', sub: metrics.flow.duration.count > 0 ? `min: ${this._fmt(metrics.flow.duration.min)} · max: ${this._fmt(metrics.flow.duration.max)}` : '' },
-    ]);
-    this._renderChart(body, metrics.flow.perDay, 'Runs par jour');
-    this._renderFlowTable(body, metrics.flow.flowStats);
-
-    // --- Files Section ---
-    if (metrics.mostModifiedFiles.length > 0) {
-      const sep2 = document.createElement('div');
-      sep2.className = 'usage-separator';
-      body.appendChild(sep2);
-      this._renderFilesTable(body, metrics.mostModifiedFiles);
+  _renderFlowsTab() {
+    const f = this.metrics.flow;
+    if (f.totalFlows === 0) {
+      this.bodyEl.innerHTML = `
+        <div class="usage-empty">
+          <div class="usage-empty-text">Aucun flow configuré</div>
+          <div class="usage-empty-sub">Créez des flows depuis la vue FLOW</div>
+        </div>`;
+      return;
     }
-
-    this.el.appendChild(body);
+    this._renderOverviewCards(this.bodyEl, [
+      { label: 'Total Runs', value: f.rate.total, cls: '' },
+      { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
+      { label: 'Taux succès', value: `${f.rate.rate}%`, cls: f.rate.rate >= 70 ? 'usage-stat-value-green' : 'usage-stat-value-red' },
+      { label: 'Durée moy.', value: this._fmt(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${this._fmt(f.duration.min)} · max: ${this._fmt(f.duration.max)}` : '' },
+    ]);
+    this._renderChart(this.bodyEl, f.perDay, 'Runs par jour');
+    this._renderFlowTable(this.bodyEl, f.flowStats);
   }
 
   refresh() {
@@ -118,23 +149,7 @@ export class UsageView {
     this.el.remove();
   }
 
-  // ===== Rendering helpers =====
-
-  _renderSectionTitle(parent, text, badge) {
-    const row = document.createElement('div');
-    row.className = 'usage-section-heading';
-    const h = document.createElement('h3');
-    h.className = 'usage-section-heading-text';
-    h.textContent = text;
-    row.appendChild(h);
-    if (badge) {
-      const b = document.createElement('span');
-      b.className = 'usage-section-heading-badge';
-      b.textContent = badge;
-      row.appendChild(b);
-    }
-    parent.appendChild(row);
-  }
+  // ===== Shared rendering =====
 
   _renderOverviewCards(parent, cards) {
     const grid = document.createElement('div');
@@ -222,173 +237,6 @@ export class UsageView {
     parent.appendChild(section);
   }
 
-  _renderAgentTable(parent, byAgent) {
-    if (!byAgent || byAgent.length === 0) return;
-
-    const section = document.createElement('div');
-    section.className = 'usage-section';
-    const t = document.createElement('div');
-    t.className = 'usage-section-title';
-    t.textContent = 'Par agent';
-    section.appendChild(t);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'usage-table-wrap';
-    const table = document.createElement('table');
-    table.className = 'usage-flow-table';
-    const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Agent</th><th>Sessions</th><th>Actifs</th><th>Succès</th><th>Durée moy.</th></tr>';
-    table.appendChild(thead);
-
-    const tbody = document.createElement('tbody');
-    for (const a of byAgent) {
-      const tr = document.createElement('tr');
-
-      const tdName = document.createElement('td');
-      tdName.className = 'usage-flow-name';
-      tdName.textContent = a.agent;
-      tr.appendChild(tdName);
-
-      const tdSessions = document.createElement('td');
-      tdSessions.textContent = a.totalSessions;
-      tr.appendChild(tdSessions);
-
-      const tdActive = document.createElement('td');
-      tdActive.style.color = a.active > 0 ? 'var(--green)' : 'var(--text-muted)';
-      tdActive.textContent = a.active;
-      tr.appendChild(tdActive);
-
-      const tdRate = document.createElement('td');
-      tdRate.className = 'usage-flow-rate';
-      tdRate.style.color = a.successRate >= 70 ? 'var(--green)' : '#ff6b6b';
-      tdRate.textContent = `${a.successRate}%`;
-      tr.appendChild(tdRate);
-
-      const tdDur = document.createElement('td');
-      tdDur.className = 'usage-flow-duration';
-      tdDur.textContent = a.avgDuration > 0 ? this._fmt(a.avgDuration) : '—';
-      tr.appendChild(tdDur);
-
-      tbody.appendChild(tr);
-    }
-
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    section.appendChild(wrap);
-    parent.appendChild(section);
-  }
-
-  _renderFlowTable(parent, flowStats) {
-    if (!flowStats || flowStats.length === 0) return;
-
-    const section = document.createElement('div');
-    section.className = 'usage-section';
-    const t = document.createElement('div');
-    t.className = 'usage-section-title';
-    t.textContent = 'Par flow';
-    section.appendChild(t);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'usage-table-wrap';
-    const table = document.createElement('table');
-    table.className = 'usage-flow-table';
-    const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Flow</th><th>Runs</th><th>Succès</th><th>Durée moy.</th></tr>';
-    table.appendChild(thead);
-
-    const tbody = document.createElement('tbody');
-    for (const flow of flowStats) {
-      const tr = document.createElement('tr');
-
-      const tdName = document.createElement('td');
-      const nameSpan = document.createElement('span');
-      nameSpan.className = `usage-flow-name ${!flow.enabled ? 'usage-flow-disabled' : ''}`;
-      nameSpan.textContent = flow.name;
-      tdName.appendChild(nameSpan);
-      if (!flow.enabled) {
-        const tag = document.createElement('span');
-        tag.style.cssText = 'font-size:10px;color:var(--text-muted);margin-left:6px';
-        tag.textContent = '(désactivé)';
-        tdName.appendChild(tag);
-      }
-      tr.appendChild(tdName);
-
-      const tdRuns = document.createElement('td');
-      tdRuns.textContent = flow.totalRuns;
-      tr.appendChild(tdRuns);
-
-      const tdRate = document.createElement('td');
-      tdRate.className = 'usage-flow-rate';
-      tdRate.style.color = flow.successRate >= 70 ? 'var(--green)' : '#ff6b6b';
-      tdRate.textContent = `${flow.successRate}%`;
-      tr.appendChild(tdRate);
-
-      const tdDur = document.createElement('td');
-      tdDur.className = 'usage-flow-duration';
-      tdDur.textContent = flow.avgDuration > 0 ? this._fmt(flow.avgDuration) : '—';
-      tr.appendChild(tdDur);
-
-      tbody.appendChild(tr);
-    }
-
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    section.appendChild(wrap);
-    parent.appendChild(section);
-  }
-
-  _renderFilesTable(parent, files) {
-    const section = document.createElement('div');
-    section.className = 'usage-section';
-    const t = document.createElement('div');
-    t.className = 'usage-section-title';
-    t.textContent = 'Fichiers les plus modifiés (30 jours)';
-    section.appendChild(t);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'usage-table-wrap';
-    const table = document.createElement('table');
-    table.className = 'usage-files-table';
-    const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Fichier</th><th>Modifs</th><th></th></tr>';
-    table.appendChild(thead);
-
-    const maxCount = files[0]?.count || 1;
-    const tbody = document.createElement('tbody');
-    for (const file of files) {
-      const tr = document.createElement('tr');
-
-      const tdName = document.createElement('td');
-      tdName.className = 'usage-file-name';
-      tdName.textContent = file.file;
-      tdName.title = file.file;
-      tr.appendChild(tdName);
-
-      const tdCount = document.createElement('td');
-      tdCount.className = 'usage-file-count';
-      tdCount.textContent = file.count;
-      tr.appendChild(tdCount);
-
-      const tdBar = document.createElement('td');
-      tdBar.className = 'usage-file-bar-cell';
-      const bar = document.createElement('div');
-      bar.className = 'usage-file-bar';
-      const fill = document.createElement('div');
-      fill.className = 'usage-file-bar-fill';
-      fill.style.width = `${(file.count / maxCount) * 100}%`;
-      bar.appendChild(fill);
-      tdBar.appendChild(bar);
-      tr.appendChild(tdBar);
-
-      tbody.appendChild(tr);
-    }
-
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    section.appendChild(wrap);
-    parent.appendChild(section);
-  }
-
   _renderTokenChart(parent, data) {
     const section = document.createElement('div');
     section.className = 'usage-section';
@@ -443,6 +291,110 @@ export class UsageView {
     parent.appendChild(section);
   }
 
+  _renderAgentTable(parent, byAgent) {
+    if (!byAgent || byAgent.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'usage-section';
+    const t = document.createElement('div');
+    t.className = 'usage-section-title';
+    t.textContent = 'Par agent';
+    section.appendChild(t);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'usage-table-wrap';
+    const table = document.createElement('table');
+    table.className = 'usage-flow-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Agent</th><th>Sessions</th><th>Actifs</th><th>Succès</th><th>Durée moy.</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const a of byAgent) {
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td');
+      tdName.className = 'usage-flow-name';
+      tdName.textContent = a.agent;
+      tr.appendChild(tdName);
+      const tdSessions = document.createElement('td');
+      tdSessions.textContent = a.totalSessions;
+      tr.appendChild(tdSessions);
+      const tdActive = document.createElement('td');
+      tdActive.style.color = a.active > 0 ? 'var(--green)' : 'var(--text-muted)';
+      tdActive.textContent = a.active;
+      tr.appendChild(tdActive);
+      const tdRate = document.createElement('td');
+      tdRate.className = 'usage-flow-rate';
+      tdRate.style.color = a.successRate >= 70 ? 'var(--green)' : '#ff6b6b';
+      tdRate.textContent = `${a.successRate}%`;
+      tr.appendChild(tdRate);
+      const tdDur = document.createElement('td');
+      tdDur.className = 'usage-flow-duration';
+      tdDur.textContent = a.avgDuration > 0 ? this._fmt(a.avgDuration) : '—';
+      tr.appendChild(tdDur);
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    section.appendChild(wrap);
+    parent.appendChild(section);
+  }
+
+  _renderFlowTable(parent, flowStats) {
+    if (!flowStats || flowStats.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'usage-section';
+    const t = document.createElement('div');
+    t.className = 'usage-section-title';
+    t.textContent = 'Par flow';
+    section.appendChild(t);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'usage-table-wrap';
+    const table = document.createElement('table');
+    table.className = 'usage-flow-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Flow</th><th>Runs</th><th>Succès</th><th>Durée moy.</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const flow of flowStats) {
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td');
+      const nameSpan = document.createElement('span');
+      nameSpan.className = `usage-flow-name ${!flow.enabled ? 'usage-flow-disabled' : ''}`;
+      nameSpan.textContent = flow.name;
+      tdName.appendChild(nameSpan);
+      if (!flow.enabled) {
+        const tag = document.createElement('span');
+        tag.style.cssText = 'font-size:10px;color:var(--text-muted);margin-left:6px';
+        tag.textContent = '(désactivé)';
+        tdName.appendChild(tag);
+      }
+      tr.appendChild(tdName);
+      const tdRuns = document.createElement('td');
+      tdRuns.textContent = flow.totalRuns;
+      tr.appendChild(tdRuns);
+      const tdRate = document.createElement('td');
+      tdRate.className = 'usage-flow-rate';
+      tdRate.style.color = flow.successRate >= 70 ? 'var(--green)' : '#ff6b6b';
+      tdRate.textContent = `${flow.successRate}%`;
+      tr.appendChild(tdRate);
+      const tdDur = document.createElement('td');
+      tdDur.className = 'usage-flow-duration';
+      tdDur.textContent = flow.avgDuration > 0 ? this._fmt(flow.avgDuration) : '—';
+      tr.appendChild(tdDur);
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    section.appendChild(wrap);
+    parent.appendChild(section);
+  }
+
   _renderTokenProjectTable(parent, projects) {
     if (!projects || projects.length === 0) return;
 
@@ -465,29 +417,24 @@ export class UsageView {
     const tbody = document.createElement('tbody');
     for (const proj of projects) {
       const tr = document.createElement('tr');
-
       const tdName = document.createElement('td');
       tdName.className = 'usage-file-name';
       tdName.textContent = proj.project;
       tr.appendChild(tdName);
-
       const tdIn = document.createElement('td');
       tdIn.className = 'usage-file-count';
       tdIn.style.color = 'var(--blue)';
       tdIn.textContent = this._fmtTokens(proj.input);
       tr.appendChild(tdIn);
-
       const tdOut = document.createElement('td');
       tdOut.className = 'usage-file-count';
       tdOut.style.color = 'var(--green)';
       tdOut.textContent = this._fmtTokens(proj.output);
       tr.appendChild(tdOut);
-
       const tdTotal = document.createElement('td');
       tdTotal.className = 'usage-file-count';
       tdTotal.textContent = this._fmtTokens(proj.total);
       tr.appendChild(tdTotal);
-
       const tdBar = document.createElement('td');
       tdBar.className = 'usage-file-bar-cell';
       const bar = document.createElement('div');
@@ -498,7 +445,56 @@ export class UsageView {
       bar.appendChild(fill);
       tdBar.appendChild(bar);
       tr.appendChild(tdBar);
+      tbody.appendChild(tr);
+    }
 
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    section.appendChild(wrap);
+    parent.appendChild(section);
+  }
+
+  _renderFilesTable(parent, files) {
+    if (!files || files.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'usage-section';
+    const t = document.createElement('div');
+    t.className = 'usage-section-title';
+    t.textContent = 'Fichiers les plus modifiés (30 jours)';
+    section.appendChild(t);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'usage-table-wrap';
+    const table = document.createElement('table');
+    table.className = 'usage-files-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Fichier</th><th>Modifs</th><th></th></tr>';
+    table.appendChild(thead);
+
+    const maxCount = files[0]?.count || 1;
+    const tbody = document.createElement('tbody');
+    for (const file of files) {
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td');
+      tdName.className = 'usage-file-name';
+      tdName.textContent = file.file;
+      tdName.title = file.file;
+      tr.appendChild(tdName);
+      const tdCount = document.createElement('td');
+      tdCount.className = 'usage-file-count';
+      tdCount.textContent = file.count;
+      tr.appendChild(tdCount);
+      const tdBar = document.createElement('td');
+      tdBar.className = 'usage-file-bar-cell';
+      const bar = document.createElement('div');
+      bar.className = 'usage-file-bar';
+      const fill = document.createElement('div');
+      fill.className = 'usage-file-bar-fill';
+      fill.style.width = `${(file.count / maxCount) * 100}%`;
+      bar.appendChild(fill);
+      tdBar.appendChild(bar);
+      tr.appendChild(tdBar);
       tbody.appendChild(tr);
     }
 
