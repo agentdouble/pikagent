@@ -1,5 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+function onIpc(channel) {
+  return (cb) => {
+    const listener = (event, payload) => cb(payload);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  };
+}
+
 contextBridge.exposeInMainWorld('api', {
   // PTY
   pty: {
@@ -9,16 +17,8 @@ contextBridge.exposeInMainWorld('api', {
     kill: (opts) => ipcRenderer.invoke('pty:kill', opts),
     getCwd: (opts) => ipcRenderer.invoke('pty:getcwd', opts),
     checkAgents: () => ipcRenderer.invoke('pty:checkAgents'),
-    onData: (cb) => {
-      const listener = (event, payload) => cb(payload);
-      ipcRenderer.on('pty:data', listener);
-      return () => ipcRenderer.removeListener('pty:data', listener);
-    },
-    onExit: (cb) => {
-      const listener = (event, payload) => cb(payload);
-      ipcRenderer.on('pty:exit', listener);
-      return () => ipcRenderer.removeListener('pty:exit', listener);
-    },
+    onData: onIpc('pty:data'),
+    onExit: onIpc('pty:exit'),
   },
 
   // File System
@@ -33,11 +33,7 @@ contextBridge.exposeInMainWorld('api', {
     rename: (oldPath, newName) => ipcRenderer.invoke('fs:rename', { oldPath, newName }),
     watch: (id, dirPath) => ipcRenderer.invoke('fs:watch', { id, dirPath }),
     unwatch: (id) => ipcRenderer.invoke('fs:unwatch', { id }),
-    onChanged: (cb) => {
-      const listener = (event, payload) => cb(payload);
-      ipcRenderer.on('fs:changed', listener);
-      return () => ipcRenderer.removeListener('fs:changed', listener);
-    },
+    onChanged: onIpc('fs:changed'),
   },
 
   // Shell / Clipboard
@@ -70,16 +66,8 @@ contextBridge.exposeInMainWorld('api', {
     runNow: (id) => ipcRenderer.invoke('flow:runNow', id),
     getRunning: () => ipcRenderer.invoke('flow:getRunning'),
     getRunLog: (flowId, logTimestamp) => ipcRenderer.invoke('flow:getRunLog', { flowId, logTimestamp }),
-    onRunStarted: (cb) => {
-      const listener = (event, payload) => cb(payload);
-      ipcRenderer.on('flow:runStarted', listener);
-      return () => ipcRenderer.removeListener('flow:runStarted', listener);
-    },
-    onRunComplete: (cb) => {
-      const listener = (event, payload) => cb(payload);
-      ipcRenderer.on('flow:runComplete', listener);
-      return () => ipcRenderer.removeListener('flow:runComplete', listener);
-    },
+    onRunStarted: onIpc('flow:runStarted'),
+    onRunComplete: onIpc('flow:runComplete'),
   },
 
   // Usage Metrics
