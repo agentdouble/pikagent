@@ -24,44 +24,50 @@ function getRemoteUrl(cwd) {
   }
 }
 
-function getRecentChanges(cwd, count = 30) {
+function getLocalChanges(cwd) {
   try {
-    const raw = execSync(
-      `git log --pretty=format:"%H||%h||%an||%ar||%s" -n ${count}`,
-      { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 1024 * 1024 }
-    ).trim();
-    if (!raw) return [];
-    return raw.split('\n').map((line) => {
-      const [hash, shortHash, author, date, ...rest] = line.split('||');
-      return { hash, shortHash, author, date, message: rest.join('||') };
+    // Staged files
+    const stagedRaw = execSync('git diff --cached --name-status', {
+      cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    const staged = stagedRaw ? stagedRaw.split('\n').map((line) => {
+      const [status, ...p] = line.split('\t');
+      return { status, path: p.join('\t'), staged: true };
+    }) : [];
+
+    // Unstaged modified/deleted files
+    const unstagedRaw = execSync('git diff --name-status', {
+      cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    const unstaged = unstagedRaw ? unstagedRaw.split('\n').map((line) => {
+      const [status, ...p] = line.split('\t');
+      return { status, path: p.join('\t'), staged: false };
+    }) : [];
+
+    // Untracked files
+    const untrackedRaw = execSync('git ls-files --others --exclude-standard', {
+      cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    const untracked = untrackedRaw ? untrackedRaw.split('\n').map((p) => {
+      return { status: '?', path: p, staged: false };
+    }) : [];
+
+    return { staged, unstaged, untracked };
+  } catch {
+    return { staged: [], unstaged: [], untracked: [] };
+  }
+}
+
+function getFileDiff(cwd, filePath, isStaged) {
+  try {
+    const flag = isStaged ? '--cached' : '';
+    const diff = execSync(`git diff ${flag} -- "${filePath}"`, {
+      cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 5 * 1024 * 1024,
     });
+    return diff;
   } catch {
-    return [];
+    return '';
   }
 }
 
-function getCommitDiff(cwd, hash) {
-  try {
-    const stat = execSync(
-      `git diff-tree --no-commit-id -r --name-status ${hash}`,
-      { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 1024 * 1024 }
-    ).trim();
-    const files = stat
-      ? stat.split('\n').map((line) => {
-          const [status, ...pathParts] = line.split('\t');
-          return { status, path: pathParts.join('\t') };
-        })
-      : [];
-
-    const diff = execSync(
-      `git show --format="" --patch ${hash}`,
-      { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 5 * 1024 * 1024 }
-    );
-
-    return { files, diff };
-  } catch {
-    return { files: [], diff: '' };
-  }
-}
-
-module.exports = { getBranch, getRemoteUrl, getRecentChanges, getCommitDiff };
+module.exports = { getBranch, getRemoteUrl, getLocalChanges, getFileDiff };

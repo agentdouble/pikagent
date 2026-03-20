@@ -117,12 +117,12 @@ function register(getWindow) {
     return gitManager.getRemoteUrl(cwd);
   });
 
-  ipcMain.handle('git:recentChanges', (event, { cwd, count }) => {
-    return gitManager.getRecentChanges(cwd, count);
+  ipcMain.handle('git:localChanges', (event, cwd) => {
+    return gitManager.getLocalChanges(cwd);
   });
 
-  ipcMain.handle('git:commitDiff', (event, { cwd, hash }) => {
-    return gitManager.getCommitDiff(cwd, hash);
+  ipcMain.handle('git:fileDiff', (event, { cwd, filePath, isStaged }) => {
+    return gitManager.getFileDiff(cwd, filePath, isStaged);
   });
 
   // --- Workspace Configs ---

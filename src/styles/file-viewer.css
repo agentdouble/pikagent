@@ -62,6 +62,9 @@
 }
 
 .git-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 8px 12px;
   font-size: 11px;
   font-weight: 600;
@@ -73,6 +76,17 @@
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+.git-refresh-btn {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.git-refresh-btn:hover {
+  color: var(--accent);
 }
 
 .git-empty,
@@ -90,21 +104,15 @@
   padding: 0;
 }
 
-.git-commit-item {
+.git-section-header {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
-}
-
-.git-commit-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-
-.git-commit-summary:hover {
-  background: var(--bg-hover);
 }
 
 .git-chevron {
@@ -114,43 +122,22 @@
   flex-shrink: 0;
 }
 
-.git-commit-msg {
-  flex: 1;
-  font-size: 12px;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.git-commit-hash {
-  font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.git-commit-meta {
-  padding: 0 12px 6px 32px;
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-/* Diff container */
-.git-diff-container {
-  padding: 0 12px 8px 12px;
-}
-
-.git-file-list {
-  margin-bottom: 8px;
+.git-file-row {
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .git-file-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 8px;
+  padding: 5px 8px;
   font-size: 11px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.git-file-item:hover {
+  background: var(--bg-hover);
 }
 
 .git-file-status {
@@ -166,20 +153,33 @@
 .git-status-A { color: var(--green); }
 .git-status-D { color: #f44; }
 .git-status-R { color: #88f; }
+.git-status-\\? { color: var(--text-muted); }
 
-.git-file-name {
+.git-file-name-label {
+  flex: 1;
   font-family: var(--font-mono);
+  font-size: 11px;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
-  transition: color 0.1s;
 }
 
-.git-file-name:hover {
+.git-open-btn {
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+
+.git-file-item:hover .git-open-btn {
+  opacity: 1;
+}
+
+.git-open-btn:hover {
   color: var(--accent);
-  text-decoration: underline;
 }
 
 /* Diff block */
