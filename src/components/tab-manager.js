@@ -1083,15 +1083,25 @@ export class TabManager {
     const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    const next = ids[(idx + 1) % ids.length];
-    this.switchTo(next);
+    for (let i = 1; i < ids.length; i++) {
+      const candidate = ids[(idx + i) % ids.length];
+      if (!this.tabs.get(candidate).noShortcut) {
+        this.switchTo(candidate);
+        return;
+      }
+    }
   }
 
   prevTab() {
     const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    const prev = ids[(idx - 1 + ids.length) % ids.length];
-    this.switchTo(prev);
+    for (let i = 1; i < ids.length; i++) {
+      const candidate = ids[(idx - i + ids.length) % ids.length];
+      if (!this.tabs.get(candidate).noShortcut) {
+        this.switchTo(candidate);
+        return;
+      }
+    }
   }
 }
