@@ -162,7 +162,8 @@ export class UsageView {
       const day = data[i];
       const col = document.createElement('div');
       col.className = 'usage-chart-col';
-      col.title = `${day.label}: ${day.total} (${day.success} ok, ${day.error} err)`;
+      const running = day.running || 0;
+      col.title = `${day.label}: ${day.total} (${day.success} ok, ${day.error} err${running ? `, ${running} en cours` : ''})`;
 
       if (day.total > 0) {
         const stack = document.createElement('div');
@@ -178,6 +179,12 @@ export class UsageView {
           const b = document.createElement('div');
           b.className = 'usage-chart-bar-error';
           b.style.height = `${(day.error / day.total) * 100}%`;
+          stack.appendChild(b);
+        }
+        if (running > 0) {
+          const b = document.createElement('div');
+          b.className = 'usage-chart-bar-running';
+          b.style.height = `${(running / day.total) * 100}%`;
           stack.appendChild(b);
         }
         col.appendChild(stack);

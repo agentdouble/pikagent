@@ -117,6 +117,7 @@ function perDay(items, dateExtractor, days = 30) {
       total: dayItems.length,
       success: dayItems.filter((r) => r.status === 'success' || r.status === 'completed').length,
       error: dayItems.filter((r) => r.status === 'error' || r.status === 'exited').length,
+      running: dayItems.filter((r) => r.status === 'running').length,
     };
   });
 }

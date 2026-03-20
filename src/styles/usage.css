@@ -182,6 +182,11 @@
   transition: height 0.3s;
 }
 
+.usage-chart-bar-running {
+  background: var(--blue);
+  transition: height 0.3s;
+}
+
 .usage-chart-label {
   font-size: 9px;
   color: var(--text-muted);
@@ -201,6 +206,10 @@
 
 .usage-chart-col:hover .usage-chart-bar-error {
   background: #ff8585;
+}
+
+.usage-chart-col:hover .usage-chart-bar-running {
+  background: #8fd4ff;
 }
 
 /* ===== Success Rate Gauge ===== */
