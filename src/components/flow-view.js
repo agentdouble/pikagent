@@ -307,10 +307,8 @@ export class FlowView {
     });
 
     // Subscribe to PTY data
-    const unsubData = window.api.pty.onData(({ id, data }) => {
-      if (id === ptyId) {
-        term.write(data);
-      }
+    const unsubData = window.api.pty.onData(ptyId, (data) => {
+      term.write(data);
     });
 
     this._liveTerminals.set(flowId, { term, fitAddon, unsubData, resizeObs, containerEl, ptyId });

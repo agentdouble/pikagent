@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Generic IPC listener helper (for non-PTY channels)
 function onIpc(channel) {
   return (cb) => {
     const listener = (event, payload) => cb(payload);
@@ -7,6 +8,20 @@ function onIpc(channel) {
     return () => ipcRenderer.removeListener(channel, listener);
   };
 }
+
+// Targeted dispatch maps for PTY: one IPC listener, routed by terminal ID
+const _dataListeners = new Map(); // id → Set<callback>
+const _exitListeners = new Map(); // id → Set<callback>
+
+ipcRenderer.on('pty:data', (event, { id, data }) => {
+  const cbs = _dataListeners.get(id);
+  if (cbs) for (const cb of cbs) cb(data);
+});
+
+ipcRenderer.on('pty:exit', (event, { id, exitCode }) => {
+  const cbs = _exitListeners.get(id);
+  if (cbs) for (const cb of cbs) cb({ id, exitCode });
+});
 
 contextBridge.exposeInMainWorld('api', {
   // PTY
@@ -17,8 +32,22 @@ contextBridge.exposeInMainWorld('api', {
     kill: (opts) => ipcRenderer.invoke('pty:kill', opts),
     getCwd: (opts) => ipcRenderer.invoke('pty:getcwd', opts),
     checkAgents: () => ipcRenderer.invoke('pty:checkAgents'),
-    onData: onIpc('pty:data'),
-    onExit: onIpc('pty:exit'),
+    onData: (id, cb) => {
+      if (!_dataListeners.has(id)) _dataListeners.set(id, new Set());
+      _dataListeners.get(id).add(cb);
+      return () => {
+        const set = _dataListeners.get(id);
+        if (set) { set.delete(cb); if (set.size === 0) _dataListeners.delete(id); }
+      };
+    },
+    onExit: (id, cb) => {
+      if (!_exitListeners.has(id)) _exitListeners.set(id, new Set());
+      _exitListeners.get(id).add(cb);
+      return () => {
+        const set = _exitListeners.get(id);
+        if (set) { set.delete(cb); if (set.size === 0) _exitListeners.delete(id); }
+      };
+    },
   },
 
   // File System

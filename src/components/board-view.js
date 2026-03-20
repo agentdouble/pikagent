@@ -221,12 +221,10 @@ export class BoardView {
 
     const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
 
-    // PTY output → render in board terminal + accumulate data volume
-    const unsubData = window.api.pty.onData(({ id, data }) => {
-      if (id === termId) {
-        term.write(data);
-        cardData.dataBytes += data.length;
-      }
+    // PTY output → render in board terminal + accumulate data volume (targeted by ID)
+    const unsubData = window.api.pty.onData(termId, (data) => {
+      term.write(data);
+      cardData.dataBytes += data.length;
     });
     cardData.unsubData = unsubData;
 
@@ -327,13 +325,29 @@ export class BoardView {
     visibleCards[nextIdx][1].term.focus();
   }
 
-  dispose() {
-    this.disposed = true;
-
+  pause() {
     if (this._pollTimer) {
       clearInterval(this._pollTimer);
       this._pollTimer = null;
     }
+  }
+
+  resume() {
+    if (this.disposed) return;
+    if (!this._pollTimer) {
+      this._pollTimer = setInterval(() => {
+        if (!this.disposed) {
+          this.scanAgents();
+          this._checkIdleCards();
+        }
+      }, 3000);
+      this.scanAgents();
+    }
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.pause();
 
     bus.off('terminal:created', this._onCreated);
     bus.off('terminal:removed', this._onRemoved);

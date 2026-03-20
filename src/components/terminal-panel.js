@@ -42,16 +42,12 @@ class TerminalInstance {
       window.api.pty.write({ id: this.id, data });
     });
 
-    this.unsubData = window.api.pty.onData(({ id, data }) => {
-      if (id === this.id && !this.disposed) {
-        this.terminal.write(data);
-      }
+    this.unsubData = window.api.pty.onData(this.id, (data) => {
+      if (!this.disposed) this.terminal.write(data);
     });
 
-    this.unsubExit = window.api.pty.onExit(({ id }) => {
-      if (id === this.id) {
-        bus.emit('terminal:exited', { id: this.id });
-      }
+    this.unsubExit = window.api.pty.onExit(this.id, () => {
+      bus.emit('terminal:exited', { id: this.id });
     });
 
     this.resizeObserver = new ResizeObserver(() => this.fit());

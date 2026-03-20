@@ -1,4 +1,5 @@
 const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const os = require('os');
 
@@ -12,10 +13,13 @@ class SessionManager {
     this._previousAgents = {}; // { termId: agentName }
     this._activeSessions = {}; // { termId: { id, agent, startedAt, cwd } }
     this._polling = false; // guard against overlapping polls
+    this._sessionsCache = null; // in-memory cache of saved sessions
   }
 
   start(ptyManager) {
     this._ptyManager = ptyManager;
+    // Load cache on start
+    this._loadAllSync();
     // Poll every 5 seconds to detect agent starts/stops
     this._timer = setInterval(() => this._poll(), 5000);
     this._poll();
@@ -109,27 +113,34 @@ class SessionManager {
     delete this._previousAgents[termId];
   }
 
-  _saveRecord(record) {
-    fs.mkdirSync(BASE_DIR, { recursive: true });
-    let sessions = this._loadAll();
+  async _saveRecord(record) {
+    try {
+      await fsp.mkdir(BASE_DIR, { recursive: true });
+    } catch {}
+
+    let sessions = this._sessionsCache || [];
     sessions.push(record);
     // Keep last 200 sessions
     if (sessions.length > 200) {
       sessions = sessions.slice(-200);
     }
-    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf-8');
+    this._sessionsCache = sessions;
+
+    // Write async — fire and forget, cache is the source of truth
+    fsp.writeFile(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf-8').catch(() => {});
   }
 
-  _loadAll() {
+  // Sync load used only once at startup
+  _loadAllSync() {
     try {
-      return JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf-8'));
+      this._sessionsCache = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf-8'));
     } catch {
-      return [];
+      this._sessionsCache = [];
     }
   }
 
   getSessions() {
-    return this._loadAll();
+    return this._sessionsCache || [];
   }
 
   getActiveSessions() {

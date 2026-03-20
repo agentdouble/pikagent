@@ -69,32 +69,43 @@ export class TabManager {
     }
 
     // Listen for cwd changes from any terminal (find owning tab)
-    bus.on('terminal:cwdChanged', ({ id, cwd }) => {
+    this._busListeners = [];
+
+    const onCwdChanged = ({ id, cwd }) => {
       this._onTerminalCwdChanged(id, cwd);
       this.configManager.scheduleAutoSave();
-    });
+    };
 
-    // Listen for new terminals created via split
-    bus.on('terminal:created', ({ id, cwd }) => {
+    const onCreated = ({ id, cwd }) => {
       const tab = this._findTabForTerminal(id) || this.tabs.get(this.activeTabId);
       if (tab && tab.fileTree) {
         tab.fileTree.setTerminalRoot(id, cwd);
       }
       this.configManager.scheduleAutoSave();
-    });
+    };
 
-    // Listen for terminal removals
-    bus.on('terminal:removed', ({ id }) => {
+    const onRemoved = ({ id }) => {
       for (const [, tab] of this.tabs) {
         if (tab.fileTree) tab.fileTree.removeTerminal(id);
       }
       this.configManager.scheduleAutoSave();
-    });
+    };
 
-    // Listen for split resize changes
-    bus.on('layout:changed', () => {
+    const onLayoutChanged = () => {
       this.configManager.scheduleAutoSave();
-    });
+    };
+
+    bus.on('terminal:cwdChanged', onCwdChanged);
+    bus.on('terminal:created', onCreated);
+    bus.on('terminal:removed', onRemoved);
+    bus.on('layout:changed', onLayoutChanged);
+
+    this._busListeners.push(
+      ['terminal:cwdChanged', onCwdChanged],
+      ['terminal:created', onCreated],
+      ['terminal:removed', onRemoved],
+      ['layout:changed', onLayoutChanged],
+    );
   }
 
   // Find which tab owns a terminal
@@ -186,6 +197,7 @@ export class TabManager {
         }
       }
     } else if (prevMode === 'board') {
+      if (this.boardView) this.boardView.pause();
       if (this._boardContainerEl) this._boardContainerEl.remove();
     } else if (prevMode === 'flow') {
       if (this._flowContainerEl) this._flowContainerEl.remove();
@@ -249,8 +261,8 @@ export class TabManager {
       for (const [, card] of this.boardView.cards) {
         try { card.fitAddon.fit(); } catch {}
       }
-      // Rescan for new/removed agents
-      this.boardView.scanAgents();
+      // Resume polling and rescan
+      this.boardView.resume();
     } else {
       // First time: create board
       const container = document.createElement('div');
