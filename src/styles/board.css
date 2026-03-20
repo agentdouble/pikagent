@@ -38,13 +38,13 @@
 }
 
 .board-card-running {
-  border-color: #e8b96a;
-  box-shadow: 0 0 8px rgba(232, 185, 106, 0.15);
+  border-color: rgba(232, 185, 106, 0.45);
+  box-shadow: 0 0 8px rgba(232, 185, 106, 0.08);
 }
 
 .board-card-waiting {
-  border-color: #7bc8a4;
-  box-shadow: 0 0 8px rgba(123, 200, 164, 0.15);
+  border-color: rgba(123, 200, 164, 0.45);
+  box-shadow: 0 0 8px rgba(123, 200, 164, 0.08);
 }
 
 .board-card-running .board-card-header {
@@ -97,13 +97,13 @@
 }
 
 .board-status-running {
-  background: rgba(232, 185, 106, 0.12);
-  color: #e8b96a;
+  background: rgba(232, 185, 106, 0.1);
+  color: rgba(232, 185, 106, 0.8);
 }
 
 .board-status-waiting {
-  background: rgba(123, 200, 164, 0.12);
-  color: #7bc8a4;
+  background: rgba(123, 200, 164, 0.1);
+  color: rgba(123, 200, 164, 0.8);
 }
 
 .board-card-btns {
