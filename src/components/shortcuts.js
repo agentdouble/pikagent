@@ -62,6 +62,11 @@ const DEFAULT_BINDINGS = [
     label: 'Show Board',
     keys: ['meta+b', 'control+b'],
   },
+  {
+    id: 'showWork',
+    label: 'Show Work',
+    keys: ['meta+e', 'control+e'],
+  },
 ];
 
 export class ShortcutManager {
@@ -95,6 +100,7 @@ export class ShortcutManager {
     this.actions.set('nextTab', () => this.tabManager.nextTab());
     this.actions.set('prevTab', () => this.tabManager.prevTab());
     this.actions.set('showBoard', () => this.tabManager.switchToBoard());
+    this.actions.set('showWork', () => this.tabManager.setSidebarMode('work'));
   }
 
   loadBindings() {
@@ -160,7 +166,7 @@ export class ShortcutManager {
   }
 
   // Actions that still work even in NoShortcut mode
-  static ALWAYS_ALLOWED = new Set(['nextTab', 'prevTab', 'showBoard']);
+  static ALWAYS_ALLOWED = new Set(['nextTab', 'prevTab', 'showBoard', 'showWork']);
 
   listen() {
     window.addEventListener('keydown', (e) => {
