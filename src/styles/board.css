@@ -38,21 +38,21 @@
 }
 
 .board-card-running {
-  border-color: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+  border-color: #e8b96a;
+  box-shadow: 0 0 8px rgba(232, 185, 106, 0.15);
 }
 
 .board-card-waiting {
-  border-color: #22c55e;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.25);
+  border-color: #7bc8a4;
+  box-shadow: 0 0 8px rgba(123, 200, 164, 0.15);
 }
 
 .board-card-running .board-card-header {
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(232, 185, 106, 0.06);
 }
 
 .board-card-waiting .board-card-header {
-  background: rgba(34, 197, 94, 0.08);
+  background: rgba(123, 200, 164, 0.06);
 }
 
 .board-card-hidden {
@@ -97,13 +97,13 @@
 }
 
 .board-status-running {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background: rgba(232, 185, 106, 0.12);
+  color: #e8b96a;
 }
 
 .board-status-waiting {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
+  background: rgba(123, 200, 164, 0.12);
+  color: #7bc8a4;
 }
 
 .board-card-btns {
