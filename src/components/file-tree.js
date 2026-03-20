@@ -155,10 +155,15 @@ export class FileTree {
     return '';
   }
 
-  showFileContextMenu(x, y, entryPath) {
+  showFileContextMenu(x, y, entryPath, nameEl) {
     const rootCwd = this.findRootCwd(entryPath);
     const fileName = entryPath.split('/').pop();
     contextMenu.show(x, y, [
+      {
+        label: 'Rename',
+        action: () => this.promptRename(entryPath, nameEl),
+      },
+      { separator: true },
       {
         label: 'Copy Path',
         action: () => window.api.clipboard.write(entryPath),
@@ -188,7 +193,7 @@ export class FileTree {
     ]);
   }
 
-  showDirContextMenu(x, y, dirPath, rootCwd, contentEl, depth, expandedDirs) {
+  showDirContextMenu(x, y, dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl) {
     contextMenu.show(x, y, [
       {
         label: 'New File',
@@ -197,6 +202,11 @@ export class FileTree {
       {
         label: 'New Folder',
         action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'folder'),
+      },
+      { separator: true },
+      {
+        label: 'Rename',
+        action: () => this.promptRename(dirPath, nameEl),
       },
       { separator: true },
       {
@@ -228,6 +238,56 @@ export class FileTree {
         },
       },
     ]);
+  }
+
+  // --- Rename inline input ---
+
+  promptRename(entryPath, nameEl) {
+    const oldName = entryPath.split('/').pop();
+    const input = document.createElement('input');
+    input.className = 'file-tree-rename-input';
+    input.type = 'text';
+    input.value = oldName;
+
+    // Replace the name span with the input
+    nameEl.style.display = 'none';
+    nameEl.parentElement.appendChild(input);
+    input.focus();
+    // Select name without extension for files
+    const dotIndex = oldName.lastIndexOf('.');
+    input.setSelectionRange(0, dotIndex > 0 ? dotIndex : oldName.length);
+
+    let committed = false;
+    const commit = async () => {
+      if (committed) return;
+      committed = true;
+      const newName = input.value.trim();
+      input.remove();
+      nameEl.style.display = '';
+      if (!newName || newName === oldName) return;
+      await window.api.fs.rename(entryPath, newName);
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        commit();
+      }
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        committed = true;
+        input.remove();
+        nameEl.style.display = '';
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => { if (!committed) commit(); }, 100);
+    });
+
+    // Prevent row click from firing while renaming
+    input.addEventListener('click', (e) => e.stopPropagation());
   }
 
   // --- New File / Folder inline input ---
@@ -332,10 +392,10 @@ export class FileTree {
             chevron.textContent = '▾';
             chevron.classList.add('expanded');
             this.renderDir(entry.path, childContainer, depth + 1, expandedDirs).then(() => {
-              this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs);
+              this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
             });
           } else {
-            this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs);
+            this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
           }
         });
       } else {
@@ -351,7 +411,7 @@ export class FileTree {
         row.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.showFileContextMenu(e.clientX, e.clientY, entry.path);
+          this.showFileContextMenu(e.clientX, e.clientY, entry.path, name);
         });
       }
     }

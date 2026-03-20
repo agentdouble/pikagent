@@ -127,8 +127,19 @@ async function copyDirRecursive(src, dest) {
   }
 }
 
+async function renameEntry(oldPath, newName) {
+  try {
+    const dir = path.dirname(oldPath);
+    const newPath = path.join(dir, newName);
+    await fs.promises.rename(oldPath, newPath);
+    return { success: true, newPath };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 function getHomedir() {
   return os.homedir();
 }
 
-module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, getHomedir, watchDir, unwatchDir, unwatchAll };
+module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, renameEntry, getHomedir, watchDir, unwatchDir, unwatchAll };
