@@ -55,6 +55,23 @@ export class UsageView {
     const body = document.createElement('div');
     body.className = 'usage-body';
 
+    // --- Tokens Section ---
+    if (metrics.tokens.total > 0) {
+      this._renderSectionTitle(body, 'Tokens', this._fmtTokens(metrics.tokens.total) + ' total');
+      this._renderOverviewCards(body, [
+        { label: 'Total', value: this._fmtTokens(metrics.tokens.total), cls: '' },
+        { label: 'Input', value: this._fmtTokens(metrics.tokens.totalInput), cls: 'usage-stat-value-blue' },
+        { label: 'Output', value: this._fmtTokens(metrics.tokens.totalOutput), cls: 'usage-stat-value-green' },
+        { label: 'Cache read', value: this._fmtTokens(metrics.tokens.totalCacheRead), cls: '', sub: metrics.tokens.totalCacheCreate > 0 ? `cache write: ${this._fmtTokens(metrics.tokens.totalCacheCreate)}` : '' },
+      ]);
+      this._renderTokenChart(body, metrics.tokens.perDay);
+      this._renderTokenProjectTable(body, metrics.tokens.perProject);
+
+      const sepTokens = document.createElement('div');
+      sepTokens.className = 'usage-separator';
+      body.appendChild(sepTokens);
+    }
+
     // --- Agents Section ---
     this._renderSectionTitle(body, 'Agents (Work)', `${metrics.agent.totalSessions} sessions · ${metrics.agent.activeSessions} active`);
     this._renderOverviewCards(body, [
@@ -370,6 +387,132 @@ export class UsageView {
     wrap.appendChild(table);
     section.appendChild(wrap);
     parent.appendChild(section);
+  }
+
+  _renderTokenChart(parent, data) {
+    const section = document.createElement('div');
+    section.className = 'usage-section';
+    const t = document.createElement('div');
+    t.className = 'usage-section-title';
+    t.textContent = 'Tokens par jour (30 derniers jours)';
+    section.appendChild(t);
+
+    const chart = document.createElement('div');
+    chart.className = 'usage-chart';
+    const bars = document.createElement('div');
+    bars.className = 'usage-chart-bars';
+    const max = Math.max(1, ...data.map((d) => d.total));
+
+    for (let i = 0; i < data.length; i++) {
+      const day = data[i];
+      const col = document.createElement('div');
+      col.className = 'usage-chart-col';
+      col.title = `${day.label}: ${this._fmtTokens(day.total)} (in: ${this._fmtTokens(day.input)}, out: ${this._fmtTokens(day.output)})`;
+
+      if (day.total > 0) {
+        const stack = document.createElement('div');
+        stack.className = 'usage-chart-bar-stack';
+        stack.style.height = `${Math.max((day.total / max) * 100, 4)}%`;
+        if (day.input > 0) {
+          const b = document.createElement('div');
+          b.className = 'usage-chart-bar-running';
+          b.style.height = `${(day.input / day.total) * 100}%`;
+          stack.appendChild(b);
+        }
+        if (day.output > 0) {
+          const b = document.createElement('div');
+          b.className = 'usage-chart-bar-success';
+          b.style.height = `${(day.output / day.total) * 100}%`;
+          stack.appendChild(b);
+        }
+        col.appendChild(stack);
+      }
+
+      if (i % 5 === 0 || i === data.length - 1) {
+        const label = document.createElement('div');
+        label.className = 'usage-chart-label';
+        label.textContent = day.label;
+        col.appendChild(label);
+      }
+
+      bars.appendChild(col);
+    }
+
+    chart.appendChild(bars);
+    section.appendChild(chart);
+    parent.appendChild(section);
+  }
+
+  _renderTokenProjectTable(parent, projects) {
+    if (!projects || projects.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'usage-section';
+    const t = document.createElement('div');
+    t.className = 'usage-section-title';
+    t.textContent = 'Par projet';
+    section.appendChild(t);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'usage-table-wrap';
+    const table = document.createElement('table');
+    table.className = 'usage-files-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Projet</th><th>Input</th><th>Output</th><th>Total</th><th></th></tr>';
+    table.appendChild(thead);
+
+    const maxTotal = projects[0]?.total || 1;
+    const tbody = document.createElement('tbody');
+    for (const proj of projects) {
+      const tr = document.createElement('tr');
+
+      const tdName = document.createElement('td');
+      tdName.className = 'usage-file-name';
+      tdName.textContent = proj.project;
+      tr.appendChild(tdName);
+
+      const tdIn = document.createElement('td');
+      tdIn.className = 'usage-file-count';
+      tdIn.style.color = 'var(--blue)';
+      tdIn.textContent = this._fmtTokens(proj.input);
+      tr.appendChild(tdIn);
+
+      const tdOut = document.createElement('td');
+      tdOut.className = 'usage-file-count';
+      tdOut.style.color = 'var(--green)';
+      tdOut.textContent = this._fmtTokens(proj.output);
+      tr.appendChild(tdOut);
+
+      const tdTotal = document.createElement('td');
+      tdTotal.className = 'usage-file-count';
+      tdTotal.textContent = this._fmtTokens(proj.total);
+      tr.appendChild(tdTotal);
+
+      const tdBar = document.createElement('td');
+      tdBar.className = 'usage-file-bar-cell';
+      const bar = document.createElement('div');
+      bar.className = 'usage-file-bar';
+      const fill = document.createElement('div');
+      fill.className = 'usage-file-bar-fill';
+      fill.style.width = `${(proj.total / maxTotal) * 100}%`;
+      bar.appendChild(fill);
+      tdBar.appendChild(bar);
+      tr.appendChild(tdBar);
+
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    section.appendChild(wrap);
+    parent.appendChild(section);
+  }
+
+  _fmtTokens(n) {
+    if (n == null || n === 0) return '0';
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+    return `${n}`;
   }
 
   _fmt(seconds) {

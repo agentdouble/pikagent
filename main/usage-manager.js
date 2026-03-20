@@ -122,6 +122,109 @@ function perDay(items, dateExtractor, days = 30) {
   });
 }
 
+// ===== Tokens (from Claude session JSONL files) =====
+
+function getTokenMetrics(days = 30) {
+  const claudeDir = path.join(os.homedir(), '.claude', 'projects');
+  const labels = dayLabels(days);
+  const perDayMap = {};
+  const perProjectMap = {};
+  let totalInput = 0;
+  let totalOutput = 0;
+  let totalCacheRead = 0;
+  let totalCacheCreate = 0;
+
+  // Init per-day buckets
+  for (const day of labels) {
+    perDayMap[day.date] = { input: 0, output: 0 };
+  }
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffMs = cutoff.getTime();
+
+  try {
+    const projects = fs.readdirSync(claudeDir).filter((d) => {
+      try { return fs.statSync(path.join(claudeDir, d)).isDirectory(); } catch { return false; }
+    });
+
+    for (const proj of projects) {
+      const projDir = path.join(claudeDir, proj);
+      let projInput = 0;
+      let projOutput = 0;
+
+      const files = fs.readdirSync(projDir).filter((f) => f.endsWith('.jsonl'));
+      for (const file of files) {
+        const fpath = path.join(projDir, file);
+        let content;
+        try { content = fs.readFileSync(fpath, 'utf-8'); } catch { continue; }
+
+        for (const line of content.split('\n')) {
+          if (!line.includes('"usage"')) continue;
+          let entry;
+          try { entry = JSON.parse(line); } catch { continue; }
+          if (entry.type !== 'assistant' || !entry.message?.usage) continue;
+
+          const u = entry.message.usage;
+          const inp = u.input_tokens || 0;
+          const out = u.output_tokens || 0;
+          const cacheRead = u.cache_read_input_tokens || 0;
+          const cacheCreate = u.cache_creation_input_tokens || 0;
+
+          // Find date from timestamp field or parent message
+          let dateKey = null;
+          if (entry.timestamp) {
+            const ts = typeof entry.timestamp === 'number' ? entry.timestamp : new Date(entry.timestamp).getTime();
+            if (ts < cutoffMs) continue;
+            dateKey = new Date(ts).toISOString().slice(0, 10);
+          }
+
+          totalInput += inp;
+          totalOutput += out;
+          totalCacheRead += cacheRead;
+          totalCacheCreate += cacheCreate;
+          projInput += inp;
+          projOutput += out;
+
+          if (dateKey && perDayMap[dateKey] !== undefined) {
+            perDayMap[dateKey].input += inp;
+            perDayMap[dateKey].output += out;
+          }
+        }
+      }
+
+      if (projInput + projOutput > 0) {
+        // Clean project name: -Users-rekta-projet-coding-terminal-app → terminal-app
+        const parts = proj.split('-').filter(Boolean);
+        const shortName = parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
+        perProjectMap[shortName] = { input: projInput, output: projOutput, total: projInput + projOutput };
+      }
+    }
+  } catch {}
+
+  const perDayArr = labels.map((day) => ({
+    ...day,
+    input: perDayMap[day.date]?.input || 0,
+    output: perDayMap[day.date]?.output || 0,
+    total: (perDayMap[day.date]?.input || 0) + (perDayMap[day.date]?.output || 0),
+  }));
+
+  const perProject = Object.entries(perProjectMap)
+    .map(([project, data]) => ({ project, ...data }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+
+  return {
+    totalInput,
+    totalOutput,
+    totalCacheRead,
+    totalCacheCreate,
+    total: totalInput + totalOutput,
+    perDay: perDayArr,
+    perProject,
+  };
+}
+
 // ===== Files =====
 
 function getMostModifiedFiles(cwds) {
@@ -196,11 +299,15 @@ function getMetrics() {
     ].filter(Boolean)),
   ];
 
+  // --- Token metrics ---
+  const tokens = getTokenMetrics(30);
+
   return {
+    tokens,
     flow: flowMetrics,
     agent: agentMetrics,
     mostModifiedFiles: getMostModifiedFiles(allCwds),
-    hasData: flows.length > 0 || allSessions.length > 0,
+    hasData: flows.length > 0 || allSessions.length > 0 || tokens.total > 0,
   };
 }
 
