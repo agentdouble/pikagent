@@ -1,5 +1,6 @@
 import { detectLanguage } from '../utils/file-icons.js';
 import { bus } from '../utils/events.js';
+import { GitChangesView } from './git-changes-view.js';
 
 export class FileViewer {
   constructor(container) {
@@ -10,8 +11,7 @@ export class FileViewer {
     this.lineNumbers = null;
     this.highlightLayer = null;
     this.mode = 'files'; // 'files' | 'git'
-    this.gitCwd = null;
-    this.expandedFile = null;
+    this.gitChanges = null; // initialized after render()
     this.render();
     this.listen();
   }
@@ -53,10 +53,12 @@ export class FileViewer {
     this.container.appendChild(this.editorWrapper);
 
     // Git view (git mode)
-    this.gitView = document.createElement('div');
-    this.gitView.className = 'git-changes-view';
-    this.gitView.style.display = 'none';
-    this.container.appendChild(this.gitView);
+    const gitViewEl = document.createElement('div');
+    gitViewEl.className = 'git-changes-view';
+    gitViewEl.style.display = 'none';
+    this.container.appendChild(gitViewEl);
+    this.gitChanges = new GitChangesView(gitViewEl);
+    this.gitViewEl = gitViewEl;
 
     // Status bar
     this.statusBar = document.createElement('div');
@@ -73,8 +75,8 @@ export class FileViewer {
     });
 
     bus.on('terminal:cwdChanged', ({ cwd }) => {
-      this.gitCwd = cwd;
-      if (this.mode === 'git') this.loadGitChanges();
+      this.gitChanges.setCwd(cwd);
+      if (this.mode === 'git') this.gitChanges.loadChanges();
     });
   }
 
@@ -87,7 +89,7 @@ export class FileViewer {
       this.tabsBar.style.display = '';
       this.breadcrumb.style.display = '';
       this.editorWrapper.style.display = '';
-      this.gitView.style.display = 'none';
+      this.gitViewEl.style.display = 'none';
       this.statusBar.style.display = '';
       if (this.activeFile) {
         this.renderEditor();
@@ -96,170 +98,13 @@ export class FileViewer {
       this.tabsBar.style.display = 'none';
       this.breadcrumb.style.display = 'none';
       this.editorWrapper.style.display = 'none';
-      this.gitView.style.display = '';
+      this.gitViewEl.style.display = '';
       this.statusBar.style.display = 'none';
-      this.loadGitChanges();
+      this.gitChanges.loadChanges();
     }
   }
 
-  // ===== Git Changes Mode =====
-
-  async loadGitChanges() {
-    if (!this.gitCwd) {
-      const pathEl = document.querySelector('.path-text');
-      if (pathEl) this.gitCwd = pathEl.textContent;
-    }
-
-    if (!this.gitCwd) {
-      this.gitView.innerHTML = '<div class="git-empty">No working directory detected</div>';
-      return;
-    }
-
-    this.gitView.innerHTML = '<div class="git-loading">Loading changes...</div>';
-
-    const changes = await window.api.git.localChanges(this.gitCwd);
-    this.renderLocalChanges(changes);
-  }
-
-  renderLocalChanges(changes) {
-    this.gitView.innerHTML = '';
-    const { staged, unstaged, untracked } = changes;
-    const total = staged.length + unstaged.length + untracked.length;
-
-    if (total === 0) {
-      this.gitView.innerHTML = '<div class="git-empty">No local changes</div>';
-      return;
-    }
-
-    // Refresh button
-    const header = document.createElement('div');
-    header.className = 'git-header';
-    const titleSpan = document.createElement('span');
-    titleSpan.textContent = `Local Changes (${total})`;
-    const refreshBtn = document.createElement('span');
-    refreshBtn.className = 'git-refresh-btn';
-    refreshBtn.textContent = '↻';
-    refreshBtn.title = 'Refresh';
-    refreshBtn.addEventListener('click', () => this.loadGitChanges());
-    header.appendChild(titleSpan);
-    header.appendChild(refreshBtn);
-    this.gitView.appendChild(header);
-
-    const list = document.createElement('div');
-    list.className = 'git-commit-list';
-
-    if (staged.length > 0) {
-      this._renderSection(list, 'Staged', staged, true);
-    }
-    if (unstaged.length > 0) {
-      this._renderSection(list, 'Modified', unstaged, false);
-    }
-    if (untracked.length > 0) {
-      this._renderSection(list, 'Untracked', untracked, false);
-    }
-
-    this.gitView.appendChild(list);
-  }
-
-  _renderSection(container, title, files, isStaged) {
-    const section = document.createElement('div');
-    section.className = 'git-section';
-
-    const sectionHeader = document.createElement('div');
-    sectionHeader.className = 'git-section-header';
-    sectionHeader.textContent = `${title} (${files.length})`;
-    section.appendChild(sectionHeader);
-
-    for (const file of files) {
-      const key = `${isStaged ? 's' : 'u'}:${file.path}`;
-
-      const item = document.createElement('div');
-      item.className = 'git-file-row';
-
-      const row = document.createElement('div');
-      row.className = 'git-file-item';
-      row.addEventListener('click', () => {
-        this.expandedFile = this.expandedFile === key ? null : key;
-        this.loadGitChanges();
-      });
-
-      const chevron = document.createElement('span');
-      chevron.className = 'git-chevron';
-      chevron.textContent = this.expandedFile === key ? '▼' : '▶';
-
-      const statusBadge = document.createElement('span');
-      statusBadge.className = `git-file-status git-status-${file.status}`;
-      const statusLabels = { M: 'M', A: 'A', D: 'D', R: 'R', '?': '?' };
-      statusBadge.textContent = statusLabels[file.status] || file.status;
-
-      const fileName = document.createElement('span');
-      fileName.className = 'git-file-name-label';
-      fileName.textContent = file.path;
-      fileName.title = file.path;
-
-      const openBtn = document.createElement('span');
-      openBtn.className = 'git-open-btn';
-      openBtn.textContent = '→';
-      openBtn.title = 'Open file';
-      openBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const fullPath = this.gitCwd + '/' + file.path;
-        bus.emit('file:open', { path: fullPath, name: file.path.split('/').pop() });
-      });
-
-      row.appendChild(chevron);
-      row.appendChild(statusBadge);
-      row.appendChild(fileName);
-      row.appendChild(openBtn);
-      item.appendChild(row);
-
-      // Expanded diff
-      if (this.expandedFile === key && file.status !== '?') {
-        const diffContainer = document.createElement('div');
-        diffContainer.className = 'git-diff-container';
-        diffContainer.innerHTML = '<div class="git-loading">Loading diff...</div>';
-        item.appendChild(diffContainer);
-        this._loadFileDiff(file.path, isStaged, diffContainer);
-      }
-
-      section.appendChild(item);
-    }
-
-    container.appendChild(section);
-  }
-
-  async _loadFileDiff(filePath, isStaged, container) {
-    const diff = await window.api.git.fileDiff(this.gitCwd, filePath, isStaged);
-    container.innerHTML = '';
-
-    if (!diff) {
-      container.innerHTML = '<div class="git-empty" style="height:auto;padding:8px">No diff available</div>';
-      return;
-    }
-
-    const diffBlock = document.createElement('pre');
-    diffBlock.className = 'git-diff-block';
-
-    const lines = diff.split('\n');
-    for (const line of lines) {
-      const lineEl = document.createElement('span');
-      if (line.startsWith('+') && !line.startsWith('+++')) {
-        lineEl.className = 'diff-add';
-      } else if (line.startsWith('-') && !line.startsWith('---')) {
-        lineEl.className = 'diff-remove';
-      } else if (line.startsWith('@@')) {
-        lineEl.className = 'diff-hunk';
-      } else if (line.startsWith('diff --git')) {
-        lineEl.className = 'diff-header';
-      }
-      lineEl.textContent = line + '\n';
-      diffBlock.appendChild(lineEl);
-    }
-
-    container.appendChild(diffBlock);
-  }
-
-  // ===== Files Mode (original) =====
+  // ===== Files Mode =====
 
   async openFile(filePath, fileName) {
     if (this.openFiles.has(filePath)) {
