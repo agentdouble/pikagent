@@ -6,6 +6,7 @@ import { BoardView } from './board-view.js';
 import { FlowView } from './flow-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
+import { ConfigManager } from './config-manager.js';
 
 class WorkspaceTab {
   constructor(id, name, cwd) {
@@ -33,10 +34,7 @@ export class TabManager {
     this.activeTabId = null;
     this.defaultCwd = null;
     this.onOpenSettings = null;
-    this._saveTimer = null;
-    this._restoringConfig = false;
-    this.currentConfigName = null;
-    this._configBarEl = null;
+    this.configManager = new ConfigManager(this);
     this.boardView = null;
     this._boardContainerEl = null;
     this.flowView = null;
@@ -57,22 +55,22 @@ export class TabManager {
       const defaultName = await window.api.config.getDefault();
       const defaultConfig = await window.api.config.loadDefault();
       if (defaultConfig && defaultConfig.tabs && defaultConfig.tabs.length > 0) {
-        this.currentConfigName = defaultName;
+        this.configManager.currentConfigName = defaultName;
         await this.restoreConfig(defaultConfig);
       } else {
-        this.currentConfigName = 'Default';
+        this.configManager.currentConfigName = 'Default';
         this.createTab('Workspace 1');
       }
     } catch (e) {
       console.warn('Failed to restore config:', e);
-      this.currentConfigName = 'Default';
+      this.configManager.currentConfigName = 'Default';
       this.createTab('Workspace 1');
     }
 
     // Listen for cwd changes from any terminal (find owning tab)
     bus.on('terminal:cwdChanged', ({ id, cwd }) => {
       this._onTerminalCwdChanged(id, cwd);
-      this.scheduleAutoSave();
+      this.configManager.scheduleAutoSave();
     });
 
     // Listen for new terminals created via split
@@ -81,7 +79,7 @@ export class TabManager {
       if (tab && tab.fileTree) {
         tab.fileTree.setTerminalRoot(id, cwd);
       }
-      this.scheduleAutoSave();
+      this.configManager.scheduleAutoSave();
     });
 
     // Listen for terminal removals
@@ -89,12 +87,12 @@ export class TabManager {
       for (const [, tab] of this.tabs) {
         if (tab.fileTree) tab.fileTree.removeTerminal(id);
       }
-      this.scheduleAutoSave();
+      this.configManager.scheduleAutoSave();
     });
 
     // Listen for split resize changes
     bus.on('layout:changed', () => {
-      this.scheduleAutoSave();
+      this.configManager.scheduleAutoSave();
     });
   }
 
@@ -267,27 +265,10 @@ export class TabManager {
     }
   }
 
-  // ===== Auto Save =====
+  // ===== Auto Save (delegated to ConfigManager) =====
 
-  scheduleAutoSave() {
-    if (this._restoringConfig) return;
-    if (this._saveTimer) clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => {
-      this.autoSave();
-    }, 500);
-  }
-
-  async autoSave() {
-    try {
-      const data = this.serialize();
-      const name = this.currentConfigName || 'Default';
-      await window.api.config.save(name, data);
-      await window.api.config.setDefault(name);
-      this.currentConfigName = name;
-      this.updateConfigBar();
-    } catch (e) {
-      console.warn('Auto-save failed:', e);
-    }
+  autoSave() {
+    return this.configManager.autoSave();
   }
 
   // ===== Tab Management =====
@@ -299,7 +280,7 @@ export class TabManager {
     this.tabs.set(id, tab);
     this.renderTabBar();
     this.switchTo(id);
-    this.scheduleAutoSave();
+    this.configManager.scheduleAutoSave();
     return tab;
   }
 
@@ -324,7 +305,7 @@ export class TabManager {
     }
 
     this.renderTabBar();
-    this.scheduleAutoSave();
+    this.configManager.scheduleAutoSave();
   }
 
   switchTo(id) {
@@ -598,7 +579,7 @@ export class TabManager {
 
     this.tabs = new Map(entries);
     this.renderTabBar();
-    this.scheduleAutoSave();
+    this.configManager.scheduleAutoSave();
   }
 
   renameTab(id, nameEl) {
@@ -613,7 +594,7 @@ export class TabManager {
     const commit = () => {
       tab.name = input.value || tab.name;
       this.renderTabBar();
-      this.scheduleAutoSave();
+      this.configManager.scheduleAutoSave();
     };
 
     input.addEventListener('blur', commit);
@@ -648,12 +629,12 @@ export class TabManager {
     // Config bar at bottom of left panel
     const configBar = document.createElement('button');
     configBar.className = 'config-bar-btn';
-    configBar.innerHTML = `<span class="config-bar-icon">&#9776;</span><span class="config-bar-name">${this.currentConfigName || 'Default'}</span>`;
+    configBar.innerHTML = `<span class="config-bar-icon">&#9776;</span><span class="config-bar-name">${this.configManager.currentConfigName || 'Default'}</span>`;
     configBar.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.showConfigMenu(configBar);
+      this.configManager.showConfigMenu(configBar);
     });
-    this._configBarEl = configBar;
+    this.configManager._configBarEl = configBar;
     leftPanel.appendChild(configBar);
 
     // --- Left resize handle ---
@@ -789,7 +770,7 @@ export class TabManager {
     if (tab && tab.terminalPanel) {
       setTimeout(() => tab.terminalPanel.fitAll(), 200);
     }
-    this.scheduleAutoSave();
+    this.configManager.scheduleAutoSave();
   }
 
   setupPanelResize(handle, panel, side) {
@@ -812,7 +793,7 @@ export class TabManager {
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      this.scheduleAutoSave();
+      this.configManager.scheduleAutoSave();
     };
 
     handle.addEventListener('mousedown', (e) => {
@@ -904,15 +885,7 @@ export class TabManager {
     return { tabs, activeTabIndex };
   }
 
-  async restoreConfig(config) {
-    if (!config || !config.tabs || config.tabs.length === 0) return;
-
-    this._restoringConfig = true;
-
-    // Reset board view (old terminal IDs will be invalid)
-    this._disposeBoard();
-
-    // Dispose all existing tabs
+  _disposeAllTabs() {
     for (const [id, tab] of [...this.tabs]) {
       if (tab.terminalPanel) tab.terminalPanel.dispose();
       if (tab.fileTree) tab.fileTree.dispose();
@@ -920,6 +893,16 @@ export class TabManager {
       this.tabs.delete(id);
     }
     this.activeTabId = null;
+  }
+
+  async restoreConfig(config) {
+    if (!config || !config.tabs || config.tabs.length === 0) return;
+
+    this.configManager.isRestoring = true;
+
+    // Reset board view (old terminal IDs will be invalid)
+    this._disposeBoard();
+    this._disposeAllTabs();
 
     // Create tabs from config
     for (const tabData of config.tabs) {
@@ -937,149 +920,7 @@ export class TabManager {
     const activeIdx = Math.min(config.activeTabIndex || 0, tabIds.length - 1);
     this.switchTo(tabIds[activeIdx]);
 
-    this._restoringConfig = false;
-  }
-
-  async newConfig(name) {
-    if (!name) return;
-    await this.autoSave();
-
-    this.currentConfigName = name;
-
-    // Reset board view (old terminal IDs will be invalid)
-    this._disposeBoard();
-
-    // Dispose all existing tabs
-    for (const [id, tab] of [...this.tabs]) {
-      if (tab.terminalPanel) tab.terminalPanel.dispose();
-      if (tab.fileTree) tab.fileTree.dispose();
-      if (tab.layoutElement) tab.layoutElement.remove();
-      this.tabs.delete(id);
-    }
-    this.activeTabId = null;
-
-    this.createTab('Workspace 1');
-    await window.api.config.setDefault(name);
-    await this.autoSave();
-    this.updateConfigBar();
-  }
-
-  async duplicateConfig(newName) {
-    if (!newName) return;
-    const data = this.serialize();
-    await window.api.config.save(newName, data);
-    this.currentConfigName = newName;
-    await window.api.config.setDefault(newName);
-    this.updateConfigBar();
-  }
-
-  async switchConfig(name) {
-    if (name === this.currentConfigName) return;
-    await this.autoSave();
-
-    const config = await window.api.config.load(name);
-    if (config && config.tabs && config.tabs.length > 0) {
-      this.currentConfigName = name;
-      await window.api.config.setDefault(name);
-      await this.restoreConfig(config);
-      this.updateConfigBar();
-    }
-  }
-
-  updateConfigBar() {
-    if (this._configBarEl) {
-      const label = this._configBarEl.querySelector('.config-bar-name');
-      if (label) label.textContent = this.currentConfigName || 'Default';
-    }
-  }
-
-  async showConfigMenu(anchorEl) {
-    const configs = await window.api.config.list();
-    const rect = anchorEl.getBoundingClientRect();
-
-    const items = [];
-
-    for (const config of configs) {
-      const isCurrent = config.name === this.currentConfigName;
-      items.push({
-        label: `${isCurrent ? '\u25cf ' : ''}${config.name}`,
-        action: () => this.switchConfig(config.name),
-      });
-    }
-
-    if (configs.length > 0) {
-      items.push({ separator: true });
-    }
-
-    items.push({
-      label: 'New Config...',
-      action: () => this.promptConfigName('New Config', (name) => this.newConfig(name)),
-    });
-
-    items.push({
-      label: 'Duplicate Current...',
-      action: () => {
-        const suggested = `${this.currentConfigName || 'Default'} (copy)`;
-        this.promptConfigName(suggested, (name) => this.duplicateConfig(name));
-      },
-    });
-
-    contextMenu.show(rect.left, rect.top - 4, items);
-  }
-
-  promptConfigName(defaultValue, callback) {
-    const overlay = document.createElement('div');
-    overlay.className = 'config-prompt-overlay';
-
-    const box = document.createElement('div');
-    box.className = 'config-prompt-box';
-
-    const label = document.createElement('label');
-    label.className = 'config-prompt-label';
-    label.textContent = 'Config name';
-
-    const input = document.createElement('input');
-    input.className = 'config-prompt-input';
-    input.type = 'text';
-    input.value = defaultValue;
-
-    const btns = document.createElement('div');
-    btns.className = 'config-prompt-btns';
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'config-prompt-cancel';
-    cancelBtn.textContent = 'Cancel';
-
-    const confirmBtn = document.createElement('button');
-    confirmBtn.className = 'config-prompt-confirm';
-    confirmBtn.textContent = 'Create';
-
-    const close = () => overlay.remove();
-    const confirm = () => {
-      const name = input.value.trim();
-      close();
-      if (name) callback(name);
-    };
-
-    cancelBtn.addEventListener('click', close);
-    confirmBtn.addEventListener('click', confirm);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') confirm();
-      if (e.key === 'Escape') close();
-    });
-
-    btns.appendChild(cancelBtn);
-    btns.appendChild(confirmBtn);
-    box.appendChild(label);
-    box.appendChild(input);
-    box.appendChild(btns);
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-    input.focus();
-    input.select();
+    this.configManager.isRestoring = false;
   }
 
   // ===== NoShortcut =====
@@ -1089,7 +930,7 @@ export class TabManager {
     if (!tab) return;
     tab.noShortcut = !tab.noShortcut;
     this.renderTabBar();
-    this.scheduleAutoSave();
+    this.configManager.scheduleAutoSave();
   }
 
   isActiveNoShortcut() {

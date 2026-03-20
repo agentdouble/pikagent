@@ -1,4 +1,4 @@
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 function getBranch(cwd) {
   try {
@@ -60,8 +60,10 @@ function getLocalChanges(cwd) {
 
 function getFileDiff(cwd, filePath, isStaged) {
   try {
-    const flag = isStaged ? '--cached' : '';
-    const diff = execSync(`git diff ${flag} -- "${filePath}"`, {
+    const args = ['diff'];
+    if (isStaged) args.push('--cached');
+    args.push('--', filePath);
+    const diff = execFileSync('git', args, {
       cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 5 * 1024 * 1024,
     });
     return diff;
