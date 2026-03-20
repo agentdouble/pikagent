@@ -141,8 +141,8 @@ export class BoardView {
     const term = new Terminal({
       theme: getTerminalTheme(),
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 9,
-      lineHeight: 1.1,
+      fontSize: 11,
+      lineHeight: 1.2,
       cursorBlink: false,
       cursorStyle: 'bar',
       scrollback: 10000,
