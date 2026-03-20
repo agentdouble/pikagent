@@ -1,7 +1,7 @@
 /* ===== Board View ===== */
 .board-container {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 20px;
   overflow-y: auto;
@@ -14,19 +14,24 @@
   font-size: 13px;
   padding: 40px 0;
   text-align: center;
+  width: 100%;
 }
 
 /* ===== Board Card ===== */
 .board-card {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 680px;
+  flex: 1 1 480px;
+  max-width: 100%;
+  min-width: 380px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
   background: var(--bg-surface);
-  flex-shrink: 0;
+}
+
+.board-card-hidden {
+  display: none;
 }
 
 .board-card-header {
@@ -36,6 +41,7 @@
   padding: 8px 12px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .board-card-name {
@@ -44,7 +50,12 @@
   color: var(--text-primary);
 }
 
-.board-card-send {
+.board-card-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.board-card-btn {
   background: none;
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -53,22 +64,62 @@
   padding: 4px 10px;
   border-radius: 4px;
   transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
 }
 
-.board-card-send:hover {
+.board-card-btn:hover {
   background: var(--bg-hover);
   border-color: var(--text-secondary);
 }
 
 /* ===== Card Terminal (fully interactive) ===== */
 .board-card-terminal {
-  height: 320px;
+  flex: 1;
+  min-height: 280px;
   overflow: hidden;
 }
 
 .board-card-terminal .xterm {
   height: 100%;
   padding: 4px;
+}
+
+/* Fix cursor bleed outside card bounds */
+.board-card-terminal .xterm-cursor-layer {
+  clip-path: inset(0);
+}
+
+/* ===== Hidden bar (minimized agents) ===== */
+.board-hidden-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.board-hidden-bar:empty {
+  display: none;
+}
+
+.board-hidden-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.board-hidden-chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
 }
 
 /* ===== Board Tab Style ===== */

@@ -51,12 +51,18 @@ export class BoardView {
     board.className = 'board-container';
     this.boardEl = board;
 
+    // Hidden cards bar (shows minimized agents)
+    this.hiddenBarEl = document.createElement('div');
+    this.hiddenBarEl.className = 'board-hidden-bar';
+    board.appendChild(this.hiddenBarEl);
+
     this.emptyEl = document.createElement('div');
     this.emptyEl.className = 'board-empty';
     this.emptyEl.textContent = 'No agents running. Start Claude or Codex in a workspace terminal.';
     board.appendChild(this.emptyEl);
 
     this.container.appendChild(board);
+    this._hiddenTerms = new Set();
   }
 
   async scanAgents() {
@@ -111,12 +117,14 @@ export class BoardView {
     name.textContent = `${info.agent} \u2014 ${info.tabName}`;
     header.appendChild(name);
 
+    const headerBtns = document.createElement('div');
+    headerBtns.className = 'board-card-btns';
+
     const goBtn = document.createElement('button');
-    goBtn.className = 'board-card-send';
+    goBtn.className = 'board-card-btn';
     goBtn.innerHTML = '&#8599;';
     goBtn.title = 'Go to workspace';
     goBtn.addEventListener('click', () => {
-      // Switch to the workspace that owns this terminal
       for (const [tabId, tab] of this.tabManager.tabs) {
         if (tab.isBoard) continue;
         if (tab.terminalPanel?.terminals?.has(termId)) {
@@ -125,7 +133,21 @@ export class BoardView {
         }
       }
     });
-    header.appendChild(goBtn);
+    headerBtns.appendChild(goBtn);
+
+    const hideBtn = document.createElement('button');
+    hideBtn.className = 'board-card-btn';
+    hideBtn.innerHTML = '&minus;';
+    hideBtn.title = 'Hide';
+    hideBtn.addEventListener('click', () => {
+      card.classList.add('board-card-hidden');
+      this._hiddenTerms = this._hiddenTerms || new Set();
+      this._hiddenTerms.add(termId);
+      this._updateHiddenBar();
+    });
+    headerBtns.appendChild(hideBtn);
+
+    header.appendChild(headerBtns);
 
     card.appendChild(header);
 
@@ -174,13 +196,13 @@ export class BoardView {
       } catch {}
     };
 
-    // Insert before empty state element
-    this.boardEl.insertBefore(card, this.emptyEl);
+    // Insert before hidden bar
+    this.boardEl.insertBefore(card, this.hiddenBarEl);
 
     const resizeObs = new ResizeObserver(syncSize);
     resizeObs.observe(termContainer);
 
-    this.cards.set(termId, { element: card, term, fitAddon, unsubData, resizeObs });
+    this.cards.set(termId, { element: card, term, fitAddon, unsubData, resizeObs, info });
 
     // Fit after layout settles
     setTimeout(syncSize, 100);
@@ -194,6 +216,34 @@ export class BoardView {
     data.term.dispose();
     data.element.remove();
     this.cards.delete(termId);
+    if (this._hiddenTerms) this._hiddenTerms.delete(termId);
+    this._updateHiddenBar();
+  }
+
+  _updateHiddenBar() {
+    if (!this.hiddenBarEl) return;
+    this.hiddenBarEl.innerHTML = '';
+    if (!this._hiddenTerms || this._hiddenTerms.size === 0) return;
+
+    for (const termId of this._hiddenTerms) {
+      const card = this.cards.get(termId);
+      if (!card) continue;
+
+      const chip = document.createElement('button');
+      chip.className = 'board-hidden-chip';
+      chip.textContent = card.info.agent + ' \u2014 ' + card.info.tabName;
+      chip.title = 'Show';
+      chip.addEventListener('click', () => {
+        card.element.classList.remove('board-card-hidden');
+        this._hiddenTerms.delete(termId);
+        this._updateHiddenBar();
+        // Refit after unhide
+        setTimeout(() => {
+          try { card.fitAddon.fit(); } catch {}
+        }, 50);
+      });
+      this.hiddenBarEl.appendChild(chip);
+    }
   }
 
   setupListeners() {
