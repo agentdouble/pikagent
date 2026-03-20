@@ -139,12 +139,37 @@ export class TabManager {
     if (this.boardTabId) this.switchTo(this.boardTabId);
   }
 
+  _disposeBoard() {
+    if (this.boardView) {
+      this.boardView.dispose();
+      this.boardView = null;
+    }
+    if (this._boardContainerEl) {
+      this._boardContainerEl.remove();
+      this._boardContainerEl = null;
+    }
+  }
+
   renderBoard() {
     this.workspaceContainer.innerHTML = '';
-    const container = document.createElement('div');
-    container.style.height = '100%';
-    this.workspaceContainer.appendChild(container);
-    this.boardView = new BoardView(container, this);
+
+    if (this.boardView && this._boardContainerEl) {
+      // Reattach existing board (keeps output history)
+      this.workspaceContainer.appendChild(this._boardContainerEl);
+      // Refit all card terminals
+      for (const [, card] of this.boardView.cards) {
+        try { card.fitAddon.fit(); } catch {}
+      }
+      // Rescan for new/removed agents
+      this.boardView.scanAgents();
+    } else {
+      // First time: create board
+      const container = document.createElement('div');
+      container.style.height = '100%';
+      this.workspaceContainer.appendChild(container);
+      this._boardContainerEl = container;
+      this.boardView = new BoardView(container, this);
+    }
   }
 
   // ===== Tab Management =====
@@ -193,10 +218,9 @@ export class TabManager {
     if (this.activeTabId) {
       const prev = this.tabs.get(this.activeTabId);
       if (prev) {
-        if (prev.isBoard && this.boardView) {
-          this.boardView.dispose();
-          this.boardView = null;
-          this.workspaceContainer.innerHTML = '';
+        if (prev.isBoard && this._boardContainerEl) {
+          // Just detach, don't dispose (keep output history alive)
+          this._boardContainerEl.remove();
         } else if (prev.layoutElement) {
           // Capture panel widths before detaching (needs attached DOM)
           this._capturePanelWidths(prev);
@@ -623,6 +647,9 @@ export class TabManager {
 
     this._restoringConfig = true;
 
+    // Reset board view (old terminal IDs will be invalid)
+    this._disposeBoard();
+
     // Dispose all non-board tabs
     for (const [id, tab] of [...this.tabs]) {
       if (tab.isBoard) continue;
@@ -658,6 +685,9 @@ export class TabManager {
     await this.autoSave();
 
     this.currentConfigName = name;
+
+    // Reset board view (old terminal IDs will be invalid)
+    this._disposeBoard();
 
     // Dispose all non-board tabs
     for (const [id, tab] of [...this.tabs]) {
