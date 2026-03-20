@@ -366,6 +366,11 @@
   -webkit-text-fill-color: transparent;
 }
 
+/* Selection must be visible over the transparent textarea text */
+.editor-edit-area .editor-textarea::selection {
+  background: rgba(116, 192, 252, 0.3);
+}
+
 .editor-edit-area .editor-highlight-layer code {
   color: var(--text-primary);
   -webkit-text-fill-color: initial;

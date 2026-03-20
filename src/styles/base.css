@@ -44,7 +44,7 @@ html, body {
 }
 
 ::selection {
-  background: var(--bg-active);
+  background: rgba(116, 192, 252, 0.3);
 }
 
 ::-webkit-scrollbar {
