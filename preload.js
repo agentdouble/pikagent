@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('api', {
   // Shell / Clipboard
   shell: {
     showInFolder: (filePath) => ipcRenderer.invoke('shell:showInFolder', filePath),
+    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   },
   clipboard: {
     write: (text) => ipcRenderer.invoke('clipboard:write', text),

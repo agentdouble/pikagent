@@ -47,7 +47,10 @@ class TerminalInstance {
 
     this.fitAddon = new FitAddon();
     this.terminal.loadAddon(this.fitAddon);
-    this.terminal.loadAddon(new WebLinksAddon());
+    this.terminal.loadAddon(new WebLinksAddon((e, url) => {
+      e.preventDefault();
+      window.api.shell.openExternal(url);
+    }));
 
     this.terminal.open(container);
     this.fit();

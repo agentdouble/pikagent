@@ -87,6 +87,10 @@ function register(getWindow) {
     shell.showItemInFolder(filePath);
   });
 
+  ipcMain.handle('shell:openExternal', (event, url) => {
+    return shell.openExternal(url);
+  });
+
   ipcMain.handle('fs:trash', async (event, filePath) => {
     try {
       await shell.trashItem(filePath);
