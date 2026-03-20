@@ -841,18 +841,24 @@ export class TabManager {
   }
 
   nextTab() {
-    const ids = Array.from(this.tabs.keys());
+    const ids = Array.from(this.tabs.entries())
+      .filter(([, t]) => !t.isBoard)
+      .map(([id]) => id);
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    const next = ids[(idx + 1) % ids.length];
+    // If currently on Board or not found, go to first workspace
+    const next = idx === -1 ? ids[0] : ids[(idx + 1) % ids.length];
     this.switchTo(next);
   }
 
   prevTab() {
-    const ids = Array.from(this.tabs.keys());
+    const ids = Array.from(this.tabs.entries())
+      .filter(([, t]) => !t.isBoard)
+      .map(([id]) => id);
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    const prev = ids[(idx - 1 + ids.length) % ids.length];
+    // If currently on Board or not found, go to last workspace
+    const prev = idx === -1 ? ids[ids.length - 1] : ids[(idx - 1 + ids.length) % ids.length];
     this.switchTo(prev);
   }
 }
