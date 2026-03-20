@@ -391,6 +391,67 @@
   background: rgba(81, 207, 102, 0.1);
 }
 
+/* ===== Theme Grid ===== */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.theme-card {
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.theme-card:hover {
+  border-color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.theme-card.theme-active {
+  border-color: var(--accent);
+}
+
+.theme-preview {
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.theme-preview-line {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.theme-preview-dots {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.theme-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.theme-card-label {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  text-align: center;
+}
+
 /* ===== Workspace Configs ===== */
 .config-save-form {
   display: flex;

@@ -3,30 +3,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from '../utils/id.js';
 import { bus } from '../utils/events.js';
-
-const THEME = {
-  background: '#1a1a2e',
-  foreground: '#e0e0e0',
-  cursor: '#e0e0e0',
-  cursorAccent: '#1a1a2e',
-  selectionBackground: '#3a3a5e',
-  black: '#1a1a2e',
-  red: '#ff6b6b',
-  green: '#51cf66',
-  yellow: '#ffd43b',
-  blue: '#74c0fc',
-  magenta: '#da77f2',
-  cyan: '#66d9e8',
-  white: '#e0e0e0',
-  brightBlack: '#555577',
-  brightRed: '#ff8787',
-  brightGreen: '#69db7c',
-  brightYellow: '#ffe066',
-  brightBlue: '#91d5ff',
-  brightMagenta: '#e599f7',
-  brightCyan: '#99e9f2',
-  brightWhite: '#ffffff',
-};
+import { getTerminalTheme } from '../utils/terminal-themes.js';
 
 class TerminalInstance {
   constructor(container, cwd) {
@@ -36,7 +13,7 @@ class TerminalInstance {
     this.disposed = false;
 
     this.terminal = new Terminal({
-      theme: THEME,
+      theme: getTerminalTheme(),
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
       fontSize: 13,
       lineHeight: 1.3,
@@ -807,6 +784,12 @@ export class TerminalPanel {
     }
 
     return { type: 'terminal', cwd: this.cwd, flex: 1 };
+  }
+
+  applyTheme(theme) {
+    for (const [id, node] of this.terminals) {
+      node.terminal.terminal.options.theme = theme;
+    }
   }
 
   dispose() {

@@ -1,4 +1,5 @@
 import { ShortcutManager } from './shortcuts.js';
+import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme } from '../utils/terminal-themes.js';
 
 export class SettingsModal {
   constructor(shortcutManager) {
@@ -52,13 +53,19 @@ export class SettingsModal {
     navKeybindings.addEventListener('click', () => this.showSection('keybindings'));
     nav.appendChild(navKeybindings);
 
+    const navAppearance = document.createElement('div');
+    navAppearance.className = 'settings-nav-item';
+    navAppearance.textContent = 'Appearance';
+    navAppearance.addEventListener('click', () => this.showSection('appearance'));
+    nav.appendChild(navAppearance);
+
     const navConfigs = document.createElement('div');
     navConfigs.className = 'settings-nav-item';
     navConfigs.textContent = 'Workspace Configs';
     navConfigs.addEventListener('click', () => this.showSection('configs'));
     nav.appendChild(navConfigs);
 
-    this.navItems = { keybindings: navKeybindings, configs: navConfigs };
+    this.navItems = { keybindings: navKeybindings, appearance: navAppearance, configs: navConfigs };
 
     // Content
     this.content = document.createElement('div');
@@ -98,6 +105,8 @@ export class SettingsModal {
     }
     if (section === 'keybindings') {
       this.renderKeybindings();
+    } else if (section === 'appearance') {
+      this.renderAppearance();
     } else if (section === 'configs') {
       this.renderConfigs();
     }
@@ -117,6 +126,91 @@ export class SettingsModal {
     setTimeout(() => {
       if (this.overlay.parentElement) this.overlay.remove();
     }, 200);
+  }
+
+  renderAppearance() {
+    this.content.innerHTML = '';
+
+    const heading = document.createElement('div');
+    heading.className = 'settings-section-header';
+    const headingTitle = document.createElement('h3');
+    headingTitle.textContent = 'Terminal Theme';
+    heading.appendChild(headingTitle);
+    this.content.appendChild(heading);
+
+    const currentThemeName = getTerminalThemeName();
+    const grid = document.createElement('div');
+    grid.className = 'theme-grid';
+
+    for (const [name, theme] of Object.entries(TERMINAL_THEMES)) {
+      const card = document.createElement('div');
+      card.className = 'theme-card';
+      if (name === currentThemeName) card.classList.add('theme-active');
+
+      // Preview block
+      const preview = document.createElement('div');
+      preview.className = 'theme-preview';
+      preview.style.background = theme.background;
+
+      const colors = [theme.red, theme.green, theme.yellow, theme.blue, theme.magenta, theme.cyan];
+      const line1 = document.createElement('div');
+      line1.className = 'theme-preview-line';
+      const prompt = document.createElement('span');
+      prompt.textContent = '$ ';
+      prompt.style.color = theme.green;
+      line1.appendChild(prompt);
+      const cmd = document.createElement('span');
+      cmd.textContent = 'npm start';
+      cmd.style.color = theme.foreground;
+      line1.appendChild(cmd);
+      preview.appendChild(line1);
+
+      const line2 = document.createElement('div');
+      line2.className = 'theme-preview-line';
+      const arrow = document.createElement('span');
+      arrow.textContent = '> ';
+      arrow.style.color = theme.cyan;
+      line2.appendChild(arrow);
+      const msg = document.createElement('span');
+      msg.textContent = 'ready';
+      msg.style.color = theme.green;
+      line2.appendChild(msg);
+      preview.appendChild(line2);
+
+      // Color dots
+      const dots = document.createElement('div');
+      dots.className = 'theme-preview-dots';
+      for (const c of colors) {
+        const dot = document.createElement('span');
+        dot.className = 'theme-dot';
+        dot.style.background = c;
+        dots.appendChild(dot);
+      }
+      preview.appendChild(dots);
+
+      card.appendChild(preview);
+
+      const label = document.createElement('div');
+      label.className = 'theme-card-label';
+      label.textContent = name;
+      card.appendChild(label);
+
+      card.addEventListener('click', () => {
+        setTerminalTheme(name);
+        // Apply to all open terminals
+        if (this.tabManager) {
+          const newTheme = getTerminalTheme();
+          for (const [, tab] of this.tabManager.tabs) {
+            if (tab.terminalPanel) tab.terminalPanel.applyTheme(newTheme);
+          }
+        }
+        this.renderAppearance();
+      });
+
+      grid.appendChild(card);
+    }
+
+    this.content.appendChild(grid);
   }
 
   renderKeybindings() {

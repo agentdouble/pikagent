@@ -2,30 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { bus } from '../utils/events.js';
-
-const THEME = {
-  background: '#1a1a2e',
-  foreground: '#e0e0e0',
-  cursor: '#e0e0e0',
-  cursorAccent: '#1a1a2e',
-  selectionBackground: '#3a3a5e',
-  black: '#1a1a2e',
-  red: '#ff6b6b',
-  green: '#51cf66',
-  yellow: '#ffd43b',
-  blue: '#74c0fc',
-  magenta: '#da77f2',
-  cyan: '#66d9e8',
-  white: '#e0e0e0',
-  brightBlack: '#555577',
-  brightRed: '#ff8787',
-  brightGreen: '#69db7c',
-  brightYellow: '#ffe066',
-  brightBlue: '#91d5ff',
-  brightMagenta: '#e599f7',
-  brightCyan: '#99e9f2',
-  brightWhite: '#ffffff',
-};
+import { getTerminalTheme } from '../utils/terminal-themes.js';
 
 export class BoardView {
   constructor(container, tabManager) {
@@ -162,7 +139,7 @@ export class BoardView {
     card.appendChild(termContainer);
 
     const term = new Terminal({
-      theme: THEME,
+      theme: getTerminalTheme(),
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
       fontSize: 9,
       lineHeight: 1.1,
