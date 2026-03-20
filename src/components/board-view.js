@@ -169,7 +169,7 @@ export class BoardView {
     const send = () => {
       const cmd = input.value;
       if (cmd) {
-        window.api.pty.write({ id: termId, data: cmd + '\n' });
+        window.api.pty.write({ id: termId, data: cmd + '\r' });
         input.value = '';
       }
     };
