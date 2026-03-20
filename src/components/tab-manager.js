@@ -1110,6 +1110,10 @@ export class TabManager {
   }
 
   focusDirection(direction) {
+    if (this.sidebarMode === 'board' && this.boardView) {
+      this.boardView.focusDirection(direction);
+      return;
+    }
     const tab = this.tabs.get(this.activeTabId);
     if (tab && tab.terminalPanel) tab.terminalPanel.focusDirection(direction);
   }

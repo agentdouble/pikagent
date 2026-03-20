@@ -243,6 +243,28 @@ export class BoardView {
     bus.on('terminal:exited', this._onExited);
   }
 
+  focusDirection(dir) {
+    const visibleCards = [...this.cards.entries()]
+      .filter(([id]) => !this._hiddenTerms?.has(id));
+    if (visibleCards.length === 0) return;
+
+    // Find currently focused card
+    const focusedIdx = visibleCards.findIndex(([, data]) =>
+      data.element.contains(document.activeElement) || data.term.textarea === document.activeElement
+    );
+
+    let nextIdx;
+    if (focusedIdx === -1) {
+      nextIdx = 0;
+    } else if (dir === 'left' || dir === 'up') {
+      nextIdx = (focusedIdx - 1 + visibleCards.length) % visibleCards.length;
+    } else {
+      nextIdx = (focusedIdx + 1) % visibleCards.length;
+    }
+
+    visibleCards[nextIdx][1].term.focus();
+  }
+
   dispose() {
     this.disposed = true;
 
