@@ -4,13 +4,17 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { bus } from '../utils/events.js';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 
-const IDLE_THRESHOLD_MS = 5000; // 5s without output = waiting for input
+// Minimum bytes of meaningful output per poll interval to consider agent "working".
+// ANSI escape codes (cursor moves, color resets, status bar refreshes) produce
+// small data bursts even when idle. Real agent output (streaming text, tool
+// results) is much larger. 200 bytes/3s is well above idle noise.
+const DATA_VOLUME_THRESHOLD = 200;
 
 export class BoardView {
   constructor(container, tabManager) {
     this.container = container;
     this.tabManager = tabManager;
-    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs, info, status, lastDataTime }
+    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs, info, status, dataBytes }
     this.disposed = false;
 
     this.render();
@@ -81,16 +85,16 @@ export class BoardView {
     }
   }
 
-  /** Check all cards and switch idle ones to "waiting" status */
+  /** Check data volume since last poll and toggle running/waiting status */
   _checkIdleCards() {
-    const now = Date.now();
     for (const [, data] of this.cards) {
-      const idle = now - data.lastDataTime > IDLE_THRESHOLD_MS;
-
-      if (idle && data.status === 'running') {
+      if (data.dataBytes >= DATA_VOLUME_THRESHOLD && data.status !== 'running') {
+        this._setCardStatus(data, 'running');
+      } else if (data.dataBytes < DATA_VOLUME_THRESHOLD && data.status !== 'waiting') {
         this._setCardStatus(data, 'waiting');
       }
-      // Running status is restored in the onData handler, not here
+      // Reset counter for next interval
+      data.dataBytes = 0;
     }
   }
 
@@ -215,17 +219,13 @@ export class BoardView {
       window.api.pty.write({ id: termId, data });
     });
 
-    const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', lastDataTime: Date.now() };
+    const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
 
-    // PTY output → render in board terminal + track activity
+    // PTY output → render in board terminal + accumulate data volume
     const unsubData = window.api.pty.onData(({ id, data }) => {
       if (id === termId) {
         term.write(data);
-        cardData.lastDataTime = Date.now();
-        // Switch back to running if we were waiting
-        if (cardData.status === 'waiting') {
-          this._setCardStatus(cardData, 'running');
-        }
+        cardData.dataBytes += data.length;
       }
     });
     cardData.unsubData = unsubData;
