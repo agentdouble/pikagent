@@ -159,12 +159,19 @@ export class ShortcutManager {
     this.loadBindings();
   }
 
+  // Actions that still work even in NoShortcut mode
+  static ALWAYS_ALLOWED = new Set(['nextTab', 'prevTab', 'showBoard']);
+
   listen() {
     window.addEventListener('keydown', (e) => {
       const combo = this.eventToCombo(e);
       const actionId = this.bindings.get(combo);
 
       if (actionId) {
+        // In NoShortcut mode, only allow tab navigation
+        if (this.tabManager.isActiveNoShortcut() && !ShortcutManager.ALWAYS_ALLOWED.has(actionId)) {
+          return;
+        }
         const handler = this.actions.get(actionId);
         if (handler) {
           e.preventDefault();

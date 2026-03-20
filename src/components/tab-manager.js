@@ -12,6 +12,7 @@ class WorkspaceTab {
     this.name = name;
     this.cwd = cwd;
     this.isBoard = false;
+    this.noShortcut = false;
     this.fileTree = null;
     this.terminalPanel = null;
     this.fileViewer = null;
@@ -283,6 +284,7 @@ export class TabManager {
       tabEl.className = 'tab';
       if (tab.isBoard) tabEl.classList.add('tab-board');
       if (id === this.activeTabId) tabEl.classList.add('active');
+      if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
 
       const nameEl = document.createElement('span');
       nameEl.className = 'tab-name';
@@ -312,6 +314,10 @@ export class TabManager {
           e.preventDefault();
           contextMenu.show(e.clientX, e.clientY, [
             { label: 'Rename', action: () => this.renameTab(id, nameEl) },
+            {
+              label: tab.noShortcut ? '✓ NoShortcut' : 'NoShortcut',
+              action: () => this.toggleNoShortcut(id),
+            },
             { separator: true },
             { label: 'Close', action: () => this.closeTab(id) },
           ]);
@@ -607,6 +613,7 @@ export class TabManager {
       const tabData = {
         name: tab.name,
         cwd: tab.cwd,
+        noShortcut: tab.noShortcut || false,
         splitTree: null,
         panels: {},
       };
@@ -664,6 +671,7 @@ export class TabManager {
     for (const tabData of config.tabs) {
       const id = generateId('tab');
       const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || this.defaultCwd || '/');
+      tab.noShortcut = tabData.noShortcut || false;
       tab._restoreData = tabData;
       this.tabs.set(id, tab);
     }
@@ -821,6 +829,21 @@ export class TabManager {
     document.body.appendChild(overlay);
     input.focus();
     input.select();
+  }
+
+  // ===== NoShortcut =====
+
+  toggleNoShortcut(id) {
+    const tab = this.tabs.get(id);
+    if (!tab || tab.isBoard) return;
+    tab.noShortcut = !tab.noShortcut;
+    this.renderTabBar();
+    this.scheduleAutoSave();
+  }
+
+  isActiveNoShortcut() {
+    const tab = this.tabs.get(this.activeTabId);
+    return tab ? tab.noShortcut : false;
   }
 
   // ===== Shortcut helpers =====

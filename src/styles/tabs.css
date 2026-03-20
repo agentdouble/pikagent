@@ -76,6 +76,16 @@
   color: var(--green);
 }
 
+.tab.tab-no-shortcut {
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.tab.tab-no-shortcut.active {
+  opacity: 0.55;
+  border-bottom-color: var(--text-muted);
+}
+
 .tab-rename-input {
   background: var(--bg-primary);
   color: var(--text-primary);
