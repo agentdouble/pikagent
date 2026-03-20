@@ -1,16 +1,16 @@
-const STORAGE_KEY = 'terminal-app:keybindings';
+const STORAGE_KEY = 'pickagent:keybindings';
 
 // Default actions with their default keybindings
 const DEFAULT_BINDINGS = [
   {
+    id: 'splitVertical',
+    label: 'Split Vertical',
+    keys: ['meta+d', 'control+d'],
+  },
+  {
     id: 'splitHorizontal',
     label: 'Split Horizontal',
     keys: ['shift+meta+d', 'shift+control+d'],
-  },
-  {
-    id: 'splitVertical',
-    label: 'Split Vertical',
-    keys: ['shift+meta+e', 'shift+control+e'],
   },
   {
     id: 'newTab',
@@ -26,6 +26,36 @@ const DEFAULT_BINDINGS = [
     id: 'openSettings',
     label: 'Open Settings',
     keys: ['meta+,', 'control+,'],
+  },
+  {
+    id: 'focusLeft',
+    label: 'Focus Panel Left',
+    keys: ['control+arrowleft'],
+  },
+  {
+    id: 'focusRight',
+    label: 'Focus Panel Right',
+    keys: ['control+arrowright'],
+  },
+  {
+    id: 'focusUp',
+    label: 'Focus Panel Up',
+    keys: ['control+arrowup'],
+  },
+  {
+    id: 'focusDown',
+    label: 'Focus Panel Down',
+    keys: ['control+arrowdown'],
+  },
+  {
+    id: 'nextTab',
+    label: 'Next Workspace',
+    keys: ['control+tab'],
+  },
+  {
+    id: 'prevTab',
+    label: 'Previous Workspace',
+    keys: ['shift+control+tab'],
   },
 ];
 
@@ -53,6 +83,12 @@ export class ShortcutManager {
     this.actions.set('openSettings', () => {
       if (this.onOpenSettings) this.onOpenSettings();
     });
+    this.actions.set('focusLeft', () => this.tabManager.focusDirection('left'));
+    this.actions.set('focusRight', () => this.tabManager.focusDirection('right'));
+    this.actions.set('focusUp', () => this.tabManager.focusDirection('up'));
+    this.actions.set('focusDown', () => this.tabManager.focusDirection('down'));
+    this.actions.set('nextTab', () => this.tabManager.nextTab());
+    this.actions.set('prevTab', () => this.tabManager.prevTab());
   }
 
   loadBindings() {

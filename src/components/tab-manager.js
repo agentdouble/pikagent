@@ -713,4 +713,25 @@ export class TabManager {
     const tab = this.tabs.get(this.activeTabId);
     if (tab && tab.terminalPanel) tab.terminalPanel.splitActive('vertical');
   }
+
+  focusDirection(direction) {
+    const tab = this.tabs.get(this.activeTabId);
+    if (tab && tab.terminalPanel) tab.terminalPanel.focusDirection(direction);
+  }
+
+  nextTab() {
+    const ids = Array.from(this.tabs.keys());
+    if (ids.length < 2) return;
+    const idx = ids.indexOf(this.activeTabId);
+    const next = ids[(idx + 1) % ids.length];
+    this.switchTo(next);
+  }
+
+  prevTab() {
+    const ids = Array.from(this.tabs.keys());
+    if (ids.length < 2) return;
+    const idx = ids.indexOf(this.activeTabId);
+    const prev = ids[(idx - 1 + ids.length) % ids.length];
+    this.switchTo(prev);
+  }
 }

@@ -527,6 +527,41 @@ export class TerminalPanel {
     this.split(this.activeTerminal, direction);
   }
 
+  focusDirection(dir) {
+    if (!this.activeTerminal || this.terminals.size < 2) return;
+
+    const activeRect = this.activeTerminal.element.getBoundingClientRect();
+    const cx = activeRect.left + activeRect.width / 2;
+    const cy = activeRect.top + activeRect.height / 2;
+
+    let best = null;
+    let bestDist = Infinity;
+
+    for (const [id, node] of this.terminals) {
+      if (node === this.activeTerminal) continue;
+
+      const rect = node.element.getBoundingClientRect();
+      const tx = rect.left + rect.width / 2;
+      const ty = rect.top + rect.height / 2;
+
+      // Check if the candidate is in the right direction
+      let inDirection = false;
+      if (dir === 'left' && tx < cx) inDirection = true;
+      if (dir === 'right' && tx > cx) inDirection = true;
+      if (dir === 'up' && ty < cy) inDirection = true;
+      if (dir === 'down' && ty > cy) inDirection = true;
+      if (!inDirection) continue;
+
+      const dist = Math.hypot(tx - cx, ty - cy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = node;
+      }
+    }
+
+    if (best) this.setActive(best);
+  }
+
   split(targetNode, direction) {
     const parentEl = targetNode.element.parentElement;
     const parentIsSameDirection =
