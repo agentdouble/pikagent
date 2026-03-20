@@ -124,10 +124,3 @@
   border-color: var(--text-secondary);
 }
 
-/* ===== Board Tab Style ===== */
-.tab.tab-board {
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-  font-size: 11px;
-}

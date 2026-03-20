@@ -11,7 +11,6 @@ class WorkspaceTab {
     this.id = id;
     this.name = name;
     this.cwd = cwd;
-    this.isBoard = false;
     this.noShortcut = false;
     this.fileTree = null;
     this.terminalPanel = null;
@@ -37,8 +36,9 @@ export class TabManager {
     this._restoringConfig = false;
     this.currentConfigName = null;
     this._configBarEl = null;
-    this.boardTabId = null;
     this.boardView = null;
+    this._boardContainerEl = null;
+    this.sidebarMode = 'work';
 
     this.init();
   }
@@ -46,8 +46,8 @@ export class TabManager {
   async init() {
     this.defaultCwd = await window.api.fs.homedir();
 
-    // Create the Board tab (always first)
-    this.createBoardTab();
+    // Render the activity bar (work/board sidebar)
+    this.renderActivityBar();
 
     // Auto-restore default config on startup
     try {
@@ -75,7 +75,7 @@ export class TabManager {
     // Listen for new terminals created via split
     bus.on('terminal:created', ({ id, cwd }) => {
       const tab = this._findTabForTerminal(id) || this.tabs.get(this.activeTabId);
-      if (tab && !tab.isBoard && tab.fileTree) {
+      if (tab && tab.fileTree) {
         tab.fileTree.setTerminalRoot(id, cwd);
       }
       this.scheduleAutoSave();
@@ -84,7 +84,6 @@ export class TabManager {
     // Listen for terminal removals
     bus.on('terminal:removed', ({ id }) => {
       for (const [, tab] of this.tabs) {
-        if (tab.isBoard) continue;
         if (tab.fileTree) tab.fileTree.removeTerminal(id);
       }
       this.scheduleAutoSave();
@@ -99,46 +98,106 @@ export class TabManager {
   // Find which tab owns a terminal
   _findTabForTerminal(termId) {
     for (const [, tab] of this.tabs) {
-      if (tab.isBoard) continue;
       if (tab.terminalPanel?.terminals?.has(termId)) return tab;
     }
     return null;
   }
 
-  scheduleAutoSave() {
-    if (this._restoringConfig) return;
-    if (this._saveTimer) clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => {
-      this.autoSave();
-    }, 500);
+  // ===== Activity Bar =====
+
+  renderActivityBar() {
+    const activityBar = document.getElementById('activity-bar');
+    if (!activityBar) return;
+    activityBar.innerHTML = '';
+
+    const topSection = document.createElement('div');
+    topSection.className = 'activity-bar-top';
+
+    // Work button
+    const workBtn = document.createElement('button');
+    workBtn.className = 'activity-btn';
+    if (this.sidebarMode === 'work') workBtn.classList.add('active');
+    workBtn.textContent = 'work';
+    workBtn.addEventListener('click', () => this.setSidebarMode('work'));
+    topSection.appendChild(workBtn);
+
+    // Board button
+    const boardBtn = document.createElement('button');
+    boardBtn.className = 'activity-btn';
+    if (this.sidebarMode === 'board') boardBtn.classList.add('active');
+    boardBtn.textContent = 'BOARD';
+    boardBtn.addEventListener('click', () => this.setSidebarMode('board'));
+    topSection.appendChild(boardBtn);
+
+    // More button
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'activity-btn';
+    moreBtn.textContent = '\u2026';
+    topSection.appendChild(moreBtn);
+
+    activityBar.appendChild(topSection);
+
+    // Bottom section with settings
+    const bottomSection = document.createElement('div');
+    bottomSection.className = 'activity-bar-bottom';
+
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'activity-btn activity-btn-settings';
+    settingsBtn.innerHTML = '<span class="activity-btn-icon">&#9881;</span>Settings';
+    settingsBtn.addEventListener('click', () => {
+      if (this.onOpenSettings) this.onOpenSettings();
+    });
+    bottomSection.appendChild(settingsBtn);
+
+    activityBar.appendChild(bottomSection);
   }
 
-  async autoSave() {
-    try {
-      const data = this.serialize();
-      const name = this.currentConfigName || 'Default';
-      await window.api.config.save(name, data);
-      await window.api.config.setDefault(name);
-      this.currentConfigName = name;
-      this.updateConfigBar();
-    } catch (e) {
-      console.warn('Auto-save failed:', e);
+  setSidebarMode(mode) {
+    if (mode === this.sidebarMode) return;
+
+    this.sidebarMode = mode;
+
+    if (mode === 'board') {
+      // Detach current workspace tab (keep alive)
+      if (this.activeTabId) {
+        const prev = this.tabs.get(this.activeTabId);
+        if (prev && prev.layoutElement) {
+          this._capturePanelWidths(prev);
+          prev.layoutElement.remove();
+        }
+      }
+      this.renderBoard();
+    } else {
+      // Detach board (keep alive)
+      if (this._boardContainerEl) {
+        this._boardContainerEl.remove();
+      }
+      // Reattach active workspace tab
+      const tab = this.tabs.get(this.activeTabId);
+      if (tab) {
+        if (tab.layoutElement) {
+          this.workspaceContainer.innerHTML = '';
+          this.workspaceContainer.appendChild(tab.layoutElement);
+          if (tab.terminalPanel) {
+            tab.terminalPanel.fitAll();
+            if (tab.terminalPanel.activeTerminal) {
+              tab.terminalPanel.activeTerminal.terminal.focus();
+            }
+          }
+        } else {
+          this.renderWorkspace(tab);
+        }
+      }
     }
-  }
 
-  // ===== Board Tab =====
-
-  createBoardTab() {
-    const id = generateId('tab');
-    const tab = new WorkspaceTab(id, 'BOARD', null);
-    tab.isBoard = true;
-    this.boardTabId = id;
-    this.tabs.set(id, tab);
+    this.renderActivityBar();
   }
 
   switchToBoard() {
-    if (this.boardTabId) this.switchTo(this.boardTabId);
+    this.setSidebarMode('board');
   }
+
+  // ===== Board =====
 
   _disposeBoard() {
     if (this.boardView) {
@@ -173,12 +232,34 @@ export class TabManager {
     }
   }
 
+  // ===== Auto Save =====
+
+  scheduleAutoSave() {
+    if (this._restoringConfig) return;
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      this.autoSave();
+    }, 500);
+  }
+
+  async autoSave() {
+    try {
+      const data = this.serialize();
+      const name = this.currentConfigName || 'Default';
+      await window.api.config.save(name, data);
+      await window.api.config.setDefault(name);
+      this.currentConfigName = name;
+      this.updateConfigBar();
+    } catch (e) {
+      console.warn('Auto-save failed:', e);
+    }
+  }
+
   // ===== Tab Management =====
 
   createTab(name = null) {
     const id = generateId('tab');
-    const nonBoardCount = Array.from(this.tabs.values()).filter((t) => !t.isBoard).length;
-    const tabName = name || `Workspace ${nonBoardCount + 1}`;
+    const tabName = name || `Workspace ${this.tabs.size + 1}`;
     const tab = new WorkspaceTab(id, tabName, this.defaultCwd || '/');
     this.tabs.set(id, tab);
     this.renderTabBar();
@@ -189,7 +270,7 @@ export class TabManager {
 
   closeTab(id) {
     const tab = this.tabs.get(id);
-    if (!tab || tab.isBoard) return;
+    if (!tab) return;
 
     // Dispose terminal panel (kills PTY processes)
     if (tab.terminalPanel) tab.terminalPanel.dispose();
@@ -197,14 +278,14 @@ export class TabManager {
     if (tab.layoutElement) tab.layoutElement.remove();
     this.tabs.delete(id);
 
-    const nonBoardTabs = Array.from(this.tabs.values()).filter((t) => !t.isBoard);
-    if (nonBoardTabs.length === 0) {
+    if (this.tabs.size === 0) {
       this.createTab();
       return;
     }
 
     if (this.activeTabId === id) {
-      this.switchTo(nonBoardTabs[0].id);
+      const remaining = Array.from(this.tabs.values());
+      this.switchTo(remaining[0].id);
     }
 
     this.renderTabBar();
@@ -215,27 +296,29 @@ export class TabManager {
     const tab = this.tabs.get(id);
     if (!tab || id === this.activeTabId) return;
 
+    // If in board mode, switch back to work mode
+    if (this.sidebarMode === 'board') {
+      if (this._boardContainerEl) {
+        this._boardContainerEl.remove();
+      }
+      this.sidebarMode = 'work';
+      this.renderActivityBar();
+    }
+
     // Detach outgoing tab (keep terminals alive!)
     if (this.activeTabId) {
       const prev = this.tabs.get(this.activeTabId);
-      if (prev) {
-        if (prev.isBoard && this._boardContainerEl) {
-          // Just detach, don't dispose (keep output history alive)
-          this._boardContainerEl.remove();
-        } else if (prev.layoutElement) {
-          // Capture panel widths before detaching (needs attached DOM)
-          this._capturePanelWidths(prev);
-          prev.layoutElement.remove();
-        }
+      if (prev && prev.layoutElement) {
+        // Capture panel widths before detaching (needs attached DOM)
+        this._capturePanelWidths(prev);
+        prev.layoutElement.remove();
       }
     }
 
     this.activeTabId = id;
     this.renderTabBar();
 
-    if (tab.isBoard) {
-      this.renderBoard();
-    } else if (tab.layoutElement) {
+    if (tab.layoutElement) {
       // Reattach existing layout (terminals stay alive!)
       this.workspaceContainer.innerHTML = '';
       this.workspaceContainer.appendChild(tab.layoutElement);
@@ -277,28 +360,23 @@ export class TabManager {
   renderTabBar() {
     this.tabBar.innerHTML = '';
 
-    const nonBoardCount = Array.from(this.tabs.values()).filter((t) => !t.isBoard).length;
     this._tabElements = new Map(); // id -> DOM element (for drag targeting)
 
     for (const [id, tab] of this.tabs) {
       const tabEl = document.createElement('div');
       tabEl.className = 'tab';
       tabEl.dataset.tabId = id;
-      if (tab.isBoard) tabEl.classList.add('tab-board');
       if (id === this.activeTabId) tabEl.classList.add('active');
       if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
 
       const nameEl = document.createElement('span');
       nameEl.className = 'tab-name';
       nameEl.textContent = tab.name;
-
-      if (!tab.isBoard) {
-        nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
-      }
+      nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
       tabEl.appendChild(nameEl);
 
-      // Close button (only non-board, only if >1 workspace tab)
-      if (!tab.isBoard && nonBoardCount > 1) {
+      // Show close button when there are more than 1 tab
+      if (this.tabs.size > 1) {
         const closeEl = document.createElement('span');
         closeEl.className = 'tab-close';
         closeEl.textContent = '\u00d7';
@@ -311,25 +389,21 @@ export class TabManager {
 
       tabEl.addEventListener('click', () => this.switchTo(id));
 
-      // Drag to reorder (non-board tabs only)
-      if (!tab.isBoard) {
-        this.setupTabDrag(tabEl, id);
-      }
+      // Drag to reorder
+      this.setupTabDrag(tabEl, id);
 
-      if (!tab.isBoard) {
-        tabEl.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          contextMenu.show(e.clientX, e.clientY, [
-            { label: 'Rename', action: () => this.renameTab(id, nameEl) },
-            {
-              label: tab.noShortcut ? '✓ NoShortcut' : 'NoShortcut',
-              action: () => this.toggleNoShortcut(id),
-            },
-            { separator: true },
-            { label: 'Close', action: () => this.closeTab(id) },
-          ]);
-        });
-      }
+      tabEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        contextMenu.show(e.clientX, e.clientY, [
+          { label: 'Rename', action: () => this.renameTab(id, nameEl) },
+          {
+            label: tab.noShortcut ? '\u2713 NoShortcut' : 'NoShortcut',
+            action: () => this.toggleNoShortcut(id),
+          },
+          { separator: true },
+          { label: 'Close', action: () => this.closeTab(id) },
+        ]);
+      });
 
       this.tabBar.appendChild(tabEl);
       this._tabElements.set(id, tabEl);
@@ -410,7 +484,7 @@ export class TabManager {
 
     for (const [id, el] of this._tabElements) {
       const tab = this.tabs.get(id);
-      if (tab.isBoard || id === dragId) continue;
+      if (id === dragId) continue;
 
       const rect = el.getBoundingClientRect();
       if (mx >= rect.left && mx <= rect.right) {
@@ -450,7 +524,6 @@ export class TabManager {
 
   renameTab(id, nameEl) {
     const tab = this.tabs.get(id);
-    if (tab.isBoard) return;
     const input = document.createElement('input');
     input.className = 'tab-rename-input';
     input.value = tab.name;
@@ -503,15 +576,6 @@ export class TabManager {
     });
     this._configBarEl = configBar;
     leftPanel.appendChild(configBar);
-
-    // Gear button at bottom of left panel
-    const gearBtn = document.createElement('button');
-    gearBtn.className = 'settings-gear-btn';
-    gearBtn.innerHTML = '<span class="settings-gear-icon">&#9881;</span> Settings';
-    gearBtn.addEventListener('click', () => {
-      if (this.onOpenSettings) this.onOpenSettings();
-    });
-    leftPanel.appendChild(gearBtn);
 
     // --- Left resize handle ---
     const leftHandle = document.createElement('div');
@@ -719,8 +783,6 @@ export class TabManager {
     let i = 0;
 
     for (const [id, tab] of this.tabs) {
-      if (tab.isBoard) continue; // Don't serialize board tab
-
       if (id === this.activeTabId) activeTabIndex = i;
 
       const tabData = {
@@ -770,9 +832,8 @@ export class TabManager {
     // Reset board view (old terminal IDs will be invalid)
     this._disposeBoard();
 
-    // Dispose all non-board tabs
+    // Dispose all existing tabs
     for (const [id, tab] of [...this.tabs]) {
-      if (tab.isBoard) continue;
       if (tab.terminalPanel) tab.terminalPanel.dispose();
       if (tab.fileTree) tab.fileTree.dispose();
       if (tab.layoutElement) tab.layoutElement.remove();
@@ -780,7 +841,7 @@ export class TabManager {
     }
     this.activeTabId = null;
 
-    // Create tabs from config (board tab is preserved as first)
+    // Create tabs from config
     for (const tabData of config.tabs) {
       const id = generateId('tab');
       const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || this.defaultCwd || '/');
@@ -791,12 +852,10 @@ export class TabManager {
 
     this.renderTabBar();
 
-    // Switch to the active workspace tab
-    const nonBoardIds = Array.from(this.tabs.entries())
-      .filter(([, t]) => !t.isBoard)
-      .map(([id]) => id);
-    const activeIdx = Math.min(config.activeTabIndex || 0, nonBoardIds.length - 1);
-    this.switchTo(nonBoardIds[activeIdx]);
+    // Switch to the active tab
+    const tabIds = Array.from(this.tabs.keys());
+    const activeIdx = Math.min(config.activeTabIndex || 0, tabIds.length - 1);
+    this.switchTo(tabIds[activeIdx]);
 
     this._restoringConfig = false;
   }
@@ -810,9 +869,8 @@ export class TabManager {
     // Reset board view (old terminal IDs will be invalid)
     this._disposeBoard();
 
-    // Dispose all non-board tabs
+    // Dispose all existing tabs
     for (const [id, tab] of [...this.tabs]) {
-      if (tab.isBoard) continue;
       if (tab.terminalPanel) tab.terminalPanel.dispose();
       if (tab.fileTree) tab.fileTree.dispose();
       if (tab.layoutElement) tab.layoutElement.remove();
@@ -948,7 +1006,7 @@ export class TabManager {
 
   toggleNoShortcut(id) {
     const tab = this.tabs.get(id);
-    if (!tab || tab.isBoard) return;
+    if (!tab) return;
     tab.noShortcut = !tab.noShortcut;
     this.renderTabBar();
     this.scheduleAutoSave();
@@ -963,38 +1021,32 @@ export class TabManager {
 
   splitHorizontal() {
     const tab = this.tabs.get(this.activeTabId);
-    if (tab && !tab.isBoard && tab.terminalPanel) tab.terminalPanel.splitActive('horizontal');
+    if (tab && tab.terminalPanel) tab.terminalPanel.splitActive('horizontal');
   }
 
   splitVertical() {
     const tab = this.tabs.get(this.activeTabId);
-    if (tab && !tab.isBoard && tab.terminalPanel) tab.terminalPanel.splitActive('vertical');
+    if (tab && tab.terminalPanel) tab.terminalPanel.splitActive('vertical');
   }
 
   focusDirection(direction) {
     const tab = this.tabs.get(this.activeTabId);
-    if (tab && !tab.isBoard && tab.terminalPanel) tab.terminalPanel.focusDirection(direction);
+    if (tab && tab.terminalPanel) tab.terminalPanel.focusDirection(direction);
   }
 
   nextTab() {
-    const ids = Array.from(this.tabs.entries())
-      .filter(([, t]) => !t.isBoard)
-      .map(([id]) => id);
+    const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    // If currently on Board or not found, go to first workspace
-    const next = idx === -1 ? ids[0] : ids[(idx + 1) % ids.length];
+    const next = ids[(idx + 1) % ids.length];
     this.switchTo(next);
   }
 
   prevTab() {
-    const ids = Array.from(this.tabs.entries())
-      .filter(([, t]) => !t.isBoard)
-      .map(([id]) => id);
+    const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    // If currently on Board or not found, go to last workspace
-    const prev = idx === -1 ? ids[ids.length - 1] : ids[(idx - 1 + ids.length) % ids.length];
+    const prev = ids[(idx - 1 + ids.length) % ids.length];
     this.switchTo(prev);
   }
 }

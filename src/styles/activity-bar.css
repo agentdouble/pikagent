@@ -1,0 +1,75 @@
+/* ===== Main Content Wrapper ===== */
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== Activity Bar ===== */
+.activity-bar {
+  display: flex;
+  flex-direction: column;
+  width: 56px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  flex-shrink: 0;
+  transition: width 0.2s;
+  overflow: hidden;
+}
+
+.activity-bar.collapsed {
+  width: 0 !important;
+  border-right: none;
+}
+
+.activity-bar-top {
+  display: flex;
+  flex-direction: column;
+  padding-top: 6px;
+  gap: 2px;
+}
+
+.activity-bar-bottom {
+  margin-top: auto;
+  padding-bottom: 8px;
+}
+
+/* ===== Activity Bar Buttons ===== */
+.activity-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 4px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  font-family: var(--font-ui);
+  border-left: 2px solid transparent;
+}
+
+.activity-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.activity-btn.active {
+  color: var(--text-primary);
+  border-left-color: var(--accent);
+}
+
+.activity-btn-settings {
+  font-size: 8px;
+  gap: 4px;
+  flex-direction: column;
+}
+
+.activity-btn-settings .activity-btn-icon {
+  font-size: 16px;
+}

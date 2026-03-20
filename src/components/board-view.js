@@ -96,8 +96,8 @@ export class BoardView {
 
   _getTabNameForTerminal(termId) {
     for (const [, tab] of this.tabManager.tabs) {
-      if (tab.isBoard) continue;
-      if (tab.terminalPanel?.terminals?.has(termId)) {
+      if (!tab.terminalPanel) continue;
+      if (tab.terminalPanel.terminals?.has(termId)) {
         return tab.name;
       }
     }
@@ -126,8 +126,8 @@ export class BoardView {
     goBtn.title = 'Go to workspace';
     goBtn.addEventListener('click', () => {
       for (const [tabId, tab] of this.tabManager.tabs) {
-        if (tab.isBoard) continue;
-        if (tab.terminalPanel?.terminals?.has(termId)) {
+        if (!tab.terminalPanel) continue;
+        if (tab.terminalPanel.terminals?.has(termId)) {
           this.tabManager.switchTo(tabId);
           break;
         }

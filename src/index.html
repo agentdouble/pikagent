@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="styles/settings.css">
   <link rel="stylesheet" href="styles/context-menu.css">
   <link rel="stylesheet" href="styles/board.css">
+  <link rel="stylesheet" href="styles/activity-bar.css">
 
   <!-- xterm.js CSS -->
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
@@ -26,7 +27,10 @@
 <body>
   <div id="app">
     <div id="tab-bar" class="tab-bar"></div>
-    <div id="workspace" class="workspace"></div>
+    <div id="main-content" class="main-content">
+      <div id="activity-bar" class="activity-bar"></div>
+      <div id="workspace" class="workspace"></div>
+    </div>
   </div>
 
   <script src="../dist/renderer.js"></script>
