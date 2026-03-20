@@ -47,21 +47,26 @@ export class BoardView {
   render() {
     this.container.innerHTML = '';
 
+    const wrapper = document.createElement('div');
+    wrapper.className = 'board-wrapper';
+
+    // Hidden cards bar (shows minimized agents) — outside grid
+    this.hiddenBarEl = document.createElement('div');
+    this.hiddenBarEl.className = 'board-hidden-bar';
+    wrapper.appendChild(this.hiddenBarEl);
+
+    // Grid container for cards only
     const board = document.createElement('div');
     board.className = 'board-container';
     this.boardEl = board;
-
-    // Hidden cards bar (shows minimized agents)
-    this.hiddenBarEl = document.createElement('div');
-    this.hiddenBarEl.className = 'board-hidden-bar';
-    board.appendChild(this.hiddenBarEl);
 
     this.emptyEl = document.createElement('div');
     this.emptyEl.className = 'board-empty';
     this.emptyEl.textContent = 'No agents running. Start Claude or Codex in a workspace terminal.';
     board.appendChild(this.emptyEl);
 
-    this.container.appendChild(board);
+    wrapper.appendChild(board);
+    this.container.appendChild(wrapper);
     this._hiddenTerms = new Set();
   }
 
@@ -159,11 +164,11 @@ export class BoardView {
     const term = new Terminal({
       theme: THEME,
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 12,
-      lineHeight: 1.3,
-      cursorBlink: true,
+      fontSize: 9,
+      lineHeight: 1.1,
+      cursorBlink: false,
       cursorStyle: 'bar',
-      scrollback: 5000,
+      scrollback: 10000,
       allowProposedApi: true,
     });
 
@@ -193,8 +198,8 @@ export class BoardView {
       try { fitAddon.fit(); } catch {}
     };
 
-    // Insert before hidden bar
-    this.boardEl.insertBefore(card, this.hiddenBarEl);
+    // Insert before the empty placeholder
+    this.boardEl.insertBefore(card, this.emptyEl);
 
     const resizeObs = new ResizeObserver(fitOnly);
     resizeObs.observe(termContainer);
