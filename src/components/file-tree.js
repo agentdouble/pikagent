@@ -5,7 +5,8 @@ import { contextMenu } from './context-menu.js';
 export class FileTree {
   constructor(container) {
     this.container = container;
-    this.roots = new Map(); // termId -> { cwd, sectionEl, expandedDirs }
+    this.termCwds = new Map();  // termId -> cwd
+    this.sections = new Map();  // cwd -> { termIds: Set, sectionEl, expandedDirs, watchId }
     this.debounceTimers = new Map();
     this.render();
     this.listenForChanges();
@@ -20,6 +21,7 @@ export class FileTree {
 
   listenForChanges() {
     this.unsubFs = window.api.fs.onChanged(({ id }) => {
+      // id is the watchId, which is the cwd string
       if (this.debounceTimers.has(id)) {
         clearTimeout(this.debounceTimers.get(id));
       }
@@ -34,49 +36,75 @@ export class FileTree {
   }
 
   async setTerminalRoot(termId, dirPath) {
-    const existing = this.roots.get(termId);
-    if (existing && existing.cwd === dirPath) return;
+    const prevCwd = this.termCwds.get(termId);
+    if (prevCwd === dirPath) return;
 
-    window.api.fs.unwatch(termId);
-
-    if (existing) {
-      existing.cwd = dirPath;
-      existing.expandedDirs.clear();
-      existing.expandedDirs.add(dirPath);
-      await this.refreshSection(termId);
-    } else {
-      const sectionEl = document.createElement('div');
-      sectionEl.className = 'file-tree-section';
-      const expandedDirs = new Set([dirPath]);
-      this.roots.set(termId, { cwd: dirPath, sectionEl, expandedDirs });
-      this.treeEl.appendChild(sectionEl);
-      await this.refreshSection(termId);
+    // Remove from previous section if exists
+    if (prevCwd) {
+      this._removeTermFromSection(termId, prevCwd);
     }
 
-    window.api.fs.watch(termId, dirPath);
+    this.termCwds.set(termId, dirPath);
+
+    // Add to existing section or create new one
+    const existing = this.sections.get(dirPath);
+    if (existing) {
+      existing.termIds.add(termId);
+      // Section already visible, nothing to do
+      return;
+    }
+
+    // Create new section
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'file-tree-section';
+    const expandedDirs = new Set([dirPath]);
+    const watchId = `watch_${dirPath}`;
+    this.sections.set(dirPath, { termIds: new Set([termId]), sectionEl, expandedDirs, watchId });
+    this.treeEl.appendChild(sectionEl);
+    await this.refreshSection(dirPath);
+
+    window.api.fs.watch(watchId, dirPath);
   }
 
   removeTerminal(termId) {
-    window.api.fs.unwatch(termId);
-    const root = this.roots.get(termId);
-    if (!root) return;
-    root.sectionEl.remove();
-    this.roots.delete(termId);
+    const cwd = this.termCwds.get(termId);
+    if (!cwd) return;
+    this.termCwds.delete(termId);
+    this._removeTermFromSection(termId, cwd);
   }
 
-  async refreshSection(termId) {
-    const root = this.roots.get(termId);
-    if (!root) return;
+  _removeTermFromSection(termId, cwd) {
+    const section = this.sections.get(cwd);
+    if (!section) return;
+
+    section.termIds.delete(termId);
+
+    if (section.termIds.size === 0) {
+      // No terminals left for this cwd — remove section entirely
+      window.api.fs.unwatch(section.watchId);
+      section.sectionEl.remove();
+      this.sections.delete(cwd);
+    }
+  }
+
+  async refreshSection(watchIdOrCwd) {
+    // watchId format is "watch_/path/to/dir", cwd is just "/path/to/dir"
+    let cwd = watchIdOrCwd;
+    if (cwd.startsWith('watch_')) {
+      cwd = cwd.slice(6);
+    }
+    const section = this.sections.get(cwd);
+    if (!section) return;
 
     const wasCollapsed =
-      root.sectionEl.querySelector('.file-tree-section-content.collapsed') !== null;
+      section.sectionEl.querySelector('.file-tree-section-content.collapsed') !== null;
 
-    root.sectionEl.innerHTML = '';
+    section.sectionEl.innerHTML = '';
 
     const header = document.createElement('div');
     header.className = 'file-tree-section-header';
 
-    const folderName = root.cwd.split('/').filter(Boolean).pop() || '/';
+    const folderName = cwd.split('/').filter(Boolean).pop() || '/';
 
     const chevron = document.createElement('span');
     chevron.className = 'file-tree-section-chevron';
@@ -85,16 +113,16 @@ export class FileTree {
     const label = document.createElement('span');
     label.className = 'file-tree-section-label';
     label.textContent = folderName;
-    label.title = root.cwd;
+    label.title = cwd;
 
     header.appendChild(chevron);
     header.appendChild(label);
-    root.sectionEl.appendChild(header);
+    section.sectionEl.appendChild(header);
 
     const contentEl = document.createElement('div');
     contentEl.className = 'file-tree-section-content';
     if (wasCollapsed) contentEl.classList.add('collapsed');
-    root.sectionEl.appendChild(contentEl);
+    section.sectionEl.appendChild(contentEl);
 
     header.addEventListener('click', () => {
       const collapsed = contentEl.classList.toggle('collapsed');
@@ -105,10 +133,10 @@ export class FileTree {
     header.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.showDirContextMenu(e.clientX, e.clientY, root.cwd, root.cwd, contentEl, 0, root.expandedDirs);
+      this.showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, section.expandedDirs);
     });
 
-    await this.renderDir(root.cwd, contentEl, 0, root.expandedDirs);
+    await this.renderDir(cwd, contentEl, 0, section.expandedDirs);
   }
 
   // --- Context menus ---
@@ -122,8 +150,8 @@ export class FileTree {
   }
 
   findRootCwd(entryPath) {
-    for (const [, root] of this.roots) {
-      if (entryPath.startsWith(root.cwd)) return root.cwd;
+    for (const [cwd] of this.sections) {
+      if (entryPath.startsWith(cwd)) return cwd;
     }
     return '';
   }
@@ -337,9 +365,10 @@ export class FileTree {
 
   dispose() {
     if (this.unsubFs) this.unsubFs();
-    for (const [termId] of this.roots) {
-      window.api.fs.unwatch(termId);
+    for (const [, section] of this.sections) {
+      window.api.fs.unwatch(section.watchId);
     }
-    this.roots.clear();
+    this.sections.clear();
+    this.termCwds.clear();
   }
 }
