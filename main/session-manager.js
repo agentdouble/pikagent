@@ -11,6 +11,7 @@ class SessionManager {
     this._ptyManager = null;
     this._previousAgents = {}; // { termId: agentName }
     this._activeSessions = {}; // { termId: { id, agent, startedAt, cwd } }
+    this._polling = false; // guard against overlapping polls
   }
 
   start(ptyManager) {
@@ -31,13 +32,16 @@ class SessionManager {
     }
   }
 
-  _poll() {
+  async _poll() {
     if (!this._ptyManager) return;
+    if (this._polling) return; // skip if previous poll still running
+    this._polling = true;
 
     let currentAgents;
     try {
-      currentAgents = this._ptyManager.checkAgents();
+      currentAgents = await this._ptyManager.checkAgents();
     } catch {
+      this._polling = false;
       return;
     }
 
@@ -45,7 +49,7 @@ class SessionManager {
     for (const [termId, agentName] of Object.entries(currentAgents)) {
       if (!this._previousAgents[termId]) {
         // Agent just appeared in this terminal
-        this._startSession(termId, agentName);
+        await this._startSession(termId, agentName);
       }
     }
 
@@ -58,15 +62,16 @@ class SessionManager {
     }
 
     this._previousAgents = { ...currentAgents };
+    this._polling = false;
   }
 
-  _startSession(termId, agentName) {
+  async _startSession(termId, agentName) {
     // Skip flow terminals
     if (termId.startsWith('flow-')) return;
 
     let cwd = null;
     try {
-      cwd = this._ptyManager.getCwd(termId);
+      cwd = await this._ptyManager.getCwd(termId);
     } catch {}
 
     const session = {

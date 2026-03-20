@@ -681,11 +681,13 @@ export class TerminalPanel {
   }
 
   fitAll() {
-    for (const [id, node] of this.terminals) {
-      if (node.terminal) {
-        setTimeout(() => node.terminal.fit(), 50);
+    requestAnimationFrame(() => {
+      for (const [id, node] of this.terminals) {
+        if (node.terminal) {
+          node.terminal.fit();
+        }
       }
-    }
+    });
   }
 
   removeTerminal(termId) {

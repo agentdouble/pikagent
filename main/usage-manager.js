@@ -1,11 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const sessionManager = require('./session-manager');
+
+const execFileAsync = promisify(execFile);
 
 const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const FLOWS_DIR = path.join(BASE_DIR, 'flows');
+
+// Cache for metrics to avoid recomputing on every call
+let _metricsCache = null;
+let _metricsCacheTime = 0;
+const CACHE_TTL = 30000; // 30 seconds
 
 // ===== Helpers =====
 
@@ -124,7 +132,7 @@ function perDay(items, dateExtractor, days = 30) {
 
 // ===== Tokens (from Claude session JSONL files) =====
 
-function getTokenMetrics(days = 30) {
+async function getTokenMetrics(days = 30) {
   const claudeDir = path.join(os.homedir(), '.claude', 'projects');
   const labels = dayLabels(days);
   const perDayMap = {};
@@ -134,7 +142,6 @@ function getTokenMetrics(days = 30) {
   let totalCacheRead = 0;
   let totalCacheCreate = 0;
 
-  // Init per-day buckets
   for (const day of labels) {
     perDayMap[day.date] = { input: 0, output: 0 };
   }
@@ -171,7 +178,6 @@ function getTokenMetrics(days = 30) {
           const cacheRead = u.cache_read_input_tokens || 0;
           const cacheCreate = u.cache_creation_input_tokens || 0;
 
-          // Find date from timestamp field or parent message
           let dateKey = null;
           if (entry.timestamp) {
             const ts = typeof entry.timestamp === 'number' ? entry.timestamp : new Date(entry.timestamp).getTime();
@@ -194,7 +200,6 @@ function getTokenMetrics(days = 30) {
       }
 
       if (projInput + projOutput > 0) {
-        // Clean project name: -Users-rekta-projet-coding-terminal-app → terminal-app
         const parts = proj.split('-').filter(Boolean);
         const shortName = parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
         perProjectMap[shortName] = { input: projInput, output: projOutput, total: projInput + projOutput };
@@ -227,21 +232,31 @@ function getTokenMetrics(days = 30) {
 
 // ===== Files =====
 
-function getMostModifiedFiles(cwds) {
+async function getMostModifiedFiles(cwds) {
   const fileCount = {};
-  for (const cwd of cwds) {
-    try {
-      const output = execSync(
-        'git log --since="30 days ago" --name-only --pretty=format: --diff-filter=ACMR 2>/dev/null',
-        { cwd, encoding: 'utf-8', timeout: 5000 }
-      );
-      const files = output.split('\n').map((l) => l.trim()).filter(Boolean);
-      for (const f of files) {
-        const key = `${path.basename(path.dirname(cwd))}/${path.basename(cwd)}/${f}`;
-        fileCount[key] = (fileCount[key] || 0) + 1;
+
+  const results = await Promise.all(
+    cwds.map(async (cwd) => {
+      try {
+        const { stdout } = await execFileAsync(
+          'git',
+          ['log', '--since=30 days ago', '--name-only', '--pretty=format:', '--diff-filter=ACMR'],
+          { cwd, encoding: 'utf-8', timeout: 5000 }
+        );
+        return { cwd, files: stdout.split('\n').map((l) => l.trim()).filter(Boolean) };
+      } catch {
+        return { cwd, files: [] };
       }
-    } catch {}
+    })
+  );
+
+  for (const { cwd, files } of results) {
+    for (const f of files) {
+      const key = `${path.basename(path.dirname(cwd))}/${path.basename(cwd)}/${f}`;
+      fileCount[key] = (fileCount[key] || 0) + 1;
+    }
   }
+
   return Object.entries(fileCount)
     .map(([file, count]) => ({ file, count }))
     .sort((a, b) => b.count - a.count)
@@ -250,7 +265,13 @@ function getMostModifiedFiles(cwds) {
 
 // ===== Main =====
 
-function getMetrics() {
+async function getMetrics() {
+  // Return cached result if still fresh
+  const now = Date.now();
+  if (_metricsCache && (now - _metricsCacheTime) < CACHE_TTL) {
+    return _metricsCache;
+  }
+
   // --- Flow metrics ---
   const flows = getAllFlows();
   const flowRuns = getFlowRuns(flows);
@@ -299,16 +320,24 @@ function getMetrics() {
     ].filter(Boolean)),
   ];
 
-  // --- Token metrics ---
-  const tokens = getTokenMetrics(30);
+  // --- Token metrics + modified files in parallel ---
+  const [tokens, mostModifiedFiles] = await Promise.all([
+    getTokenMetrics(30),
+    getMostModifiedFiles(allCwds),
+  ]);
 
-  return {
+  const result = {
     tokens,
     flow: flowMetrics,
     agent: agentMetrics,
-    mostModifiedFiles: getMostModifiedFiles(allCwds),
+    mostModifiedFiles,
     hasData: flows.length > 0 || allSessions.length > 0 || tokens.total > 0,
   };
+
+  _metricsCache = result;
+  _metricsCacheTime = now;
+
+  return result;
 }
 
 function getByAgent(sessions) {

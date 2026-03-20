@@ -1,43 +1,51 @@
-const { execFileSync } = require('child_process');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+
+const execFileAsync = promisify(execFile);
 
 const execOpts = (cwd, extra) => ({
   cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], ...extra,
 });
 
-function getBranch(cwd) {
+async function getBranch(cwd) {
   try {
-    return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], execOpts(cwd)).trim();
+    const { stdout } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], execOpts(cwd));
+    return stdout.trim();
   } catch {
     return null;
   }
 }
 
-function getRemoteUrl(cwd) {
+async function getRemoteUrl(cwd) {
   try {
-    return execFileSync('git', ['config', '--get', 'remote.origin.url'], execOpts(cwd)).trim();
+    const { stdout } = await execFileAsync('git', ['config', '--get', 'remote.origin.url'], execOpts(cwd));
+    return stdout.trim();
   } catch {
     return null;
   }
 }
 
-function getLocalChanges(cwd) {
+async function getLocalChanges(cwd) {
   try {
-    // Staged files
-    const stagedRaw = execFileSync('git', ['diff', '--cached', '--name-status'], execOpts(cwd)).trim();
+    const [stagedResult, unstagedResult, untrackedResult] = await Promise.all([
+      execFileAsync('git', ['diff', '--cached', '--name-status'], execOpts(cwd)),
+      execFileAsync('git', ['diff', '--name-status'], execOpts(cwd)),
+      execFileAsync('git', ['ls-files', '--others', '--exclude-standard'], execOpts(cwd)),
+    ]);
+
+    const stagedRaw = stagedResult.stdout.trim();
     const staged = stagedRaw ? stagedRaw.split('\n').map((line) => {
       const [status, ...p] = line.split('\t');
       return { status, path: p.join('\t'), staged: true };
     }) : [];
 
-    // Unstaged modified/deleted files
-    const unstagedRaw = execFileSync('git', ['diff', '--name-status'], execOpts(cwd)).trim();
+    const unstagedRaw = unstagedResult.stdout.trim();
     const unstaged = unstagedRaw ? unstagedRaw.split('\n').map((line) => {
       const [status, ...p] = line.split('\t');
       return { status, path: p.join('\t'), staged: false };
     }) : [];
 
-    // Untracked files
-    const untrackedRaw = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], execOpts(cwd)).trim();
+    const untrackedRaw = untrackedResult.stdout.trim();
     const untracked = untrackedRaw ? untrackedRaw.split('\n').map((p) => {
       return { status: '?', path: p, staged: false };
     }) : [];
@@ -48,12 +56,13 @@ function getLocalChanges(cwd) {
   }
 }
 
-function getFileDiff(cwd, filePath, isStaged) {
+async function getFileDiff(cwd, filePath, isStaged) {
   try {
     const args = ['diff'];
     if (isStaged) args.push('--cached');
     args.push('--', filePath);
-    return execFileSync('git', args, execOpts(cwd, { maxBuffer: 5 * 1024 * 1024 }));
+    const { stdout } = await execFileAsync('git', args, execOpts(cwd, { maxBuffer: 5 * 1024 * 1024 }));
+    return stdout;
   } catch {
     return '';
   }

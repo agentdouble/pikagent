@@ -1,6 +1,9 @@
 const os = require('os');
 const pty = require('node-pty');
-const { execSync } = require('child_process');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+
+const execFileAsync = promisify(execFile);
 
 class PtyManager {
   constructor() {
@@ -20,16 +23,16 @@ class PtyManager {
     return proc;
   }
 
-  getCwd(id) {
+  async getCwd(id) {
     const proc = this.processes.get(id);
     if (!proc) return null;
     try {
-      // macOS: use lsof to resolve the cwd of the shell process
-      const output = execSync(
-        `lsof -a -p ${proc.pid} -d cwd -Fn 2>/dev/null | grep '^n' | sed 's/^n//'`,
-        { encoding: 'utf-8', timeout: 2000 }
-      ).trim();
-      return output || null;
+      const { stdout } = await execFileAsync('lsof', ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'], {
+        encoding: 'utf-8',
+        timeout: 2000,
+      });
+      const match = stdout.match(/^n(.+)$/m);
+      return match ? match[1] : null;
     } catch {
       return null;
     }
@@ -53,22 +56,42 @@ class PtyManager {
     }
   }
 
-  checkAgents() {
+  async checkAgents() {
     const agents = {};
+    const checks = [];
+
     for (const [id, proc] of this.processes) {
-      try {
-        const childPids = execSync(`pgrep -P ${proc.pid}`, { encoding: 'utf8', timeout: 1000 })
-          .trim().split('\n').filter(Boolean);
-        for (const childPid of childPids) {
-          const args = execSync(`ps -o args= -p ${childPid.trim()}`, { encoding: 'utf8', timeout: 1000 })
-            .trim().toLowerCase();
-          if (args.includes('claude')) { agents[id] = 'Claude'; break; }
-          if (args.includes('codex')) { agents[id] = 'Codex'; break; }
-          if (args.includes('opencode')) { agents[id] = 'OpenCode'; break; }
-        }
-      } catch {}
+      checks.push(this._checkAgent(id, proc).then((result) => {
+        if (result) agents[id] = result;
+      }));
     }
+
+    await Promise.all(checks);
     return agents;
+  }
+
+  async _checkAgent(id, proc) {
+    try {
+      const { stdout } = await execFileAsync('pgrep', ['-P', String(proc.pid)], {
+        encoding: 'utf8',
+        timeout: 1000,
+      });
+      const childPids = stdout.trim().split('\n').filter(Boolean);
+
+      for (const childPid of childPids) {
+        try {
+          const { stdout: args } = await execFileAsync('ps', ['-o', 'args=', '-p', childPid.trim()], {
+            encoding: 'utf8',
+            timeout: 1000,
+          });
+          const lower = args.trim().toLowerCase();
+          if (lower.includes('claude')) return 'Claude';
+          if (lower.includes('codex')) return 'Codex';
+          if (lower.includes('opencode')) return 'OpenCode';
+        } catch {}
+      }
+    } catch {}
+    return null;
   }
 
   killAll() {
