@@ -1,4 +1,4 @@
-const { ipcMain, shell, clipboard } = require('electron');
+const { ipcMain, shell, clipboard, dialog } = require('electron');
 const PtyManager = require('./pty-manager');
 const fsManager = require('./fs-manager');
 const gitManager = require('./git-manager');
@@ -107,6 +107,15 @@ function register(getWindow) {
 
   ipcMain.handle('clipboard:write', (event, text) => {
     clipboard.writeText(text);
+  });
+
+  ipcMain.handle('dialog:openFolder', async () => {
+    const win = getWindow();
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory'],
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    return result.filePaths[0];
   });
 
   // --- Git ---

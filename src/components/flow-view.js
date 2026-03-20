@@ -444,7 +444,9 @@ export class FlowView {
     clearBtn.addEventListener('click', () => {
       nameInput.value = '';
       promptArea.value = '';
-      cwdInput.value = '';
+      selectedCwd = '';
+      cwdLabel.textContent = 'Sélectionner un dossier';
+      cwdChip.title = 'Sélectionner un dossier';
     });
     modalHeader.appendChild(clearBtn);
 
@@ -475,17 +477,28 @@ export class FlowView {
     const bottomBar = document.createElement('div');
     bottomBar.className = 'flow-modal-bottom';
 
-    // CWD
-    const cwdChip = document.createElement('div');
-    cwdChip.className = 'flow-modal-chip';
+    // CWD folder picker
+    let selectedCwd = existing?.cwd || '';
+    const cwdChip = document.createElement('button');
+    cwdChip.className = 'flow-modal-chip flow-modal-chip-btn';
+    cwdChip.type = 'button';
     const cwdIcon = document.createElement('span');
     cwdIcon.textContent = '\u{1F4C2}';
     cwdChip.appendChild(cwdIcon);
-    const cwdInput = document.createElement('input');
-    cwdInput.className = 'flow-modal-chip-input';
-    cwdInput.placeholder = 'Arborescence de travail';
-    cwdInput.value = existing?.cwd || '';
-    cwdChip.appendChild(cwdInput);
+    const cwdLabel = document.createElement('span');
+    cwdLabel.className = 'flow-modal-chip-label';
+    cwdLabel.textContent = selectedCwd ? selectedCwd.split('/').pop() : 'Sélectionner un dossier';
+    cwdChip.title = selectedCwd || 'Sélectionner un dossier';
+    cwdChip.appendChild(cwdLabel);
+    cwdChip.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const folder = await window.api.dialog.openFolder();
+      if (folder) {
+        selectedCwd = folder;
+        cwdLabel.textContent = folder.split('/').pop();
+        cwdChip.title = folder;
+      }
+    });
     bottomBar.appendChild(cwdChip);
 
     // Schedule type
@@ -568,7 +581,7 @@ export class FlowView {
         id: existing?.id || generateId(),
         name,
         prompt,
-        cwd: cwdInput.value.trim() || undefined,
+        cwd: selectedCwd || undefined,
         schedule: {
           type: schedSelect.value,
           time: timeInput.value || '09:00',

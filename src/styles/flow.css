@@ -334,14 +334,23 @@
   color: var(--text-secondary);
 }
 
-.flow-modal-chip-input {
-  background: none;
-  border: none;
+.flow-modal-chip-btn {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.flow-modal-chip-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.flow-modal-chip-label {
   color: var(--text-primary);
   font-size: 12px;
-  font-family: var(--font-ui);
-  outline: none;
-  width: 140px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flow-modal-select {

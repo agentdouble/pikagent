@@ -236,8 +236,8 @@ class FlowManager {
 
       // Build the prompt — escape single quotes for shell safety
       const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
-      // Use claude in interactive mode with the prompt so the full conversation is visible
-      const cmd = `claude '${escapedPrompt}'; exit\n`;
+      // Use claude in interactive mode with --yes to auto-approve permissions
+      const cmd = `claude --yes '${escapedPrompt}'; exit\n`;
 
       // Small delay to let the shell initialize
       setTimeout(() => {

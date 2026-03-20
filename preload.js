@@ -47,6 +47,9 @@ contextBridge.exposeInMainWorld('api', {
   clipboard: {
     write: (text) => ipcRenderer.invoke('clipboard:write', text),
   },
+  dialog: {
+    openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
+  },
 
   // Git
   git: {
