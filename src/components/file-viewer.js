@@ -9,6 +9,10 @@ export class FileViewer {
     this.editorEl = null;
     this.lineNumbers = null;
     this.highlightLayer = null;
+    this.mode = 'files'; // 'files' | 'git'
+    this.gitCwd = null;
+    this.gitCommits = [];
+    this.expandedCommit = null;
     this.render();
     this.listen();
   }
@@ -16,20 +20,44 @@ export class FileViewer {
   render() {
     this.container.innerHTML = '';
 
-    // Tabs bar
+    // Mode selector bar
+    this.modeBar = document.createElement('div');
+    this.modeBar.className = 'file-viewer-mode-bar';
+
+    this.btnFiles = document.createElement('button');
+    this.btnFiles.className = 'mode-btn active';
+    this.btnFiles.textContent = 'Files';
+    this.btnFiles.addEventListener('click', () => this.switchMode('files'));
+
+    this.btnGit = document.createElement('button');
+    this.btnGit.className = 'mode-btn';
+    this.btnGit.textContent = 'Git Changes';
+    this.btnGit.addEventListener('click', () => this.switchMode('git'));
+
+    this.modeBar.appendChild(this.btnFiles);
+    this.modeBar.appendChild(this.btnGit);
+    this.container.appendChild(this.modeBar);
+
+    // Tabs bar (files mode)
     this.tabsBar = document.createElement('div');
     this.tabsBar.className = 'file-viewer-tabs';
     this.container.appendChild(this.tabsBar);
 
-    // Breadcrumb
+    // Breadcrumb (files mode)
     this.breadcrumb = document.createElement('div');
     this.breadcrumb.className = 'file-viewer-breadcrumb';
     this.container.appendChild(this.breadcrumb);
 
-    // Editor wrapper
+    // Editor wrapper (files mode)
     this.editorWrapper = document.createElement('div');
     this.editorWrapper.className = 'editor-wrapper';
     this.container.appendChild(this.editorWrapper);
+
+    // Git view (git mode)
+    this.gitView = document.createElement('div');
+    this.gitView.className = 'git-changes-view';
+    this.gitView.style.display = 'none';
+    this.container.appendChild(this.gitView);
 
     // Status bar
     this.statusBar = document.createElement('div');
@@ -41,9 +69,192 @@ export class FileViewer {
 
   listen() {
     bus.on('file:open', ({ path, name }) => {
+      this.switchMode('files');
       this.openFile(path, name);
     });
+
+    bus.on('terminal:cwdChanged', ({ cwd }) => {
+      this.gitCwd = cwd;
+      if (this.mode === 'git') this.loadGitChanges();
+    });
   }
+
+  switchMode(mode) {
+    this.mode = mode;
+    this.btnFiles.classList.toggle('active', mode === 'files');
+    this.btnGit.classList.toggle('active', mode === 'git');
+
+    if (mode === 'files') {
+      this.tabsBar.style.display = '';
+      this.breadcrumb.style.display = '';
+      this.editorWrapper.style.display = '';
+      this.gitView.style.display = 'none';
+      this.statusBar.style.display = '';
+      if (this.activeFile) {
+        this.renderEditor();
+      }
+    } else {
+      this.tabsBar.style.display = 'none';
+      this.breadcrumb.style.display = 'none';
+      this.editorWrapper.style.display = 'none';
+      this.gitView.style.display = '';
+      this.statusBar.style.display = 'none';
+      this.loadGitChanges();
+    }
+  }
+
+  // ===== Git Changes Mode =====
+
+  async loadGitChanges() {
+    if (!this.gitCwd) {
+      // Try to get cwd from the path text in the center panel
+      const pathEl = document.querySelector('.path-text');
+      if (pathEl) this.gitCwd = pathEl.textContent;
+    }
+
+    if (!this.gitCwd) {
+      this.gitView.innerHTML = '<div class="git-empty">No working directory detected</div>';
+      return;
+    }
+
+    this.gitView.innerHTML = '<div class="git-loading">Loading git history...</div>';
+
+    const commits = await window.api.git.recentChanges(this.gitCwd, 30);
+    this.gitCommits = commits;
+
+    if (!commits || commits.length === 0) {
+      this.gitView.innerHTML = '<div class="git-empty">No git history found</div>';
+      return;
+    }
+
+    this.renderGitChanges();
+  }
+
+  renderGitChanges() {
+    this.gitView.innerHTML = '';
+
+    const header = document.createElement('div');
+    header.className = 'git-header';
+    header.textContent = `Recent Commits (${this.gitCommits.length})`;
+    this.gitView.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'git-commit-list';
+
+    for (const commit of this.gitCommits) {
+      const item = document.createElement('div');
+      item.className = 'git-commit-item';
+      if (this.expandedCommit === commit.hash) item.classList.add('expanded');
+
+      const summary = document.createElement('div');
+      summary.className = 'git-commit-summary';
+      summary.addEventListener('click', () => this.toggleCommit(commit.hash));
+
+      const chevron = document.createElement('span');
+      chevron.className = 'git-chevron';
+      chevron.textContent = this.expandedCommit === commit.hash ? '▼' : '▶';
+
+      const msg = document.createElement('span');
+      msg.className = 'git-commit-msg';
+      msg.textContent = commit.message;
+      msg.title = commit.message;
+
+      const hashEl = document.createElement('span');
+      hashEl.className = 'git-commit-hash';
+      hashEl.textContent = commit.shortHash;
+
+      summary.appendChild(chevron);
+      summary.appendChild(msg);
+      summary.appendChild(hashEl);
+      item.appendChild(summary);
+
+      const meta = document.createElement('div');
+      meta.className = 'git-commit-meta';
+      meta.textContent = `${commit.author} · ${commit.date}`;
+      item.appendChild(meta);
+
+      // Diff container (lazy loaded)
+      if (this.expandedCommit === commit.hash) {
+        const diffContainer = document.createElement('div');
+        diffContainer.className = 'git-diff-container';
+        diffContainer.innerHTML = '<div class="git-loading">Loading diff...</div>';
+        item.appendChild(diffContainer);
+        this.loadCommitDiff(commit.hash, diffContainer);
+      }
+
+      list.appendChild(item);
+    }
+
+    this.gitView.appendChild(list);
+  }
+
+  async toggleCommit(hash) {
+    this.expandedCommit = this.expandedCommit === hash ? null : hash;
+    this.renderGitChanges();
+  }
+
+  async loadCommitDiff(hash, container) {
+    const result = await window.api.git.commitDiff(this.gitCwd, hash);
+
+    container.innerHTML = '';
+
+    if (result.files && result.files.length > 0) {
+      const fileList = document.createElement('div');
+      fileList.className = 'git-file-list';
+
+      for (const file of result.files) {
+        const fileEl = document.createElement('div');
+        fileEl.className = 'git-file-item';
+
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `git-file-status git-status-${file.status}`;
+        statusBadge.textContent = file.status;
+
+        const fileName = document.createElement('span');
+        fileName.className = 'git-file-name';
+        fileName.textContent = file.path;
+        fileName.title = file.path;
+
+        // Click to open file in editor
+        fileName.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const fullPath = this.gitCwd + '/' + file.path;
+          bus.emit('file:open', { path: fullPath, name: file.path.split('/').pop() });
+        });
+
+        fileEl.appendChild(statusBadge);
+        fileEl.appendChild(fileName);
+        fileList.appendChild(fileEl);
+      }
+
+      container.appendChild(fileList);
+    }
+
+    if (result.diff) {
+      const diffBlock = document.createElement('pre');
+      diffBlock.className = 'git-diff-block';
+
+      const lines = result.diff.split('\n');
+      for (const line of lines) {
+        const lineEl = document.createElement('span');
+        if (line.startsWith('+') && !line.startsWith('+++')) {
+          lineEl.className = 'diff-add';
+        } else if (line.startsWith('-') && !line.startsWith('---')) {
+          lineEl.className = 'diff-remove';
+        } else if (line.startsWith('@@')) {
+          lineEl.className = 'diff-hunk';
+        } else if (line.startsWith('diff --git')) {
+          lineEl.className = 'diff-header';
+        }
+        lineEl.textContent = line + '\n';
+        diffBlock.appendChild(lineEl);
+      }
+
+      container.appendChild(diffBlock);
+    }
+  }
+
+  // ===== Files Mode (original) =====
 
   async openFile(filePath, fileName) {
     if (this.openFiles.has(filePath)) {

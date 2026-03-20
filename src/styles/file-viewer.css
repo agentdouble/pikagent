@@ -6,6 +6,231 @@
   overflow: hidden;
 }
 
+/* ===== Mode Selector Bar ===== */
+.file-viewer-mode-bar {
+  display: flex;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.mode-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.mode-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+/* ===== Git Changes View ===== */
+.git-changes-view {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+.git-changes-view::-webkit-scrollbar {
+  width: 6px;
+}
+
+.git-changes-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.git-changes-view::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.git-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.git-empty,
+.git-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 24px;
+}
+
+.git-commit-list {
+  padding: 0;
+}
+
+.git-commit-item {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.git-commit-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.git-commit-summary:hover {
+  background: var(--bg-hover);
+}
+
+.git-chevron {
+  font-size: 8px;
+  color: var(--text-muted);
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.git-commit-msg {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-commit-hash {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.git-commit-meta {
+  padding: 0 12px 6px 32px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Diff container */
+.git-diff-container {
+  padding: 0 12px 8px 12px;
+}
+
+.git-file-list {
+  margin-bottom: 8px;
+}
+
+.git-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.git-file-status {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.git-status-M { color: var(--accent); }
+.git-status-A { color: var(--green); }
+.git-status-D { color: #f44; }
+.git-status-R { color: #88f; }
+
+.git-file-name {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+.git-file-name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Diff block */
+.git-diff-block {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 8px;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.git-diff-block::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.git-diff-block::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.diff-add {
+  color: var(--green);
+  background: rgba(81, 207, 102, 0.08);
+  display: block;
+}
+
+.diff-remove {
+  color: #f55;
+  background: rgba(255, 85, 85, 0.08);
+  display: block;
+}
+
+.diff-hunk {
+  color: var(--accent);
+  display: block;
+}
+
+.diff-header {
+  color: var(--text-muted);
+  font-weight: 600;
+  display: block;
+}
+
 /* Tabs */
 .file-viewer-tabs {
   display: flex;

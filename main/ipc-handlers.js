@@ -117,6 +117,14 @@ function register(getWindow) {
     return gitManager.getRemoteUrl(cwd);
   });
 
+  ipcMain.handle('git:recentChanges', (event, { cwd, count }) => {
+    return gitManager.getRecentChanges(cwd, count);
+  });
+
+  ipcMain.handle('git:commitDiff', (event, { cwd, hash }) => {
+    return gitManager.getCommitDiff(cwd, hash);
+  });
+
   // --- Workspace Configs ---
   ipcMain.handle('config:save', (event, { name, data }) => {
     return configManager.save(name, data);

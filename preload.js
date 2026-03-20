@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld('api', {
   git: {
     branch: (cwd) => ipcRenderer.invoke('git:branch', cwd),
     remote: (cwd) => ipcRenderer.invoke('git:remote', cwd),
+    recentChanges: (cwd, count) => ipcRenderer.invoke('git:recentChanges', { cwd, count }),
+    commitDiff: (cwd, hash) => ipcRenderer.invoke('git:commitDiff', { cwd, hash }),
   },
 
   // Workspace Configs
