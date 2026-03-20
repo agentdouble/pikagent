@@ -42,7 +42,7 @@
   box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
 }
 
-.board-card-completed {
+.board-card-waiting {
   border-color: #22c55e;
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.25);
 }
@@ -51,7 +51,7 @@
   background: rgba(245, 158, 11, 0.08);
 }
 
-.board-card-completed .board-card-header {
+.board-card-waiting .board-card-header {
   background: rgba(34, 197, 94, 0.08);
 }
 
@@ -101,7 +101,7 @@
   color: #f59e0b;
 }
 
-.board-status-completed {
+.board-status-waiting {
   background: rgba(34, 197, 94, 0.15);
   color: #22c55e;
 }

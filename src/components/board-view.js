@@ -4,21 +4,25 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { bus } from '../utils/events.js';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 
+const IDLE_THRESHOLD_MS = 5000; // 5s without output = waiting for input
+
 export class BoardView {
   constructor(container, tabManager) {
     this.container = container;
     this.tabManager = tabManager;
-    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs, info, status }
-    this._completedTerms = new Map(); // termId -> timestamp when completed
+    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs, info, status, lastDataTime }
     this.disposed = false;
 
     this.render();
     this.setupListeners();
     this.scanAgents();
 
-    // Poll for agent detection every 3 seconds
+    // Poll for agent detection + idle check every 3 seconds
     this._pollTimer = setInterval(() => {
-      if (!this.disposed) this.scanAgents();
+      if (!this.disposed) {
+        this.scanAgents();
+        this._checkIdleCards();
+      }
     }, 3000);
   }
 
@@ -54,21 +58,10 @@ export class BoardView {
     try {
       const agents = await window.api.pty.checkAgents();
 
-      // Mark cards as completed when agent disappears (instead of removing)
-      for (const [termId, data] of this.cards) {
-        if (!agents[termId] && data.status === 'running') {
-          data.status = 'completed';
-          data.element.classList.remove('board-card-running');
-          data.element.classList.add('board-card-completed');
-          this._completedTerms.set(termId, Date.now());
-
-          // Add a status badge in the header
-          const badge = data.element.querySelector('.board-card-status');
-          if (badge) {
-            badge.textContent = 'Done';
-            badge.classList.remove('board-status-running');
-            badge.classList.add('board-status-completed');
-          }
+      // Remove cards for terminals that no longer have agents
+      for (const [termId] of this.cards) {
+        if (!agents[termId]) {
+          this.removeCard(termId);
         }
       }
 
@@ -79,27 +72,50 @@ export class BoardView {
           if (tabName) {
             this.addCard(termId, { tabName, agent: agentName });
           }
-        } else {
-          // Agent restarted in a terminal that was marked completed
-          const data = this.cards.get(termId);
-          if (data.status === 'completed') {
-            data.status = 'running';
-            data.element.classList.remove('board-card-completed');
-            data.element.classList.add('board-card-running');
-            this._completedTerms.delete(termId);
-            const badge = data.element.querySelector('.board-card-status');
-            if (badge) {
-              badge.textContent = 'Running';
-              badge.classList.remove('board-status-completed');
-              badge.classList.add('board-status-running');
-            }
-          }
         }
       }
 
       this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
     } catch (e) {
       console.warn('Board: agent scan failed', e);
+    }
+  }
+
+  /** Check all cards and switch idle ones to "waiting" status */
+  _checkIdleCards() {
+    const now = Date.now();
+    for (const [, data] of this.cards) {
+      const idle = now - data.lastDataTime > IDLE_THRESHOLD_MS;
+
+      if (idle && data.status === 'running') {
+        this._setCardStatus(data, 'waiting');
+      }
+      // Running status is restored in the onData handler, not here
+    }
+  }
+
+  /** Update card visual status */
+  _setCardStatus(data, status) {
+    if (data.status === status) return;
+    data.status = status;
+
+    const el = data.element;
+    const badge = el.querySelector('.board-card-status');
+
+    el.classList.remove('board-card-running', 'board-card-waiting');
+
+    if (status === 'running') {
+      el.classList.add('board-card-running');
+      if (badge) {
+        badge.textContent = 'Running';
+        badge.className = 'board-card-status board-status-running';
+      }
+    } else {
+      el.classList.add('board-card-waiting');
+      if (badge) {
+        badge.textContent = 'Waiting';
+        badge.className = 'board-card-status board-status-waiting';
+      }
     }
   }
 
@@ -199,12 +215,20 @@ export class BoardView {
       window.api.pty.write({ id: termId, data });
     });
 
-    // PTY output → render in board terminal
+    const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', lastDataTime: Date.now() };
+
+    // PTY output → render in board terminal + track activity
     const unsubData = window.api.pty.onData(({ id, data }) => {
       if (id === termId) {
         term.write(data);
+        cardData.lastDataTime = Date.now();
+        // Switch back to running if we were waiting
+        if (cardData.status === 'waiting') {
+          this._setCardStatus(cardData, 'running');
+        }
       }
     });
+    cardData.unsubData = unsubData;
 
     // Fit the xterm to the card container but do NOT resize the PTY.
     // The workspace terminal is the master that controls PTY dimensions.
@@ -217,8 +241,9 @@ export class BoardView {
 
     const resizeObs = new ResizeObserver(fitOnly);
     resizeObs.observe(termContainer);
+    cardData.resizeObs = resizeObs;
 
-    this.cards.set(termId, { element: card, term, fitAddon, unsubData, resizeObs, info, status: 'running' });
+    this.cards.set(termId, cardData);
 
     // Fit after layout settles
     setTimeout(fitOnly, 100);
@@ -232,7 +257,6 @@ export class BoardView {
     data.term.dispose();
     data.element.remove();
     this.cards.delete(termId);
-    this._completedTerms.delete(termId);
     if (this._hiddenTerms) this._hiddenTerms.delete(termId);
     this._updateHiddenBar();
   }
@@ -272,22 +296,7 @@ export class BoardView {
       this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
     };
     this._onExited = ({ id }) => {
-      const data = this.cards.get(id);
-      if (data && data.status === 'running') {
-        // Terminal exited while agent was running — mark as completed
-        data.status = 'completed';
-        data.element.classList.remove('board-card-running');
-        data.element.classList.add('board-card-completed');
-        this._completedTerms.set(id, Date.now());
-        const badge = data.element.querySelector('.board-card-status');
-        if (badge) {
-          badge.textContent = 'Done';
-          badge.classList.remove('board-status-running');
-          badge.classList.add('board-status-completed');
-        }
-      } else {
-        this.removeCard(id);
-      }
+      this.removeCard(id);
       this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
     };
 
