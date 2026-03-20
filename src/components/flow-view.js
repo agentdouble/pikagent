@@ -421,6 +421,10 @@ export class FlowView {
 
   _formatSchedule(schedule) {
     if (!schedule) return 'Non planifié';
+    if (schedule.type === 'interval') {
+      const h = schedule.intervalHours || 1;
+      return `Toutes les ${h}h`;
+    }
     const label = SCHEDULE_LABELS[schedule.type] || schedule.type;
     const time = schedule.time || '00:00';
     if (schedule.type === 'custom' && schedule.days) {

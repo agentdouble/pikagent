@@ -153,7 +153,19 @@ class FlowManager {
 
   _shouldRun(flow, now) {
     const schedule = flow.schedule;
-    if (!schedule || !schedule.time) return false;
+    if (!schedule) return false;
+
+    // Interval-based scheduling
+    if (schedule.type === 'interval') {
+      const intervalMs = (schedule.intervalHours || 1) * 60 * 60 * 1000;
+      if (!flow.runs || flow.runs.length === 0) return true;
+      const lastRun = flow.runs[flow.runs.length - 1];
+      const elapsed = now.getTime() - new Date(lastRun.timestamp).getTime();
+      return elapsed >= intervalMs;
+    }
+
+    // Time-based scheduling
+    if (!schedule.time) return false;
 
     const [hours, minutes] = schedule.time.split(':').map(Number);
     const currentH = now.getHours();

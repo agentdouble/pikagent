@@ -7,6 +7,7 @@ const AGENT_OPTIONS = {
 };
 
 const SCHEDULE_LABELS = {
+  interval: 'Intervalle',
   daily: 'Tous les jours',
   weekdays: 'Jours de la semaine',
   custom: 'Personnalisé',
@@ -138,12 +139,33 @@ export function openFlowModal(existing = null) {
     // Time
     const timeChip = document.createElement('div');
     timeChip.className = 'flow-modal-chip';
+    timeChip.style.display = schedSelect.value === 'interval' ? 'none' : 'flex';
     const timeInput = document.createElement('input');
     timeInput.type = 'time';
     timeInput.className = 'flow-modal-time';
     timeInput.value = existing?.schedule?.time || '09:00';
     timeChip.appendChild(timeInput);
     bottomBar.appendChild(timeChip);
+
+    // Interval hours
+    const intervalChip = document.createElement('div');
+    intervalChip.className = 'flow-modal-chip';
+    intervalChip.style.display = schedSelect.value === 'interval' ? 'flex' : 'none';
+    const intervalLabel = document.createElement('span');
+    intervalLabel.textContent = 'Toutes les';
+    intervalLabel.style.fontSize = '11px';
+    intervalChip.appendChild(intervalLabel);
+    const intervalInput = document.createElement('select');
+    intervalInput.className = 'flow-modal-select';
+    for (const h of [1, 2, 3, 4, 6, 8, 12]) {
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = `${h}h`;
+      intervalInput.appendChild(opt);
+    }
+    intervalInput.value = existing?.schedule?.intervalHours || 1;
+    intervalChip.appendChild(intervalInput);
+    bottomBar.appendChild(intervalChip);
 
     // Custom days
     const daysChip = document.createElement('div');
@@ -170,7 +192,10 @@ export function openFlowModal(existing = null) {
     bottomBar.appendChild(daysChip);
 
     schedSelect.addEventListener('change', () => {
+      const isInterval = schedSelect.value === 'interval';
       daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
+      timeChip.style.display = isInterval ? 'none' : 'flex';
+      intervalChip.style.display = isInterval ? 'flex' : 'none';
     });
 
     modal.appendChild(bottomBar);
@@ -198,23 +223,28 @@ export function openFlowModal(existing = null) {
       const prompt = promptArea.value.trim();
       if (!name || !prompt) return;
 
+      const schedType = schedSelect.value;
+      const schedule = { type: schedType };
+
+      if (schedType === 'interval') {
+        schedule.intervalHours = parseInt(intervalInput.value, 10);
+      } else {
+        schedule.time = timeInput.value || '09:00';
+        if (schedType === 'custom') {
+          schedule.days = [...selectedDays].sort();
+        }
+      }
+
       const flow = {
         id: existing?.id || generateId(),
         name,
         prompt,
         agent: agentSelect.value,
         cwd: selectedCwd || undefined,
-        schedule: {
-          type: schedSelect.value,
-          time: timeInput.value || '09:00',
-        },
+        schedule,
         enabled: existing?.enabled ?? true,
         runs: existing?.runs || [],
       };
-
-      if (schedSelect.value === 'custom') {
-        flow.schedule.days = [...selectedDays].sort();
-      }
 
       overlay.remove();
       resolve(flow);
