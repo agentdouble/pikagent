@@ -4,8 +4,10 @@ export class ContextMenu {
     this.el.className = 'context-menu';
     document.body.appendChild(this.el);
 
-    // Close on click outside or Escape
-    document.addEventListener('click', () => this.close());
+    // Close on click/mousedown outside or Escape
+    document.addEventListener('mousedown', (e) => {
+      if (!this.el.contains(e.target)) this.close();
+    });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') this.close();
     });
