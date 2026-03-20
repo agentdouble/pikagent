@@ -114,8 +114,43 @@ export class FileTree {
     label.textContent = folderName;
     label.title = cwd;
 
+    const actions = document.createElement('div');
+    actions.className = 'file-tree-section-actions';
+
+    const btnNewFile = document.createElement('button');
+    btnNewFile.className = 'file-tree-action-btn';
+    btnNewFile.title = 'New File';
+    btnNewFile.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>';
+    btnNewFile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'file');
+    });
+
+    const btnNewFolder = document.createElement('button');
+    btnNewFolder.className = 'file-tree-action-btn';
+    btnNewFolder.title = 'New Folder';
+    btnNewFolder.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>';
+    btnNewFolder.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'folder');
+    });
+
+    const btnRefresh = document.createElement('button');
+    btnRefresh.className = 'file-tree-action-btn';
+    btnRefresh.title = 'Refresh';
+    btnRefresh.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>';
+    btnRefresh.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.refreshSection(cwd);
+    });
+
+    actions.appendChild(btnNewFile);
+    actions.appendChild(btnNewFolder);
+    actions.appendChild(btnRefresh);
+
     header.appendChild(chevron);
     header.appendChild(label);
+    header.appendChild(actions);
     section.sectionEl.appendChild(header);
 
     const contentEl = document.createElement('div');
