@@ -64,6 +64,8 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id) => ipcRenderer.invoke('flow:delete', id),
     toggle: (id) => ipcRenderer.invoke('flow:toggle', id),
     runNow: (id) => ipcRenderer.invoke('flow:runNow', id),
+    getRunning: () => ipcRenderer.invoke('flow:getRunning'),
+    getRunLog: (flowId, logTimestamp) => ipcRenderer.invoke('flow:getRunLog', { flowId, logTimestamp }),
     onRunStarted: (cb) => {
       const listener = (event, payload) => cb(payload);
       ipcRenderer.on('flow:runStarted', listener);

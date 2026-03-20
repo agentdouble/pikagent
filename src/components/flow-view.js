@@ -1,3 +1,5 @@
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
 import { generateId } from '../utils/id.js';
 
 const SCHEDULE_LABELS = {
@@ -8,18 +10,63 @@ const SCHEDULE_LABELS = {
 
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
+const TERM_THEME = {
+  background: '#1a1a2e',
+  foreground: '#e0e0e0',
+  cursor: '#e0e0e0',
+  cursorAccent: '#1a1a2e',
+  selectionBackground: '#3a3a5e',
+  black: '#1a1a2e',
+  red: '#ff6b6b',
+  green: '#51cf66',
+  yellow: '#ffd43b',
+  blue: '#74c0fc',
+  magenta: '#da77f2',
+  cyan: '#66d9e8',
+  white: '#e0e0e0',
+  brightBlack: '#555577',
+  brightRed: '#ff8787',
+  brightGreen: '#69db7c',
+  brightYellow: '#ffe066',
+  brightBlue: '#91d5ff',
+  brightMagenta: '#e599f7',
+  brightCyan: '#99e9f2',
+  brightWhite: '#ffffff',
+};
+
 export class FlowView {
   constructor(container, tabManager) {
     this.container = container;
     this.tabManager = tabManager;
     this.flows = [];
     this.disposed = false;
+    this._liveTerminals = new Map(); // flowId -> { term, fitAddon, unsubData, resizeObs, containerEl }
+    this._expandedCards = new Set(); // flowId of expanded cards
+    this._runningMap = {}; // flowId -> ptyId
 
-    this._unsubStarted = window.api.flow.onRunStarted(() => this.refresh());
-    this._unsubComplete = window.api.flow.onRunComplete(() => this.refresh());
+    this._unsubStarted = window.api.flow.onRunStarted(({ flowId, ptyId, flowName }) => {
+      this._runningMap[flowId] = ptyId;
+      this._expandedCards.add(flowId);
+      this.refresh();
+    });
+
+    this._unsubComplete = window.api.flow.onRunComplete(({ flowId }) => {
+      this._disposeLiveTerminal(flowId);
+      delete this._runningMap[flowId];
+      this.refresh();
+    });
 
     this.render();
-    this.refresh();
+    this._initRunning();
+  }
+
+  async _initRunning() {
+    this._runningMap = await window.api.flow.getRunning();
+    // Auto-expand running flows
+    for (const flowId of Object.keys(this._runningMap)) {
+      this._expandedCards.add(flowId);
+    }
+    await this.refresh();
   }
 
   async refresh() {
@@ -61,6 +108,14 @@ export class FlowView {
 
   _renderList() {
     if (!this.listEl) return;
+
+    // Dispose terminals that are no longer needed before clearing DOM
+    for (const [flowId] of this._liveTerminals) {
+      if (!this._expandedCards.has(flowId) && !this._runningMap[flowId]) {
+        this._disposeLiveTerminal(flowId);
+      }
+    }
+
     this.listEl.innerHTML = '';
 
     if (this.flows.length === 0) {
@@ -77,38 +132,65 @@ export class FlowView {
   }
 
   _createCard(flow) {
+    const isRunning = !!this._runningMap[flow.id];
+    const isExpanded = this._expandedCards.has(flow.id);
+
     const card = document.createElement('div');
     card.className = 'flow-card';
     if (!flow.enabled) card.classList.add('flow-card-disabled');
+    if (isRunning) card.classList.add('flow-card-running');
+    if (isExpanded) card.classList.add('flow-card-expanded');
 
-    // Left: name + schedule
+    // === Header row ===
+    const headerRow = document.createElement('div');
+    headerRow.className = 'flow-card-header';
+
+    // Left: name + schedule + running badge
     const info = document.createElement('div');
     info.className = 'flow-card-info';
 
-    const name = document.createElement('div');
+    const nameRow = document.createElement('div');
+    nameRow.className = 'flow-card-name-row';
+
+    const name = document.createElement('span');
     name.className = 'flow-card-name';
     name.textContent = flow.name;
-    info.appendChild(name);
+    nameRow.appendChild(name);
+
+    if (isRunning) {
+      const badge = document.createElement('span');
+      badge.className = 'flow-running-badge';
+      badge.textContent = 'En cours...';
+      nameRow.appendChild(badge);
+    }
+
+    info.appendChild(nameRow);
 
     const schedule = document.createElement('div');
     schedule.className = 'flow-card-schedule';
     schedule.textContent = this._formatSchedule(flow.schedule);
     info.appendChild(schedule);
 
-    card.appendChild(info);
+    headerRow.appendChild(info);
 
     // Right: run dots + actions
     const right = document.createElement('div');
     right.className = 'flow-card-right';
 
-    // Run history dots
+    // Run history dots (clickable to view past logs)
     const dots = document.createElement('div');
     dots.className = 'flow-card-dots';
     const runs = (flow.runs || []).slice(-5);
     for (const run of runs) {
-      const dot = document.createElement('span');
+      const dot = document.createElement('button');
       dot.className = `flow-dot flow-dot-${run.status}`;
-      dot.title = `${run.date} — ${run.status}`;
+      dot.title = `${run.date} — ${run.status}\nCliquer pour voir le log`;
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (run.logTimestamp) {
+          this._showRunLog(flow, run);
+        }
+      });
       dots.appendChild(dot);
     }
     right.appendChild(dots);
@@ -117,20 +199,21 @@ export class FlowView {
     const actions = document.createElement('div');
     actions.className = 'flow-card-actions';
 
-    const runBtn = document.createElement('button');
-    runBtn.className = 'flow-card-btn';
-    runBtn.textContent = '▶';
-    runBtn.title = 'Exécuter maintenant';
-    runBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await window.api.flow.runNow(flow.id);
-      this.refresh();
-    });
-    actions.appendChild(runBtn);
+    if (!isRunning) {
+      const runBtn = document.createElement('button');
+      runBtn.className = 'flow-card-btn';
+      runBtn.textContent = '▶';
+      runBtn.title = 'Exécuter maintenant';
+      runBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await window.api.flow.runNow(flow.id);
+      });
+      actions.appendChild(runBtn);
+    }
 
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'flow-card-btn';
-    toggleBtn.textContent = flow.enabled ? '⏸' : '▶';
+    toggleBtn.textContent = flow.enabled ? '⏸' : '⏵';
     toggleBtn.title = flow.enabled ? 'Désactiver' : 'Activer';
     toggleBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -139,24 +222,192 @@ export class FlowView {
     });
     actions.appendChild(toggleBtn);
 
+    const editBtn = document.createElement('button');
+    editBtn.className = 'flow-card-btn';
+    editBtn.textContent = '✎';
+    editBtn.title = 'Modifier';
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._openModal(flow);
+    });
+    actions.appendChild(editBtn);
+
     const delBtn = document.createElement('button');
     delBtn.className = 'flow-card-btn flow-card-btn-danger';
     delBtn.textContent = '✕';
     delBtn.title = 'Supprimer';
     delBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      this._disposeLiveTerminal(flow.id);
       await window.api.flow.delete(flow.id);
       this.refresh();
     });
     actions.appendChild(delBtn);
 
     right.appendChild(actions);
-    card.appendChild(right);
+    headerRow.appendChild(right);
 
-    // Click card to edit
-    card.addEventListener('click', () => this._openModal(flow));
+    card.appendChild(headerRow);
+
+    // === Terminal area (shown when running or expanded) ===
+    if (isRunning) {
+      const termArea = this._createLiveTerminal(flow.id, this._runningMap[flow.id]);
+      card.appendChild(termArea);
+    }
+
+    // Click header to toggle expand (only meaningful when not running — for running it's always expanded)
+    headerRow.addEventListener('click', () => {
+      if (isRunning) return;
+      // Edit modal on click
+      this._openModal(flow);
+    });
 
     return card;
+  }
+
+  // === Live Terminal (for running flows) ===
+
+  _createLiveTerminal(flowId, ptyId) {
+    // If we already have a terminal for this flow, reattach it
+    const existing = this._liveTerminals.get(flowId);
+    if (existing) {
+      // Refit after reattach
+      setTimeout(() => {
+        try { existing.fitAddon.fit(); } catch {}
+      }, 50);
+      return existing.containerEl;
+    }
+
+    const containerEl = document.createElement('div');
+    containerEl.className = 'flow-card-terminal';
+
+    const term = new Terminal({
+      theme: TERM_THEME,
+      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
+      fontSize: 12,
+      lineHeight: 1.3,
+      cursorBlink: false,
+      cursorStyle: 'bar',
+      scrollback: 10000,
+      disableStdin: true,
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(containerEl);
+
+    // Subscribe to PTY data
+    const unsubData = window.api.pty.onData(({ id, data }) => {
+      if (id === ptyId) {
+        term.write(data);
+      }
+    });
+
+    const resizeObs = new ResizeObserver(() => {
+      try { fitAddon.fit(); } catch {}
+    });
+    resizeObs.observe(containerEl);
+
+    this._liveTerminals.set(flowId, { term, fitAddon, unsubData, resizeObs, containerEl, ptyId });
+
+    setTimeout(() => {
+      try { fitAddon.fit(); } catch {}
+    }, 100);
+
+    return containerEl;
+  }
+
+  _disposeLiveTerminal(flowId) {
+    const data = this._liveTerminals.get(flowId);
+    if (!data) return;
+    if (data.unsubData) data.unsubData();
+    if (data.resizeObs) data.resizeObs.disconnect();
+    data.term.dispose();
+    this._liveTerminals.delete(flowId);
+  }
+
+  // === Past Run Log Viewer ===
+
+  async _showRunLog(flow, run) {
+    const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'flow-modal-overlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'flow-log-modal';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'flow-log-header';
+
+    const title = document.createElement('span');
+    title.className = 'flow-log-title';
+    title.textContent = `${flow.name} — ${run.date}`;
+    header.appendChild(title);
+
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `flow-log-status flow-log-status-${run.status}`;
+    statusBadge.textContent = run.status === 'success' ? 'Succès' : 'Erreur';
+    header.appendChild(statusBadge);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'flow-log-close';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => {
+      logTerm.dispose();
+      overlay.remove();
+    });
+    header.appendChild(closeBtn);
+
+    modal.appendChild(header);
+
+    // Terminal to replay the log
+    const termContainer = document.createElement('div');
+    termContainer.className = 'flow-log-terminal';
+    modal.appendChild(termContainer);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const logTerm = new Terminal({
+      theme: TERM_THEME,
+      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
+      fontSize: 12,
+      lineHeight: 1.3,
+      cursorBlink: false,
+      scrollback: 50000,
+      disableStdin: true,
+    });
+
+    const logFit = new FitAddon();
+    logTerm.loadAddon(logFit);
+    logTerm.open(termContainer);
+
+    setTimeout(() => {
+      try { logFit.fit(); } catch {}
+    }, 50);
+
+    // Write the log content (raw terminal output with ANSI codes)
+    if (log) {
+      logTerm.write(log);
+    } else {
+      logTerm.write('\r\n  Log non disponible.\r\n');
+    }
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        logTerm.dispose();
+        overlay.remove();
+      }
+    });
+
+    // Resize handler
+    const obs = new ResizeObserver(() => {
+      try { logFit.fit(); } catch {}
+    });
+    obs.observe(termContainer);
   }
 
   _formatSchedule(schedule) {
@@ -173,7 +424,6 @@ export class FlowView {
   // ===== Creation / Edit Modal =====
 
   _openModal(existing = null) {
-    // Overlay
     const overlay = document.createElement('div');
     overlay.className = 'flow-modal-overlay';
 
@@ -225,24 +475,24 @@ export class FlowView {
     const bottomBar = document.createElement('div');
     bottomBar.className = 'flow-modal-bottom';
 
-    // CWD selector
-    const cwdBtn = document.createElement('div');
-    cwdBtn.className = 'flow-modal-chip';
+    // CWD
+    const cwdChip = document.createElement('div');
+    cwdChip.className = 'flow-modal-chip';
     const cwdIcon = document.createElement('span');
-    cwdIcon.textContent = '📂';
-    cwdBtn.appendChild(cwdIcon);
+    cwdIcon.textContent = '\u{1F4C2}';
+    cwdChip.appendChild(cwdIcon);
     const cwdInput = document.createElement('input');
     cwdInput.className = 'flow-modal-chip-input';
     cwdInput.placeholder = 'Arborescence de travail';
     cwdInput.value = existing?.cwd || '';
-    cwdBtn.appendChild(cwdInput);
-    bottomBar.appendChild(cwdBtn);
+    cwdChip.appendChild(cwdInput);
+    bottomBar.appendChild(cwdChip);
 
     // Schedule type
     const scheduleChip = document.createElement('div');
     scheduleChip.className = 'flow-modal-chip';
     const schedIcon = document.createElement('span');
-    schedIcon.textContent = '🕐';
+    schedIcon.textContent = '\u{1F550}';
     scheduleChip.appendChild(schedIcon);
     const schedSelect = document.createElement('select');
     schedSelect.className = 'flow-modal-select';
@@ -266,7 +516,7 @@ export class FlowView {
     timeChip.appendChild(timeInput);
     bottomBar.appendChild(timeChip);
 
-    // Custom days (hidden by default)
+    // Custom days
     const daysChip = document.createElement('div');
     daysChip.className = 'flow-modal-chip flow-modal-days';
     daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
@@ -339,15 +589,12 @@ export class FlowView {
 
     modal.appendChild(actionBar);
 
-    // Close on overlay click
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) overlay.remove();
     });
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
-
-    // Focus name input
     nameInput.focus();
   }
 
@@ -355,5 +602,8 @@ export class FlowView {
     this.disposed = true;
     if (this._unsubStarted) this._unsubStarted();
     if (this._unsubComplete) this._unsubComplete();
+    for (const [flowId] of this._liveTerminals) {
+      this._disposeLiveTerminal(flowId);
+    }
   }
 }

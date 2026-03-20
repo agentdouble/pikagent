@@ -55,23 +55,37 @@
 /* ===== Flow Card ===== */
 .flow-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
+  flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  overflow: hidden;
+  transition: border-color 0.15s;
 }
 
 .flow-card:hover {
-  background: var(--bg-hover);
   border-color: var(--text-secondary);
+}
+
+.flow-card-running {
+  border-color: #51cf66;
 }
 
 .flow-card-disabled {
   opacity: 0.5;
+}
+
+.flow-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.flow-card-header:hover {
+  background: var(--bg-hover);
 }
 
 .flow-card-info {
@@ -82,6 +96,12 @@
   flex: 1;
 }
 
+.flow-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .flow-card-name {
   font-size: 14px;
   font-weight: 600;
@@ -89,6 +109,19 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.flow-running-badge {
+  font-size: 11px;
+  color: #51cf66;
+  font-weight: 500;
+  white-space: nowrap;
+  animation: flow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes flow-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 .flow-card-schedule {
@@ -115,6 +148,15 @@
   height: 10px;
   border-radius: 50%;
   display: inline-block;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.flow-dot:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
 }
 
 .flow-dot-success {
@@ -123,6 +165,22 @@
 
 .flow-dot-error {
   background: #ff6b6b;
+}
+
+/* ===== Card Terminal (live output) ===== */
+.flow-card-terminal {
+  height: 300px;
+  border-top: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.flow-card-terminal .xterm {
+  height: 100%;
+  padding: 4px;
+}
+
+.flow-card-terminal .xterm-cursor-layer {
+  display: none !important;
 }
 
 /* ===== Card Actions ===== */
@@ -377,4 +435,77 @@
 
 .flow-modal-btn-create:hover {
   background: var(--accent-dim);
+}
+
+/* ===== Log Viewer Modal ===== */
+.flow-log-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 800px;
+  max-width: 90vw;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.flow-log-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.flow-log-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.flow-log-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.flow-log-status-success {
+  background: rgba(81, 207, 102, 0.15);
+  color: #51cf66;
+}
+
+.flow-log-status-error {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+}
+
+.flow-log-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.flow-log-close:hover {
+  color: var(--text-primary);
+}
+
+.flow-log-terminal {
+  flex: 1;
+  overflow: hidden;
+}
+
+.flow-log-terminal .xterm {
+  height: 100%;
+  padding: 4px;
+}
+
+.flow-log-terminal .xterm-cursor-layer {
+  display: none !important;
 }

@@ -180,6 +180,14 @@ function register(getWindow) {
     return flowManager.runNow(id);
   });
 
+  ipcMain.handle('flow:getRunning', () => {
+    return flowManager.getRunning();
+  });
+
+  ipcMain.handle('flow:getRunLog', (event, { flowId, logTimestamp }) => {
+    return flowManager.getRunLog(flowId, logTimestamp);
+  });
+
   // Start flow scheduler
   flowManager.start(getWindow, ptyManager);
 }

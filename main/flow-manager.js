@@ -4,13 +4,19 @@ const os = require('os');
 
 const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const FLOWS_DIR = path.join(BASE_DIR, 'flows');
+const LOGS_DIR = path.join(FLOWS_DIR, 'logs');
 
 function ensureDir() {
   fs.mkdirSync(FLOWS_DIR, { recursive: true });
+  fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
 function flowPath(id) {
   return path.join(FLOWS_DIR, `${id}.json`);
+}
+
+function logPath(flowId, timestamp) {
+  return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
 }
 
 class FlowManager {
@@ -18,7 +24,7 @@ class FlowManager {
     this._timer = null;
     this._getWindow = null;
     this._ptyManager = null;
-    this._runningFlows = new Map(); // flowId -> { ptyId, proc }
+    this._runningFlows = new Map(); // flowId -> { ptyId, proc, output }
   }
 
   start(getWindow, ptyManager) {
@@ -48,7 +54,7 @@ class FlowManager {
       updatedAt: new Date().toISOString(),
     };
     if (!data.runs) data.runs = [];
-    if (!data.enabled) data.enabled = true;
+    if (data.enabled === undefined) data.enabled = true;
     fs.writeFileSync(flowPath(flow.id), JSON.stringify(data, null, 2), 'utf-8');
     return data;
   }
@@ -82,6 +88,8 @@ class FlowManager {
   remove(id) {
     try {
       fs.unlinkSync(flowPath(id));
+      // Clean up logs
+      this._cleanLogs(id);
       return true;
     } catch {
       return false;
@@ -93,6 +101,33 @@ class FlowManager {
     if (!flow) return null;
     flow.enabled = !flow.enabled;
     return this.save(flow);
+  }
+
+  // Returns { flowId, ptyId } for currently running flows
+  getRunning() {
+    const result = {};
+    for (const [flowId, data] of this._runningFlows) {
+      result[flowId] = data.ptyId;
+    }
+    return result;
+  }
+
+  // Get saved log for a past run
+  getRunLog(flowId, timestamp) {
+    try {
+      return fs.readFileSync(logPath(flowId, timestamp), 'utf-8');
+    } catch {
+      return null;
+    }
+  }
+
+  _cleanLogs(flowId) {
+    try {
+      const files = fs.readdirSync(LOGS_DIR).filter((f) => f.startsWith(flowId + '_'));
+      for (const f of files) {
+        fs.unlinkSync(path.join(LOGS_DIR, f));
+      }
+    } catch {}
   }
 
   // Scheduling
@@ -142,6 +177,7 @@ class FlowManager {
     const ptyId = `flow-${flow.id}-${Date.now()}`;
     const cwd = flow.cwd || os.homedir();
     const win = this._getWindow?.();
+    const runTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     try {
       const proc = this._ptyManager.create({
@@ -151,8 +187,12 @@ class FlowManager {
         rows: 30,
       });
 
-      // Forward PTY data to renderer
+      // Output buffer for saving logs
+      let outputBuffer = '';
+
+      // Forward PTY data to renderer + capture output
       proc.onData((data) => {
+        outputBuffer += data;
         if (win && !win.isDestroyed()) {
           win.webContents.send('pty:data', { id: ptyId, data });
         }
@@ -160,6 +200,17 @@ class FlowManager {
 
       proc.onExit(({ exitCode }) => {
         this._ptyManager.processes.delete(ptyId);
+
+        // Save the log
+        ensureDir();
+        try {
+          fs.writeFileSync(logPath(flow.id, runTimestamp), outputBuffer, 'utf-8');
+        } catch (e) {
+          console.warn('Failed to save flow log:', e);
+        }
+
+        const status = exitCode === 0 ? 'success' : 'error';
+
         if (win && !win.isDestroyed()) {
           win.webContents.send('pty:exit', { id: ptyId, exitCode });
           win.webContents.send('flow:runComplete', {
@@ -168,23 +219,25 @@ class FlowManager {
             exitCode,
           });
         }
-        this._recordRun(flow.id, exitCode === 0 ? 'success' : 'error');
+        this._recordRun(flow.id, status, runTimestamp);
         this._runningFlows.delete(flow.id);
       });
 
-      this._runningFlows.set(flow.id, { ptyId, proc });
+      this._runningFlows.set(flow.id, { ptyId, proc, output: '' });
 
       // Notify renderer that a flow started
       if (win && !win.isDestroyed()) {
         win.webContents.send('flow:runStarted', {
           flowId: flow.id,
           ptyId,
+          flowName: flow.name,
         });
       }
 
       // Build the prompt — escape single quotes for shell safety
       const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
-      const cmd = `claude -p '${escapedPrompt}'\n`;
+      // Use claude in interactive mode with the prompt so the full conversation is visible
+      const cmd = `claude '${escapedPrompt}'; exit\n`;
 
       // Small delay to let the shell initialize
       setTimeout(() => {
@@ -192,7 +245,7 @@ class FlowManager {
       }, 500);
     } catch (err) {
       console.error('Flow execution failed:', err);
-      this._recordRun(flow.id, 'error');
+      this._recordRun(flow.id, 'error', runTimestamp);
     }
   }
 
@@ -204,13 +257,14 @@ class FlowManager {
     return true;
   }
 
-  _recordRun(flowId, status) {
+  _recordRun(flowId, status, runTimestamp) {
     const flow = this.get(flowId);
     if (!flow) return;
     if (!flow.runs) flow.runs = [];
     flow.runs.push({
       date: new Date().toISOString().slice(0, 10),
       timestamp: new Date().toISOString(),
+      logTimestamp: runTimestamp,
       status,
     });
     // Keep only last 7 runs
