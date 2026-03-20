@@ -749,7 +749,7 @@ export class TabManager {
 
     // Initialize components
     tab.fileTree = new FileTree(treeContainer);
-    tab.fileViewer = new FileViewer(viewerContainer);
+    tab.fileViewer = new FileViewer(viewerContainer, () => tab.id === this.activeTabId);
 
     // Restore split tree if available, otherwise create default
     if (tab._restoreData && tab._restoreData.splitTree) {

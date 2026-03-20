@@ -3,8 +3,9 @@ import { bus } from '../utils/events.js';
 import { GitChangesView } from './git-changes-view.js';
 
 export class FileViewer {
-  constructor(container) {
+  constructor(container, isActive) {
     this.container = container;
+    this.isActive = isActive || (() => true);
     this.openFiles = new Map(); // path -> { name, content, savedContent, lang }
     this.activeFile = null;
     this.editorEl = null;
@@ -70,11 +71,13 @@ export class FileViewer {
 
   listen() {
     bus.on('file:open', ({ path, name }) => {
+      if (!this.isActive()) return;
       this.switchMode('files');
       this.openFile(path, name);
     });
 
     bus.on('terminal:cwdChanged', ({ cwd }) => {
+      if (!this.isActive()) return;
       this.gitChanges.setCwd(cwd);
       if (this.mode === 'git') this.gitChanges.loadChanges();
     });
