@@ -6,6 +6,12 @@ const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const FLOWS_DIR = path.join(BASE_DIR, 'flows');
 const LOGS_DIR = path.join(FLOWS_DIR, 'logs');
 
+const SCHEDULER_INTERVAL_MS = 60_000;
+const SHELL_INIT_DELAY_MS = 500;
+const MAX_RUN_HISTORY = 7;
+const DEFAULT_PTY_COLS = 120;
+const DEFAULT_PTY_ROWS = 30;
+
 const AGENT_COMMANDS = {
   claude: (prompt) => `claude --permission-mode auto -p '${prompt}'`,
   codex: (prompt) => `codex --approval-mode full-auto --quiet '${prompt}'`,
@@ -30,15 +36,13 @@ class FlowManager {
     this._timer = null;
     this._getWindow = null;
     this._ptyManager = null;
-    this._runningFlows = new Map(); // flowId -> { ptyId, proc, output }
+    this._runningFlows = new Map();
   }
 
   start(getWindow, ptyManager) {
     this._getWindow = getWindow;
     this._ptyManager = ptyManager;
-    // Check every 60 seconds
-    this._timer = setInterval(() => this._tick(), 60_000);
-    // Also check immediately on start
+    this._timer = setInterval(() => this._tick(), SCHEDULER_INTERVAL_MS);
     this._tick();
   }
 
@@ -49,7 +53,16 @@ class FlowManager {
     }
   }
 
-  // CRUD
+  // --- Window IPC helper ---
+
+  _sendToWindow(channel, payload) {
+    const win = this._getWindow?.();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(channel, payload);
+    }
+  }
+
+  // --- CRUD ---
 
   save(flow) {
     ensureDir();
@@ -94,7 +107,6 @@ class FlowManager {
   remove(id) {
     try {
       fs.unlinkSync(flowPath(id));
-      // Clean up logs
       this._cleanLogs(id);
       return true;
     } catch {
@@ -109,7 +121,6 @@ class FlowManager {
     return this.save(flow);
   }
 
-  // Returns { flowId, ptyId } for currently running flows
   getRunning() {
     const result = {};
     for (const [flowId, data] of this._runningFlows) {
@@ -118,7 +129,6 @@ class FlowManager {
     return result;
   }
 
-  // Get saved log for a past run
   getRunLog(flowId, timestamp) {
     try {
       return fs.readFileSync(logPath(flowId, timestamp), 'utf-8');
@@ -136,7 +146,7 @@ class FlowManager {
     } catch {}
   }
 
-  // Scheduling
+  // --- Scheduling ---
 
   _tick() {
     const now = new Date();
@@ -168,18 +178,12 @@ class FlowManager {
     if (!schedule.time) return false;
 
     const [hours, minutes] = schedule.time.split(':').map(Number);
-    const currentH = now.getHours();
-    const currentM = now.getMinutes();
+    if (now.getHours() !== hours || now.getMinutes() !== minutes) return false;
 
-    // Only trigger within the exact minute
-    if (currentH !== hours || currentM !== minutes) return false;
-
-    // Check day of week
-    const day = now.getDay(); // 0=Sunday
+    const day = now.getDay();
     if (schedule.type === 'weekdays' && (day === 0 || day === 6)) return false;
     if (schedule.type === 'custom' && schedule.days && !schedule.days.includes(day)) return false;
 
-    // Check if already ran today
     const todayStr = now.toISOString().slice(0, 10);
     if (flow.runs && flow.runs.length > 0) {
       const lastRun = flow.runs[flow.runs.length - 1];
@@ -189,79 +193,73 @@ class FlowManager {
     return true;
   }
 
+  // --- Execution ---
+
+  _buildCommand(flow) {
+    const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
+    const agent = flow.agent || 'claude';
+    const buildCmd = AGENT_COMMANDS[agent] || AGENT_COMMANDS.claude;
+    return `${buildCmd(escapedPrompt)}; exit\n`;
+  }
+
+  _saveLog(flowId, runTimestamp, output) {
+    ensureDir();
+    try {
+      fs.writeFileSync(logPath(flowId, runTimestamp), output, 'utf-8');
+    } catch (e) {
+      console.warn('Failed to save flow log:', e);
+    }
+  }
+
+  _setupPtyListeners(proc, flow, ptyId, runTimestamp) {
+    let outputBuffer = '';
+
+    proc.onData((data) => {
+      outputBuffer += data;
+      this._sendToWindow('pty:data', { id: ptyId, data });
+    });
+
+    proc.onExit(({ exitCode }) => {
+      this._ptyManager.processes.delete(ptyId);
+      this._saveLog(flow.id, runTimestamp, outputBuffer);
+
+      const status = exitCode === 0 ? 'success' : 'error';
+      this._sendToWindow('pty:exit', { id: ptyId, exitCode });
+      this._sendToWindow('flow:runComplete', { flowId: flow.id, ptyId, exitCode });
+
+      this._recordRun(flow.id, status, runTimestamp);
+      this._runningFlows.delete(flow.id);
+    });
+  }
+
   _execute(flow) {
     if (!this._ptyManager) return;
 
     const ptyId = `flow-${flow.id}-${Date.now()}`;
     const cwd = flow.cwd || os.homedir();
-    const win = this._getWindow?.();
     const runTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     try {
       const proc = this._ptyManager.create({
         id: ptyId,
         cwd,
-        cols: 120,
-        rows: 30,
+        cols: DEFAULT_PTY_COLS,
+        rows: DEFAULT_PTY_ROWS,
       });
 
-      // Output buffer for saving logs
-      let outputBuffer = '';
-
-      // Forward PTY data to renderer + capture output
-      proc.onData((data) => {
-        outputBuffer += data;
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('pty:data', { id: ptyId, data });
-        }
-      });
-
-      proc.onExit(({ exitCode }) => {
-        this._ptyManager.processes.delete(ptyId);
-
-        // Save the log
-        ensureDir();
-        try {
-          fs.writeFileSync(logPath(flow.id, runTimestamp), outputBuffer, 'utf-8');
-        } catch (e) {
-          console.warn('Failed to save flow log:', e);
-        }
-
-        const status = exitCode === 0 ? 'success' : 'error';
-
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('pty:exit', { id: ptyId, exitCode });
-          win.webContents.send('flow:runComplete', {
-            flowId: flow.id,
-            ptyId,
-            exitCode,
-          });
-        }
-        this._recordRun(flow.id, status, runTimestamp);
-        this._runningFlows.delete(flow.id);
-      });
-
+      this._setupPtyListeners(proc, flow, ptyId, runTimestamp);
       this._runningFlows.set(flow.id, { ptyId, proc, output: '' });
 
-      // Notify renderer that a flow started
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('flow:runStarted', {
-          flowId: flow.id,
-          ptyId,
-          flowName: flow.name,
-        });
-      }
+      this._sendToWindow('flow:runStarted', {
+        flowId: flow.id,
+        ptyId,
+        flowName: flow.name,
+      });
 
-      // Build the prompt — escape single quotes for shell safety
-      const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
-      const agent = flow.agent || 'claude';
-      const buildCmd = AGENT_COMMANDS[agent] || AGENT_COMMANDS.claude;
-      const cmd = `${buildCmd(escapedPrompt)}; exit\n`;
-
-      // Small delay to let the shell initialize
+      const cmd = this._buildCommand(flow);
       setTimeout(() => {
         this._ptyManager.write(ptyId, cmd);
-      }, 500);
+      }, SHELL_INIT_DELAY_MS);
     } catch (err) {
       console.error('Flow execution failed:', err);
       this._recordRun(flow.id, 'error', runTimestamp);
@@ -286,9 +284,8 @@ class FlowManager {
       logTimestamp: runTimestamp,
       status,
     });
-    // Keep only last 7 runs
-    if (flow.runs.length > 7) {
-      flow.runs = flow.runs.slice(-7);
+    if (flow.runs.length > MAX_RUN_HISTORY) {
+      flow.runs = flow.runs.slice(-MAX_RUN_HISTORY);
     }
     this.save(flow);
   }
