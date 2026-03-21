@@ -29,6 +29,7 @@
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
   font-family: inherit;
+  text-align: center;
 }
 
 .mode-btn:hover {

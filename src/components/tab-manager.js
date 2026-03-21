@@ -700,7 +700,7 @@ export class TabManager {
     pathArrowLeft.className = 'path-arrow';
     pathArrowLeft.textContent = '\u2190';
     pathArrowLeft.title = 'Collapse left panel';
-    pathArrowLeft.addEventListener('click', () => this.togglePanel(leftPanel, 'left'));
+    pathArrowLeft.addEventListener('click', () => this.togglePanel(leftPanel, 'left', pathArrowLeft));
 
     const pathText = document.createElement('span');
     pathText.className = 'path-text';
@@ -714,7 +714,7 @@ export class TabManager {
     pathArrowRight.className = 'path-arrow';
     pathArrowRight.textContent = '\u2192';
     pathArrowRight.title = 'Collapse right panel';
-    pathArrowRight.addEventListener('click', () => this.togglePanel(rightPanel, 'right'));
+    pathArrowRight.addEventListener('click', () => this.togglePanel(rightPanel, 'right', pathArrowRight));
 
     pathInfo.appendChild(pathArrowLeft);
     pathInfo.appendChild(pathText);
@@ -811,8 +811,20 @@ export class TabManager {
     bus.emit('workspace:activated');
   }
 
-  togglePanel(panel, side) {
+  togglePanel(panel, side, arrowEl) {
     panel.classList.toggle('collapsed');
+    const isCollapsed = panel.classList.contains('collapsed');
+
+    if (arrowEl) {
+      if (side === 'left') {
+        arrowEl.textContent = isCollapsed ? '\u2192' : '\u2190';
+        arrowEl.title = isCollapsed ? 'Expand left panel' : 'Collapse left panel';
+      } else {
+        arrowEl.textContent = isCollapsed ? '\u2190' : '\u2192';
+        arrowEl.title = isCollapsed ? 'Expand right panel' : 'Collapse right panel';
+      }
+    }
+
     const tab = this.tabs.get(this.activeTabId);
     if (tab && tab.terminalPanel) {
       setTimeout(() => tab.terminalPanel.fitAll(), 200);
