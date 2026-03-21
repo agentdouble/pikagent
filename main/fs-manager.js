@@ -84,32 +84,43 @@ async function makeDir(dirPath) {
   }
 }
 
-async function copyEntry(srcPath) {
-  const stat = await fs.promises.stat(srcPath);
-  const dir = path.dirname(srcPath);
-  const ext = path.extname(srcPath);
-  const base = path.basename(srcPath, ext);
+async function _pathExists(filePath) {
+  try {
+    await fs.promises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-  // Find a unique name: "file (copy).txt", "file (copy 2).txt", etc.
-  let destPath;
+async function _findUniqueCopyPath(dir, name, isDirectory) {
+  const ext = isDirectory ? '' : path.extname(name);
+  const base = path.basename(name, ext);
   let i = 1;
   while (true) {
     const suffix = i === 1 ? ' (copy)' : ` (copy ${i})`;
-    const newName = stat.isDirectory() ? `${base}${suffix}` : `${base}${suffix}${ext}`;
-    destPath = path.join(dir, newName);
-    try {
-      await fs.promises.access(destPath);
+    const destPath = path.join(dir, `${base}${suffix}${ext}`);
+    if (await _pathExists(destPath)) {
       i++;
-    } catch {
-      break; // doesn't exist, use this name
+    } else {
+      return destPath;
     }
   }
+}
 
-  if (stat.isDirectory()) {
+async function _copyEntryTo(srcPath, destPath, isDirectory) {
+  if (isDirectory) {
     await copyDirRecursive(srcPath, destPath);
   } else {
     await fs.promises.copyFile(srcPath, destPath);
   }
+}
+
+async function copyEntry(srcPath) {
+  const stat = await fs.promises.stat(srcPath);
+  const isDir = stat.isDirectory();
+  const destPath = await _findUniqueCopyPath(path.dirname(srcPath), path.basename(srcPath), isDir);
+  await _copyEntryTo(srcPath, destPath, isDir);
   return { success: true, destPath };
 }
 
@@ -144,35 +155,16 @@ function getHomedir() {
 
 async function copyFileTo(srcPath, destDir) {
   try {
+    const stat = await fs.promises.stat(srcPath);
+    const isDir = stat.isDirectory();
     const name = path.basename(srcPath);
     let destPath = path.join(destDir, name);
 
-    // If destination already exists, find a unique name
-    try {
-      await fs.promises.access(destPath);
-      const ext = path.extname(name);
-      const base = path.basename(name, ext);
-      let i = 1;
-      while (true) {
-        const suffix = i === 1 ? ' (copy)' : ` (copy ${i})`;
-        destPath = path.join(destDir, `${base}${suffix}${ext}`);
-        try {
-          await fs.promises.access(destPath);
-          i++;
-        } catch {
-          break;
-        }
-      }
-    } catch {
-      // destPath doesn't exist, use as-is
+    if (await _pathExists(destPath)) {
+      destPath = await _findUniqueCopyPath(destDir, name, isDir);
     }
 
-    const stat = await fs.promises.stat(srcPath);
-    if (stat.isDirectory()) {
-      await copyDirRecursive(srcPath, destPath);
-    } else {
-      await fs.promises.copyFile(srcPath, destPath);
-    }
+    await _copyEntryTo(srcPath, destPath, isDir);
     return { success: true, destPath };
   } catch (err) {
     return { error: err.message };
