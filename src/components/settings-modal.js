@@ -1,6 +1,15 @@
 import { ShortcutManager } from './shortcuts.js';
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme } from '../utils/terminal-themes.js';
 
+const MODAL_CLOSE_TRANSITION_MS = 200;
+const MODIFIER_KEYS = ['Shift', 'Control', 'Alt', 'Meta'];
+
+const NAV_SECTIONS = [
+  { key: 'keybindings', label: 'Keyboard Shortcuts' },
+  { key: 'appearance', label: 'Appearance' },
+  { key: 'configs', label: 'Workspace Configs' },
+];
+
 export class SettingsModal {
   constructor(shortcutManager) {
     this.shortcutManager = shortcutManager;
@@ -8,6 +17,11 @@ export class SettingsModal {
     this.overlay = null;
     this.recording = null; // { actionId, index, el }
     this.activeSection = 'keybindings';
+    this.sectionRenderers = {
+      keybindings: () => this.renderKeybindings(),
+      appearance: () => this.renderAppearance(),
+      configs: () => this.renderConfigs(),
+    };
     this.build();
   }
 
@@ -47,25 +61,16 @@ export class SettingsModal {
     const nav = document.createElement('div');
     nav.className = 'settings-nav';
 
-    const navKeybindings = document.createElement('div');
-    navKeybindings.className = 'settings-nav-item active';
-    navKeybindings.textContent = 'Keyboard Shortcuts';
-    navKeybindings.addEventListener('click', () => this.showSection('keybindings'));
-    nav.appendChild(navKeybindings);
-
-    const navAppearance = document.createElement('div');
-    navAppearance.className = 'settings-nav-item';
-    navAppearance.textContent = 'Appearance';
-    navAppearance.addEventListener('click', () => this.showSection('appearance'));
-    nav.appendChild(navAppearance);
-
-    const navConfigs = document.createElement('div');
-    navConfigs.className = 'settings-nav-item';
-    navConfigs.textContent = 'Workspace Configs';
-    navConfigs.addEventListener('click', () => this.showSection('configs'));
-    nav.appendChild(navConfigs);
-
-    this.navItems = { keybindings: navKeybindings, appearance: navAppearance, configs: navConfigs };
+    this.navItems = {};
+    for (const { key, label } of NAV_SECTIONS) {
+      const item = document.createElement('div');
+      item.className = 'settings-nav-item';
+      if (key === this.activeSection) item.classList.add('active');
+      item.textContent = label;
+      item.addEventListener('click', () => this.showSection(key));
+      nav.appendChild(item);
+      this.navItems[key] = item;
+    }
 
     // Content
     this.content = document.createElement('div');
@@ -82,8 +87,7 @@ export class SettingsModal {
       e.preventDefault();
       e.stopPropagation();
 
-      // Ignore lone modifier keys
-      if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+      if (MODIFIER_KEYS.includes(e.key)) return;
 
       const parts = [];
       if (e.shiftKey) parts.push('shift');
@@ -99,17 +103,10 @@ export class SettingsModal {
 
   showSection(section) {
     this.activeSection = section;
-    // Update nav active state
     for (const [key, el] of Object.entries(this.navItems)) {
       el.classList.toggle('active', key === section);
     }
-    if (section === 'keybindings') {
-      this.renderKeybindings();
-    } else if (section === 'appearance') {
-      this.renderAppearance();
-    } else if (section === 'configs') {
-      this.renderConfigs();
-    }
+    this.sectionRenderers[section]?.();
   }
 
   open() {
@@ -125,18 +122,23 @@ export class SettingsModal {
     this.overlay.classList.remove('visible');
     setTimeout(() => {
       if (this.overlay.parentElement) this.overlay.remove();
-    }, 200);
+    }, MODAL_CLOSE_TRANSITION_MS);
+  }
+
+  _createSectionHeading(title, ...extras) {
+    this.content.innerHTML = '';
+    const heading = document.createElement('div');
+    heading.className = 'settings-section-header';
+    const h3 = document.createElement('h3');
+    h3.textContent = title;
+    heading.appendChild(h3);
+    for (const el of extras) heading.appendChild(el);
+    this.content.appendChild(heading);
+    return heading;
   }
 
   renderAppearance() {
-    this.content.innerHTML = '';
-
-    const heading = document.createElement('div');
-    heading.className = 'settings-section-header';
-    const headingTitle = document.createElement('h3');
-    headingTitle.textContent = 'Terminal Theme';
-    heading.appendChild(headingTitle);
-    this.content.appendChild(heading);
+    this._createSectionHeading('Terminal Theme');
 
     const currentThemeName = getTerminalThemeName();
     const grid = document.createElement('div');
@@ -214,14 +216,6 @@ export class SettingsModal {
   }
 
   renderKeybindings() {
-    this.content.innerHTML = '';
-
-    const heading = document.createElement('div');
-    heading.className = 'settings-section-header';
-
-    const headingTitle = document.createElement('h3');
-    headingTitle.textContent = 'Keyboard Shortcuts';
-
     const resetBtn = document.createElement('button');
     resetBtn.className = 'settings-reset-btn';
     resetBtn.textContent = 'Reset to defaults';
@@ -229,10 +223,7 @@ export class SettingsModal {
       this.shortcutManager.resetToDefaults();
       this.renderKeybindings();
     });
-
-    heading.appendChild(headingTitle);
-    heading.appendChild(resetBtn);
-    this.content.appendChild(heading);
+    this._createSectionHeading('Keyboard Shortcuts', resetBtn);
 
     const list = document.createElement('div');
     list.className = 'keybinding-list';
@@ -261,13 +252,9 @@ export class SettingsModal {
       addBtn.textContent = '+';
       addBtn.title = 'Add keybinding';
       addBtn.addEventListener('click', () => {
-        const newIndex = binding.keys.length;
         binding.keys.push('');
         this.shortcutManager.updateBinding(binding.id, binding.keys);
         this.renderKeybindings();
-        // Auto-start recording on the new empty slot
-        const rows = list.querySelectorAll('.keybinding-row');
-        // Re-render will handle it
       });
       keysContainer.appendChild(addBtn);
 
@@ -350,15 +337,7 @@ export class SettingsModal {
   // ===== Workspace Configs Section =====
 
   async renderConfigs() {
-    this.content.innerHTML = '';
-
-    const heading = document.createElement('div');
-    heading.className = 'settings-section-header';
-
-    const headingTitle = document.createElement('h3');
-    headingTitle.textContent = 'Workspace Configs';
-    heading.appendChild(headingTitle);
-    this.content.appendChild(heading);
+    this._createSectionHeading('Workspace Configs');
 
     // Current loaded config indicator
     const currentName = this.tabManager?.currentConfigName || 'Default';
@@ -485,39 +464,26 @@ export class SettingsModal {
     const newBtn = document.createElement('button');
     newBtn.className = 'config-bottom-btn';
     newBtn.textContent = 'New Config...';
-    newBtn.addEventListener('click', () => this._promptNewConfig());
+    newBtn.addEventListener('click', () => this._saveConfigAs('Nom de la nouvelle config :'));
     bottomActions.appendChild(newBtn);
 
     const dupBtn = document.createElement('button');
     dupBtn.className = 'config-bottom-btn';
     dupBtn.textContent = 'Duplicate Current...';
-    dupBtn.addEventListener('click', () => this._duplicateCurrent());
+    dupBtn.addEventListener('click', () => this._saveConfigAs('Nom de la copie :', `${currentName} (copy)`));
     bottomActions.appendChild(dupBtn);
 
     this.content.appendChild(bottomActions);
   }
 
-  _promptNewConfig() {
-    const name = prompt('Nom de la nouvelle config :');
-    if (!name || !name.trim()) return;
-    if (!this.tabManager) return;
+  async _saveConfigAs(promptMsg, defaultValue = '') {
+    const raw = prompt(promptMsg, defaultValue);
+    const name = raw?.trim();
+    if (!name || !this.tabManager) return;
     const data = this.tabManager.serialize();
-    window.api.config.save(name.trim(), data).then(() => {
-      this.tabManager.currentConfigName = name.trim();
-      this.renderConfigs();
-    });
-  }
-
-  _duplicateCurrent() {
-    const currentName = this.tabManager?.currentConfigName || 'Default';
-    const newName = prompt('Nom de la copie :', `${currentName} (copy)`);
-    if (!newName || !newName.trim()) return;
-    if (!this.tabManager) return;
-    const data = this.tabManager.serialize();
-    window.api.config.save(newName.trim(), data).then(() => {
-      this.tabManager.currentConfigName = newName.trim();
-      this.renderConfigs();
-    });
+    await window.api.config.save(name, data);
+    this.tabManager.currentConfigName = name;
+    this.renderConfigs();
   }
 
 }
