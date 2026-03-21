@@ -5,6 +5,15 @@ const { promisify } = require('util');
 
 const execFileAsync = promisify(execFile);
 
+const KNOWN_AGENTS = [
+  ['claude', 'Claude'],
+  ['codex', 'Codex'],
+  ['opencode', 'OpenCode'],
+];
+
+const EXEC_TIMEOUT_MS = 1000;
+const CWD_TIMEOUT_MS = 2000;
+
 class PtyManager {
   constructor() {
     this.processes = new Map();
@@ -29,7 +38,7 @@ class PtyManager {
     try {
       const { stdout } = await execFileAsync('lsof', ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'], {
         encoding: 'utf-8',
-        timeout: 2000,
+        timeout: CWD_TIMEOUT_MS,
       });
       const match = stdout.match(/^n(.+)$/m);
       return match ? match[1] : null;
@@ -74,28 +83,25 @@ class PtyManager {
     try {
       const { stdout } = await execFileAsync('pgrep', ['-P', String(proc.pid)], {
         encoding: 'utf8',
-        timeout: 1000,
+        timeout: EXEC_TIMEOUT_MS,
       });
-      const childPids = stdout.trim().split('\n').filter(Boolean);
+      const childPids = stdout.trim().split('\n').filter(Boolean).map((p) => p.trim());
+      if (childPids.length === 0) return null;
 
-      for (const childPid of childPids) {
-        try {
-          const { stdout: args } = await execFileAsync('ps', ['-o', 'args=', '-p', childPid.trim()], {
-            encoding: 'utf8',
-            timeout: 1000,
-          });
-          const lower = args.trim().toLowerCase();
-          if (lower.includes('claude')) return 'Claude';
-          if (lower.includes('codex')) return 'Codex';
-          if (lower.includes('opencode')) return 'OpenCode';
-        } catch {}
+      const { stdout: psOut } = await execFileAsync('ps', ['-o', 'args=', '-p', childPids.join(',')], {
+        encoding: 'utf8',
+        timeout: EXEC_TIMEOUT_MS,
+      });
+      const lower = psOut.toLowerCase();
+      for (const [pattern, name] of KNOWN_AGENTS) {
+        if (lower.includes(pattern)) return name;
       }
     } catch {}
     return null;
   }
 
   killAll() {
-    for (const [id, proc] of this.processes) {
+    for (const proc of this.processes.values()) {
       proc.kill();
     }
     this.processes.clear();
