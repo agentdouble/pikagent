@@ -91,6 +91,7 @@ export class BoardView {
         }
       }
 
+      this._autoHideNoShortcut();
       this._updateEmptyState();
     } catch (e) {
       console.warn('Board: agent scan failed', e);
@@ -151,6 +152,18 @@ export class BoardView {
 
   _getTabNameForTerminal(termId) {
     return this._findTabForTerminal(termId)?.tab.name ?? null;
+  }
+
+  /** Auto-hide cards whose terminal belongs to a NoShortcut tab */
+  _autoHideNoShortcut() {
+    for (const [termId, data] of this.cards) {
+      const match = this._findTabForTerminal(termId);
+      if (match?.tab.noShortcut && !this._hiddenTerms.has(termId)) {
+        data.element.classList.add('board-card-hidden');
+        this._hiddenTerms.add(termId);
+      }
+    }
+    this._updateHiddenBar();
   }
 
   addCard(termId, info) {
