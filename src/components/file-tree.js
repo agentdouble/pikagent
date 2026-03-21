@@ -45,7 +45,7 @@ export class FileTree {
         id,
         setTimeout(() => {
           this.debounceTimers.delete(id);
-          this.refreshSection(id);
+          this.refreshSection(id).catch(() => {});
         }, DEBOUNCE_DELAY)
       );
     });
@@ -111,6 +111,13 @@ export class FileTree {
     }
     const section = this.sections.get(cwd);
     if (!section) return;
+
+    // Guard against concurrent refreshes for the same section
+    if (section._refreshing) {
+      section._pendingRefresh = true;
+      return;
+    }
+    section._refreshing = true;
 
     const wasCollapsed =
       section.sectionEl.querySelector('.file-tree-section-content.collapsed') !== null;
@@ -192,7 +199,15 @@ export class FileTree {
     // Drop on section content area (empty space) → drop into root cwd
     this._setupDropZone(contentEl, cwd);
 
-    await this.renderDir(cwd, contentEl, 0, section.expandedDirs);
+    try {
+      await this.renderDir(cwd, contentEl, 0, section.expandedDirs);
+    } finally {
+      section._refreshing = false;
+      if (section._pendingRefresh) {
+        section._pendingRefresh = false;
+        this.refreshSection(cwd).catch(() => {});
+      }
+    }
   }
 
   // --- Context menus ---

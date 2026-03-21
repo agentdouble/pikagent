@@ -116,11 +116,15 @@ async function _copyEntryTo(srcPath, destPath, isDirectory) {
 }
 
 async function copyEntry(srcPath) {
-  const stat = await fs.promises.stat(srcPath);
-  const isDir = stat.isDirectory();
-  const destPath = await _findUniqueCopyPath(path.dirname(srcPath), path.basename(srcPath), isDir);
-  await _copyEntryTo(srcPath, destPath, isDir);
-  return { success: true, destPath };
+  try {
+    const stat = await fs.promises.stat(srcPath);
+    const isDir = stat.isDirectory();
+    const destPath = await _findUniqueCopyPath(path.dirname(srcPath), path.basename(srcPath), isDir);
+    await _copyEntryTo(srcPath, destPath, isDir);
+    return { success: true, destPath };
+  } catch (err) {
+    return { error: err.message };
+  }
 }
 
 async function copyDirRecursive(src, dest) {
