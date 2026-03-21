@@ -26,6 +26,11 @@ export class FileViewer {
   render() {
     this.container.innerHTML = '';
 
+    // Header spacer (aligns with center panel .path-info row)
+    const headerSpacer = document.createElement('div');
+    headerSpacer.className = 'file-viewer-spacer';
+    this.container.appendChild(headerSpacer);
+
     // Mode selector bar
     this.modeBar = document.createElement('div');
     this.modeBar.className = 'file-viewer-mode-bar';

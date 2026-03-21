@@ -6,6 +6,19 @@
   overflow: hidden;
 }
 
+/* Spacer to align with center panel .path-info row */
+.file-viewer-spacer {
+  padding: 6px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.file-viewer-spacer::before {
+  content: '\00a0';
+}
+
 /* ===== Mode Selector Bar ===== */
 .file-viewer-mode-bar {
   display: flex;
