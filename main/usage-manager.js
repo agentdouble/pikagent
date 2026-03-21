@@ -7,15 +7,36 @@ const sessionManager = require('./session-manager');
 
 const execFileAsync = promisify(execFile);
 
+// ===== Constants =====
+
 const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const FLOWS_DIR = path.join(BASE_DIR, 'flows');
+const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 
-// Cache for metrics to avoid recomputing on every call
+const CACHE_TTL = 30000;
+const DEFAULT_DAYS = 30;
+const MAX_RUN_DURATION_MS = 24 * 60 * 60 * 1000;
+const TOP_PROJECTS_LIMIT = 10;
+const TOP_FILES_LIMIT = 15;
+const GIT_TIMEOUT_MS = 5000;
+
+const SUCCESS_STATUSES = new Set(['success', 'completed']);
+const ERROR_STATUSES = new Set(['error', 'exited']);
+
 let _metricsCache = null;
 let _metricsCacheTime = 0;
-const CACHE_TTL = 30000; // 30 seconds
 
 // ===== Helpers =====
+
+function countByStatus(items, field = 'status') {
+  let success = 0;
+  let error = 0;
+  for (const item of items) {
+    if (SUCCESS_STATUSES.has(item[field])) success++;
+    else if (ERROR_STATUSES.has(item[field])) error++;
+  }
+  return { success, error };
+}
 
 function parseLogTimestamp(logTs) {
   const parts = logTs.split('T');
@@ -31,7 +52,7 @@ function dateStr(iso) {
   return iso ? iso.slice(0, 10) : null;
 }
 
-function dayLabels(days = 30) {
+function dayLabels(days = DEFAULT_DAYS) {
   const result = [];
   const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
@@ -87,20 +108,19 @@ function getFlowRunDuration(run) {
   const end = new Date(run.timestamp);
   if (!start || isNaN(start.getTime()) || isNaN(end.getTime())) return null;
   const ms = end.getTime() - start.getTime();
-  return ms > 0 && ms < 24 * 60 * 60 * 1000 ? Math.round(ms / 1000) : null;
+  return ms > 0 && ms < MAX_RUN_DURATION_MS ? Math.round(ms / 1000) : null;
 }
 
 // ===== Generic stats =====
 
 function computeRate(items, statusField = 'status') {
   if (items.length === 0) return { total: 0, success: 0, error: 0, rate: 0 };
-  const success = items.filter((r) => r[statusField] === 'success' || r[statusField] === 'completed').length;
-  const error = items.filter((r) => r[statusField] === 'error' || r[statusField] === 'exited').length;
+  const { success, error } = countByStatus(items, statusField);
   return {
     total: items.length,
     success,
     error,
-    rate: items.length > 0 ? Math.round((success / items.length) * 100) : 0,
+    rate: Math.round((success / items.length) * 100),
   };
 }
 
@@ -116,15 +136,16 @@ function computeDuration(durations) {
   };
 }
 
-function perDay(items, dateExtractor, days = 30) {
+function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
   const labels = dayLabels(days);
   return labels.map((day) => {
     const dayItems = items.filter((r) => dateExtractor(r) === day.date);
+    const { success, error } = countByStatus(dayItems);
     return {
       ...day,
       total: dayItems.length,
-      success: dayItems.filter((r) => r.status === 'success' || r.status === 'completed').length,
-      error: dayItems.filter((r) => r.status === 'error' || r.status === 'exited').length,
+      success,
+      error,
       running: dayItems.filter((r) => r.status === 'running').length,
     };
   });
@@ -132,10 +153,66 @@ function perDay(items, dateExtractor, days = 30) {
 
 // ===== Tokens (from Claude session JSONL files) =====
 
-async function getTokenMetrics(days = 30) {
-  const claudeDir = path.join(os.homedir(), '.claude', 'projects');
-  const labels = dayLabels(days);
+function parseTokenUsage(line, cutoffMs) {
+  if (!line.includes('"usage"')) return null;
+  let entry;
+  try { entry = JSON.parse(line); } catch { return null; }
+  if (entry.type !== 'assistant' || !entry.message?.usage) return null;
+
+  const u = entry.message.usage;
+  let dateKey = null;
+  if (entry.timestamp) {
+    const ts = typeof entry.timestamp === 'number' ? entry.timestamp : new Date(entry.timestamp).getTime();
+    if (ts < cutoffMs) return null;
+    dateKey = new Date(ts).toISOString().slice(0, 10);
+  }
+
+  return {
+    input: u.input_tokens || 0,
+    output: u.output_tokens || 0,
+    cacheRead: u.cache_read_input_tokens || 0,
+    cacheCreate: u.cache_creation_input_tokens || 0,
+    dateKey,
+  };
+}
+
+function readProjectTokens(projDir, cutoffMs) {
+  const totals = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
   const perDayMap = {};
+
+  const files = fs.readdirSync(projDir).filter((f) => f.endsWith('.jsonl'));
+  for (const file of files) {
+    let content;
+    try { content = fs.readFileSync(path.join(projDir, file), 'utf-8'); } catch { continue; }
+
+    for (const line of content.split('\n')) {
+      const usage = parseTokenUsage(line, cutoffMs);
+      if (!usage) continue;
+
+      totals.input += usage.input;
+      totals.output += usage.output;
+      totals.cacheRead += usage.cacheRead;
+      totals.cacheCreate += usage.cacheCreate;
+
+      if (usage.dateKey) {
+        if (!perDayMap[usage.dateKey]) perDayMap[usage.dateKey] = { input: 0, output: 0 };
+        perDayMap[usage.dateKey].input += usage.input;
+        perDayMap[usage.dateKey].output += usage.output;
+      }
+    }
+  }
+
+  return { totals, perDayMap };
+}
+
+function projectShortName(proj) {
+  const parts = proj.split('-').filter(Boolean);
+  return parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
+}
+
+async function getTokenMetrics(days = DEFAULT_DAYS) {
+  const labels = dayLabels(days);
+  const globalPerDay = {};
   const perProjectMap = {};
   let totalInput = 0;
   let totalOutput = 0;
@@ -143,7 +220,7 @@ async function getTokenMetrics(days = 30) {
   let totalCacheCreate = 0;
 
   for (const day of labels) {
-    perDayMap[day.date] = { input: 0, output: 0 };
+    globalPerDay[day.date] = { input: 0, output: 0 };
   }
 
   const cutoff = new Date();
@@ -151,73 +228,46 @@ async function getTokenMetrics(days = 30) {
   const cutoffMs = cutoff.getTime();
 
   try {
-    const projects = fs.readdirSync(claudeDir).filter((d) => {
-      try { return fs.statSync(path.join(claudeDir, d)).isDirectory(); } catch { return false; }
+    const projects = fs.readdirSync(CLAUDE_PROJECTS_DIR).filter((d) => {
+      try { return fs.statSync(path.join(CLAUDE_PROJECTS_DIR, d)).isDirectory(); } catch { return false; }
     });
 
     for (const proj of projects) {
-      const projDir = path.join(claudeDir, proj);
-      let projInput = 0;
-      let projOutput = 0;
+      const { totals, perDayMap } = readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);
 
-      const files = fs.readdirSync(projDir).filter((f) => f.endsWith('.jsonl'));
-      for (const file of files) {
-        const fpath = path.join(projDir, file);
-        let content;
-        try { content = fs.readFileSync(fpath, 'utf-8'); } catch { continue; }
+      totalInput += totals.input;
+      totalOutput += totals.output;
+      totalCacheRead += totals.cacheRead;
+      totalCacheCreate += totals.cacheCreate;
 
-        for (const line of content.split('\n')) {
-          if (!line.includes('"usage"')) continue;
-          let entry;
-          try { entry = JSON.parse(line); } catch { continue; }
-          if (entry.type !== 'assistant' || !entry.message?.usage) continue;
-
-          const u = entry.message.usage;
-          const inp = u.input_tokens || 0;
-          const out = u.output_tokens || 0;
-          const cacheRead = u.cache_read_input_tokens || 0;
-          const cacheCreate = u.cache_creation_input_tokens || 0;
-
-          let dateKey = null;
-          if (entry.timestamp) {
-            const ts = typeof entry.timestamp === 'number' ? entry.timestamp : new Date(entry.timestamp).getTime();
-            if (ts < cutoffMs) continue;
-            dateKey = new Date(ts).toISOString().slice(0, 10);
-          }
-
-          totalInput += inp;
-          totalOutput += out;
-          totalCacheRead += cacheRead;
-          totalCacheCreate += cacheCreate;
-          projInput += inp;
-          projOutput += out;
-
-          if (dateKey && perDayMap[dateKey] !== undefined) {
-            perDayMap[dateKey].input += inp;
-            perDayMap[dateKey].output += out;
-          }
+      for (const [dateKey, dayData] of Object.entries(perDayMap)) {
+        if (globalPerDay[dateKey]) {
+          globalPerDay[dateKey].input += dayData.input;
+          globalPerDay[dateKey].output += dayData.output;
         }
       }
 
-      if (projInput + projOutput > 0) {
-        const parts = proj.split('-').filter(Boolean);
-        const shortName = parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
-        perProjectMap[shortName] = { input: projInput, output: projOutput, total: projInput + projOutput };
+      if (totals.input + totals.output > 0) {
+        perProjectMap[projectShortName(proj)] = {
+          input: totals.input,
+          output: totals.output,
+          total: totals.input + totals.output,
+        };
       }
     }
   } catch {}
 
   const perDayArr = labels.map((day) => ({
     ...day,
-    input: perDayMap[day.date]?.input || 0,
-    output: perDayMap[day.date]?.output || 0,
-    total: (perDayMap[day.date]?.input || 0) + (perDayMap[day.date]?.output || 0),
+    input: globalPerDay[day.date]?.input || 0,
+    output: globalPerDay[day.date]?.output || 0,
+    total: (globalPerDay[day.date]?.input || 0) + (globalPerDay[day.date]?.output || 0),
   }));
 
   const perProject = Object.entries(perProjectMap)
     .map(([project, data]) => ({ project, ...data }))
     .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
+    .slice(0, TOP_PROJECTS_LIMIT);
 
   return {
     totalInput,
@@ -240,8 +290,8 @@ async function getMostModifiedFiles(cwds) {
       try {
         const { stdout } = await execFileAsync(
           'git',
-          ['log', '--since=30 days ago', '--name-only', '--pretty=format:', '--diff-filter=ACMR'],
-          { cwd, encoding: 'utf-8', timeout: 5000 }
+          ['log', `--since=${DEFAULT_DAYS} days ago`, '--name-only', '--pretty=format:', '--diff-filter=ACMR'],
+          { cwd, encoding: 'utf-8', timeout: GIT_TIMEOUT_MS }
         );
         return { cwd, files: stdout.split('\n').map((l) => l.trim()).filter(Boolean) };
       } catch {
@@ -260,13 +310,28 @@ async function getMostModifiedFiles(cwds) {
   return Object.entries(fileCount)
     .map(([file, count]) => ({ file, count }))
     .sort((a, b) => b.count - a.count)
-    .slice(0, 15);
+    .slice(0, TOP_FILES_LIMIT);
 }
 
-// ===== Main =====
+// ===== Aggregation =====
+
+function getByAgent(sessions) {
+  const grouped = {};
+  for (const s of sessions) {
+    const name = s.agent || 'Unknown';
+    if (!grouped[name]) grouped[name] = [];
+    grouped[name].push(s);
+  }
+  return Object.entries(grouped).map(([agent, items]) => ({
+    agent,
+    totalSessions: items.length,
+    successRate: computeRate(items).rate,
+    avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
+    active: items.filter((s) => s.status === 'running').length,
+  }));
+}
 
 async function getMetrics() {
-  // Return cached result if still fresh
   const now = Date.now();
   if (_metricsCache && (now - _metricsCacheTime) < CACHE_TTL) {
     return _metricsCache;
@@ -280,7 +345,7 @@ async function getMetrics() {
   const flowMetrics = {
     rate: computeRate(flowRuns),
     duration: computeDuration(flowDurations),
-    perDay: perDay(flowRuns, (r) => r.date, 30),
+    perDay: perDay(flowRuns, (r) => r.date, DEFAULT_DAYS),
     flowStats: flows.map((flow) => {
       const runs = flowRuns.filter((r) => r.flowId === flow.id);
       const rate = computeRate(runs);
@@ -306,7 +371,7 @@ async function getMetrics() {
   const agentMetrics = {
     rate: computeRate(allSessions),
     duration: computeDuration(allSessions.map((s) => s.durationSec)),
-    perDay: perDay(allSessions, (s) => dateStr(s.startedAt), 30),
+    perDay: perDay(allSessions, (s) => dateStr(s.startedAt), DEFAULT_DAYS),
     byAgent: getByAgent(allSessions),
     totalSessions: allSessions.length,
     activeSessions: activeSessions.length,
@@ -322,7 +387,7 @@ async function getMetrics() {
 
   // --- Token metrics + modified files in parallel ---
   const [tokens, mostModifiedFiles] = await Promise.all([
-    getTokenMetrics(30),
+    getTokenMetrics(DEFAULT_DAYS),
     getMostModifiedFiles(allCwds),
   ]);
 
@@ -338,22 +403,6 @@ async function getMetrics() {
   _metricsCacheTime = now;
 
   return result;
-}
-
-function getByAgent(sessions) {
-  const grouped = {};
-  for (const s of sessions) {
-    const name = s.agent || 'Unknown';
-    if (!grouped[name]) grouped[name] = [];
-    grouped[name].push(s);
-  }
-  return Object.entries(grouped).map(([agent, items]) => ({
-    agent,
-    totalSessions: items.length,
-    successRate: computeRate(items).rate,
-    avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
-    active: items.filter((s) => s.status === 'running').length,
-  }));
 }
 
 module.exports = { getMetrics };
