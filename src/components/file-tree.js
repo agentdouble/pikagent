@@ -319,6 +319,22 @@ export class FileTree {
     });
   }
 
+  // --- Directory expand/collapse ---
+
+  async _expandDir(dirPath, childContainer, chevron, depth, expandedDirs) {
+    expandedDirs.add(dirPath);
+    chevron.textContent = CHEVRON_EXPANDED;
+    chevron.classList.add('expanded');
+    await this.renderDir(dirPath, childContainer, depth + 1, expandedDirs);
+  }
+
+  _collapseDir(dirPath, childContainer, chevron, expandedDirs) {
+    expandedDirs.delete(dirPath);
+    childContainer.innerHTML = '';
+    chevron.textContent = CHEVRON_COLLAPSED;
+    chevron.classList.remove('expanded');
+  }
+
   // --- Render directory entries ---
 
   async renderDir(dirPath, parentEl, depth, expandedDirs) {
@@ -357,33 +373,21 @@ export class FileTree {
 
         row.addEventListener('click', async () => {
           if (expandedDirs.has(entry.path)) {
-            expandedDirs.delete(entry.path);
-            childContainer.innerHTML = '';
-            chevron.textContent = CHEVRON_COLLAPSED;
-            chevron.classList.remove('expanded');
+            this._collapseDir(entry.path, childContainer, chevron, expandedDirs);
           } else {
-            expandedDirs.add(entry.path);
-            chevron.textContent = CHEVRON_EXPANDED;
-            chevron.classList.add('expanded');
-            await this.renderDir(entry.path, childContainer, depth + 1, expandedDirs);
+            await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
           }
         });
 
         // Right-click on directory
-        row.addEventListener('contextmenu', (e) => {
+        row.addEventListener('contextmenu', async (e) => {
           e.preventDefault();
           e.stopPropagation();
           // Auto-expand the dir so the new file input goes inside
           if (!expandedDirs.has(entry.path)) {
-            expandedDirs.add(entry.path);
-            chevron.textContent = CHEVRON_EXPANDED;
-            chevron.classList.add('expanded');
-            this.renderDir(entry.path, childContainer, depth + 1, expandedDirs).then(() => {
-              this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
-            });
-          } else {
-            this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
+            await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
           }
+          this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
         });
       } else {
         row.addEventListener('click', () => {
