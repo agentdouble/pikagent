@@ -1,4 +1,5 @@
 const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 
@@ -18,9 +19,9 @@ const AGENT_COMMANDS = {
   opencode: (prompt) => `opencode -p '${prompt}'`,
 };
 
-function ensureDir() {
-  fs.mkdirSync(FLOWS_DIR, { recursive: true });
-  fs.mkdirSync(LOGS_DIR, { recursive: true });
+async function ensureDir() {
+  await fsp.mkdir(FLOWS_DIR, { recursive: true });
+  await fsp.mkdir(LOGS_DIR, { recursive: true });
 }
 
 function flowPath(id) {
@@ -29,6 +30,12 @@ function flowPath(id) {
 
 function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
+}
+
+// Sync ensureDir for startup only (called once)
+function ensureDirSync() {
+  fs.mkdirSync(FLOWS_DIR, { recursive: true });
+  fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
 class FlowManager {
@@ -64,9 +71,9 @@ class FlowManager {
 
   // --- CRUD ---
 
-  save(flow) {
-    ensureDir();
-    const existing = this.get(flow.id);
+  async save(flow) {
+    await ensureDir();
+    const existing = await this.get(flow.id);
     const data = {
       ...flow,
       createdAt: existing?.createdAt || new Date().toISOString(),
@@ -74,48 +81,49 @@ class FlowManager {
     };
     if (!data.runs) data.runs = [];
     if (data.enabled === undefined) data.enabled = true;
-    fs.writeFileSync(flowPath(flow.id), JSON.stringify(data, null, 2), 'utf-8');
+    await fsp.writeFile(flowPath(flow.id), JSON.stringify(data, null, 2), 'utf-8');
     return data;
   }
 
-  get(id) {
+  async get(id) {
     try {
-      return JSON.parse(fs.readFileSync(flowPath(id), 'utf-8'));
+      return JSON.parse(await fsp.readFile(flowPath(id), 'utf-8'));
     } catch {
       return null;
     }
   }
 
-  list() {
-    ensureDir();
+  async list() {
+    await ensureDir();
     try {
-      const files = fs.readdirSync(FLOWS_DIR).filter((f) => f.endsWith('.json'));
-      return files
-        .map((f) => {
+      const files = (await fsp.readdir(FLOWS_DIR)).filter((f) => f.endsWith('.json'));
+      const results = await Promise.all(
+        files.map(async (f) => {
           try {
-            return JSON.parse(fs.readFileSync(path.join(FLOWS_DIR, f), 'utf-8'));
+            return JSON.parse(await fsp.readFile(path.join(FLOWS_DIR, f), 'utf-8'));
           } catch {
             return null;
           }
         })
-        .filter(Boolean);
+      );
+      return results.filter(Boolean);
     } catch {
       return [];
     }
   }
 
-  remove(id) {
+  async remove(id) {
     try {
-      fs.unlinkSync(flowPath(id));
-      this._cleanLogs(id);
+      await fsp.unlink(flowPath(id));
+      await this._cleanLogs(id);
       return true;
     } catch {
       return false;
     }
   }
 
-  toggleEnabled(id) {
-    const flow = this.get(id);
+  async toggleEnabled(id) {
+    const flow = await this.get(id);
     if (!flow) return null;
     flow.enabled = !flow.enabled;
     return this.save(flow);
@@ -129,28 +137,26 @@ class FlowManager {
     return result;
   }
 
-  getRunLog(flowId, timestamp) {
+  async getRunLog(flowId, timestamp) {
     try {
-      return fs.readFileSync(logPath(flowId, timestamp), 'utf-8');
+      return await fsp.readFile(logPath(flowId, timestamp), 'utf-8');
     } catch {
       return null;
     }
   }
 
-  _cleanLogs(flowId) {
+  async _cleanLogs(flowId) {
     try {
-      const files = fs.readdirSync(LOGS_DIR).filter((f) => f.startsWith(flowId + '_'));
-      for (const f of files) {
-        fs.unlinkSync(path.join(LOGS_DIR, f));
-      }
+      const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
+      await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
     } catch {}
   }
 
   // --- Scheduling ---
 
-  _tick() {
+  async _tick() {
     const now = new Date();
-    const flows = this.list();
+    const flows = await this.list();
 
     for (const flow of flows) {
       if (!flow.enabled) continue;
@@ -266,16 +272,16 @@ class FlowManager {
     }
   }
 
-  runNow(id) {
-    const flow = this.get(id);
+  async runNow(id) {
+    const flow = await this.get(id);
     if (!flow) return false;
     if (this._runningFlows.has(id)) return false;
     this._execute(flow);
     return true;
   }
 
-  _recordRun(flowId, status, runTimestamp) {
-    const flow = this.get(flowId);
+  async _recordRun(flowId, status, runTimestamp) {
+    const flow = await this.get(flowId);
     if (!flow) return;
     if (!flow.runs) flow.runs = [];
     flow.runs.push({
@@ -287,7 +293,7 @@ class FlowManager {
     if (flow.runs.length > MAX_RUN_HISTORY) {
       flow.runs = flow.runs.slice(-MAX_RUN_HISTORY);
     }
-    this.save(flow);
+    await this.save(flow);
   }
 }
 

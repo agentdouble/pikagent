@@ -39,7 +39,7 @@ class TerminalInstance {
     this.fit();
 
     this.terminal.onData((data) => {
-      window.api.pty.write({ id: this.id, data });
+      if (!this.disposed) window.api.pty.write({ id: this.id, data });
     });
 
     this.unsubData = window.api.pty.onData(this.id, (data) => {
@@ -53,6 +53,7 @@ class TerminalInstance {
     this.resizeObserver = new ResizeObserver(() => this.fit());
     this.resizeObserver.observe(container);
 
+    this.cwdPollingPaused = false;
     this.spawn();
     this.startCwdPolling();
   }
@@ -64,7 +65,7 @@ class TerminalInstance {
 
   startCwdPolling() {
     this.cwdPollTimer = setInterval(async () => {
-      if (this.disposed) return;
+      if (this.disposed || this.cwdPollingPaused) return;
       const cwd = await window.api.pty.getCwd({ id: this.id });
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
@@ -86,11 +87,15 @@ class TerminalInstance {
   }
 
   dispose() {
+    if (this.disposed) return;
     this.disposed = true;
-    if (this.cwdPollTimer) clearInterval(this.cwdPollTimer);
+    if (this.cwdPollTimer) {
+      clearInterval(this.cwdPollTimer);
+      this.cwdPollTimer = null;
+    }
     this.resizeObserver.disconnect();
-    if (this.unsubData) this.unsubData();
-    if (this.unsubExit) this.unsubExit();
+    if (this.unsubData) { this.unsubData(); this.unsubData = null; }
+    if (this.unsubExit) { this.unsubExit(); this.unsubExit = null; }
     window.api.pty.kill({ id: this.id });
     this.terminal.dispose();
   }
@@ -251,8 +256,14 @@ export class TerminalPanel {
       // Create floating indicator
       this._createDropIndicator();
 
+      let dragRafPending = false;
       const onMouseMove = (ev) => {
-        this._updateDropTarget(ev.clientX, ev.clientY);
+        if (dragRafPending) return;
+        dragRafPending = true;
+        requestAnimationFrame(() => {
+          dragRafPending = false;
+          this._updateDropTarget(ev.clientX, ev.clientY);
+        });
       };
 
       const onMouseUp = (ev) => {
@@ -491,6 +502,12 @@ export class TerminalPanel {
   setActive(node) {
     if (node.type !== 'terminal') return;
 
+    // Pause CWD polling on all terminals, resume only the active one
+    for (const [, n] of this.terminals) {
+      n.terminal.cwdPollingPaused = true;
+    }
+    node.terminal.cwdPollingPaused = false;
+
     // Remove active from all
     this.container.querySelectorAll('.terminal-wrapper.active').forEach((el) => {
       el.classList.remove('active');
@@ -605,7 +622,34 @@ export class TerminalPanel {
   }
 
   setupResizeHandle(handle, splitEl, direction) {
+    let resizeRafPending = false;
     const onMouseMove = (e) => {
+      if (resizeRafPending) return;
+      resizeRafPending = true;
+      requestAnimationFrame(() => {
+        resizeRafPending = false;
+        this._doResize(e, handle, splitEl, direction);
+      });
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      bus.emit('layout:changed');
+    };
+
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+
+  _doResize(e, handle, splitEl, direction) {
       const panels = Array.from(splitEl.children).filter(
         (c) => !c.classList.contains('split-handle')
       );
@@ -657,23 +701,6 @@ export class TerminalPanel {
       panelAfter.style.flex = `${totalFlex * (1 - ratio)}`;
 
       this.fitAll();
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      bus.emit('layout:changed');
-    };
-
-    handle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
-      document.body.style.userSelect = 'none';
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
   }
 
   fitAll() {

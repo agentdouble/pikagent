@@ -1,4 +1,5 @@
 const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
@@ -68,19 +69,20 @@ function dayLabels(days = DEFAULT_DAYS) {
 
 // ===== Flow data =====
 
-function getAllFlows() {
+async function getAllFlows() {
   try {
-    fs.mkdirSync(FLOWS_DIR, { recursive: true });
-    const files = fs.readdirSync(FLOWS_DIR).filter((f) => f.endsWith('.json'));
-    return files
-      .map((f) => {
+    await fsp.mkdir(FLOWS_DIR, { recursive: true });
+    const files = (await fsp.readdir(FLOWS_DIR)).filter((f) => f.endsWith('.json'));
+    const results = await Promise.all(
+      files.map(async (f) => {
         try {
-          return JSON.parse(fs.readFileSync(path.join(FLOWS_DIR, f), 'utf-8'));
+          return JSON.parse(await fsp.readFile(path.join(FLOWS_DIR, f), 'utf-8'));
         } catch {
           return null;
         }
       })
-      .filter(Boolean);
+    );
+    return results.filter(Boolean);
   } catch {
     return [];
   }
@@ -228,9 +230,8 @@ async function getTokenMetrics(days = DEFAULT_DAYS) {
   const cutoffMs = cutoff.getTime();
 
   try {
-    const projects = fs.readdirSync(CLAUDE_PROJECTS_DIR).filter((d) => {
-      try { return fs.statSync(path.join(CLAUDE_PROJECTS_DIR, d)).isDirectory(); } catch { return false; }
-    });
+    const allEntries = await fsp.readdir(CLAUDE_PROJECTS_DIR, { withFileTypes: true });
+    const projects = allEntries.filter((d) => d.isDirectory()).map((d) => d.name);
 
     for (const proj of projects) {
       const { totals, perDayMap } = readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);
@@ -338,7 +339,7 @@ async function getMetrics() {
   }
 
   // --- Flow metrics ---
-  const flows = getAllFlows();
+  const flows = await getAllFlows();
   const flowRuns = getFlowRuns(flows);
   const flowDurations = flowRuns.map(getFlowRunDuration);
 
