@@ -1,6 +1,17 @@
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 
+const INDENT_BASE = 12;
+const INDENT_STEP = 16;
+const CHEVRON_EXPANDED = '▾';
+const CHEVRON_COLLAPSED = '▸';
+const DEBOUNCE_DELAY = 400;
+const WATCH_PREFIX = 'watch_';
+
+const SVG_NEW_FILE = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>';
+const SVG_NEW_FOLDER = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>';
+const SVG_REFRESH = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>';
+
 export class FileTree {
   constructor(container) {
     this.container = container;
@@ -29,7 +40,7 @@ export class FileTree {
         setTimeout(() => {
           this.debounceTimers.delete(id);
           this.refreshSection(id);
-        }, 400)
+        }, DEBOUNCE_DELAY)
       );
     });
   }
@@ -57,7 +68,7 @@ export class FileTree {
     const sectionEl = document.createElement('div');
     sectionEl.className = 'file-tree-section';
     const expandedDirs = new Set([dirPath]);
-    const watchId = `watch_${dirPath}`;
+    const watchId = `${WATCH_PREFIX}${dirPath}`;
     this.sections.set(dirPath, { termIds: new Set([termId]), sectionEl, expandedDirs, watchId });
     this.treeEl.appendChild(sectionEl);
     await this.refreshSection(dirPath);
@@ -89,8 +100,8 @@ export class FileTree {
   async refreshSection(watchIdOrCwd) {
     // watchId format is "watch_/path/to/dir", cwd is just "/path/to/dir"
     let cwd = watchIdOrCwd;
-    if (cwd.startsWith('watch_')) {
-      cwd = cwd.slice(6);
+    if (cwd.startsWith(WATCH_PREFIX)) {
+      cwd = cwd.slice(WATCH_PREFIX.length);
     }
     const section = this.sections.get(cwd);
     if (!section) return;
@@ -107,7 +118,7 @@ export class FileTree {
 
     const chevron = document.createElement('span');
     chevron.className = 'file-tree-section-chevron';
-    chevron.textContent = wasCollapsed ? '▸' : '▾';
+    chevron.textContent = wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
 
     const label = document.createElement('span');
     label.className = 'file-tree-section-label';
@@ -120,7 +131,7 @@ export class FileTree {
     const btnNewFile = document.createElement('button');
     btnNewFile.className = 'file-tree-action-btn';
     btnNewFile.title = 'New File';
-    btnNewFile.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>';
+    btnNewFile.innerHTML = SVG_NEW_FILE;
     btnNewFile.addEventListener('click', (e) => {
       e.stopPropagation();
       this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'file');
@@ -129,7 +140,7 @@ export class FileTree {
     const btnNewFolder = document.createElement('button');
     btnNewFolder.className = 'file-tree-action-btn';
     btnNewFolder.title = 'New Folder';
-    btnNewFolder.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>';
+    btnNewFolder.innerHTML = SVG_NEW_FOLDER;
     btnNewFolder.addEventListener('click', (e) => {
       e.stopPropagation();
       this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'folder');
@@ -138,7 +149,7 @@ export class FileTree {
     const btnRefresh = document.createElement('button');
     btnRefresh.className = 'file-tree-action-btn';
     btnRefresh.title = 'Refresh';
-    btnRefresh.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>';
+    btnRefresh.innerHTML = SVG_REFRESH;
     btnRefresh.addEventListener('click', (e) => {
       e.stopPropagation();
       this.refreshSection(cwd);
@@ -160,7 +171,7 @@ export class FileTree {
 
     header.addEventListener('click', () => {
       const collapsed = contentEl.classList.toggle('collapsed');
-      chevron.textContent = collapsed ? '▸' : '▾';
+      chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
     });
 
     // Context menu on section header (root folder)
@@ -190,89 +201,66 @@ export class FileTree {
     return '';
   }
 
-  showFileContextMenu(x, y, entryPath, nameEl) {
+  _commonContextItems(entryPath, nameEl, deleteLabel) {
     const rootCwd = this.findRootCwd(entryPath);
-    const fileName = entryPath.split('/').pop();
-    contextMenu.show(x, y, [
-      {
-        label: 'Rename',
-        action: () => this.promptRename(entryPath, nameEl),
-      },
+    const displayName = entryPath.split('/').pop();
+    return [
+      { label: 'Rename', action: () => this.promptRename(entryPath, nameEl) },
       { separator: true },
-      {
-        label: 'Copy Path',
-        action: () => window.api.clipboard.write(entryPath),
-      },
-      {
-        label: 'Copy Relative Path',
-        action: () => window.api.clipboard.write(this.getRelativePath(entryPath, rootCwd)),
-      },
+      { label: 'Copy Path', action: () => window.api.clipboard.write(entryPath) },
+      { label: 'Copy Relative Path', action: () => window.api.clipboard.write(this.getRelativePath(entryPath, rootCwd)) },
       { separator: true },
-      {
-        label: 'Duplicate',
-        action: () => window.api.fs.copy(entryPath),
-      },
-      {
-        label: 'Reveal in Finder',
-        action: () => window.api.shell.showInFolder(entryPath),
-      },
+      { label: 'Duplicate', action: () => window.api.fs.copy(entryPath) },
+      { label: 'Reveal in Finder', action: () => window.api.shell.showInFolder(entryPath) },
       { separator: true },
       {
         label: 'Delete',
         action: () => {
-          if (confirm(`Delete "${fileName}"?`)) {
+          if (confirm(deleteLabel || `Delete "${displayName}"?`)) {
             window.api.fs.trash(entryPath);
           }
         },
       },
-    ]);
+    ];
+  }
+
+  showFileContextMenu(x, y, entryPath, nameEl) {
+    contextMenu.show(x, y, this._commonContextItems(entryPath, nameEl));
   }
 
   showDirContextMenu(x, y, dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl) {
+    const dirName = dirPath.split('/').pop();
     contextMenu.show(x, y, [
-      {
-        label: 'New File',
-        action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'file'),
-      },
-      {
-        label: 'New Folder',
-        action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'folder'),
-      },
+      { label: 'New File', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'file') },
+      { label: 'New Folder', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'folder') },
       { separator: true },
-      {
-        label: 'Rename',
-        action: () => this.promptRename(dirPath, nameEl),
-      },
-      { separator: true },
-      {
-        label: 'Copy Path',
-        action: () => window.api.clipboard.write(dirPath),
-      },
-      {
-        label: 'Copy Relative Path',
-        action: () =>
-          window.api.clipboard.write(this.getRelativePath(dirPath, this.findRootCwd(dirPath))),
-      },
-      { separator: true },
-      {
-        label: 'Duplicate',
-        action: () => window.api.fs.copy(dirPath),
-      },
-      {
-        label: 'Reveal in Finder',
-        action: () => window.api.shell.showInFolder(dirPath),
-      },
-      { separator: true },
-      {
-        label: 'Delete',
-        action: () => {
-          const folderName = dirPath.split('/').pop();
-          if (confirm(`Delete folder "${folderName}" and all its contents?`)) {
-            window.api.fs.trash(dirPath);
-          }
-        },
-      },
+      ...this._commonContextItems(dirPath, nameEl, `Delete folder "${dirName}" and all its contents?`),
     ]);
+  }
+
+  // --- Inline input helper ---
+
+  _setupInlineInput(input, { onCommit, onCancel }) {
+    let committed = false;
+    const commit = () => {
+      if (committed) return;
+      committed = true;
+      onCommit(input.value.trim());
+    };
+    const cancel = () => {
+      committed = true;
+      if (onCancel) onCancel();
+      else input.remove();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); }
+      if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => { if (!committed) commit(); }, 100);
+    });
+    input.addEventListener('click', (e) => e.stopPropagation());
   }
 
   // --- Rename inline input ---
@@ -284,45 +272,24 @@ export class FileTree {
     input.type = 'text';
     input.value = oldName;
 
-    // Replace the name span with the input
     nameEl.style.display = 'none';
     nameEl.parentElement.appendChild(input);
     input.focus();
-    // Select name without extension for files
     const dotIndex = oldName.lastIndexOf('.');
     input.setSelectionRange(0, dotIndex > 0 ? dotIndex : oldName.length);
 
-    let committed = false;
-    const commit = async () => {
-      if (committed) return;
-      committed = true;
-      const newName = input.value.trim();
-      input.remove();
-      nameEl.style.display = '';
-      if (!newName || newName === oldName) return;
-      await window.api.fs.rename(entryPath, newName);
-    };
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        commit();
-      }
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        committed = true;
+    this._setupInlineInput(input, {
+      onCommit: async (newName) => {
         input.remove();
         nameEl.style.display = '';
-      }
+        if (!newName || newName === oldName) return;
+        await window.api.fs.rename(entryPath, newName);
+      },
+      onCancel: () => {
+        input.remove();
+        nameEl.style.display = '';
+      },
     });
-
-    input.addEventListener('blur', () => {
-      setTimeout(() => { if (!committed) commit(); }, 100);
-    });
-
-    // Prevent row click from firing while renaming
-    input.addEventListener('click', (e) => e.stopPropagation());
   }
 
   // --- New File / Folder inline input ---
@@ -332,38 +299,23 @@ export class FileTree {
     input.className = 'file-tree-new-input';
     input.type = 'text';
     input.placeholder = type === 'folder' ? 'folder name' : 'filename';
-    input.style.marginLeft = `${12 + (depth + 1) * 16}px`;
+    input.style.marginLeft = `${INDENT_BASE + (depth + 1) * INDENT_STEP}px`;
 
     parentContentEl.prepend(input);
     input.focus();
 
-    const commit = async () => {
-      const name = input.value.trim();
-      input.remove();
-      if (!name) return;
-
-      const newPath = dirPath + '/' + name;
-      if (type === 'folder') {
-        await window.api.fs.mkdir(newPath);
-      } else {
-        await window.api.fs.writefile(newPath, '');
-        bus.emit('file:open', { path: newPath, name });
-      }
-    };
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        commit();
-      }
-      if (e.key === 'Escape') {
+    this._setupInlineInput(input, {
+      onCommit: async (name) => {
         input.remove();
-      }
-    });
-
-    input.addEventListener('blur', () => {
-      // Small delay so Enter can fire first
-      setTimeout(() => { if (input.parentElement) input.remove(); }, 100);
+        if (!name) return;
+        const newPath = dirPath + '/' + name;
+        if (type === 'folder') {
+          await window.api.fs.mkdir(newPath);
+        } else {
+          await window.api.fs.writefile(newPath, '');
+          bus.emit('file:open', { path: newPath, name });
+        }
+      },
     });
   }
 
@@ -375,14 +327,14 @@ export class FileTree {
     for (const entry of entries) {
       const row = document.createElement('div');
       row.className = 'file-tree-item';
-      row.style.paddingLeft = `${12 + depth * 16}px`;
+      row.style.paddingLeft = `${INDENT_BASE + depth * INDENT_STEP}px`;
 
       const chevron = document.createElement('span');
       chevron.className = 'file-tree-chevron';
 
       if (entry.isDirectory) {
         const isExpanded = expandedDirs.has(entry.path);
-        chevron.textContent = isExpanded ? '▾' : '▸';
+        chevron.textContent = isExpanded ? CHEVRON_EXPANDED : CHEVRON_COLLAPSED;
         chevron.classList.toggle('expanded', isExpanded);
       }
 
@@ -407,11 +359,11 @@ export class FileTree {
           if (expandedDirs.has(entry.path)) {
             expandedDirs.delete(entry.path);
             childContainer.innerHTML = '';
-            chevron.textContent = '▸';
+            chevron.textContent = CHEVRON_COLLAPSED;
             chevron.classList.remove('expanded');
           } else {
             expandedDirs.add(entry.path);
-            chevron.textContent = '▾';
+            chevron.textContent = CHEVRON_EXPANDED;
             chevron.classList.add('expanded');
             await this.renderDir(entry.path, childContainer, depth + 1, expandedDirs);
           }
@@ -424,7 +376,7 @@ export class FileTree {
           // Auto-expand the dir so the new file input goes inside
           if (!expandedDirs.has(entry.path)) {
             expandedDirs.add(entry.path);
-            chevron.textContent = '▾';
+            chevron.textContent = CHEVRON_EXPANDED;
             chevron.classList.add('expanded');
             this.renderDir(entry.path, childContainer, depth + 1, expandedDirs).then(() => {
               this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
