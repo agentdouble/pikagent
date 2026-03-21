@@ -1,5 +1,6 @@
 import { ShortcutManager } from './shortcuts.js';
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme } from '../utils/terminal-themes.js';
+import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 
 const MODAL_CLOSE_TRANSITION_MS = 200;
 const MODIFIER_KEYS = ['Shift', 'Control', 'Alt', 'Meta'];
@@ -138,7 +139,50 @@ export class SettingsModal {
   }
 
   renderAppearance() {
-    this._createSectionHeading('Terminal Theme');
+    this._createSectionHeading('Appearance');
+
+    // Day/Night mode toggle
+    const modeRow = document.createElement('div');
+    modeRow.className = 'theme-mode-row';
+
+    const modeLabel = document.createElement('span');
+    modeLabel.className = 'theme-mode-label';
+    modeLabel.textContent = 'Mode';
+
+    const modeToggle = document.createElement('div');
+    modeToggle.className = 'theme-mode-toggle';
+
+    const currentMode = getAppTheme();
+
+    const darkBtn = document.createElement('button');
+    darkBtn.className = 'theme-mode-btn' + (currentMode === 'dark' ? ' active' : '');
+    darkBtn.textContent = 'Night';
+
+    const lightBtn = document.createElement('button');
+    lightBtn.className = 'theme-mode-btn' + (currentMode === 'light' ? ' active' : '');
+    lightBtn.textContent = 'Day';
+
+    darkBtn.addEventListener('click', () => {
+      setAppTheme('dark');
+      this.renderAppearance();
+    });
+
+    lightBtn.addEventListener('click', () => {
+      setAppTheme('light');
+      this.renderAppearance();
+    });
+
+    modeToggle.appendChild(darkBtn);
+    modeToggle.appendChild(lightBtn);
+    modeRow.appendChild(modeLabel);
+    modeRow.appendChild(modeToggle);
+    this.content.appendChild(modeRow);
+
+    // Terminal theme section
+    const termHeading = document.createElement('h4');
+    termHeading.className = 'theme-sub-heading';
+    termHeading.textContent = 'Terminal Theme';
+    this.content.appendChild(termHeading);
 
     const currentThemeName = getTerminalThemeName();
     const grid = document.createElement('div');

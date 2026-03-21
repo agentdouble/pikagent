@@ -438,3 +438,52 @@
   font-family: var(--font-mono);
   font-size: 10px;
 }
+
+/* ===== Highlight.js Light Mode Overrides ===== */
+[data-theme="light"] .hljs {
+  background: var(--bg-surface);
+  color: #383a42;
+}
+
+[data-theme="light"] .hljs-comment,
+[data-theme="light"] .hljs-quote {
+  color: #a0a1a7;
+  font-style: italic;
+}
+
+[data-theme="light"] .hljs-keyword,
+[data-theme="light"] .hljs-selector-tag,
+[data-theme="light"] .hljs-subst {
+  color: #a626a4;
+}
+
+[data-theme="light"] .hljs-string,
+[data-theme="light"] .hljs-title,
+[data-theme="light"] .hljs-section,
+[data-theme="light"] .hljs-type,
+[data-theme="light"] .hljs-attr {
+  color: #50a14f;
+}
+
+[data-theme="light"] .hljs-number,
+[data-theme="light"] .hljs-literal,
+[data-theme="light"] .hljs-variable,
+[data-theme="light"] .hljs-template-variable,
+[data-theme="light"] .hljs-tag .hljs-attr {
+  color: #986801;
+}
+
+[data-theme="light"] .hljs-built_in,
+[data-theme="light"] .hljs-builtin-name {
+  color: #c18401;
+}
+
+[data-theme="light"] .hljs-function .hljs-title,
+[data-theme="light"] .hljs-title.function_ {
+  color: #4078f2;
+}
+
+[data-theme="light"] .hljs-name,
+[data-theme="light"] .hljs-tag {
+  color: #e45649;
+}

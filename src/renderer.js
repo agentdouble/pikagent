@@ -2,11 +2,14 @@ import hljs from 'highlight.js';
 import { TabManager } from './components/tab-manager.js';
 import { ShortcutManager } from './components/shortcuts.js';
 import { SettingsModal } from './components/settings-modal.js';
+import { applyAppTheme } from './utils/app-theme.js';
 
 // Expose hljs globally for file-viewer
 window.hljs = hljs;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Apply saved day/night mode
+  applyAppTheme();
   const tabBar = document.getElementById('tab-bar');
   const workspace = document.getElementById('workspace');
 

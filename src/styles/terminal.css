@@ -23,7 +23,7 @@
 }
 
 .terminal-wrapper.active {
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: var(--terminal-active-border);
 }
 
 .terminal-wrapper.dragging {
@@ -90,7 +90,7 @@
 
 .terminal-close-btn:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 /* ===== Drop Indicator ===== */

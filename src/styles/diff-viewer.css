@@ -69,7 +69,7 @@
 
 .diff-toggle-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .diff-nav {

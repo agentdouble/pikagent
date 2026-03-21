@@ -21,10 +21,37 @@
   --green: #51cf66;
   --yellow: #ffd43b;
   --blue: #74c0fc;
+  --text-on-accent: #fff;
+  --shadow-overlay: rgba(0, 0, 0, 0.5);
+  --shadow-drop: rgba(0, 0, 0, 0.4);
+  --terminal-active-border: rgba(255, 255, 255, 0.35);
   --tab-height: 36px;
   --header-height: 28px;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --bg-tertiary: #e5e7eb;
+  --bg-surface: #f9fafb;
+  --bg-hover: #e5e7eb;
+  --bg-active: #d1d5db;
+  --border-color: #d1d5db;
+  --border-subtle: #e5e7eb;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --accent: #e94560;
+  --accent-dim: #c73e54;
+  --green: #16a34a;
+  --yellow: #ca8a04;
+  --blue: #2563eb;
+  --text-on-accent: #fff;
+  --shadow-overlay: rgba(0, 0, 0, 0.25);
+  --shadow-drop: rgba(0, 0, 0, 0.15);
+  --terminal-active-border: rgba(0, 0, 0, 0.2);
 }
 
 html, body {

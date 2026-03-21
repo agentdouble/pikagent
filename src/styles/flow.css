@@ -221,7 +221,7 @@
 .flow-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--shadow-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -400,7 +400,7 @@
 .flow-day-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .flow-day-btn:hover:not(.active) {
@@ -438,7 +438,7 @@
 
 .flow-modal-btn-create {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-weight: 600;
 }
 
