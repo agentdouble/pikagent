@@ -37,7 +37,6 @@ async function readDirectory(dirPath) {
   try {
     const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
     return entries
-      .filter((e) => !e.name.startsWith('.'))
       .sort((a, b) => {
         if (a.isDirectory() && !b.isDirectory()) return -1;
         if (!a.isDirectory() && b.isDirectory()) return 1;
