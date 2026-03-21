@@ -1,37 +1,3 @@
-/* ===== Config Bar Button ===== */
-.config-bar-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-family: var(--font-ui);
-  cursor: pointer;
-  width: 100%;
-  transition: background 0.15s, color 0.15s;
-  text-align: left;
-}
-
-.config-bar-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.config-bar-icon {
-  font-size: 13px;
-  line-height: 1;
-}
-
-.config-bar-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ===== Config Prompt Overlay ===== */
 .config-prompt-overlay {
   position: fixed;

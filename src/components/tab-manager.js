@@ -694,17 +694,6 @@ export class TabManager {
     treeContainer.className = 'file-tree';
     leftPanel.appendChild(treeContainer);
 
-    // Config bar at bottom of left panel
-    const configBar = document.createElement('button');
-    configBar.className = 'config-bar-btn';
-    configBar.innerHTML = `<span class="config-bar-icon">&#9776;</span><span class="config-bar-name">${this.configManager.currentConfigName || 'Default'}</span>`;
-    configBar.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.configManager.showConfigMenu(configBar);
-    });
-    this.configManager._configBarEl = configBar;
-    leftPanel.appendChild(configBar);
-
     // --- Left resize handle ---
     const leftHandle = document.createElement('div');
     leftHandle.className = 'panel-resize-handle';
