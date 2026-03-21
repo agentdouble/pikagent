@@ -229,19 +229,114 @@ export const TERMINAL_THEMES = {
     brightCyan: '#a5d6ff',
     brightWhite: '#f0f6fc',
   },
+  'Pikagent Light': {
+    background: '#ffffff',
+    foreground: '#1f2937',
+    cursor: '#1f2937',
+    cursorAccent: '#ffffff',
+    selectionBackground: '#c7d2fe',
+    black: '#1f2937',
+    red: '#dc2626',
+    green: '#16a34a',
+    yellow: '#ca8a04',
+    blue: '#2563eb',
+    magenta: '#9333ea',
+    cyan: '#0891b2',
+    white: '#f3f4f6',
+    brightBlack: '#6b7280',
+    brightRed: '#ef4444',
+    brightGreen: '#22c55e',
+    brightYellow: '#eab308',
+    brightBlue: '#3b82f6',
+    brightMagenta: '#a855f7',
+    brightCyan: '#06b6d4',
+    brightWhite: '#ffffff',
+  },
+  'Solarized Light': {
+    background: '#fdf6e3',
+    foreground: '#657b83',
+    cursor: '#657b83',
+    cursorAccent: '#fdf6e3',
+    selectionBackground: '#eee8d5',
+    black: '#073642',
+    red: '#dc322f',
+    green: '#859900',
+    yellow: '#b58900',
+    blue: '#268bd2',
+    magenta: '#d33682',
+    cyan: '#2aa198',
+    white: '#eee8d5',
+    brightBlack: '#586e75',
+    brightRed: '#cb4b16',
+    brightGreen: '#586e75',
+    brightYellow: '#657b83',
+    brightBlue: '#839496',
+    brightMagenta: '#6c71c4',
+    brightCyan: '#93a1a1',
+    brightWhite: '#fdf6e3',
+  },
+  'GitHub Light': {
+    background: '#ffffff',
+    foreground: '#24292f',
+    cursor: '#24292f',
+    cursorAccent: '#ffffff',
+    selectionBackground: '#ddf4ff',
+    black: '#24292f',
+    red: '#cf222e',
+    green: '#1a7f37',
+    yellow: '#9a6700',
+    blue: '#0969da',
+    magenta: '#8250df',
+    cyan: '#1b7c83',
+    white: '#f6f8fa',
+    brightBlack: '#57606a',
+    brightRed: '#a40e26',
+    brightGreen: '#2da44e',
+    brightYellow: '#bf8700',
+    brightBlue: '#218bff',
+    brightMagenta: '#a475f9',
+    brightCyan: '#3192aa',
+    brightWhite: '#ffffff',
+  },
 };
 
 const STORAGE_KEY = 'pikagent-terminal-theme';
+const STORAGE_KEY_PREV = 'pikagent-terminal-theme-prev';
+
+const LIGHT_THEMES = new Set(['Pikagent Light', 'Solarized Light', 'GitHub Light']);
+const DEFAULT_LIGHT = 'Pikagent Light';
+const DEFAULT_DARK = 'Pikagent';
+
+export function isLightTerminalTheme(name) {
+  return LIGHT_THEMES.has(name);
+}
 
 export function getTerminalTheme() {
-  const name = localStorage.getItem(STORAGE_KEY) || 'Pikagent';
-  return TERMINAL_THEMES[name] || TERMINAL_THEMES['Pikagent'];
+  const name = localStorage.getItem(STORAGE_KEY) || DEFAULT_DARK;
+  return TERMINAL_THEMES[name] || TERMINAL_THEMES[DEFAULT_DARK];
 }
 
 export function getTerminalThemeName() {
-  return localStorage.getItem(STORAGE_KEY) || 'Pikagent';
+  return localStorage.getItem(STORAGE_KEY) || DEFAULT_DARK;
 }
 
 export function setTerminalTheme(name) {
   localStorage.setItem(STORAGE_KEY, name);
+}
+
+export function switchTerminalForMode(mode) {
+  const current = getTerminalThemeName();
+  const currentIsLight = isLightTerminalTheme(current);
+
+  if (mode === 'light' && !currentIsLight) {
+    localStorage.setItem(STORAGE_KEY_PREV, current);
+    setTerminalTheme(DEFAULT_LIGHT);
+    return true;
+  }
+  if (mode === 'dark' && currentIsLight) {
+    const prev = localStorage.getItem(STORAGE_KEY_PREV) || DEFAULT_DARK;
+    setTerminalTheme(prev);
+    return true;
+  }
+  return false;
 }

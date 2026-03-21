@@ -1,5 +1,5 @@
 import { ShortcutManager } from './shortcuts.js';
-import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme } from '../utils/terminal-themes.js';
+import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 
 const MODAL_CLOSE_TRANSITION_MS = 200;
@@ -164,11 +164,13 @@ export class SettingsModal {
 
     darkBtn.addEventListener('click', () => {
       setAppTheme('dark');
+      this._switchTerminalForMode('dark');
       this.renderAppearance();
     });
 
     lightBtn.addEventListener('click', () => {
       setAppTheme('light');
+      this._switchTerminalForMode('light');
       this.renderAppearance();
     });
 
@@ -257,6 +259,15 @@ export class SettingsModal {
     }
 
     this.content.appendChild(grid);
+  }
+
+  _switchTerminalForMode(mode) {
+    if (switchTerminalForMode(mode) && this.tabManager) {
+      const newTheme = getTerminalTheme();
+      for (const [, tab] of this.tabManager.tabs) {
+        if (tab.terminalPanel) tab.terminalPanel.applyTheme(newTheme);
+      }
+    }
   }
 
   renderKeybindings() {
