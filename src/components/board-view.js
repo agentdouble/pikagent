@@ -32,14 +32,7 @@ export class BoardView {
 
     this.render();
     this.setupListeners();
-    this.scanAgents();
-
-    this._pollTimer = setInterval(() => {
-      if (!this.disposed) {
-        this.scanAgents();
-        this._checkIdleCards();
-      }
-    }, POLL_INTERVAL_MS);
+    this._startPolling();
   }
 
   render() {
@@ -166,11 +159,7 @@ export class BoardView {
     this._updateHiddenBar();
   }
 
-  addCard(termId, info) {
-    const card = document.createElement('div');
-    card.className = 'board-card board-card-running';
-
-    // Header with agent name and "go to workspace" button
+  _buildCardHeader(termId, info, card) {
     const header = document.createElement('div');
     header.className = 'board-card-header';
 
@@ -214,14 +203,10 @@ export class BoardView {
     headerBtns.appendChild(hideBtn);
 
     header.appendChild(headerBtns);
+    return header;
+  }
 
-    card.appendChild(header);
-
-    // Full interactive terminal connected directly to the PTY
-    const termContainer = document.createElement('div');
-    termContainer.className = 'board-card-terminal';
-    card.appendChild(termContainer);
-
+  _createBoardTerminal(termContainer, termId) {
     const term = new Terminal({
       theme: getTerminalTheme(),
       ...BOARD_TERMINAL_OPTIONS,
@@ -235,19 +220,31 @@ export class BoardView {
     }));
     term.open(termContainer);
 
-    // Bidirectional connection: type in board → goes to PTY
     term.onData((data) => {
       window.api.pty.write({ id: termId, data });
     });
 
+    return { term, fitAddon };
+  }
+
+  addCard(termId, info) {
+    const card = document.createElement('div');
+    card.className = 'board-card board-card-running';
+
+    card.appendChild(this._buildCardHeader(termId, info, card));
+
+    const termContainer = document.createElement('div');
+    termContainer.className = 'board-card-terminal';
+    card.appendChild(termContainer);
+
+    const { term, fitAddon } = this._createBoardTerminal(termContainer, termId);
+
     const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
 
-    // PTY output → render in board terminal + accumulate data volume (targeted by ID)
-    const unsubData = window.api.pty.onData(termId, (data) => {
+    cardData.unsubData = window.api.pty.onData(termId, (data) => {
       term.write(data);
       cardData.dataBytes += data.length;
     });
-    cardData.unsubData = unsubData;
 
     // Fit the xterm to the card container but do NOT resize the PTY.
     // The workspace terminal is the master that controls PTY dimensions.
@@ -255,16 +252,13 @@ export class BoardView {
       try { fitAddon.fit(); } catch {}
     };
 
-    // Insert before the empty placeholder
     this.boardEl.insertBefore(card, this.emptyEl);
 
-    const resizeObs = new ResizeObserver(fitOnly);
-    resizeObs.observe(termContainer);
-    cardData.resizeObs = resizeObs;
+    cardData.resizeObs = new ResizeObserver(fitOnly);
+    cardData.resizeObs.observe(termContainer);
 
     this.cards.set(termId, cardData);
 
-    // Fit after layout settles
     setTimeout(fitOnly, FIT_SETTLE_DELAY_MS);
   }
 
@@ -342,6 +336,17 @@ export class BoardView {
     visibleCards[nextIdx][1].term.focus();
   }
 
+  _startPolling() {
+    if (this._pollTimer || this.disposed) return;
+    this._pollTimer = setInterval(() => {
+      if (!this.disposed) {
+        this.scanAgents();
+        this._checkIdleCards();
+      }
+    }, POLL_INTERVAL_MS);
+    this.scanAgents();
+  }
+
   pause() {
     if (this._pollTimer) {
       clearInterval(this._pollTimer);
@@ -350,16 +355,7 @@ export class BoardView {
   }
 
   resume() {
-    if (this.disposed) return;
-    if (!this._pollTimer) {
-      this._pollTimer = setInterval(() => {
-        if (!this.disposed) {
-          this.scanAgents();
-          this._checkIdleCards();
-        }
-      }, POLL_INTERVAL_MS);
-      this.scanAgents();
-    }
+    this._startPolling();
   }
 
   dispose() {
