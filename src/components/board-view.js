@@ -9,6 +9,19 @@ import { getTerminalTheme } from '../utils/terminal-themes.js';
 // small data bursts even when idle. Real agent output (streaming text, tool
 // results) is much larger. 200 bytes/3s is well above idle noise.
 const DATA_VOLUME_THRESHOLD = 200;
+const POLL_INTERVAL_MS = 3000;
+const FIT_SETTLE_DELAY_MS = 100;
+const FIT_UNHIDE_DELAY_MS = 50;
+
+const BOARD_TERMINAL_OPTIONS = {
+  fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
+  fontSize: 11,
+  lineHeight: 1.2,
+  cursorBlink: false,
+  cursorStyle: 'bar',
+  scrollback: 10000,
+  allowProposedApi: true,
+};
 
 export class BoardView {
   constructor(container, tabManager) {
@@ -21,13 +34,12 @@ export class BoardView {
     this.setupListeners();
     this.scanAgents();
 
-    // Poll for agent detection + idle check every 3 seconds
     this._pollTimer = setInterval(() => {
       if (!this.disposed) {
         this.scanAgents();
         this._checkIdleCards();
       }
-    }, 3000);
+    }, POLL_INTERVAL_MS);
   }
 
   render() {
@@ -79,10 +91,14 @@ export class BoardView {
         }
       }
 
-      this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
+      this._updateEmptyState();
     } catch (e) {
       console.warn('Board: agent scan failed', e);
     }
+  }
+
+  _updateEmptyState() {
+    this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
   }
 
   /** Check data volume since last poll and toggle running/waiting status */
@@ -123,14 +139,18 @@ export class BoardView {
     }
   }
 
-  _getTabNameForTerminal(termId) {
-    for (const [, tab] of this.tabManager.tabs) {
+  _findTabForTerminal(termId) {
+    for (const [tabId, tab] of this.tabManager.tabs) {
       if (!tab.terminalPanel) continue;
       if (tab.terminalPanel.terminals?.has(termId)) {
-        return tab.name;
+        return { tabId, tab };
       }
     }
     return null;
+  }
+
+  _getTabNameForTerminal(termId) {
+    return this._findTabForTerminal(termId)?.tab.name ?? null;
   }
 
   addCard(termId, info) {
@@ -164,13 +184,8 @@ export class BoardView {
     goBtn.innerHTML = '&#8599;';
     goBtn.title = 'Go to workspace';
     goBtn.addEventListener('click', () => {
-      for (const [tabId, tab] of this.tabManager.tabs) {
-        if (!tab.terminalPanel) continue;
-        if (tab.terminalPanel.terminals?.has(termId)) {
-          this.tabManager.switchTo(tabId);
-          break;
-        }
-      }
+      const match = this._findTabForTerminal(termId);
+      if (match) this.tabManager.switchTo(match.tabId);
     });
     headerBtns.appendChild(goBtn);
 
@@ -180,7 +195,6 @@ export class BoardView {
     hideBtn.title = 'Hide';
     hideBtn.addEventListener('click', () => {
       card.classList.add('board-card-hidden');
-      this._hiddenTerms = this._hiddenTerms || new Set();
       this._hiddenTerms.add(termId);
       this._updateHiddenBar();
     });
@@ -197,13 +211,7 @@ export class BoardView {
 
     const term = new Terminal({
       theme: getTerminalTheme(),
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 11,
-      lineHeight: 1.2,
-      cursorBlink: false,
-      cursorStyle: 'bar',
-      scrollback: 10000,
-      allowProposedApi: true,
+      ...BOARD_TERMINAL_OPTIONS,
     });
 
     const fitAddon = new FitAddon();
@@ -244,7 +252,7 @@ export class BoardView {
     this.cards.set(termId, cardData);
 
     // Fit after layout settles
-    setTimeout(fitOnly, 100);
+    setTimeout(fitOnly, FIT_SETTLE_DELAY_MS);
   }
 
   removeCard(termId) {
@@ -279,7 +287,7 @@ export class BoardView {
         // Refit after unhide
         setTimeout(() => {
           try { card.fitAddon.fit(); } catch {}
-        }, 50);
+        }, FIT_UNHIDE_DELAY_MS);
       });
       this.hiddenBarEl.appendChild(chip);
     }
@@ -289,18 +297,14 @@ export class BoardView {
     this._onCreated = () => {
       if (!this.disposed) this.scanAgents();
     };
-    this._onRemoved = ({ id }) => {
+    this._onTerminalGone = ({ id }) => {
       this.removeCard(id);
-      this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
-    };
-    this._onExited = ({ id }) => {
-      this.removeCard(id);
-      this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
+      this._updateEmptyState();
     };
 
     bus.on('terminal:created', this._onCreated);
-    bus.on('terminal:removed', this._onRemoved);
-    bus.on('terminal:exited', this._onExited);
+    bus.on('terminal:removed', this._onTerminalGone);
+    bus.on('terminal:exited', this._onTerminalGone);
   }
 
   focusDirection(dir) {
@@ -340,7 +344,7 @@ export class BoardView {
           this.scanAgents();
           this._checkIdleCards();
         }
-      }, 3000);
+      }, POLL_INTERVAL_MS);
       this.scanAgents();
     }
   }
@@ -350,8 +354,8 @@ export class BoardView {
     this.pause();
 
     bus.off('terminal:created', this._onCreated);
-    bus.off('terminal:removed', this._onRemoved);
-    bus.off('terminal:exited', this._onExited);
+    bus.off('terminal:removed', this._onTerminalGone);
+    bus.off('terminal:exited', this._onTerminalGone);
 
     for (const [, data] of this.cards) {
       if (data.unsubData) data.unsubData();
