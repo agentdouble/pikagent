@@ -352,7 +352,7 @@ export class TabManager {
 
   switchTo(id) {
     const tab = this.tabs.get(id);
-    if (!tab || id === this.activeTabId) return;
+    if (!tab) return;
 
     // If in board mode, switch back to work mode
     if (this.sidebarMode === 'board') {
@@ -361,7 +361,31 @@ export class TabManager {
       }
       this.sidebarMode = 'work';
       this.renderActivityBar();
+
+      // If this tab is already active, just re-show its layout
+      if (id === this.activeTabId) {
+        if (tab.layoutElement) {
+          this.workspaceContainer.innerHTML = '';
+          this.workspaceContainer.appendChild(tab.layoutElement);
+          if (tab.terminalPanel) {
+            tab.terminalPanel.fitAll();
+            if (tab.terminalPanel.activeTerminal) {
+              tab.terminalPanel.activeTerminal.terminal.focus();
+            }
+          }
+          if (tab.fileTree && tab.terminalPanel) {
+            for (const [termId, node] of tab.terminalPanel.terminals) {
+              tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
+            }
+          }
+          bus.emit('workspace:activated');
+        }
+        this.renderTabBar();
+        return;
+      }
     }
+
+    if (id === this.activeTabId) return;
 
     // Detach outgoing tab (keep terminals alive!)
     if (this.activeTabId) {
