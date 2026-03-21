@@ -60,6 +60,7 @@ contextBridge.exposeInMainWorld('api', {
     homedir: () => ipcRenderer.invoke('fs:homedir'),
     copy: (filePath) => ipcRenderer.invoke('fs:copy', filePath),
     rename: (oldPath, newName) => ipcRenderer.invoke('fs:rename', { oldPath, newName }),
+    copyTo: (srcPath, destDir) => ipcRenderer.invoke('fs:copyTo', { srcPath, destDir }),
     watch: (id, dirPath) => ipcRenderer.invoke('fs:watch', { id, dirPath }),
     unwatch: (id) => ipcRenderer.invoke('fs:unwatch', { id }),
     onChanged: onIpc('fs:changed'),

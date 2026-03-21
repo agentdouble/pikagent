@@ -27,6 +27,12 @@ export class FileTree {
     this.treeEl = document.createElement('div');
     this.treeEl.className = 'file-tree-content';
     this.container.appendChild(this.treeEl);
+
+    // Global drop fallback on the container (drops into root of first section)
+    this._setupDropZone(this.container, () => {
+      const firstCwd = this.sections.keys().next().value;
+      return firstCwd || null;
+    });
   }
 
   listenForChanges() {
@@ -181,6 +187,11 @@ export class FileTree {
       this.showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, section.expandedDirs);
     });
 
+    // Drop on section header → drop into root cwd
+    this._setupDropZone(header, cwd);
+    // Drop on section content area (empty space) → drop into root cwd
+    this._setupDropZone(contentEl, cwd);
+
     await this.renderDir(cwd, contentEl, 0, section.expandedDirs);
   }
 
@@ -319,6 +330,40 @@ export class FileTree {
     });
   }
 
+  // --- Drag & Drop from external (Finder, etc.) ---
+
+  _setupDropZone(el, getTargetDir) {
+    el.addEventListener('dragover', (e) => {
+      if (!e.dataTransfer.types.includes('Files')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      el.classList.add('drop-target');
+    });
+
+    el.addEventListener('dragleave', (e) => {
+      e.stopPropagation();
+      el.classList.remove('drop-target');
+    });
+
+    el.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.remove('drop-target');
+      const targetDir = typeof getTargetDir === 'function' ? getTargetDir() : getTargetDir;
+      if (!targetDir) return;
+      await this._handleFileDrop(e.dataTransfer.files, targetDir);
+    });
+  }
+
+  async _handleFileDrop(files, destDir) {
+    for (const file of files) {
+      if (file.path) {
+        await window.api.fs.copyTo(file.path, destDir);
+      }
+    }
+  }
+
   // --- Directory expand/collapse ---
 
   async _expandDir(dirPath, childContainer, chevron, depth, expandedDirs) {
@@ -370,6 +415,9 @@ export class FileTree {
         if (expandedDirs.has(entry.path)) {
           await this.renderDir(entry.path, childContainer, depth + 1, expandedDirs);
         }
+
+        // Drop on directory row → drop into that directory
+        this._setupDropZone(row, entry.path);
 
         row.addEventListener('click', async () => {
           if (expandedDirs.has(entry.path)) {

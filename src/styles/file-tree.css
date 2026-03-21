@@ -145,3 +145,21 @@
 .file-tree-section-content.collapsed {
   display: none;
 }
+
+/* ===== Drag & Drop Target ===== */
+.file-tree-item.drop-target {
+  background: var(--bg-active);
+  outline: 1px dashed var(--accent, #4fc3f7);
+  outline-offset: -1px;
+}
+
+.file-tree-section-header.drop-target {
+  background: var(--bg-active);
+  outline: 1px dashed var(--accent, #4fc3f7);
+  outline-offset: -1px;
+}
+
+.file-tree-section-content.drop-target {
+  outline: 1px dashed var(--accent, #4fc3f7);
+  outline-offset: -1px;
+}

@@ -81,6 +81,10 @@ function register(getWindow) {
     return fsManager.renameEntry(oldPath, newName);
   });
 
+  ipcMain.handle('fs:copyTo', (event, { srcPath, destDir }) => {
+    return fsManager.copyFileTo(srcPath, destDir);
+  });
+
   ipcMain.handle('fs:watch', (event, { id, dirPath }) => {
     const win = getWindow();
     fsManager.watchDir(id, dirPath, (change) => {

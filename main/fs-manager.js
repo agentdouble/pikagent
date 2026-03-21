@@ -142,4 +142,41 @@ function getHomedir() {
   return os.homedir();
 }
 
-module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, renameEntry, getHomedir, watchDir, unwatchDir, unwatchAll };
+async function copyFileTo(srcPath, destDir) {
+  try {
+    const name = path.basename(srcPath);
+    let destPath = path.join(destDir, name);
+
+    // If destination already exists, find a unique name
+    try {
+      await fs.promises.access(destPath);
+      const ext = path.extname(name);
+      const base = path.basename(name, ext);
+      let i = 1;
+      while (true) {
+        const suffix = i === 1 ? ' (copy)' : ` (copy ${i})`;
+        destPath = path.join(destDir, `${base}${suffix}${ext}`);
+        try {
+          await fs.promises.access(destPath);
+          i++;
+        } catch {
+          break;
+        }
+      }
+    } catch {
+      // destPath doesn't exist, use as-is
+    }
+
+    const stat = await fs.promises.stat(srcPath);
+    if (stat.isDirectory()) {
+      await copyDirRecursive(srcPath, destPath);
+    } else {
+      await fs.promises.copyFile(srcPath, destPath);
+    }
+    return { success: true, destPath };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo, renameEntry, getHomedir, watchDir, unwatchDir, unwatchAll };
