@@ -1,5 +1,14 @@
 import { detectLanguage } from '../utils/file-icons.js';
 
+const LCS_MAX_PRODUCT = 50_000;
+const HUNK_FLASH_DURATION_MS = 600;
+
+const UNIFIED_CHANGE_CONFIG = {
+  context: { prefix: ' ', cssClass: 'diff-row-context', showOld: true, showNew: true },
+  add:     { prefix: '+', cssClass: 'diff-row-add',     showOld: false, showNew: true },
+  remove:  { prefix: '-', cssClass: 'diff-row-remove',  showOld: true, showNew: false },
+};
+
 /**
  * Parse a unified diff string into structured hunks.
  */
@@ -124,8 +133,6 @@ function wordDiff(oldStr, newStr) {
 
   // Simple LCS-based word diff
   const lcs = lcsMatrix(oldWords, newWords);
-  const oldSegments = [];
-  const newSegments = [];
 
   let oi = oldWords.length, ni = newWords.length;
   const oldResult = [];
@@ -155,7 +162,7 @@ function tokenize(str) {
 function lcsMatrix(a, b) {
   const m = a.length, n = b.length;
   // For very long lines, skip LCS to avoid perf issues
-  if (m * n > 50000) return null;
+  if (m * n > LCS_MAX_PRODUCT) return null;
   const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
@@ -210,8 +217,13 @@ export class DiffViewer {
   _buildToolbar() {
     const toolbar = document.createElement('div');
     toolbar.className = 'diff-toolbar';
+    toolbar.appendChild(this._buildStats());
+    toolbar.appendChild(this._buildViewToggle());
+    toolbar.appendChild(this._buildNavigation());
+    return toolbar;
+  }
 
-    // Stats
+  _buildStats() {
     const stats = document.createElement('span');
     stats.className = 'diff-stats';
     let additions = 0, deletions = 0;
@@ -222,27 +234,25 @@ export class DiffViewer {
       }
     }
     stats.innerHTML = `<span class="diff-stat-add">+${additions}</span> <span class="diff-stat-del">-${deletions}</span>`;
-    toolbar.appendChild(stats);
+    return stats;
+  }
 
-    // View mode toggle
+  _buildViewToggle() {
     const toggleGroup = document.createElement('div');
     toggleGroup.className = 'diff-toggle-group';
 
-    const btnSplit = document.createElement('button');
-    btnSplit.className = `diff-toggle-btn ${this.viewMode === 'split' ? 'active' : ''}`;
-    btnSplit.textContent = 'Split';
-    btnSplit.addEventListener('click', () => { this.viewMode = 'split'; this.render(); });
+    for (const mode of ['split', 'unified']) {
+      const btn = document.createElement('button');
+      btn.className = `diff-toggle-btn ${this.viewMode === mode ? 'active' : ''}`;
+      btn.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+      btn.addEventListener('click', () => { this.viewMode = mode; this.render(); });
+      toggleGroup.appendChild(btn);
+    }
 
-    const btnUnified = document.createElement('button');
-    btnUnified.className = `diff-toggle-btn ${this.viewMode === 'unified' ? 'active' : ''}`;
-    btnUnified.textContent = 'Unified';
-    btnUnified.addEventListener('click', () => { this.viewMode = 'unified'; this.render(); });
+    return toggleGroup;
+  }
 
-    toggleGroup.appendChild(btnSplit);
-    toggleGroup.appendChild(btnUnified);
-    toolbar.appendChild(toggleGroup);
-
-    // Navigation
+  _buildNavigation() {
     const nav = document.createElement('div');
     nav.className = 'diff-nav';
 
@@ -265,9 +275,7 @@ export class DiffViewer {
     nav.appendChild(btnPrev);
     nav.appendChild(hunkLabel);
     nav.appendChild(btnNext);
-    toolbar.appendChild(nav);
-
-    return toolbar;
+    return nav;
   }
 
   _navigateHunk(direction) {
@@ -280,7 +288,15 @@ export class DiffViewer {
     // Flash highlight
     const el = this.hunkElements[this.currentHunkIndex];
     el.classList.add('diff-hunk-flash');
-    setTimeout(() => el.classList.remove('diff-hunk-flash'), 600);
+    setTimeout(() => el.classList.remove('diff-hunk-flash'), HUNK_FLASH_DURATION_MS);
+  }
+
+  _appendSplitCells(rowEl, leftCell, rightCell) {
+    const sep = document.createElement('div');
+    sep.className = 'diff-separator';
+    rowEl.appendChild(leftCell);
+    rowEl.appendChild(sep);
+    rowEl.appendChild(rightCell);
   }
 
   _renderSplit() {
@@ -295,15 +311,11 @@ export class DiffViewer {
       if (row.type === 'hunk') {
         rowEl.classList.add('diff-row-hunk');
         this.hunkElements.push(rowEl);
-
-        const left = this._createCell('', row.left.content, 'hunk');
-        const sep = document.createElement('div');
-        sep.className = 'diff-separator';
-        const right = this._createCell('', row.right.content, 'hunk');
-
-        rowEl.appendChild(left);
-        rowEl.appendChild(sep);
-        rowEl.appendChild(right);
+        this._appendSplitCells(
+          rowEl,
+          this._createCell('', row.left.content, 'hunk'),
+          this._createCell('', row.right.content, 'hunk'),
+        );
       } else {
         const leftType = row.left.type;
         const rightType = row.right.type;
@@ -316,24 +328,11 @@ export class DiffViewer {
           if (wd.newSegments) rightSegments = wd.newSegments;
         }
 
-        const left = this._createCell(
-          leftType !== 'empty' ? row.left.lineNo : '',
-          row.left.content,
-          leftType,
-          leftSegments
+        this._appendSplitCells(
+          rowEl,
+          this._createCell(leftType !== 'empty' ? row.left.lineNo : '', row.left.content, leftType, leftSegments),
+          this._createCell(rightType !== 'empty' ? row.right.lineNo : '', row.right.content, rightType, rightSegments),
         );
-        const sep = document.createElement('div');
-        sep.className = 'diff-separator';
-        const right = this._createCell(
-          rightType !== 'empty' ? row.right.lineNo : '',
-          row.right.content,
-          rightType,
-          rightSegments
-        );
-
-        rowEl.appendChild(left);
-        rowEl.appendChild(sep);
-        rowEl.appendChild(right);
       }
 
       table.appendChild(rowEl);
@@ -363,37 +362,27 @@ export class DiffViewer {
       let newLine = hunk.newStart;
 
       for (const change of hunk.changes) {
+        const config = UNIFIED_CHANGE_CONFIG[change.type];
+        if (!config) continue;
+
         const row = document.createElement('div');
-        row.className = 'diff-row';
+        row.className = `diff-row ${config.cssClass}`;
 
         const oldNum = document.createElement('div');
         oldNum.className = 'diff-line-no';
+        oldNum.textContent = config.showOld ? oldLine++ : '';
+
         const newNum = document.createElement('div');
         newNum.className = 'diff-line-no';
+        newNum.textContent = config.showNew ? newLine++ : '';
+
         const prefix = document.createElement('div');
         prefix.className = 'diff-prefix';
+        prefix.textContent = config.prefix;
+
         const code = document.createElement('div');
         code.className = 'diff-code';
-
-        if (change.type === 'context') {
-          oldNum.textContent = oldLine++;
-          newNum.textContent = newLine++;
-          prefix.textContent = ' ';
-          code.textContent = change.content;
-          row.classList.add('diff-row-context');
-        } else if (change.type === 'add') {
-          oldNum.textContent = '';
-          newNum.textContent = newLine++;
-          prefix.textContent = '+';
-          code.textContent = change.content;
-          row.classList.add('diff-row-add');
-        } else if (change.type === 'remove') {
-          oldNum.textContent = oldLine++;
-          newNum.textContent = '';
-          prefix.textContent = '-';
-          code.textContent = change.content;
-          row.classList.add('diff-row-remove');
-        }
+        code.textContent = change.content;
 
         row.appendChild(oldNum);
         row.appendChild(newNum);
