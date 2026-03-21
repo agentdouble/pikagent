@@ -1,4 +1,3 @@
-const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
@@ -178,14 +177,14 @@ function parseTokenUsage(line, cutoffMs) {
   };
 }
 
-function readProjectTokens(projDir, cutoffMs) {
+async function readProjectTokens(projDir, cutoffMs) {
   const totals = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
   const perDayMap = {};
 
-  const files = fs.readdirSync(projDir).filter((f) => f.endsWith('.jsonl'));
+  const files = (await fsp.readdir(projDir)).filter((f) => f.endsWith('.jsonl'));
   for (const file of files) {
     let content;
-    try { content = fs.readFileSync(path.join(projDir, file), 'utf-8'); } catch { continue; }
+    try { content = await fsp.readFile(path.join(projDir, file), 'utf-8'); } catch { continue; }
 
     for (const line of content.split('\n')) {
       const usage = parseTokenUsage(line, cutoffMs);
@@ -212,19 +211,7 @@ function projectShortName(proj) {
   return parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
 }
 
-async function getTokenMetrics(days = DEFAULT_DAYS) {
-  const labels = dayLabels(days);
-  const globalPerDay = {};
-  const perProjectMap = {};
-  let totalInput = 0;
-  let totalOutput = 0;
-  let totalCacheRead = 0;
-  let totalCacheCreate = 0;
-
-  for (const day of labels) {
-    globalPerDay[day.date] = { input: 0, output: 0 };
-  }
-
+async function collectProjectTokens(days) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffMs = cutoff.getTime();
@@ -232,33 +219,49 @@ async function getTokenMetrics(days = DEFAULT_DAYS) {
   try {
     const allEntries = await fsp.readdir(CLAUDE_PROJECTS_DIR, { withFileTypes: true });
     const projects = allEntries.filter((d) => d.isDirectory()).map((d) => d.name);
+    const results = await Promise.all(
+      projects.map(async (proj) => {
+        const data = await readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);
+        return { proj, ...data };
+      })
+    );
+    return results;
+  } catch (err) {
+    console.error('[usage-manager] Failed to read Claude projects:', err.message);
+    return [];
+  }
+}
 
-    for (const proj of projects) {
-      const { totals, perDayMap } = readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);
+function aggregateTokenData(labels, projectResults) {
+  const globalPerDay = {};
+  for (const day of labels) globalPerDay[day.date] = { input: 0, output: 0 };
 
-      totalInput += totals.input;
-      totalOutput += totals.output;
-      totalCacheRead += totals.cacheRead;
-      totalCacheCreate += totals.cacheCreate;
+  const totals = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
+  const perProjectMap = {};
 
-      for (const [dateKey, dayData] of Object.entries(perDayMap)) {
-        if (globalPerDay[dateKey]) {
-          globalPerDay[dateKey].input += dayData.input;
-          globalPerDay[dateKey].output += dayData.output;
-        }
-      }
+  for (const { proj, totals: pt, perDayMap } of projectResults) {
+    totals.input += pt.input;
+    totals.output += pt.output;
+    totals.cacheRead += pt.cacheRead;
+    totals.cacheCreate += pt.cacheCreate;
 
-      if (totals.input + totals.output > 0) {
-        perProjectMap[projectShortName(proj)] = {
-          input: totals.input,
-          output: totals.output,
-          total: totals.input + totals.output,
-        };
+    for (const [dateKey, dayData] of Object.entries(perDayMap)) {
+      if (globalPerDay[dateKey]) {
+        globalPerDay[dateKey].input += dayData.input;
+        globalPerDay[dateKey].output += dayData.output;
       }
     }
-  } catch {}
 
-  const perDayArr = labels.map((day) => ({
+    if (pt.input + pt.output > 0) {
+      perProjectMap[projectShortName(proj)] = {
+        input: pt.input,
+        output: pt.output,
+        total: pt.input + pt.output,
+      };
+    }
+  }
+
+  const perDay = labels.map((day) => ({
     ...day,
     input: globalPerDay[day.date]?.input || 0,
     output: globalPerDay[day.date]?.output || 0,
@@ -271,14 +274,20 @@ async function getTokenMetrics(days = DEFAULT_DAYS) {
     .slice(0, TOP_PROJECTS_LIMIT);
 
   return {
-    totalInput,
-    totalOutput,
-    totalCacheRead,
-    totalCacheCreate,
-    total: totalInput + totalOutput,
-    perDay: perDayArr,
+    totalInput: totals.input,
+    totalOutput: totals.output,
+    totalCacheRead: totals.cacheRead,
+    totalCacheCreate: totals.cacheCreate,
+    total: totals.input + totals.output,
+    perDay,
     perProject,
   };
+}
+
+async function getTokenMetrics(days = DEFAULT_DAYS) {
+  const labels = dayLabels(days);
+  const projectResults = await collectProjectTokens(days);
+  return aggregateTokenData(labels, projectResults);
 }
 
 // ===== Files =====
