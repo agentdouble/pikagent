@@ -14,251 +14,238 @@ const SCHEDULE_LABELS = {
 };
 
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const INTERVAL_HOURS = [1, 2, 3, 4, 6, 8, 12];
+const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
 
 export { SCHEDULE_LABELS, DAY_NAMES };
 
-/**
- * Opens the flow creation/edit modal.
- * Returns a promise that resolves with the saved flow, or null if cancelled.
- */
-export function openFlowModal(existing = null) {
-  return new Promise((resolve) => {
-    const overlay = document.createElement('div');
-    overlay.className = 'flow-modal-overlay';
+// --- DOM helpers ---
 
-    const modal = document.createElement('div');
-    modal.className = 'flow-modal';
+function _el(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'className') el.className = v;
+    else if (k === 'textContent') el.textContent = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el[k] = v;
+  }
+  for (const child of children) {
+    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
+    else if (child) el.appendChild(child);
+  }
+  return el;
+}
 
-    // Header
-    const modalHeader = document.createElement('div');
-    modalHeader.className = 'flow-modal-header';
+function _createSelect(options, value) {
+  const select = _el('select', { className: 'flow-modal-select' });
+  for (const [val, label] of Object.entries(options)) {
+    select.appendChild(_el('option', { value: val, textContent: label }));
+  }
+  select.value = value;
+  return select;
+}
 
-    const modalTitle = document.createElement('h3');
-    modalTitle.textContent = existing ? 'Modifier le flow' : 'Nouveau flow';
-    modalHeader.appendChild(modalTitle);
+function _createChip(icon, content, extra = {}) {
+  return _el('div', { className: 'flow-modal-chip', ...extra },
+    _el('span', { textContent: icon }),
+    content,
+  );
+}
 
-    const clearBtn = document.createElement('button');
-    clearBtn.className = 'flow-modal-clear-btn';
-    clearBtn.textContent = 'Clear';
-    clearBtn.addEventListener('click', () => {
-      nameInput.value = '';
-      promptArea.value = '';
-      selectedCwd = '';
-      cwdLabel.textContent = 'Sélectionner un dossier';
-      cwdChip.title = 'Sélectionner un dossier';
-    });
-    modalHeader.appendChild(clearBtn);
+// --- Section builders ---
 
-    modal.appendChild(modalHeader);
+function _buildHeader(existing, state) {
+  const title = _el('h3', { textContent: existing ? 'Modifier le flow' : 'Nouveau flow' });
+  const clearBtn = _el('button', {
+    className: 'flow-modal-clear-btn',
+    textContent: 'Clear',
+    onClick: () => {
+      state.nameInput.value = '';
+      state.promptArea.value = '';
+      state.selectedCwd = '';
+      state.cwdLabel.textContent = DEFAULT_CWD_LABEL;
+      state.cwdChip.title = DEFAULT_CWD_LABEL;
+    },
+  });
+  return _el('div', { className: 'flow-modal-header' }, title, clearBtn);
+}
 
-    // Name
-    const nameGroup = document.createElement('div');
-    nameGroup.className = 'flow-modal-group';
-    const nameInput = document.createElement('input');
-    nameInput.className = 'flow-modal-input';
-    nameInput.placeholder = 'Nom du flow';
-    nameInput.value = existing?.name || '';
-    nameGroup.appendChild(nameInput);
-    modal.appendChild(nameGroup);
+function _buildFormFields(existing) {
+  const nameInput = _el('input', {
+    className: 'flow-modal-input',
+    placeholder: 'Nom du flow',
+    value: existing?.name || '',
+  });
+  const promptArea = _el('textarea', {
+    className: 'flow-modal-textarea',
+    placeholder: 'Prompt à envoyer à l\'agent...\n\nExemple:\nSummarize yesterday\'s git activity for standup.\n\nGrounding rules:\n- Anchor statements to commits/PRs/files\n- Keep it scannable and team-ready.',
+    rows: 8,
+    value: existing?.prompt || '',
+  });
+  return {
+    nameInput,
+    promptArea,
+    nameGroup: _el('div', { className: 'flow-modal-group' }, nameInput),
+    promptGroup: _el('div', { className: 'flow-modal-group' }, promptArea),
+  };
+}
 
-    // Prompt
-    const promptGroup = document.createElement('div');
-    promptGroup.className = 'flow-modal-group';
-    const promptArea = document.createElement('textarea');
-    promptArea.className = 'flow-modal-textarea';
-    promptArea.placeholder = 'Prompt à envoyer à l\'agent...\n\nExemple:\nSummarize yesterday\'s git activity for standup.\n\nGrounding rules:\n- Anchor statements to commits/PRs/files\n- Keep it scannable and team-ready.';
-    promptArea.rows = 8;
-    promptArea.value = existing?.prompt || '';
-    promptGroup.appendChild(promptArea);
-    modal.appendChild(promptGroup);
+function _buildBottomBar(existing, state) {
+  const isInterval = (existing?.schedule?.type || 'weekdays') === 'interval';
+  const isCustom = (existing?.schedule?.type || 'weekdays') === 'custom';
 
-    // Bottom bar: cwd + schedule + actions
-    const bottomBar = document.createElement('div');
-    bottomBar.className = 'flow-modal-bottom';
-
-    // CWD folder picker
-    let selectedCwd = existing?.cwd || '';
-    const cwdChip = document.createElement('button');
-    cwdChip.className = 'flow-modal-chip flow-modal-chip-btn';
-    cwdChip.type = 'button';
-    const cwdIcon = document.createElement('span');
-    cwdIcon.textContent = '\u{1F4C2}';
-    cwdChip.appendChild(cwdIcon);
-    const cwdLabel = document.createElement('span');
-    cwdLabel.className = 'flow-modal-chip-label';
-    cwdLabel.textContent = selectedCwd ? selectedCwd.split('/').pop() : 'Sélectionner un dossier';
-    cwdChip.title = selectedCwd || 'Sélectionner un dossier';
-    cwdChip.appendChild(cwdLabel);
-    cwdChip.addEventListener('click', async (e) => {
+  // CWD picker
+  const cwdLabel = _el('span', {
+    className: 'flow-modal-chip-label',
+    textContent: state.selectedCwd ? state.selectedCwd.split('/').pop() : DEFAULT_CWD_LABEL,
+  });
+  const cwdChip = _el('button', {
+    className: 'flow-modal-chip flow-modal-chip-btn',
+    type: 'button',
+    title: state.selectedCwd || DEFAULT_CWD_LABEL,
+    onClick: async (e) => {
       e.preventDefault();
       const folder = await window.api.dialog.openFolder();
       if (folder) {
-        selectedCwd = folder;
+        state.selectedCwd = folder;
         cwdLabel.textContent = folder.split('/').pop();
         cwdChip.title = folder;
       }
-    });
-    bottomBar.appendChild(cwdChip);
+    },
+  }, _el('span', { textContent: '\u{1F4C2}' }), cwdLabel);
 
-    // Agent selector
-    const agentChip = document.createElement('div');
-    agentChip.className = 'flow-modal-chip';
-    const agentIcon = document.createElement('span');
-    agentIcon.textContent = '\u{1F916}';
-    agentChip.appendChild(agentIcon);
-    const agentSelect = document.createElement('select');
-    agentSelect.className = 'flow-modal-select';
-    for (const [value, label] of Object.entries(AGENT_OPTIONS)) {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      agentSelect.appendChild(opt);
-    }
-    agentSelect.value = existing?.agent || 'claude';
-    agentChip.appendChild(agentSelect);
-    bottomBar.appendChild(agentChip);
+  state.cwdLabel = cwdLabel;
+  state.cwdChip = cwdChip;
 
-    // Schedule type
-    const scheduleChip = document.createElement('div');
-    scheduleChip.className = 'flow-modal-chip';
-    const schedIcon = document.createElement('span');
-    schedIcon.textContent = '\u{1F550}';
-    scheduleChip.appendChild(schedIcon);
-    const schedSelect = document.createElement('select');
-    schedSelect.className = 'flow-modal-select';
-    for (const [value, label] of Object.entries(SCHEDULE_LABELS)) {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      schedSelect.appendChild(opt);
-    }
-    schedSelect.value = existing?.schedule?.type || 'weekdays';
-    scheduleChip.appendChild(schedSelect);
-    bottomBar.appendChild(scheduleChip);
+  // Selects
+  const agentSelect = _createSelect(AGENT_OPTIONS, existing?.agent || 'claude');
+  const schedSelect = _createSelect(SCHEDULE_LABELS, existing?.schedule?.type || 'weekdays');
+  const intervalInput = _createSelect(
+    Object.fromEntries(INTERVAL_HOURS.map(h => [h, `${h}h`])),
+    existing?.schedule?.intervalHours || 1,
+  );
 
-    // Time
-    const timeChip = document.createElement('div');
-    timeChip.className = 'flow-modal-chip';
-    timeChip.style.display = schedSelect.value === 'interval' ? 'none' : 'flex';
-    const timeInput = document.createElement('input');
-    timeInput.type = 'time';
-    timeInput.className = 'flow-modal-time';
-    timeInput.value = existing?.schedule?.time || '09:00';
-    timeChip.appendChild(timeInput);
-    bottomBar.appendChild(timeChip);
+  // Time input
+  const timeChip = _createChip('', _el('input', {
+    type: 'time',
+    className: 'flow-modal-time',
+    value: existing?.schedule?.time || '09:00',
+  }));
+  timeChip.style.display = isInterval ? 'none' : 'flex';
+  // Remove the empty icon span for time chip
+  timeChip.removeChild(timeChip.firstChild);
+  const timeInput = timeChip.querySelector('input');
 
-    // Interval hours
-    const intervalChip = document.createElement('div');
-    intervalChip.className = 'flow-modal-chip';
-    intervalChip.style.display = schedSelect.value === 'interval' ? 'flex' : 'none';
-    const intervalLabel = document.createElement('span');
-    intervalLabel.textContent = 'Toutes les';
-    intervalLabel.style.fontSize = '11px';
-    intervalChip.appendChild(intervalLabel);
-    const intervalInput = document.createElement('select');
-    intervalInput.className = 'flow-modal-select';
-    for (const h of [1, 2, 3, 4, 6, 8, 12]) {
-      const opt = document.createElement('option');
-      opt.value = h;
-      opt.textContent = `${h}h`;
-      intervalInput.appendChild(opt);
-    }
-    intervalInput.value = existing?.schedule?.intervalHours || 1;
-    intervalChip.appendChild(intervalInput);
-    bottomBar.appendChild(intervalChip);
+  // Interval chip
+  const intervalLbl = _el('span', { textContent: 'Toutes les' });
+  intervalLbl.style.fontSize = '11px';
+  const intervalChip = _el('div', { className: 'flow-modal-chip' }, intervalLbl, intervalInput);
+  intervalChip.style.display = isInterval ? 'flex' : 'none';
 
-    // Custom days
-    const daysChip = document.createElement('div');
-    daysChip.className = 'flow-modal-chip flow-modal-days';
-    daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
-    const selectedDays = new Set(existing?.schedule?.days || [1, 2, 3, 4, 5]);
-    for (let d = 0; d < 7; d++) {
-      const dayBtn = document.createElement('button');
-      dayBtn.className = 'flow-day-btn';
-      if (selectedDays.has(d)) dayBtn.classList.add('active');
-      dayBtn.textContent = DAY_NAMES[d];
-      dayBtn.addEventListener('click', (e) => {
+  // Days chip
+  const selectedDays = new Set(existing?.schedule?.days || [1, 2, 3, 4, 5]);
+  const daysChip = _el('div', { className: 'flow-modal-chip flow-modal-days' });
+  daysChip.style.display = isCustom ? 'flex' : 'none';
+  for (let d = 0; d < 7; d++) {
+    const dayBtn = _el('button', {
+      className: 'flow-day-btn',
+      textContent: DAY_NAMES[d],
+      onClick: (e) => {
         e.preventDefault();
-        if (selectedDays.has(d)) {
-          selectedDays.delete(d);
-          dayBtn.classList.remove('active');
-        } else {
-          selectedDays.add(d);
-          dayBtn.classList.add('active');
-        }
-      });
-      daysChip.appendChild(dayBtn);
-    }
-    bottomBar.appendChild(daysChip);
-
-    schedSelect.addEventListener('change', () => {
-      const isInterval = schedSelect.value === 'interval';
-      daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
-      timeChip.style.display = isInterval ? 'none' : 'flex';
-      intervalChip.style.display = isInterval ? 'flex' : 'none';
+        selectedDays.has(d) ? selectedDays.delete(d) : selectedDays.add(d);
+        dayBtn.classList.toggle('active');
+      },
     });
+    if (selectedDays.has(d)) dayBtn.classList.add('active');
+    daysChip.appendChild(dayBtn);
+  }
 
-    modal.appendChild(bottomBar);
+  // Toggle visibility on schedule change
+  schedSelect.addEventListener('change', () => {
+    const iv = schedSelect.value === 'interval';
+    daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
+    timeChip.style.display = iv ? 'none' : 'flex';
+    intervalChip.style.display = iv ? 'flex' : 'none';
+  });
 
-    // Action buttons
-    const actionBar = document.createElement('div');
-    actionBar.className = 'flow-modal-actions';
+  const bar = _el('div', { className: 'flow-modal-bottom' },
+    cwdChip,
+    _createChip('\u{1F916}', agentSelect),
+    _createChip('\u{1F550}', schedSelect),
+    timeChip,
+    intervalChip,
+    daysChip,
+  );
 
-    const close = () => {
-      overlay.remove();
-      resolve(null);
-    };
+  return { bar, agentSelect, schedSelect, timeInput, intervalInput, selectedDays };
+}
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'flow-modal-btn flow-modal-btn-cancel';
-    cancelBtn.textContent = 'Annuler';
-    cancelBtn.addEventListener('click', close);
-    actionBar.appendChild(cancelBtn);
+function _buildSchedule(schedSelect, timeInput, intervalInput, selectedDays) {
+  const type = schedSelect.value;
+  const schedule = { type };
+  if (type === 'interval') {
+    schedule.intervalHours = parseInt(intervalInput.value, 10);
+  } else {
+    schedule.time = timeInput.value || '09:00';
+    if (type === 'custom') schedule.days = [...selectedDays].sort();
+  }
+  return schedule;
+}
 
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'flow-modal-btn flow-modal-btn-create';
-    saveBtn.textContent = existing ? 'Enregistrer' : 'Créer';
-    saveBtn.addEventListener('click', async () => {
-      const name = nameInput.value.trim();
-      const prompt = promptArea.value.trim();
-      if (!name || !prompt) return;
+// --- Main entry ---
 
-      const schedType = schedSelect.value;
-      const schedule = { type: schedType };
+export function openFlowModal(existing = null) {
+  return new Promise((resolve) => {
+    const state = { selectedCwd: existing?.cwd || '' };
 
-      if (schedType === 'interval') {
-        schedule.intervalHours = parseInt(intervalInput.value, 10);
-      } else {
-        schedule.time = timeInput.value || '09:00';
-        if (schedType === 'custom') {
-          schedule.days = [...selectedDays].sort();
-        }
-      }
+    const fields = _buildFormFields(existing);
+    state.nameInput = fields.nameInput;
+    state.promptArea = fields.promptArea;
 
-      const flow = {
-        id: existing?.id || generateId(),
-        name,
-        prompt,
-        agent: agentSelect.value,
-        cwd: selectedCwd || undefined,
-        schedule,
-        enabled: existing?.enabled ?? true,
-        runs: existing?.runs || [],
-      };
+    const header = _buildHeader(existing, state);
+    const bottom = _buildBottomBar(existing, state);
 
-      overlay.remove();
-      resolve(flow);
-    });
-    actionBar.appendChild(saveBtn);
+    const close = () => { overlay.remove(); resolve(null); };
 
-    modal.appendChild(actionBar);
+    const actionBar = _el('div', { className: 'flow-modal-actions' },
+      _el('button', {
+        className: 'flow-modal-btn flow-modal-btn-cancel',
+        textContent: 'Annuler',
+        onClick: close,
+      }),
+      _el('button', {
+        className: 'flow-modal-btn flow-modal-btn-create',
+        textContent: existing ? 'Enregistrer' : 'Créer',
+        onClick: () => {
+          const name = fields.nameInput.value.trim();
+          const prompt = fields.promptArea.value.trim();
+          if (!name || !prompt) return;
 
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
+          overlay.remove();
+          resolve({
+            id: existing?.id || generateId(),
+            name,
+            prompt,
+            agent: bottom.agentSelect.value,
+            cwd: state.selectedCwd || undefined,
+            schedule: _buildSchedule(bottom.schedSelect, bottom.timeInput, bottom.intervalInput, bottom.selectedDays),
+            enabled: existing?.enabled ?? true,
+            runs: existing?.runs || [],
+          });
+        },
+      }),
+    );
 
-    overlay.appendChild(modal);
+    const modal = _el('div', { className: 'flow-modal' },
+      header, fields.nameGroup, fields.promptGroup, bottom.bar, actionBar,
+    );
+
+    const overlay = _el('div', { className: 'flow-modal-overlay' },
+      modal,
+    );
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
     document.body.appendChild(overlay);
-    nameInput.focus();
+    fields.nameInput.focus();
   });
 }
