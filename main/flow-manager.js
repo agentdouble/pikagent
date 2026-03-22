@@ -14,7 +14,10 @@ const DEFAULT_PTY_COLS = 120;
 const DEFAULT_PTY_ROWS = 30;
 
 const AGENT_COMMANDS = {
-  claude: (prompt) => `claude --permission-mode auto -p '${prompt}'`,
+  claude: (prompt, opts = {}) =>
+    opts.dangerouslySkipPermissions
+      ? `claude --dangerously-skip-permissions -p '${prompt}'`
+      : `claude --permission-mode auto -p '${prompt}'`,
   codex: (prompt) => `codex --approval-mode full-auto --quiet '${prompt}'`,
   opencode: (prompt) => `opencode -p '${prompt}'`,
 };
@@ -205,7 +208,7 @@ class FlowManager {
     const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
     const agent = flow.agent || 'claude';
     const buildCmd = AGENT_COMMANDS[agent] || AGENT_COMMANDS.claude;
-    return `${buildCmd(escapedPrompt)}; exit\n`;
+    return `${buildCmd(escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
   }
 
   _saveLog(flowId, runTimestamp, output) {

@@ -125,6 +125,22 @@ function _buildBottomBar(existing, state) {
     existing?.schedule?.intervalHours || 1,
   );
 
+  // Dangerously skip permissions toggle (Claude only)
+  const skipPermCheckbox = _el('input', { type: 'checkbox', checked: existing?.dangerouslySkipPermissions || false });
+  const skipPermLabel = _el('span', { textContent: 'Skip permissions' });
+  skipPermLabel.style.fontSize = '11px';
+  const skipPermChip = _el('label', {
+    className: 'flow-modal-chip flow-modal-chip-toggle',
+    title: 'Lance Claude avec --dangerously-skip-permissions',
+  }, skipPermCheckbox, skipPermLabel);
+  skipPermChip.style.display = (agentSelect.value === 'claude') ? 'flex' : 'none';
+  skipPermChip.style.cursor = 'pointer';
+  skipPermChip.style.gap = '4px';
+
+  agentSelect.addEventListener('change', () => {
+    skipPermChip.style.display = (agentSelect.value === 'claude') ? 'flex' : 'none';
+  });
+
   // Time input
   const timeChip = _createChip('', _el('input', {
     type: 'time',
@@ -171,13 +187,14 @@ function _buildBottomBar(existing, state) {
   const bar = _el('div', { className: 'flow-modal-bottom' },
     cwdChip,
     _createChip('\u{1F916}', agentSelect),
+    skipPermChip,
     _createChip('\u{1F550}', schedSelect),
     timeChip,
     intervalChip,
     daysChip,
   );
 
-  return { bar, agentSelect, schedSelect, timeInput, intervalInput, selectedDays };
+  return { bar, agentSelect, skipPermCheckbox, schedSelect, timeInput, intervalInput, selectedDays };
 }
 
 function _buildSchedule(schedSelect, timeInput, intervalInput, selectedDays) {
@@ -229,6 +246,7 @@ export function openFlowModal(existing = null) {
             agent: bottom.agentSelect.value,
             cwd: state.selectedCwd || undefined,
             schedule: _buildSchedule(bottom.schedSelect, bottom.timeInput, bottom.intervalInput, bottom.selectedDays),
+            dangerouslySkipPermissions: bottom.agentSelect.value === 'claude' && bottom.skipPermCheckbox.checked,
             enabled: existing?.enabled ?? true,
             runs: existing?.runs || [],
           });
