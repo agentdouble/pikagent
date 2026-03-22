@@ -9,115 +9,114 @@ const usageManager = require('./usage-manager');
 
 const ptyManager = new PtyManager();
 
+/** Send payload to renderer if window is available */
+function _safeSend(getWindow, channel, payload) {
+  const win = getWindow();
+  if (win && !win.isDestroyed()) {
+    win.webContents.send(channel, payload);
+  }
+}
+
+/**
+ * Forward handlers: [channel, target, method]
+ * Registers ipcMain.handle(channel, (_, arg) => target[method](arg))
+ * Works for single-arg or no-arg calls.
+ */
+const FORWARD_HANDLERS = [
+  // PTY
+  ['pty:checkAgents', ptyManager, 'checkAgents'],
+  // File System
+  ['fs:readdir',  fsManager, 'readDirectory'],
+  ['fs:readfile', fsManager, 'readFile'],
+  ['fs:mkdir',    fsManager, 'makeDir'],
+  ['fs:homedir',  fsManager, 'getHomedir'],
+  ['fs:copy',     fsManager, 'copyEntry'],
+  // Shell / Clipboard
+  ['shell:showInFolder', shell, 'showItemInFolder'],
+  ['shell:openExternal', shell, 'openExternal'],
+  ['clipboard:write',    clipboard, 'writeText'],
+  // Git
+  ['git:branch',       gitManager, 'getBranch'],
+  ['git:remote',       gitManager, 'getRemoteUrl'],
+  ['git:localChanges', gitManager, 'getLocalChanges'],
+  // Workspace Configs
+  ['config:load',        configManager, 'load'],
+  ['config:list',        configManager, 'list'],
+  ['config:delete',      configManager, 'remove'],
+  ['config:setDefault',  configManager, 'setDefault'],
+  ['config:getDefault',  configManager, 'getDefault'],
+  ['config:loadDefault', configManager, 'loadDefault'],
+  // Flows
+  ['flow:save',       flowManager, 'save'],
+  ['flow:get',        flowManager, 'get'],
+  ['flow:list',       flowManager, 'list'],
+  ['flow:delete',     flowManager, 'remove'],
+  ['flow:toggle',     flowManager, 'toggleEnabled'],
+  ['flow:runNow',     flowManager, 'runNow'],
+  ['flow:getRunning', flowManager, 'getRunning'],
+  // Usage
+  ['usage:getMetrics', usageManager, 'getMetrics'],
+];
+
+/**
+ * Spread handlers: [channel, target, method, keys]
+ * Destructures the object arg and spreads keys as positional args.
+ * Registers ipcMain.handle(channel, (_, arg) => target[method](...keys.map(k => arg[k])))
+ */
+const SPREAD_HANDLERS = [
+  // PTY
+  ['pty:write',  ptyManager, 'write',  ['id', 'data']],
+  ['pty:resize', ptyManager, 'resize', ['id', 'cols', 'rows']],
+  ['pty:kill',   ptyManager, 'kill',   ['id']],
+  ['pty:getcwd', ptyManager, 'getCwd', ['id']],
+  // File System
+  ['fs:writefile', fsManager, 'writeFile',  ['filePath', 'content']],
+  ['fs:rename',    fsManager, 'renameEntry', ['oldPath', 'newName']],
+  ['fs:copyTo',    fsManager, 'copyFileTo', ['srcPath', 'destDir']],
+  ['fs:unwatch',   fsManager, 'unwatchDir', ['id']],
+  // Git
+  ['git:fileDiff', gitManager, 'getFileDiff', ['cwd', 'filePath', 'isStaged']],
+  // Workspace Configs
+  ['config:save', configManager, 'save', ['name', 'data']],
+  // Flows
+  ['flow:getRunLog', flowManager, 'getRunLog', ['flowId', 'logTimestamp']],
+];
+
 function register(getWindow) {
-  // --- PTY ---
-  ipcMain.handle('pty:create', (event, { id, cwd, cols, rows }) => {
+  for (const [channel, target, method] of FORWARD_HANDLERS) {
+    ipcMain.handle(channel, (_, arg) => target[method](arg));
+  }
+
+  for (const [channel, target, method, keys] of SPREAD_HANDLERS) {
+    ipcMain.handle(channel, (_, arg) => target[method](...keys.map(k => arg[k])));
+  }
+
+  // --- Custom handlers (require special logic) ---
+
+  ipcMain.handle('pty:create', (_, { id, cwd, cols, rows }) => {
     const proc = ptyManager.create({ id, cwd, cols, rows });
-    const win = getWindow();
-
-    proc.onData((data) => {
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('pty:data', { id, data });
-      }
-    });
-
+    proc.onData((data) => _safeSend(getWindow, 'pty:data', { id, data }));
     proc.onExit(({ exitCode }) => {
       ptyManager.processes.delete(id);
       sessionManager.onTerminalExit(id);
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('pty:exit', { id, exitCode });
-      }
+      _safeSend(getWindow, 'pty:exit', { id, exitCode });
     });
-
     return { pid: proc.pid };
   });
 
-  ipcMain.handle('pty:write', (event, { id, data }) => {
-    ptyManager.write(id, data);
-  });
-
-  ipcMain.handle('pty:resize', (event, { id, cols, rows }) => {
-    ptyManager.resize(id, cols, rows);
-  });
-
-  ipcMain.handle('pty:kill', (event, { id }) => {
-    ptyManager.kill(id);
-  });
-
-  ipcMain.handle('pty:getcwd', (event, { id }) => {
-    return ptyManager.getCwd(id);
-  });
-
-  ipcMain.handle('pty:checkAgents', () => {
-    return ptyManager.checkAgents();
-  });
-
-  // --- File System ---
-  ipcMain.handle('fs:readdir', (event, dirPath) => {
-    return fsManager.readDirectory(dirPath);
-  });
-
-  ipcMain.handle('fs:readfile', (event, filePath) => {
-    return fsManager.readFile(filePath);
-  });
-
-  ipcMain.handle('fs:mkdir', (event, dirPath) => {
-    return fsManager.makeDir(dirPath);
-  });
-
-  ipcMain.handle('fs:writefile', (event, { filePath, content }) => {
-    return fsManager.writeFile(filePath, content);
-  });
-
-  ipcMain.handle('fs:homedir', () => {
-    return fsManager.getHomedir();
-  });
-
-  ipcMain.handle('fs:copy', (event, filePath) => {
-    return fsManager.copyEntry(filePath);
-  });
-
-  ipcMain.handle('fs:rename', (event, { oldPath, newName }) => {
-    return fsManager.renameEntry(oldPath, newName);
-  });
-
-  ipcMain.handle('fs:copyTo', (event, { srcPath, destDir }) => {
-    return fsManager.copyFileTo(srcPath, destDir);
-  });
-
-  ipcMain.handle('fs:watch', (event, { id, dirPath }) => {
-    const win = getWindow();
+  ipcMain.handle('fs:watch', (_, { id, dirPath }) => {
     fsManager.watchDir(id, dirPath, (change) => {
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('fs:changed', change);
-      }
+      _safeSend(getWindow, 'fs:changed', change);
     });
   });
 
-  ipcMain.handle('fs:unwatch', (event, { id }) => {
-    fsManager.unwatchDir(id);
-  });
-
-  // --- Shell / Clipboard ---
-  ipcMain.handle('shell:showInFolder', (event, filePath) => {
-    shell.showItemInFolder(filePath);
-  });
-
-  ipcMain.handle('shell:openExternal', (event, url) => {
-    return shell.openExternal(url);
-  });
-
-  ipcMain.handle('fs:trash', async (event, filePath) => {
+  ipcMain.handle('fs:trash', async (_, filePath) => {
     try {
       await shell.trashItem(filePath);
       return { success: true };
     } catch (err) {
       return { error: err.message };
     }
-  });
-
-  ipcMain.handle('clipboard:write', (event, text) => {
-    clipboard.writeText(text);
   });
 
   ipcMain.handle('dialog:openFolder', async () => {
@@ -129,91 +128,6 @@ function register(getWindow) {
     return result.filePaths[0];
   });
 
-  // --- Git ---
-  ipcMain.handle('git:branch', (event, cwd) => {
-    return gitManager.getBranch(cwd);
-  });
-
-  ipcMain.handle('git:remote', (event, cwd) => {
-    return gitManager.getRemoteUrl(cwd);
-  });
-
-  ipcMain.handle('git:localChanges', (event, cwd) => {
-    return gitManager.getLocalChanges(cwd);
-  });
-
-  ipcMain.handle('git:fileDiff', (event, { cwd, filePath, isStaged }) => {
-    return gitManager.getFileDiff(cwd, filePath, isStaged);
-  });
-
-  // --- Workspace Configs ---
-  ipcMain.handle('config:save', (event, { name, data }) => {
-    return configManager.save(name, data);
-  });
-
-  ipcMain.handle('config:load', (event, name) => {
-    return configManager.load(name);
-  });
-
-  ipcMain.handle('config:list', () => {
-    return configManager.list();
-  });
-
-  ipcMain.handle('config:delete', (event, name) => {
-    return configManager.remove(name);
-  });
-
-  ipcMain.handle('config:setDefault', (event, name) => {
-    return configManager.setDefault(name);
-  });
-
-  ipcMain.handle('config:getDefault', () => {
-    return configManager.getDefault();
-  });
-
-  ipcMain.handle('config:loadDefault', () => {
-    return configManager.loadDefault();
-  });
-
-  // --- Flows ---
-  ipcMain.handle('flow:save', (event, flow) => {
-    return flowManager.save(flow);
-  });
-
-  ipcMain.handle('flow:get', (event, id) => {
-    return flowManager.get(id);
-  });
-
-  ipcMain.handle('flow:list', () => {
-    return flowManager.list();
-  });
-
-  ipcMain.handle('flow:delete', (event, id) => {
-    return flowManager.remove(id);
-  });
-
-  ipcMain.handle('flow:toggle', (event, id) => {
-    return flowManager.toggleEnabled(id);
-  });
-
-  ipcMain.handle('flow:runNow', (event, id) => {
-    return flowManager.runNow(id);
-  });
-
-  ipcMain.handle('flow:getRunning', () => {
-    return flowManager.getRunning();
-  });
-
-  ipcMain.handle('flow:getRunLog', (event, { flowId, logTimestamp }) => {
-    return flowManager.getRunLog(flowId, logTimestamp);
-  });
-
-  // --- Usage Metrics ---
-  ipcMain.handle('usage:getMetrics', () => {
-    return usageManager.getMetrics();
-  });
-
-  // Start flow scheduler & session tracker
   flowManager.start(getWindow, ptyManager);
   sessionManager.start(ptyManager);
 }
