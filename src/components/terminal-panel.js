@@ -130,6 +130,31 @@ export class TerminalPanel {
     this.init();
   }
 
+  // ===== DOM Helpers =====
+
+  /** Return non-handle child panels of a split container. */
+  _getPanels(splitEl) {
+    return Array.from(splitEl.children).filter(
+      (c) => !c.classList.contains('split-handle'),
+    );
+  }
+
+  /** Create a split-handle element wired for resizing. */
+  _createSplitHandle(direction, splitEl) {
+    const handle = document.createElement('div');
+    handle.className = `split-handle split-handle-${direction}`;
+    this.setupResizeHandle(handle, splitEl, direction);
+    return handle;
+  }
+
+  /** Create a split-container div with direction and flex. */
+  _createSplitContainer(direction, flex = '1') {
+    const el = document.createElement('div');
+    el.className = `split-container split-${direction}`;
+    el.style.flex = String(flex);
+    return el;
+  }
+
   init() {
     this.container.innerHTML = '';
     this.container.className = 'terminal-panel';
@@ -168,21 +193,14 @@ export class TerminalPanel {
     }
 
     // Split node
-    const splitEl = document.createElement('div');
-    splitEl.className = `split-container split-${tree.direction}`;
-    splitEl.style.flex = String(tree.flex || 1);
+    const splitEl = this._createSplitContainer(tree.direction, tree.flex || 1);
 
     const splitNode = new SplitNode('split');
     splitNode.direction = tree.direction;
     splitNode.element = splitEl;
 
     for (let i = 0; i < tree.children.length; i++) {
-      if (i > 0) {
-        const handle = document.createElement('div');
-        handle.className = `split-handle split-handle-${tree.direction}`;
-        splitEl.appendChild(handle);
-        this.setupResizeHandle(handle, splitEl, tree.direction);
-      }
+      if (i > 0) splitEl.appendChild(this._createSplitHandle(tree.direction, splitEl));
       const childNode = this.buildFromTree(tree.children[i]);
       splitEl.appendChild(childNode.element);
       splitNode.children.push(childNode);
@@ -340,39 +358,35 @@ export class TerminalPanel {
       this._dropSide = side;
       node.element.classList.add('drop-hover');
 
-      // Position the indicator
-      if (this._dropIndicator) {
-        this._dropIndicator.style.display = 'block';
-        const pad = 2;
-        if (side === 'left') {
-          this._dropIndicator.style.left = `${rect.left}px`;
-          this._dropIndicator.style.top = `${rect.top + pad}px`;
-          this._dropIndicator.style.width = `${rect.width / 2}px`;
-          this._dropIndicator.style.height = `${rect.height - pad * 2}px`;
-        } else if (side === 'right') {
-          this._dropIndicator.style.left = `${rect.left + rect.width / 2}px`;
-          this._dropIndicator.style.top = `${rect.top + pad}px`;
-          this._dropIndicator.style.width = `${rect.width / 2}px`;
-          this._dropIndicator.style.height = `${rect.height - pad * 2}px`;
-        } else if (side === 'top') {
-          this._dropIndicator.style.left = `${rect.left + pad}px`;
-          this._dropIndicator.style.top = `${rect.top}px`;
-          this._dropIndicator.style.width = `${rect.width - pad * 2}px`;
-          this._dropIndicator.style.height = `${rect.height / 2}px`;
-        } else if (side === 'bottom') {
-          this._dropIndicator.style.left = `${rect.left + pad}px`;
-          this._dropIndicator.style.top = `${rect.top + rect.height / 2}px`;
-          this._dropIndicator.style.width = `${rect.width - pad * 2}px`;
-          this._dropIndicator.style.height = `${rect.height / 2}px`;
-        } else {
-          // center = full
-          this._dropIndicator.style.left = `${rect.left + pad}px`;
-          this._dropIndicator.style.top = `${rect.top + pad}px`;
-          this._dropIndicator.style.width = `${rect.width - pad * 2}px`;
-          this._dropIndicator.style.height = `${rect.height - pad * 2}px`;
-        }
-      }
+      this._positionIndicator(rect, side);
       return;
+    }
+  }
+
+  _positionIndicator(rect, side) {
+    if (!this._dropIndicator) return;
+    const s = this._dropIndicator.style;
+    s.display = 'block';
+    const pad = 2;
+    const isHoriz = side === 'left' || side === 'right';
+    const halfW = rect.width / 2;
+    const halfH = rect.height / 2;
+
+    if (side === 'center') {
+      s.left = `${rect.left + pad}px`;
+      s.top = `${rect.top + pad}px`;
+      s.width = `${rect.width - pad * 2}px`;
+      s.height = `${rect.height - pad * 2}px`;
+    } else if (isHoriz) {
+      s.left = `${rect.left + (side === 'right' ? halfW : 0)}px`;
+      s.top = `${rect.top + pad}px`;
+      s.width = `${halfW}px`;
+      s.height = `${rect.height - pad * 2}px`;
+    } else {
+      s.left = `${rect.left + pad}px`;
+      s.top = `${rect.top + (side === 'bottom' ? halfH : 0)}px`;
+      s.width = `${rect.width - pad * 2}px`;
+      s.height = `${halfH}px`;
     }
   }
 
@@ -408,10 +422,7 @@ export class TerminalPanel {
 
       if (parentIsSameDirection) {
         // Insert into existing split container
-        const handle = document.createElement('div');
-        handle.className = `split-handle split-handle-${direction}`;
-        this.setupResizeHandle(handle, parentEl, direction);
-
+        const handle = this._createSplitHandle(direction, parentEl);
         if (insertBefore) {
           targetEl.insertAdjacentElement('beforebegin', sourceEl);
           sourceEl.insertAdjacentElement('afterend', handle);
@@ -422,27 +433,15 @@ export class TerminalPanel {
         this.equalizeChildren(parentEl);
       } else {
         // Wrap target in a new split container
-        const splitEl = document.createElement('div');
-        splitEl.className = `split-container split-${direction}`;
-        splitEl.style.flex = targetEl.style.flex || '1';
-
+        const splitEl = this._createSplitContainer(direction, targetEl.style.flex || '1');
         parentEl.replaceChild(splitEl, targetEl);
         targetEl.style.flex = '1';
         sourceEl.style.flex = '1';
 
-        const handle = document.createElement('div');
-        handle.className = `split-handle split-handle-${direction}`;
-        this.setupResizeHandle(handle, splitEl, direction);
-
-        if (insertBefore) {
-          splitEl.appendChild(sourceEl);
-          splitEl.appendChild(handle);
-          splitEl.appendChild(targetEl);
-        } else {
-          splitEl.appendChild(targetEl);
-          splitEl.appendChild(handle);
-          splitEl.appendChild(sourceEl);
-        }
+        const [first, second] = insertBefore ? [sourceEl, targetEl] : [targetEl, sourceEl];
+        splitEl.appendChild(first);
+        splitEl.appendChild(this._createSplitHandle(direction, splitEl));
+        splitEl.appendChild(second);
       }
     }
 
@@ -464,9 +463,7 @@ export class TerminalPanel {
         handles[handles.length - 1].remove();
       }
 
-      const remainingPanels = Array.from(parentEl.children).filter(
-        (c) => !c.classList.contains('split-handle')
-      );
+      const remainingPanels = this._getPanels(parentEl);
 
       if (remainingPanels.length === 1) {
         // Unwrap: replace split container with sole remaining child
@@ -475,8 +472,7 @@ export class TerminalPanel {
         if (grandParent) {
           survivor.style.flex = parentEl.style.flex || '1';
           grandParent.replaceChild(survivor, parentEl);
-          // Recursively check if grandParent also needs unwrapping
-          this._cleanupContainer(grandParent);
+          this._unwrapIfSingle(grandParent);
         }
       } else if (remainingPanels.length === 0) {
         parentEl.remove();
@@ -484,11 +480,10 @@ export class TerminalPanel {
     }
   }
 
-  _cleanupContainer(el) {
+  /** If a split container has only one child panel left, unwrap it. */
+  _unwrapIfSingle(el) {
     if (!el || !el.classList.contains('split-container')) return;
-    const panels = Array.from(el.children).filter(
-      (c) => !c.classList.contains('split-handle')
-    );
+    const panels = this._getPanels(el);
     if (panels.length === 1) {
       const survivor = panels[0];
       const parent = el.parentElement;
@@ -571,32 +566,18 @@ export class TerminalPanel {
 
     if (parentIsSameDirection) {
       // Flat: insert new terminal + handle right after target in existing container
-      const handle = document.createElement('div');
-      handle.className = `split-handle split-handle-${direction}`;
-      this.setupResizeHandle(handle, parentEl, direction);
-
+      const handle = this._createSplitHandle(direction, parentEl);
       targetNode.element.insertAdjacentElement('afterend', handle);
       handle.insertAdjacentElement('afterend', newTermNode.element);
-
-      // Equalize all panels in this container
       this.equalizeChildren(parentEl);
     } else {
       // Wrap: create a new split container
-      const splitEl = document.createElement('div');
-      splitEl.className = `split-container split-${direction}`;
-      splitEl.style.flex = targetNode.element.style.flex || '1';
-
+      const splitEl = this._createSplitContainer(direction, targetNode.element.style.flex || '1');
       parentEl.replaceChild(splitEl, targetNode.element);
 
       splitEl.appendChild(targetNode.element);
-
-      const handle = document.createElement('div');
-      handle.className = `split-handle split-handle-${direction}`;
-      splitEl.appendChild(handle);
-      this.setupResizeHandle(handle, splitEl, direction);
-
+      splitEl.appendChild(this._createSplitHandle(direction, splitEl));
       splitEl.appendChild(newTermNode.element);
-
       this.equalizeChildren(splitEl);
 
       if (this.root === targetNode) {
@@ -611,11 +592,8 @@ export class TerminalPanel {
     this.setActive(newTermNode);
   }
 
-  // Set all panel children of a split container to equal flex
   equalizeChildren(splitEl) {
-    const panels = Array.from(splitEl.children).filter(
-      (c) => !c.classList.contains('split-handle')
-    );
+    const panels = this._getPanels(splitEl);
     for (const panel of panels) {
       panel.style.flex = '1';
     }
@@ -650,10 +628,7 @@ export class TerminalPanel {
   }
 
   _doResize(e, handle, splitEl, direction) {
-      const panels = Array.from(splitEl.children).filter(
-        (c) => !c.classList.contains('split-handle')
-      );
-      if (panels.length < 2) return;
+      if (this._getPanels(splitEl).length < 2) return;
 
       // Find which two panels this handle sits between
       const allChildren = Array.from(splitEl.children);
@@ -726,37 +701,7 @@ export class TerminalPanel {
       return;
     }
 
-    const parentEl = node.element.parentElement;
-
-    if (parentEl && parentEl.classList.contains('split-container')) {
-      // Remove the terminal element
-      node.element.remove();
-
-      // Remove one adjacent handle
-      const handles = parentEl.querySelectorAll('.split-handle');
-      if (handles.length > 0) {
-        // Remove the last handle (one more handle than needed now)
-        handles[handles.length - 1].remove();
-      }
-
-      // Count remaining panels
-      const remainingPanels = Array.from(parentEl.children).filter(
-        (c) => !c.classList.contains('split-handle')
-      );
-
-      if (remainingPanels.length === 1) {
-        // Unwrap: replace the split container with the sole remaining child
-        const survivor = remainingPanels[0];
-        const grandParent = parentEl.parentElement;
-        survivor.style.flex = parentEl.style.flex || '1';
-        grandParent.replaceChild(survivor, parentEl);
-      } else {
-        // Equalize remaining panels
-        this.equalizeChildren(parentEl);
-      }
-    } else {
-      node.element.remove();
-    }
+    this._detachElement(node.element);
 
     const first = this.terminals.values().next().value;
     if (first) this.setActive(first);
