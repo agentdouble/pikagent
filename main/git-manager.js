@@ -3,69 +3,74 @@ const { promisify } = require('util');
 
 const execFileAsync = promisify(execFile);
 
-const execOpts = (cwd, extra) => ({
-  cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], ...extra,
-});
+const DIFF_MAX_BUFFER = 5 * 1024 * 1024;
 
-async function getBranch(cwd) {
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function execOpts(cwd, extra) {
+  return { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], ...extra };
+}
+
+/** Run a git command, return trimmed stdout or `fallback` on error. */
+async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
   try {
-    const { stdout } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], execOpts(cwd));
+    const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
+    const { stdout } = await execFileAsync('git', args, opts);
     return stdout.trim();
-  } catch {
-    return null;
+  } catch (err) {
+    console.error(`[git-manager] git ${args[0]} failed in ${cwd}:`, err.message);
+    return fallback;
   }
 }
 
+/** Parse git name-status output into { status, path, staged } entries. */
+function parseNameStatus(raw, staged) {
+  if (!raw) return [];
+  return raw.split('\n').map((line) => {
+    const [status, ...p] = line.split('\t');
+    return { status, path: p.join('\t'), staged };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+async function getBranch(cwd) {
+  return runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
+}
+
 async function getRemoteUrl(cwd) {
-  try {
-    const { stdout } = await execFileAsync('git', ['config', '--get', 'remote.origin.url'], execOpts(cwd));
-    return stdout.trim();
-  } catch {
-    return null;
-  }
+  return runGit(cwd, ['config', '--get', 'remote.origin.url']);
 }
 
 async function getLocalChanges(cwd) {
   try {
-    const [stagedResult, unstagedResult, untrackedResult] = await Promise.all([
-      execFileAsync('git', ['diff', '--cached', '--name-status'], execOpts(cwd)),
-      execFileAsync('git', ['diff', '--name-status'], execOpts(cwd)),
-      execFileAsync('git', ['ls-files', '--others', '--exclude-standard'], execOpts(cwd)),
+    const [stagedRaw, unstagedRaw, untrackedRaw] = await Promise.all([
+      runGit(cwd, ['diff', '--cached', '--name-status'], { fallback: '' }),
+      runGit(cwd, ['diff', '--name-status'], { fallback: '' }),
+      runGit(cwd, ['ls-files', '--others', '--exclude-standard'], { fallback: '' }),
     ]);
 
-    const stagedRaw = stagedResult.stdout.trim();
-    const staged = stagedRaw ? stagedRaw.split('\n').map((line) => {
-      const [status, ...p] = line.split('\t');
-      return { status, path: p.join('\t'), staged: true };
-    }) : [];
-
-    const unstagedRaw = unstagedResult.stdout.trim();
-    const unstaged = unstagedRaw ? unstagedRaw.split('\n').map((line) => {
-      const [status, ...p] = line.split('\t');
-      return { status, path: p.join('\t'), staged: false };
-    }) : [];
-
-    const untrackedRaw = untrackedResult.stdout.trim();
-    const untracked = untrackedRaw ? untrackedRaw.split('\n').map((p) => {
-      return { status: '?', path: p, staged: false };
-    }) : [];
+    const staged = parseNameStatus(stagedRaw, true);
+    const unstaged = parseNameStatus(unstagedRaw, false);
+    const untracked = untrackedRaw
+      ? untrackedRaw.split('\n').map((p) => ({ status: '?', path: p, staged: false }))
+      : [];
 
     return { staged, unstaged, untracked };
-  } catch {
+  } catch (err) {
+    console.error('[git-manager] getLocalChanges failed:', err.message);
     return { staged: [], unstaged: [], untracked: [] };
   }
 }
 
 async function getFileDiff(cwd, filePath, isStaged) {
-  try {
-    const args = ['diff'];
-    if (isStaged) args.push('--cached');
-    args.push('--', filePath);
-    const { stdout } = await execFileAsync('git', args, execOpts(cwd, { maxBuffer: 5 * 1024 * 1024 }));
-    return stdout;
-  } catch {
-    return '';
-  }
+  const args = isStaged ? ['diff', '--cached', '--', filePath] : ['diff', '--', filePath];
+  const result = await runGit(cwd, args, { fallback: '', maxBuffer: DIFF_MAX_BUFFER });
+  return result;
 }
 
 module.exports = { getBranch, getRemoteUrl, getLocalChanges, getFileDiff };
