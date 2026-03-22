@@ -1,14 +1,14 @@
-const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 
 const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const CONFIG_DIR = path.join(BASE_DIR, 'configs');
 const META_FILE = path.join(BASE_DIR, 'meta.json');
+const DEFAULT_META = { defaultConfig: null };
 
-function ensureDir() {
-  fs.mkdirSync(CONFIG_DIR, { recursive: true });
-}
+let _dirReady = null;
+let _metaCache = null;
 
 function sanitizeName(name) {
   return name.replace(/[^a-zA-Z0-9_\- ]/g, '_').substring(0, 64);
@@ -18,95 +18,102 @@ function configPath(name) {
   return path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
 }
 
-function readMeta() {
-  try {
-    return JSON.parse(fs.readFileSync(META_FILE, 'utf-8'));
-  } catch {
-    return { defaultConfig: null };
+async function ensureDir() {
+  if (!_dirReady) {
+    _dirReady = fsp.mkdir(CONFIG_DIR, { recursive: true });
   }
+  return _dirReady;
 }
 
-function writeMeta(meta) {
-  ensureDir();
-  fs.writeFileSync(META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
-}
-
-function save(name, data) {
-  ensureDir();
-  const config = {
-    name,
-    createdAt: new Date().toISOString(),
-    ...data,
-    updatedAt: new Date().toISOString(),
-  };
-  // Preserve original createdAt if updating
+async function readJson(filePath) {
   try {
-    const existing = JSON.parse(fs.readFileSync(configPath(name), 'utf-8'));
-    config.createdAt = existing.createdAt;
-  } catch {}
-  fs.writeFileSync(configPath(name), JSON.stringify(config, null, 2), 'utf-8');
-  return config;
-}
-
-function load(name) {
-  try {
-    return JSON.parse(fs.readFileSync(configPath(name), 'utf-8'));
+    return JSON.parse(await fsp.readFile(filePath, 'utf-8'));
   } catch {
     return null;
   }
 }
 
-function list() {
-  ensureDir();
-  const meta = readMeta();
+async function readMeta() {
+  if (_metaCache) return _metaCache;
+  _metaCache = (await readJson(META_FILE)) || { ...DEFAULT_META };
+  return _metaCache;
+}
+
+async function writeMeta(meta) {
+  await ensureDir();
+  _metaCache = meta;
+  await fsp.writeFile(META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
+}
+
+async function save(name, data) {
+  await ensureDir();
+  const existing = await readJson(configPath(name));
+  const config = {
+    ...data,
+    name,
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await fsp.writeFile(configPath(name), JSON.stringify(config, null, 2), 'utf-8');
+  return config;
+}
+
+async function load(name) {
+  return readJson(configPath(name));
+}
+
+async function list() {
+  await ensureDir();
+  const meta = await readMeta();
   try {
-    const files = fs.readdirSync(CONFIG_DIR).filter((f) => f.endsWith('.json'));
-    return files.map((f) => {
-      try {
-        const data = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, f), 'utf-8'));
-        // Hide internal autosave from the list
-        if (data.name === '__autosave__') return null;
+    const files = (await fsp.readdir(CONFIG_DIR)).filter((f) => f.endsWith('.json'));
+    const results = await Promise.all(
+      files.map(async (f) => {
+        const data = await readJson(path.join(CONFIG_DIR, f));
+        if (!data || data.name === '__autosave__') return null;
         return {
           name: data.name,
           updatedAt: data.updatedAt,
           tabCount: data.tabs ? data.tabs.length : 0,
           isDefault: meta.defaultConfig === data.name,
         };
-      } catch {
-        return null;
-      }
-    }).filter(Boolean);
-  } catch {
+      })
+    );
+    return results.filter(Boolean);
+  } catch (err) {
+    console.warn('config-manager: list failed:', err.message);
     return [];
   }
 }
 
-function remove(name) {
+async function remove(name) {
   try {
-    fs.unlinkSync(configPath(name));
-    const meta = readMeta();
+    await fsp.unlink(configPath(name));
+    const meta = await readMeta();
     if (meta.defaultConfig === name) {
       meta.defaultConfig = null;
-      writeMeta(meta);
+      await writeMeta(meta);
     }
     return true;
-  } catch {
+  } catch (err) {
+    console.warn('config-manager: remove failed:', err.message);
     return false;
   }
 }
 
-function setDefault(name) {
-  const meta = readMeta();
+async function setDefault(name) {
+  const meta = await readMeta();
   meta.defaultConfig = name;
-  writeMeta(meta);
+  await writeMeta(meta);
 }
 
-function getDefault() {
-  return readMeta().defaultConfig;
+async function getDefault() {
+  const meta = await readMeta();
+  return meta.defaultConfig;
 }
 
-function loadDefault() {
-  const name = getDefault();
+async function loadDefault() {
+  const name = await getDefault();
   if (!name) return null;
   return load(name);
 }
