@@ -34,6 +34,7 @@ const FORWARD_HANDLERS = [
   // Shell / Clipboard
   ['shell:showInFolder', shell, 'showItemInFolder'],
   ['shell:openExternal', shell, 'openExternal'],
+  ['shell:openPath',     shell, 'openPath'],
   ['clipboard:write',    clipboard, 'writeText'],
   // Git
   ['git:branch',       gitManager, 'getBranch'],

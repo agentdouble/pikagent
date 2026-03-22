@@ -3,6 +3,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { bus } from '../utils/events.js';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
+import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 
 // Minimum bytes of meaningful output per poll interval to consider agent "working".
 // ANSI escape codes (cursor moves, color resets, status bar refreshes) produce
@@ -218,6 +219,7 @@ export class BoardView {
       e.preventDefault();
       window.api.shell.openExternal(url);
     }));
+    term.registerLinkProvider(new FilePathLinkProvider(term, () => null));
     term.open(termContainer);
 
     term.onData((data) => {

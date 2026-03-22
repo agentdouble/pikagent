@@ -4,6 +4,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from '../utils/id.js';
 import { bus } from '../utils/events.js';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
+import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 
 class TerminalInstance {
   constructor(container, cwd) {
@@ -28,6 +29,7 @@ class TerminalInstance {
       e.preventDefault();
       window.api.shell.openExternal(url);
     }));
+    this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd));
 
     // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
     this.terminal.attachCustomKeyEventHandler((e) => {

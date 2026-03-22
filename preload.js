@@ -24,6 +24,8 @@ ipcRenderer.on('pty:exit', (event, { id, exitCode }) => {
 });
 
 contextBridge.exposeInMainWorld('api', {
+  env: { HOME: require('os').homedir() },
+
   // PTY
   pty: {
     create: (opts) => ipcRenderer.invoke('pty:create', opts),
@@ -70,6 +72,7 @@ contextBridge.exposeInMainWorld('api', {
   shell: {
     showInFolder: (filePath) => ipcRenderer.invoke('shell:showInFolder', filePath),
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+    openPath: (filePath) => ipcRenderer.invoke('shell:openPath', filePath),
   },
   clipboard: {
     write: (text) => ipcRenderer.invoke('clipboard:write', text),
