@@ -1,6 +1,8 @@
 import { bus } from '../utils/events.js';
 import { DiffViewer } from './diff-viewer.js';
 
+const STATUS_LABELS = { M: 'M', A: 'A', D: 'D', R: 'R', '?': '?' };
+
 export class GitChangesView {
   constructor(container) {
     this.container = container;
@@ -10,6 +12,13 @@ export class GitChangesView {
 
   setCwd(cwd) {
     this.gitCwd = cwd;
+  }
+
+  _el(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
   }
 
   async loadChanges() {
@@ -29,6 +38,16 @@ export class GitChangesView {
     this._renderChanges(changes);
   }
 
+  _createHeader(total) {
+    const header = this._el('div', 'git-header');
+    header.appendChild(this._el('span', null, `Local Changes (${total})`));
+    const refreshBtn = this._el('span', 'git-refresh-btn', '↻');
+    refreshBtn.title = 'Refresh';
+    refreshBtn.addEventListener('click', () => this.loadChanges());
+    header.appendChild(refreshBtn);
+    return header;
+  }
+
   _renderChanges(changes) {
     this.container.innerHTML = '';
     const { staged, unstaged, untracked } = changes;
@@ -39,98 +58,65 @@ export class GitChangesView {
       return;
     }
 
-    // Refresh button
-    const header = document.createElement('div');
-    header.className = 'git-header';
-    const titleSpan = document.createElement('span');
-    titleSpan.textContent = `Local Changes (${total})`;
-    const refreshBtn = document.createElement('span');
-    refreshBtn.className = 'git-refresh-btn';
-    refreshBtn.textContent = '↻';
-    refreshBtn.title = 'Refresh';
-    refreshBtn.addEventListener('click', () => this.loadChanges());
-    header.appendChild(titleSpan);
-    header.appendChild(refreshBtn);
-    this.container.appendChild(header);
+    this.container.appendChild(this._createHeader(total));
 
-    const list = document.createElement('div');
-    list.className = 'git-commit-list';
-
-    if (staged.length > 0) {
-      this._renderSection(list, 'Staged', staged, true);
+    const list = this._el('div', 'git-commit-list');
+    const sections = [
+      { title: 'Staged', files: staged, isStaged: true },
+      { title: 'Modified', files: unstaged, isStaged: false },
+      { title: 'Untracked', files: untracked, isStaged: false },
+    ];
+    for (const { title, files, isStaged } of sections) {
+      if (files.length > 0) this._renderSection(list, title, files, isStaged);
     }
-    if (unstaged.length > 0) {
-      this._renderSection(list, 'Modified', unstaged, false);
-    }
-    if (untracked.length > 0) {
-      this._renderSection(list, 'Untracked', untracked, false);
-    }
-
     this.container.appendChild(list);
   }
 
-  _renderSection(container, title, files, isStaged) {
-    const section = document.createElement('div');
-    section.className = 'git-section';
+  _createFileItem(file, isStaged) {
+    const key = `${isStaged ? 's' : 'u'}:${file.path}`;
+    const isExpanded = this.expandedFile === key;
 
-    const sectionHeader = document.createElement('div');
-    sectionHeader.className = 'git-section-header';
-    sectionHeader.textContent = `${title} (${files.length})`;
-    section.appendChild(sectionHeader);
+    const item = this._el('div', 'git-file-row');
+
+    const row = this._el('div', 'git-file-item');
+    row.addEventListener('click', () => {
+      this.expandedFile = this.expandedFile === key ? null : key;
+      this.loadChanges();
+    });
+
+    row.appendChild(this._el('span', 'git-chevron', isExpanded ? '▼' : '▶'));
+    row.appendChild(this._el('span', `git-file-status git-status-${file.status}`, STATUS_LABELS[file.status] || file.status));
+
+    const fileName = this._el('span', 'git-file-name-label', file.path);
+    fileName.title = file.path;
+    row.appendChild(fileName);
+
+    const openBtn = this._el('span', 'git-open-btn', '→');
+    openBtn.title = 'Open file';
+    openBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      bus.emit('file:open', { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
+    });
+    row.appendChild(openBtn);
+
+    item.appendChild(row);
+
+    if (isExpanded && file.status !== '?') {
+      const diffContainer = this._el('div', 'git-diff-container');
+      diffContainer.innerHTML = '<div class="git-loading">Loading diff...</div>';
+      item.appendChild(diffContainer);
+      this._loadFileDiff(file.path, isStaged, diffContainer);
+    }
+
+    return item;
+  }
+
+  _renderSection(container, title, files, isStaged) {
+    const section = this._el('div', 'git-section');
+    section.appendChild(this._el('div', 'git-section-header', `${title} (${files.length})`));
 
     for (const file of files) {
-      const key = `${isStaged ? 's' : 'u'}:${file.path}`;
-
-      const item = document.createElement('div');
-      item.className = 'git-file-row';
-
-      const row = document.createElement('div');
-      row.className = 'git-file-item';
-      row.addEventListener('click', () => {
-        this.expandedFile = this.expandedFile === key ? null : key;
-        this.loadChanges();
-      });
-
-      const chevron = document.createElement('span');
-      chevron.className = 'git-chevron';
-      chevron.textContent = this.expandedFile === key ? '▼' : '▶';
-
-      const statusBadge = document.createElement('span');
-      statusBadge.className = `git-file-status git-status-${file.status}`;
-      const statusLabels = { M: 'M', A: 'A', D: 'D', R: 'R', '?': '?' };
-      statusBadge.textContent = statusLabels[file.status] || file.status;
-
-      const fileName = document.createElement('span');
-      fileName.className = 'git-file-name-label';
-      fileName.textContent = file.path;
-      fileName.title = file.path;
-
-      const openBtn = document.createElement('span');
-      openBtn.className = 'git-open-btn';
-      openBtn.textContent = '→';
-      openBtn.title = 'Open file';
-      openBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const fullPath = this.gitCwd + '/' + file.path;
-        bus.emit('file:open', { path: fullPath, name: file.path.split('/').pop() });
-      });
-
-      row.appendChild(chevron);
-      row.appendChild(statusBadge);
-      row.appendChild(fileName);
-      row.appendChild(openBtn);
-      item.appendChild(row);
-
-      // Expanded diff
-      if (this.expandedFile === key && file.status !== '?') {
-        const diffContainer = document.createElement('div');
-        diffContainer.className = 'git-diff-container';
-        diffContainer.innerHTML = '<div class="git-loading">Loading diff...</div>';
-        item.appendChild(diffContainer);
-        this._loadFileDiff(file.path, isStaged, diffContainer);
-      }
-
-      section.appendChild(item);
+      section.appendChild(this._createFileItem(file, isStaged));
     }
 
     container.appendChild(section);
