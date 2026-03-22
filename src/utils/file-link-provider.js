@@ -46,12 +46,12 @@ export class FilePathLinkProvider {
     callback(links.length ? links : undefined);
   }
 
-  _open(raw) {
+  async _open(raw) {
     let filePath = raw;
 
     // Expand ~ to home dir
     if (filePath.startsWith('~/')) {
-      const home = window.api.env?.HOME || '/tmp';
+      const home = await window.api.fs.homedir();
       filePath = home + filePath.slice(1);
     }
 

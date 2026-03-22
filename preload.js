@@ -24,8 +24,6 @@ ipcRenderer.on('pty:exit', (event, { id, exitCode }) => {
 });
 
 contextBridge.exposeInMainWorld('api', {
-  env: { HOME: require('os').homedir() },
-
   // PTY
   pty: {
     create: (opts) => ipcRenderer.invoke('pty:create', opts),
