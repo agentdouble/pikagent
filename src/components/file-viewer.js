@@ -23,58 +23,42 @@ export class FileViewer {
 
   static get pinnedFiles() { return pinnedFiles; }
 
+  _el(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
   render() {
     this.container.innerHTML = '';
 
-    // Header spacer (aligns with center panel .path-info row)
-    const headerSpacer = document.createElement('div');
-    headerSpacer.className = 'file-viewer-spacer';
-    this.container.appendChild(headerSpacer);
+    this.container.appendChild(this._el('div', 'file-viewer-spacer'));
 
-    // Mode selector bar
-    this.modeBar = document.createElement('div');
-    this.modeBar.className = 'file-viewer-mode-bar';
-
-    this.btnFiles = document.createElement('button');
-    this.btnFiles.className = 'mode-btn active';
-    this.btnFiles.textContent = 'Files';
+    this.btnFiles = this._el('button', 'mode-btn active', 'Files');
     this.btnFiles.addEventListener('click', () => this.switchMode('files'));
-
-    this.btnGit = document.createElement('button');
-    this.btnGit.className = 'mode-btn';
-    this.btnGit.textContent = 'Git Changes';
+    this.btnGit = this._el('button', 'mode-btn', 'Git Changes');
     this.btnGit.addEventListener('click', () => this.switchMode('git'));
 
-    this.modeBar.appendChild(this.btnFiles);
-    this.modeBar.appendChild(this.btnGit);
+    this.modeBar = this._el('div', 'file-viewer-mode-bar');
+    this.modeBar.append(this.btnFiles, this.btnGit);
     this.container.appendChild(this.modeBar);
 
-    // Tabs bar (files mode)
-    this.tabsBar = document.createElement('div');
-    this.tabsBar.className = 'file-viewer-tabs';
+    this.tabsBar = this._el('div', 'file-viewer-tabs');
     this.container.appendChild(this.tabsBar);
 
-    // Breadcrumb (files mode)
-    this.breadcrumb = document.createElement('div');
-    this.breadcrumb.className = 'file-viewer-breadcrumb';
+    this.breadcrumb = this._el('div', 'file-viewer-breadcrumb');
     this.container.appendChild(this.breadcrumb);
 
-    // Editor wrapper (files mode)
-    this.editorWrapper = document.createElement('div');
-    this.editorWrapper.className = 'editor-wrapper';
+    this.editorWrapper = this._el('div', 'editor-wrapper');
     this.container.appendChild(this.editorWrapper);
 
-    // Git view (git mode)
-    const gitViewEl = document.createElement('div');
-    gitViewEl.className = 'git-changes-view';
-    gitViewEl.style.display = 'none';
-    this.container.appendChild(gitViewEl);
-    this.gitChanges = new GitChangesView(gitViewEl);
-    this.gitViewEl = gitViewEl;
+    this.gitViewEl = this._el('div', 'git-changes-view');
+    this.gitViewEl.style.display = 'none';
+    this.container.appendChild(this.gitViewEl);
+    this.gitChanges = new GitChangesView(this.gitViewEl);
 
-    // Status bar
-    this.statusBar = document.createElement('div');
-    this.statusBar.className = 'editor-status-bar';
+    this.statusBar = this._el('div', 'editor-status-bar');
     this.container.appendChild(this.statusBar);
 
     this.showEmpty();
@@ -122,26 +106,24 @@ export class FileViewer {
     this.renderTabs();
   }
 
+  _setModeVisibility(isFiles) {
+    const show = (el, visible) => { el.style.display = visible ? '' : 'none'; };
+    show(this.tabsBar, isFiles);
+    show(this.breadcrumb, isFiles);
+    show(this.editorWrapper, isFiles);
+    show(this.statusBar, isFiles);
+    show(this.gitViewEl, !isFiles);
+  }
+
   switchMode(mode) {
     this.mode = mode;
     this.btnFiles.classList.toggle('active', mode === 'files');
     this.btnGit.classList.toggle('active', mode === 'git');
+    this._setModeVisibility(mode === 'files');
 
     if (mode === 'files') {
-      this.tabsBar.style.display = '';
-      this.breadcrumb.style.display = '';
-      this.editorWrapper.style.display = '';
-      this.gitViewEl.style.display = 'none';
-      this.statusBar.style.display = '';
-      if (this.activeFile) {
-        this.renderEditor();
-      }
+      if (this.activeFile) this.renderEditor();
     } else {
-      this.tabsBar.style.display = 'none';
-      this.breadcrumb.style.display = 'none';
-      this.editorWrapper.style.display = 'none';
-      this.gitViewEl.style.display = '';
-      this.statusBar.style.display = 'none';
       this.gitChanges.loadChanges();
     }
   }
@@ -177,108 +159,62 @@ export class FileViewer {
     return file.content !== file.savedContent;
   }
 
+  _createTabEl(filePath, file) {
+    const tab = this._el('div', 'file-tab');
+    if (filePath === this.activeFile) tab.classList.add('active');
+
+    const pinned = this.isPinned(filePath);
+    const modified = this.isModified(filePath);
+
+    if (pinned) tab.appendChild(this._el('span', 'file-tab-pin', '\u{1F4CC}'));
+    tab.appendChild(this._el('span', 'file-tab-modified', modified ? '\u25CF' : ''));
+    tab.appendChild(this._el('span', null, file.name));
+
+    const close = this._el('span', 'file-tab-close', '\u00D7');
+    close.addEventListener('click', (e) => { e.stopPropagation(); this.closeFile(filePath); });
+    tab.appendChild(close);
+
+    tab.addEventListener('click', () => this.setActiveTab(filePath));
+    tab.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      contextMenu.show(e.clientX, e.clientY, [
+        { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => this.togglePin(filePath) },
+        { separator: true },
+        { label: 'Close', action: () => this.closeFile(filePath) },
+      ]);
+    });
+
+    return tab;
+  }
+
   renderTabs() {
     this.tabsBar.innerHTML = '';
-
     for (const [filePath, file] of this.openFiles) {
-      const tab = document.createElement('div');
-      tab.className = 'file-tab';
-      if (filePath === this.activeFile) tab.classList.add('active');
-
-      const pinned = this.isPinned(filePath);
-      const modified = this.isModified(filePath);
-
-      if (pinned) {
-        const pin = document.createElement('span');
-        pin.className = 'file-tab-pin';
-        pin.textContent = '\u{1F4CC}';
-        tab.appendChild(pin);
-      }
-
-      const dot = document.createElement('span');
-      dot.className = 'file-tab-modified';
-      dot.textContent = modified ? '\u25CF' : '';
-      tab.appendChild(dot);
-
-      const name = document.createElement('span');
-      name.textContent = file.name;
-      tab.appendChild(name);
-
-      const close = document.createElement('span');
-      close.className = 'file-tab-close';
-      close.textContent = '\u00D7';
-      close.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.closeFile(filePath);
-      });
-      tab.appendChild(close);
-
-      tab.addEventListener('click', () => this.setActiveTab(filePath));
-
-      tab.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        contextMenu.show(e.clientX, e.clientY, [
-          {
-            label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces',
-            action: () => this.togglePin(filePath),
-          },
-          { separator: true },
-          { label: 'Close', action: () => this.closeFile(filePath) },
-        ]);
-      });
-
-      this.tabsBar.appendChild(tab);
+      this.tabsBar.appendChild(this._createTabEl(filePath, file));
     }
   }
 
-  renderEditor() {
-    this.editorWrapper.innerHTML = '';
-    this.statusBar.innerHTML = '';
+  _createEditorDOM(file) {
+    this.lineNumbers = this._el('div', 'editor-line-numbers');
+    this.highlightLayer = this._el('pre', 'editor-highlight-layer');
 
-    const file = this.openFiles.get(this.activeFile);
-    if (!file) {
-      this.showEmpty();
-      return;
-    }
-
-    this.breadcrumb.textContent = this.activeFile;
-
-    if (file.error) {
-      this.editorWrapper.innerHTML = `<div class="file-viewer-error">${file.error}</div>`;
-      return;
-    }
-
-    // Line numbers
-    this.lineNumbers = document.createElement('div');
-    this.lineNumbers.className = 'editor-line-numbers';
-
-    // Highlight layer (behind textarea)
-    this.highlightLayer = document.createElement('pre');
-    this.highlightLayer.className = 'editor-highlight-layer';
-
-    // Textarea
-    this.editorEl = document.createElement('textarea');
-    this.editorEl.className = 'editor-textarea';
+    this.editorEl = this._el('textarea', 'editor-textarea');
     this.editorEl.value = file.content;
     this.editorEl.spellcheck = false;
     this.editorEl.setAttribute('autocorrect', 'off');
     this.editorEl.setAttribute('autocapitalize', 'off');
 
-    // Container that holds highlight + textarea stacked
-    const editArea = document.createElement('div');
-    editArea.className = 'editor-edit-area';
-    editArea.appendChild(this.highlightLayer);
-    editArea.appendChild(this.editorEl);
+    const editArea = this._el('div', 'editor-edit-area');
+    editArea.append(this.highlightLayer, this.editorEl);
+    this.editorWrapper.append(this.lineNumbers, editArea);
+  }
 
-    this.editorWrapper.appendChild(this.lineNumbers);
-    this.editorWrapper.appendChild(editArea);
-
-    // Events
+  _bindEditorEvents(file) {
     this.editorEl.addEventListener('input', () => {
       file.content = this.editorEl.value;
       this.updateLineNumbers();
       this.updateHighlight();
-      this.renderTabs(); // update modified dot
+      this.renderTabs();
       this.updateStatusBar();
     });
 
@@ -289,26 +225,38 @@ export class FileViewer {
     });
 
     this.editorEl.addEventListener('keydown', (e) => {
-      // Save: Cmd+S / Ctrl+S
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         e.stopPropagation();
         this.saveActive();
         return;
       }
-
-      // Tab key inserts 2 spaces
       if (e.key === 'Tab') {
         e.preventDefault();
-        const start = this.editorEl.selectionStart;
-        const end = this.editorEl.selectionEnd;
-        const val = this.editorEl.value;
+        const { selectionStart: start, selectionEnd: end, value: val } = this.editorEl;
         this.editorEl.value = val.substring(0, start) + '  ' + val.substring(end);
         this.editorEl.selectionStart = this.editorEl.selectionEnd = start + 2;
         this.editorEl.dispatchEvent(new Event('input'));
       }
     });
+  }
 
+  renderEditor() {
+    this.editorWrapper.innerHTML = '';
+    this.statusBar.innerHTML = '';
+
+    const file = this.openFiles.get(this.activeFile);
+    if (!file) { this.showEmpty(); return; }
+
+    this.breadcrumb.textContent = this.activeFile;
+
+    if (file.error) {
+      this.editorWrapper.innerHTML = `<div class="file-viewer-error">${file.error}</div>`;
+      return;
+    }
+
+    this._createEditorDOM(file);
+    this._bindEditorEvents(file);
     this.updateLineNumbers();
     this.updateHighlight();
     this.updateStatusBar();
@@ -343,22 +291,27 @@ export class FileViewer {
     }
   }
 
+  _getCursorPosition() {
+    const pos = this.editorEl.selectionStart;
+    const textBefore = this.editorEl.value.substring(0, pos);
+    const line = textBefore.split('\n').length;
+    const col = pos - textBefore.lastIndexOf('\n');
+    const totalLines = this.editorEl.value.split('\n').length;
+    return { line, col, totalLines };
+  }
+
   updateStatusBar() {
     if (!this.statusBar || !this.editorEl) return;
     const file = this.openFiles.get(this.activeFile);
     if (!file) { this.statusBar.innerHTML = ''; return; }
 
-    const lines = this.editorEl.value.split('\n').length;
-    const pos = this.editorEl.selectionStart;
-    const textBefore = this.editorEl.value.substring(0, pos);
-    const line = textBefore.split('\n').length;
-    const col = pos - textBefore.lastIndexOf('\n');
+    const { line, col, totalLines } = this._getCursorPosition();
     const modified = this.isModified(this.activeFile);
 
     this.statusBar.innerHTML = `
       <span class="status-item">${file.lang}</span>
       <span class="status-item">Ln ${line}, Col ${col}</span>
-      <span class="status-item">${lines} lines</span>
+      <span class="status-item">${totalLines} lines</span>
       ${modified ? '<span class="status-item status-modified">Modified</span>' : '<span class="status-item status-saved">Saved</span>'}
       <span class="status-save-hint">${modified ? '⌘S to save' : ''}</span>
     `;
@@ -384,7 +337,6 @@ export class FileViewer {
   }
 
   closeFile(filePath) {
-    // Warn if modified
     if (this.isModified(filePath)) {
       const file = this.openFiles.get(filePath);
       if (!confirm(`"${file.name}" has unsaved changes. Close anyway?`)) return;
@@ -394,19 +346,20 @@ export class FileViewer {
 
     if (this.activeFile === filePath) {
       if (this.openFiles.size > 0) {
-        const lastKey = [...this.openFiles.keys()].pop();
-        this.setActiveTab(lastKey);
+        this.setActiveTab([...this.openFiles.keys()].pop());
       } else {
-        this.activeFile = null;
-        this.renderTabs();
-        this.breadcrumb.textContent = '';
-        this.editorWrapper.innerHTML = '';
-        this.statusBar.innerHTML = '';
-        this.showEmpty();
+        this._resetEditor();
       }
     } else {
       this.renderTabs();
     }
+  }
+
+  _resetEditor() {
+    this.activeFile = null;
+    this.renderTabs();
+    this.breadcrumb.textContent = '';
+    this.showEmpty();
   }
 
   showEmpty() {
