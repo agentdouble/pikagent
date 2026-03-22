@@ -1,27 +1,43 @@
-const fs = require('fs');
-const fsp = require('fs').promises;
+const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 
 const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const SESSIONS_FILE = path.join(BASE_DIR, 'sessions.json');
+const MAX_SESSIONS = 200;
+const POLL_INTERVAL_MS = 5000;
+
+let _dirReady = null;
+
+async function ensureDir() {
+  if (!_dirReady) {
+    _dirReady = fsp.mkdir(BASE_DIR, { recursive: true });
+  }
+  return _dirReady;
+}
+
+async function readJson(filePath) {
+  try {
+    return JSON.parse(await fsp.readFile(filePath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
 
 class SessionManager {
   constructor() {
     this._timer = null;
     this._ptyManager = null;
-    this._previousAgents = {}; // { termId: agentName }
-    this._activeSessions = {}; // { termId: { id, agent, startedAt, cwd } }
-    this._polling = false; // guard against overlapping polls
-    this._sessionsCache = null; // in-memory cache of saved sessions
+    this._previousAgents = {};
+    this._activeSessions = {};
+    this._polling = false;
+    this._sessionsCache = null;
   }
 
-  start(ptyManager) {
+  async start(ptyManager) {
     this._ptyManager = ptyManager;
-    // Load cache on start
-    this._loadAllSync();
-    // Poll every 5 seconds to detect agent starts/stops
-    this._timer = setInterval(() => this._poll(), 5000);
+    await this._loadAll();
+    this._timer = setInterval(() => this._poll(), POLL_INTERVAL_MS);
     this._poll();
   }
 
@@ -30,63 +46,54 @@ class SessionManager {
       clearInterval(this._timer);
       this._timer = null;
     }
-    // Close all active sessions
     for (const termId of Object.keys(this._activeSessions)) {
       this._endSession(termId, 'interrupted');
     }
   }
 
   async _poll() {
-    if (!this._ptyManager) return;
-    if (this._polling) return; // skip if previous poll still running
+    if (!this._ptyManager || this._polling) return;
     this._polling = true;
-
-    let currentAgents;
     try {
-      currentAgents = await this._ptyManager.checkAgents();
-    } catch {
+      const currentAgents = await this._ptyManager.checkAgents();
+
+      for (const [termId, agentName] of Object.entries(currentAgents)) {
+        if (!this._previousAgents[termId]) {
+          await this._startSession(termId, agentName);
+        }
+      }
+
+      for (const termId of Object.keys(this._previousAgents)) {
+        if (!currentAgents[termId]) {
+          this._endSession(termId, 'completed');
+        }
+      }
+
+      this._previousAgents = { ...currentAgents };
+    } catch (err) {
+      console.warn('session-manager: poll failed:', err.message);
+    } finally {
       this._polling = false;
-      return;
     }
-
-    // Detect new agent sessions
-    for (const [termId, agentName] of Object.entries(currentAgents)) {
-      if (!this._previousAgents[termId]) {
-        // Agent just appeared in this terminal
-        await this._startSession(termId, agentName);
-      }
-    }
-
-    // Detect ended agent sessions
-    for (const termId of Object.keys(this._previousAgents)) {
-      if (!currentAgents[termId]) {
-        // Agent disappeared from this terminal
-        this._endSession(termId, 'completed');
-      }
-    }
-
-    this._previousAgents = { ...currentAgents };
-    this._polling = false;
   }
 
   async _startSession(termId, agentName) {
-    // Skip flow terminals
     if (termId.startsWith('flow-')) return;
 
     let cwd = null;
     try {
       cwd = await this._ptyManager.getCwd(termId);
-    } catch {}
+    } catch (err) {
+      console.warn('session-manager: getCwd failed:', err.message);
+    }
 
-    const session = {
+    this._activeSessions[termId] = {
       id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       termId,
       agent: agentName,
       cwd: cwd || os.homedir(),
       startedAt: new Date().toISOString(),
     };
-
-    this._activeSessions[termId] = session;
   }
 
   _endSession(termId, status) {
@@ -95,17 +102,14 @@ class SessionManager {
 
     delete this._activeSessions[termId];
 
-    const record = {
+    this._saveRecord({
       ...session,
       endedAt: new Date().toISOString(),
       durationSec: Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000),
       status,
-    };
-
-    this._saveRecord(record);
+    });
   }
 
-  // Called when a terminal exits — ensures session is closed
   onTerminalExit(termId) {
     if (this._activeSessions[termId]) {
       this._endSession(termId, 'exited');
@@ -114,29 +118,21 @@ class SessionManager {
   }
 
   async _saveRecord(record) {
-    try {
-      await fsp.mkdir(BASE_DIR, { recursive: true });
-    } catch {}
+    await ensureDir();
 
     let sessions = this._sessionsCache || [];
     sessions.push(record);
-    // Keep last 200 sessions
-    if (sessions.length > 200) {
-      sessions = sessions.slice(-200);
+    if (sessions.length > MAX_SESSIONS) {
+      sessions = sessions.slice(-MAX_SESSIONS);
     }
     this._sessionsCache = sessions;
 
-    // Write async — fire and forget, cache is the source of truth
-    fsp.writeFile(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf-8').catch(() => {});
+    fsp.writeFile(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf-8')
+      .catch((err) => console.warn('session-manager: write failed:', err.message));
   }
 
-  // Sync load used only once at startup
-  _loadAllSync() {
-    try {
-      this._sessionsCache = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf-8'));
-    } catch {
-      this._sessionsCache = [];
-    }
+  async _loadAll() {
+    this._sessionsCache = (await readJson(SESSIONS_FILE)) || [];
   }
 
   getSessions() {
