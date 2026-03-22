@@ -11,6 +11,16 @@ const NAV_SECTIONS = [
   { key: 'configs', label: 'Workspace Configs' },
 ];
 
+const MODE_BUTTONS = [
+  { mode: 'dark', label: 'Night' },
+  { mode: 'light', label: 'Day' },
+];
+
+const BOTTOM_CONFIG_BUTTONS = [
+  { label: 'New Config...', promptMsg: 'Nom de la nouvelle config :', defaultValue: () => '' },
+  { label: 'Duplicate Current...', promptMsg: 'Nom de la copie :', defaultValue: (name) => `${name} (copy)` },
+];
+
 export class SettingsModal {
   constructor(shortcutManager) {
     this.shortcutManager = shortcutManager;
@@ -26,56 +36,56 @@ export class SettingsModal {
     this.build();
   }
 
+  // ===== DOM Helpers =====
+
+  _el(tag, className, textContent) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (textContent !== undefined) el.textContent = textContent;
+    return el;
+  }
+
+  _applyThemeToTerminals() {
+    if (!this.tabManager) return;
+    const theme = getTerminalTheme();
+    for (const [, tab] of this.tabManager.tabs) {
+      if (tab.terminalPanel) tab.terminalPanel.applyTheme(theme);
+    }
+  }
+
+  // ===== Build =====
+
   build() {
-    // Overlay
-    this.overlay = document.createElement('div');
-    this.overlay.className = 'settings-overlay';
+    this.overlay = this._el('div', 'settings-overlay');
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.close();
     });
 
-    // Modal
-    this.modal = document.createElement('div');
-    this.modal.className = 'settings-modal';
+    this.modal = this._el('div', 'settings-modal');
 
     // Header
-    const header = document.createElement('div');
-    header.className = 'settings-header';
-
-    const title = document.createElement('h2');
-    title.className = 'settings-title';
-    title.textContent = 'Settings';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'settings-close-btn';
-    closeBtn.textContent = '×';
+    const header = this._el('div', 'settings-header');
+    header.appendChild(this._el('h2', 'settings-title', 'Settings'));
+    const closeBtn = this._el('button', 'settings-close-btn', '×');
     closeBtn.addEventListener('click', () => this.close());
-
-    header.appendChild(title);
     header.appendChild(closeBtn);
     this.modal.appendChild(header);
 
     // Nav (sidebar)
-    const body = document.createElement('div');
-    body.className = 'settings-body';
-
-    const nav = document.createElement('div');
-    nav.className = 'settings-nav';
+    const body = this._el('div', 'settings-body');
+    const nav = this._el('div', 'settings-nav');
 
     this.navItems = {};
     for (const { key, label } of NAV_SECTIONS) {
-      const item = document.createElement('div');
-      item.className = 'settings-nav-item';
+      const item = this._el('div', 'settings-nav-item', label);
       if (key === this.activeSection) item.classList.add('active');
-      item.textContent = label;
       item.addEventListener('click', () => this.showSection(key));
       nav.appendChild(item);
       this.navItems[key] = item;
     }
 
     // Content
-    this.content = document.createElement('div');
-    this.content.className = 'settings-content';
+    this.content = this._el('div', 'settings-content');
 
     body.appendChild(nav);
     body.appendChild(this.content);
@@ -128,183 +138,124 @@ export class SettingsModal {
 
   _createSectionHeading(title, ...extras) {
     this.content.innerHTML = '';
-    const heading = document.createElement('div');
-    heading.className = 'settings-section-header';
-    const h3 = document.createElement('h3');
-    h3.textContent = title;
-    heading.appendChild(h3);
+    const heading = this._el('div', 'settings-section-header');
+    heading.appendChild(this._el('h3', null, title));
     for (const el of extras) heading.appendChild(el);
     this.content.appendChild(heading);
     return heading;
+  }
+
+  // ===== Appearance Section =====
+
+  _createThemePreviewLine(segments, theme) {
+    const line = this._el('div', 'theme-preview-line');
+    for (const { text, colorKey } of segments) {
+      const span = this._el('span', null, text);
+      span.style.color = theme[colorKey];
+      line.appendChild(span);
+    }
+    return line;
+  }
+
+  _createThemeCard(name, theme, isActive) {
+    const card = this._el('div', 'theme-card');
+    if (isActive) card.classList.add('theme-active');
+
+    // Preview block
+    const preview = this._el('div', 'theme-preview');
+    preview.style.background = theme.background;
+
+    preview.appendChild(this._createThemePreviewLine(
+      [{ text: '$ ', colorKey: 'green' }, { text: 'npm start', colorKey: 'foreground' }],
+      theme
+    ));
+    preview.appendChild(this._createThemePreviewLine(
+      [{ text: '> ', colorKey: 'cyan' }, { text: 'ready', colorKey: 'green' }],
+      theme
+    ));
+
+    // Color dots
+    const dots = this._el('div', 'theme-preview-dots');
+    for (const key of ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan']) {
+      const dot = this._el('span', 'theme-dot');
+      dot.style.background = theme[key];
+      dots.appendChild(dot);
+    }
+    preview.appendChild(dots);
+
+    card.appendChild(preview);
+    card.appendChild(this._el('div', 'theme-card-label', name));
+
+    card.addEventListener('click', () => {
+      setTerminalTheme(name);
+      this._applyThemeToTerminals();
+      this.renderAppearance();
+    });
+
+    return card;
   }
 
   renderAppearance() {
     this._createSectionHeading('Appearance');
 
     // Day/Night mode toggle
-    const modeRow = document.createElement('div');
-    modeRow.className = 'theme-mode-row';
+    const modeRow = this._el('div', 'theme-mode-row');
+    modeRow.appendChild(this._el('span', 'theme-mode-label', 'Mode'));
 
-    const modeLabel = document.createElement('span');
-    modeLabel.className = 'theme-mode-label';
-    modeLabel.textContent = 'Mode';
-
-    const modeToggle = document.createElement('div');
-    modeToggle.className = 'theme-mode-toggle';
-
+    const modeToggle = this._el('div', 'theme-mode-toggle');
     const currentMode = getAppTheme();
 
-    const darkBtn = document.createElement('button');
-    darkBtn.className = 'theme-mode-btn' + (currentMode === 'dark' ? ' active' : '');
-    darkBtn.textContent = 'Night';
+    for (const { mode, label } of MODE_BUTTONS) {
+      const btn = this._el('button', 'theme-mode-btn', label);
+      if (currentMode === mode) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        setAppTheme(mode);
+        this._switchTerminalForMode(mode);
+        this.renderAppearance();
+      });
+      modeToggle.appendChild(btn);
+    }
 
-    const lightBtn = document.createElement('button');
-    lightBtn.className = 'theme-mode-btn' + (currentMode === 'light' ? ' active' : '');
-    lightBtn.textContent = 'Day';
-
-    darkBtn.addEventListener('click', () => {
-      setAppTheme('dark');
-      this._switchTerminalForMode('dark');
-      this.renderAppearance();
-    });
-
-    lightBtn.addEventListener('click', () => {
-      setAppTheme('light');
-      this._switchTerminalForMode('light');
-      this.renderAppearance();
-    });
-
-    modeToggle.appendChild(darkBtn);
-    modeToggle.appendChild(lightBtn);
-    modeRow.appendChild(modeLabel);
     modeRow.appendChild(modeToggle);
     this.content.appendChild(modeRow);
 
-    // Terminal theme section
-    const termHeading = document.createElement('h4');
-    termHeading.className = 'theme-sub-heading';
-    termHeading.textContent = 'Terminal Theme';
-    this.content.appendChild(termHeading);
+    // Terminal theme grid
+    this.content.appendChild(this._el('h4', 'theme-sub-heading', 'Terminal Theme'));
 
     const currentThemeName = getTerminalThemeName();
-    const grid = document.createElement('div');
-    grid.className = 'theme-grid';
-
+    const grid = this._el('div', 'theme-grid');
     for (const [name, theme] of Object.entries(TERMINAL_THEMES)) {
-      const card = document.createElement('div');
-      card.className = 'theme-card';
-      if (name === currentThemeName) card.classList.add('theme-active');
-
-      // Preview block
-      const preview = document.createElement('div');
-      preview.className = 'theme-preview';
-      preview.style.background = theme.background;
-
-      const colors = [theme.red, theme.green, theme.yellow, theme.blue, theme.magenta, theme.cyan];
-      const line1 = document.createElement('div');
-      line1.className = 'theme-preview-line';
-      const prompt = document.createElement('span');
-      prompt.textContent = '$ ';
-      prompt.style.color = theme.green;
-      line1.appendChild(prompt);
-      const cmd = document.createElement('span');
-      cmd.textContent = 'npm start';
-      cmd.style.color = theme.foreground;
-      line1.appendChild(cmd);
-      preview.appendChild(line1);
-
-      const line2 = document.createElement('div');
-      line2.className = 'theme-preview-line';
-      const arrow = document.createElement('span');
-      arrow.textContent = '> ';
-      arrow.style.color = theme.cyan;
-      line2.appendChild(arrow);
-      const msg = document.createElement('span');
-      msg.textContent = 'ready';
-      msg.style.color = theme.green;
-      line2.appendChild(msg);
-      preview.appendChild(line2);
-
-      // Color dots
-      const dots = document.createElement('div');
-      dots.className = 'theme-preview-dots';
-      for (const c of colors) {
-        const dot = document.createElement('span');
-        dot.className = 'theme-dot';
-        dot.style.background = c;
-        dots.appendChild(dot);
-      }
-      preview.appendChild(dots);
-
-      card.appendChild(preview);
-
-      const label = document.createElement('div');
-      label.className = 'theme-card-label';
-      label.textContent = name;
-      card.appendChild(label);
-
-      card.addEventListener('click', () => {
-        setTerminalTheme(name);
-        // Apply to all open terminals
-        if (this.tabManager) {
-          const newTheme = getTerminalTheme();
-          for (const [, tab] of this.tabManager.tabs) {
-            if (tab.terminalPanel) tab.terminalPanel.applyTheme(newTheme);
-          }
-        }
-        this.renderAppearance();
-      });
-
-      grid.appendChild(card);
+      grid.appendChild(this._createThemeCard(name, theme, name === currentThemeName));
     }
-
     this.content.appendChild(grid);
   }
 
   _switchTerminalForMode(mode) {
-    if (switchTerminalForMode(mode) && this.tabManager) {
-      const newTheme = getTerminalTheme();
-      for (const [, tab] of this.tabManager.tabs) {
-        if (tab.terminalPanel) tab.terminalPanel.applyTheme(newTheme);
-      }
-    }
+    if (switchTerminalForMode(mode)) this._applyThemeToTerminals();
   }
 
+  // ===== Keybindings Section =====
+
   renderKeybindings() {
-    const resetBtn = document.createElement('button');
-    resetBtn.className = 'settings-reset-btn';
-    resetBtn.textContent = 'Reset to defaults';
+    const resetBtn = this._el('button', 'settings-reset-btn', 'Reset to defaults');
     resetBtn.addEventListener('click', () => {
       this.shortcutManager.resetToDefaults();
       this.renderKeybindings();
     });
     this._createSectionHeading('Keyboard Shortcuts', resetBtn);
 
-    const list = document.createElement('div');
-    list.className = 'keybinding-list';
+    const list = this._el('div', 'keybinding-list');
 
-    const bindings = this.shortcutManager.getBindingsList();
+    for (const binding of this.shortcutManager.getBindingsList()) {
+      const row = this._el('div', 'keybinding-row');
+      row.appendChild(this._el('div', 'keybinding-label', binding.label));
 
-    for (const binding of bindings) {
-      const row = document.createElement('div');
-      row.className = 'keybinding-row';
-
-      const label = document.createElement('div');
-      label.className = 'keybinding-label';
-      label.textContent = binding.label;
-
-      const keysContainer = document.createElement('div');
-      keysContainer.className = 'keybinding-keys';
-
+      const keysContainer = this._el('div', 'keybinding-keys');
       for (let i = 0; i < binding.keys.length; i++) {
-        const keyBadge = this.createKeyBadge(binding, i);
-        keysContainer.appendChild(keyBadge);
+        keysContainer.appendChild(this.createKeyBadge(binding, i));
       }
 
-      // Add binding button
-      const addBtn = document.createElement('button');
-      addBtn.className = 'keybinding-add-btn';
-      addBtn.textContent = '+';
+      const addBtn = this._el('button', 'keybinding-add-btn', '+');
       addBtn.title = 'Add keybinding';
       addBtn.addEventListener('click', () => {
         binding.keys.push('');
@@ -313,7 +264,6 @@ export class SettingsModal {
       });
       keysContainer.appendChild(addBtn);
 
-      row.appendChild(label);
       row.appendChild(keysContainer);
       list.appendChild(row);
     }
@@ -322,11 +272,9 @@ export class SettingsModal {
   }
 
   createKeyBadge(binding, index) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'keybinding-badge-wrapper';
+    const wrapper = this._el('div', 'keybinding-badge-wrapper');
 
-    const badge = document.createElement('span');
-    badge.className = 'keybinding-badge';
+    const badge = this._el('span', 'keybinding-badge');
     badge.textContent = binding.keys[index]
       ? ShortcutManager.formatCombo(binding.keys[index])
       : 'Not set';
@@ -336,9 +284,7 @@ export class SettingsModal {
       this.startRecording(binding.id, index, badge);
     });
 
-    const removeBtn = document.createElement('span');
-    removeBtn.className = 'keybinding-badge-remove';
-    removeBtn.textContent = '×';
+    const removeBtn = this._el('span', 'keybinding-badge-remove', '×');
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       binding.keys.splice(index, 1);
@@ -347,9 +293,7 @@ export class SettingsModal {
     });
 
     wrapper.appendChild(badge);
-    if (binding.keys.length > 1) {
-      wrapper.appendChild(removeBtn);
-    }
+    if (binding.keys.length > 1) wrapper.appendChild(removeBtn);
 
     return wrapper;
   }
@@ -370,7 +314,6 @@ export class SettingsModal {
     el.classList.remove('recording');
     el.textContent = ShortcutManager.formatCombo(combo);
 
-    // Update the binding
     const bindings = this.shortcutManager.getBindingsList();
     const binding = bindings.find((b) => b.id === actionId);
     if (binding) {
@@ -391,144 +334,107 @@ export class SettingsModal {
 
   // ===== Workspace Configs Section =====
 
+  _createConfigActions(config) {
+    const actions = this._el('div', 'config-actions');
+
+    const descriptors = [
+      ...(!config.isDefault ? [{
+        label: 'Set Default', title: 'Charger au démarrage',
+        handler: async () => { await window.api.config.setDefault(config.name); this.renderConfigs(); },
+      }] : []),
+      {
+        label: 'Overwrite', title: 'Écraser avec le workspace actuel',
+        handler: async () => {
+          if (!this.tabManager) return;
+          await window.api.config.save(config.name, this.tabManager.serialize());
+          this.renderConfigs();
+        },
+      },
+      {
+        label: '✕', title: '', cls: 'config-action-btn config-delete-btn',
+        handler: async () => { await window.api.config.delete(config.name); this.renderConfigs(); },
+      },
+    ];
+
+    for (const { label, title, cls, handler } of descriptors) {
+      const btn = this._el('button', cls || 'config-action-btn', label);
+      if (title) btn.title = title;
+      btn.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
+      actions.appendChild(btn);
+    }
+
+    return actions;
+  }
+
+  _createConfigRow(config, currentName) {
+    const row = this._el('div', 'config-row');
+    if (config.name === currentName) row.classList.add('config-active');
+
+    // Left: radio + info
+    const left = this._el('div', 'config-row-left');
+
+    const radio = this._el('span', 'config-radio');
+    if (config.isDefault) radio.classList.add('config-radio-default');
+    left.appendChild(radio);
+
+    const info = this._el('div', 'config-info');
+
+    const nameEl = this._el('span', 'config-name', config.name);
+    if (config.isDefault) {
+      nameEl.appendChild(this._el('span', 'config-default-tag', 'default'));
+    }
+    info.appendChild(nameEl);
+
+    const tabCount = config.tabCount || 0;
+    const date = config.updatedAt ? new Date(config.updatedAt).toLocaleDateString() : '';
+    info.appendChild(this._el('span', 'config-meta', `${tabCount} tab${tabCount !== 1 ? 's' : ''} · ${date}`));
+
+    left.appendChild(info);
+
+    row.addEventListener('click', async () => {
+      const data = await window.api.config.load(config.name);
+      if (data && this.tabManager) {
+        await this.tabManager.restoreConfig(data);
+        this.tabManager.currentConfigName = config.name;
+        this.renderConfigs();
+      }
+    });
+
+    row.appendChild(left);
+    row.appendChild(this._createConfigActions(config));
+    return row;
+  }
+
+  _createBottomActions(currentName) {
+    const container = this._el('div', 'config-bottom-actions');
+    for (const { label, promptMsg, defaultValue } of BOTTOM_CONFIG_BUTTONS) {
+      const btn = this._el('button', 'config-bottom-btn', label);
+      btn.addEventListener('click', () => this._saveConfigAs(promptMsg, defaultValue(currentName)));
+      container.appendChild(btn);
+    }
+    return container;
+  }
+
   async renderConfigs() {
     this._createSectionHeading('Workspace Configs');
 
-    // Current loaded config indicator
     const currentName = this.tabManager?.currentConfigName || 'Default';
-    const currentBar = document.createElement('div');
-    currentBar.className = 'config-current-bar';
-    const currentLabel = document.createElement('span');
-    currentLabel.className = 'config-current-label';
-    currentLabel.textContent = 'Config chargée :';
-    currentBar.appendChild(currentLabel);
-    const currentValue = document.createElement('span');
-    currentValue.className = 'config-current-value';
-    currentValue.textContent = currentName;
-    currentBar.appendChild(currentValue);
+
+    // Current loaded config indicator
+    const currentBar = this._el('div', 'config-current-bar');
+    currentBar.appendChild(this._el('span', 'config-current-label', 'Config chargée :'));
+    currentBar.appendChild(this._el('span', 'config-current-value', currentName));
     this.content.appendChild(currentBar);
 
-    // Config list with radio-style selection
+    // Config list
     const configs = await window.api.config.list();
-
-    const list = document.createElement('div');
-    list.className = 'config-list';
-
+    const list = this._el('div', 'config-list');
     for (const config of configs) {
-      const row = document.createElement('div');
-      row.className = 'config-row';
-      const isCurrent = config.name === currentName;
-      if (isCurrent) row.classList.add('config-active');
-
-      // Radio + name
-      const left = document.createElement('div');
-      left.className = 'config-row-left';
-
-      const radio = document.createElement('span');
-      radio.className = 'config-radio';
-      if (config.isDefault) radio.classList.add('config-radio-default');
-      left.appendChild(radio);
-
-      const info = document.createElement('div');
-      info.className = 'config-info';
-
-      const nameEl = document.createElement('span');
-      nameEl.className = 'config-name';
-      nameEl.textContent = config.name;
-      if (config.isDefault) {
-        const defaultTag = document.createElement('span');
-        defaultTag.className = 'config-default-tag';
-        defaultTag.textContent = 'default';
-        nameEl.appendChild(defaultTag);
-      }
-      info.appendChild(nameEl);
-
-      const meta = document.createElement('span');
-      meta.className = 'config-meta';
-      const tabCount = config.tabCount || 0;
-      const date = config.updatedAt ? new Date(config.updatedAt).toLocaleDateString() : '';
-      meta.textContent = `${tabCount} tab${tabCount !== 1 ? 's' : ''} · ${date}`;
-      info.appendChild(meta);
-
-      left.appendChild(info);
-
-      // Click row to load
-      row.addEventListener('click', async () => {
-        const data = await window.api.config.load(config.name);
-        if (data && this.tabManager) {
-          await this.tabManager.restoreConfig(data);
-          this.tabManager.currentConfigName = config.name;
-          this.renderConfigs();
-        }
-      });
-
-      // Actions (shown on hover)
-      const actions = document.createElement('div');
-      actions.className = 'config-actions';
-
-      // Set default
-      if (!config.isDefault) {
-        const defaultBtn = document.createElement('button');
-        defaultBtn.className = 'config-action-btn';
-        defaultBtn.textContent = 'Set Default';
-        defaultBtn.title = 'Charger au démarrage';
-        defaultBtn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          await window.api.config.setDefault(config.name);
-          this.renderConfigs();
-        });
-        actions.appendChild(defaultBtn);
-      }
-
-      // Overwrite
-      const overwriteBtn = document.createElement('button');
-      overwriteBtn.className = 'config-action-btn';
-      overwriteBtn.textContent = 'Overwrite';
-      overwriteBtn.title = 'Écraser avec le workspace actuel';
-      overwriteBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!this.tabManager) return;
-        const data = this.tabManager.serialize();
-        await window.api.config.save(config.name, data);
-        this.renderConfigs();
-      });
-      actions.appendChild(overwriteBtn);
-
-      // Delete
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'config-action-btn config-delete-btn';
-      deleteBtn.textContent = '✕';
-      deleteBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await window.api.config.delete(config.name);
-        this.renderConfigs();
-      });
-      actions.appendChild(deleteBtn);
-
-      row.appendChild(left);
-      row.appendChild(actions);
-      list.appendChild(row);
+      list.appendChild(this._createConfigRow(config, currentName));
     }
-
     this.content.appendChild(list);
 
-    // Bottom actions: New Config + Duplicate Current
-    const bottomActions = document.createElement('div');
-    bottomActions.className = 'config-bottom-actions';
-
-    const newBtn = document.createElement('button');
-    newBtn.className = 'config-bottom-btn';
-    newBtn.textContent = 'New Config...';
-    newBtn.addEventListener('click', () => this._saveConfigAs('Nom de la nouvelle config :'));
-    bottomActions.appendChild(newBtn);
-
-    const dupBtn = document.createElement('button');
-    dupBtn.className = 'config-bottom-btn';
-    dupBtn.textContent = 'Duplicate Current...';
-    dupBtn.addEventListener('click', () => this._saveConfigAs('Nom de la copie :', `${currentName} (copy)`));
-    bottomActions.appendChild(dupBtn);
-
-    this.content.appendChild(bottomActions);
+    this.content.appendChild(this._createBottomActions(currentName));
   }
 
   async _saveConfigAs(promptMsg, defaultValue = '') {
