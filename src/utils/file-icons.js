@@ -1,3 +1,5 @@
+const DEFAULT_ICON = '📄';
+
 const EXT_ICONS = {
   js: '📄', ts: '📄', jsx: '📄', tsx: '📄',
   py: '🐍', rb: '💎', go: '🔵', rs: '🦀',
@@ -10,12 +12,6 @@ const EXT_ICONS = {
   pdf: '📕',
 };
 
-export function getFileIcon(name, isDirectory) {
-  if (isDirectory) return '📁';
-  const ext = name.split('.').pop().toLowerCase();
-  return EXT_ICONS[ext] || '📄';
-}
-
 const EXT_LANG = {
   js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript',
   py: 'python', rb: 'ruby', go: 'go', rs: 'rust',
@@ -25,13 +21,23 @@ const EXT_LANG = {
   sql: 'sql', java: 'java', c: 'c', cpp: 'cpp', h: 'c',
   swift: 'swift', kt: 'kotlin', dart: 'dart',
   xml: 'xml', vue: 'xml', svelte: 'xml',
-  dockerfile: 'dockerfile',
 };
 
+const FILENAME_LANG = {
+  dockerfile: 'dockerfile',
+  makefile: 'makefile',
+};
+
+function _getExt(filename) {
+  return filename.split('.').pop().toLowerCase();
+}
+
+export function getFileIcon(name, isDirectory) {
+  if (isDirectory) return '📁';
+  return EXT_ICONS[_getExt(name)] || DEFAULT_ICON;
+}
+
 export function detectLanguage(filename) {
-  const name = filename.toLowerCase();
-  if (name === 'dockerfile') return 'dockerfile';
-  if (name === 'makefile') return 'makefile';
-  const ext = name.split('.').pop();
-  return EXT_LANG[ext] || 'plaintext';
+  const lower = filename.toLowerCase();
+  return FILENAME_LANG[lower] || EXT_LANG[_getExt(lower)] || 'plaintext';
 }
