@@ -16,6 +16,8 @@ const SCHEDULE_LABELS = {
 const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const INTERVAL_HOURS = [1, 2, 3, 4, 6, 8, 12];
 const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
+const DEFAULT_TIME = '09:00';
+const WEEKDAY_INDICES = [1, 2, 3, 4, 5];
 
 export { SCHEDULE_LABELS, DAY_NAMES };
 
@@ -36,6 +38,10 @@ function _el(tag, attrs = {}, ...children) {
   return el;
 }
 
+function _vis(el, show) {
+  el.style.display = show ? 'flex' : 'none';
+}
+
 function _createSelect(options, value) {
   const select = _el('select', { className: 'flow-modal-select' });
   for (const [val, label] of Object.entries(options)) {
@@ -46,10 +52,19 @@ function _createSelect(options, value) {
 }
 
 function _createChip(icon, content, extra = {}) {
-  return _el('div', { className: 'flow-modal-chip', ...extra },
-    _el('span', { textContent: icon }),
-    content,
-  );
+  const children = [];
+  if (icon) children.push(_el('span', { textContent: icon }));
+  children.push(content);
+  return _el('div', { className: 'flow-modal-chip', ...extra }, ...children);
+}
+
+// --- Schedule visibility ---
+
+function _updateScheduleVis(type, chips) {
+  const isInterval = type === 'interval';
+  _vis(chips.timeChip, !isInterval);
+  _vis(chips.intervalChip, isInterval);
+  _vis(chips.daysChip, type === 'custom');
 }
 
 // --- Section builders ---
@@ -90,11 +105,7 @@ function _buildFormFields(existing) {
   };
 }
 
-function _buildBottomBar(existing, state) {
-  const isInterval = (existing?.schedule?.type || 'weekdays') === 'interval';
-  const isCustom = (existing?.schedule?.type || 'weekdays') === 'custom';
-
-  // CWD picker
+function _buildCwdPicker(state) {
   const cwdLabel = _el('span', {
     className: 'flow-modal-chip-label',
     textContent: state.selectedCwd ? state.selectedCwd.split('/').pop() : DEFAULT_CWD_LABEL,
@@ -116,52 +127,58 @@ function _buildBottomBar(existing, state) {
 
   state.cwdLabel = cwdLabel;
   state.cwdChip = cwdChip;
+  return cwdChip;
+}
+
+function _buildSkipPermToggle(existing, agentSelect) {
+  const checkbox = _el('input', { type: 'checkbox', checked: existing?.dangerouslySkipPermissions || false });
+  const label = _el('span', { textContent: 'Skip permissions' });
+  label.style.fontSize = '11px';
+  const chip = _el('label', {
+    className: 'flow-modal-chip flow-modal-chip-toggle',
+    title: 'Lance Claude avec --dangerously-skip-permissions',
+  }, checkbox, label);
+  chip.style.cursor = 'pointer';
+  chip.style.gap = '4px';
+  _vis(chip, agentSelect.value === 'claude');
+
+  agentSelect.addEventListener('change', () => {
+    _vis(chip, agentSelect.value === 'claude');
+  });
+
+  return { chip, checkbox };
+}
+
+function _buildBottomBar(existing, state) {
+  const schedType = existing?.schedule?.type || 'weekdays';
+  const cwdChip = _buildCwdPicker(state);
 
   // Selects
   const agentSelect = _createSelect(AGENT_OPTIONS, existing?.agent || 'claude');
-  const schedSelect = _createSelect(SCHEDULE_LABELS, existing?.schedule?.type || 'weekdays');
+  const schedSelect = _createSelect(SCHEDULE_LABELS, schedType);
   const intervalInput = _createSelect(
     Object.fromEntries(INTERVAL_HOURS.map(h => [h, `${h}h`])),
     existing?.schedule?.intervalHours || 1,
   );
 
-  // Dangerously skip permissions toggle (Claude only)
-  const skipPermCheckbox = _el('input', { type: 'checkbox', checked: existing?.dangerouslySkipPermissions || false });
-  const skipPermLabel = _el('span', { textContent: 'Skip permissions' });
-  skipPermLabel.style.fontSize = '11px';
-  const skipPermChip = _el('label', {
-    className: 'flow-modal-chip flow-modal-chip-toggle',
-    title: 'Lance Claude avec --dangerously-skip-permissions',
-  }, skipPermCheckbox, skipPermLabel);
-  skipPermChip.style.display = (agentSelect.value === 'claude') ? 'flex' : 'none';
-  skipPermChip.style.cursor = 'pointer';
-  skipPermChip.style.gap = '4px';
-
-  agentSelect.addEventListener('change', () => {
-    skipPermChip.style.display = (agentSelect.value === 'claude') ? 'flex' : 'none';
-  });
+  const skipPerm = _buildSkipPermToggle(existing, agentSelect);
 
   // Time input
-  const timeChip = _createChip('', _el('input', {
+  const timeChip = _createChip(null, _el('input', {
     type: 'time',
     className: 'flow-modal-time',
-    value: existing?.schedule?.time || '09:00',
+    value: existing?.schedule?.time || DEFAULT_TIME,
   }));
-  timeChip.style.display = isInterval ? 'none' : 'flex';
-  // Remove the empty icon span for time chip
-  timeChip.removeChild(timeChip.firstChild);
   const timeInput = timeChip.querySelector('input');
 
   // Interval chip
   const intervalLbl = _el('span', { textContent: 'Toutes les' });
   intervalLbl.style.fontSize = '11px';
   const intervalChip = _el('div', { className: 'flow-modal-chip' }, intervalLbl, intervalInput);
-  intervalChip.style.display = isInterval ? 'flex' : 'none';
 
   // Days chip
-  const selectedDays = new Set(existing?.schedule?.days || [1, 2, 3, 4, 5]);
+  const selectedDays = new Set(existing?.schedule?.days || WEEKDAY_INDICES);
   const daysChip = _el('div', { className: 'flow-modal-chip flow-modal-days' });
-  daysChip.style.display = isCustom ? 'flex' : 'none';
   for (let d = 0; d < 7; d++) {
     const dayBtn = _el('button', {
       className: 'flow-day-btn',
@@ -176,25 +193,24 @@ function _buildBottomBar(existing, state) {
     daysChip.appendChild(dayBtn);
   }
 
-  // Toggle visibility on schedule change
+  // Set initial visibility + wire up change handler
+  const schedChips = { timeChip, intervalChip, daysChip };
+  _updateScheduleVis(schedType, schedChips);
   schedSelect.addEventListener('change', () => {
-    const iv = schedSelect.value === 'interval';
-    daysChip.style.display = schedSelect.value === 'custom' ? 'flex' : 'none';
-    timeChip.style.display = iv ? 'none' : 'flex';
-    intervalChip.style.display = iv ? 'flex' : 'none';
+    _updateScheduleVis(schedSelect.value, schedChips);
   });
 
   const bar = _el('div', { className: 'flow-modal-bottom' },
     cwdChip,
     _createChip('\u{1F916}', agentSelect),
-    skipPermChip,
+    skipPerm.chip,
     _createChip('\u{1F550}', schedSelect),
     timeChip,
     intervalChip,
     daysChip,
   );
 
-  return { bar, agentSelect, skipPermCheckbox, schedSelect, timeInput, intervalInput, selectedDays };
+  return { bar, agentSelect, skipPermCheckbox: skipPerm.checkbox, schedSelect, timeInput, intervalInput, selectedDays };
 }
 
 function _buildSchedule(schedSelect, timeInput, intervalInput, selectedDays) {
@@ -203,7 +219,7 @@ function _buildSchedule(schedSelect, timeInput, intervalInput, selectedDays) {
   if (type === 'interval') {
     schedule.intervalHours = parseInt(intervalInput.value, 10);
   } else {
-    schedule.time = timeInput.value || '09:00';
+    schedule.time = timeInput.value || DEFAULT_TIME;
     if (type === 'custom') schedule.days = [...selectedDays].sort();
   }
   return schedule;
