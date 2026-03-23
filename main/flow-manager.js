@@ -12,6 +12,7 @@ const SHELL_INIT_DELAY_MS = 500;
 const MAX_RUN_HISTORY = 7;
 const DEFAULT_PTY_COLS = 120;
 const DEFAULT_PTY_ROWS = 30;
+const MS_PER_HOUR = 3_600_000;
 
 const AGENT_COMMANDS = {
   claude: (prompt, opts = {}) =>
@@ -133,11 +134,9 @@ class FlowManager {
   }
 
   getRunning() {
-    const result = {};
-    for (const [flowId, data] of this._runningFlows) {
-      result[flowId] = data.ptyId;
-    }
-    return result;
+    return Object.fromEntries(
+      [...this._runningFlows].map(([id, { ptyId }]) => [id, ptyId])
+    );
   }
 
   async getRunLog(flowId, timestamp) {
@@ -153,6 +152,12 @@ class FlowManager {
       const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
       await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
     } catch {}
+  }
+
+  // --- Helpers ---
+
+  _getLastRun(flow) {
+    return flow.runs?.length ? flow.runs[flow.runs.length - 1] : null;
   }
 
   // --- Scheduling ---
@@ -171,16 +176,16 @@ class FlowManager {
   }
 
   _shouldRun(flow, now) {
-    const schedule = flow.schedule;
+    const { schedule } = flow;
     if (!schedule) return false;
+
+    const lastRun = this._getLastRun(flow);
 
     // Interval-based scheduling
     if (schedule.type === 'interval') {
-      const intervalMs = (schedule.intervalHours || 1) * 60 * 60 * 1000;
-      if (!flow.runs || flow.runs.length === 0) return true;
-      const lastRun = flow.runs[flow.runs.length - 1];
-      const elapsed = now.getTime() - new Date(lastRun.timestamp).getTime();
-      return elapsed >= intervalMs;
+      const intervalMs = (schedule.intervalHours || 1) * MS_PER_HOUR;
+      if (!lastRun) return true;
+      return now.getTime() - new Date(lastRun.timestamp).getTime() >= intervalMs;
     }
 
     // Time-based scheduling
@@ -194,12 +199,7 @@ class FlowManager {
     if (schedule.type === 'custom' && schedule.days && !schedule.days.includes(day)) return false;
 
     const todayStr = now.toISOString().slice(0, 10);
-    if (flow.runs && flow.runs.length > 0) {
-      const lastRun = flow.runs[flow.runs.length - 1];
-      if (lastRun.date === todayStr) return false;
-    }
-
-    return true;
+    return !lastRun || lastRun.date !== todayStr;
   }
 
   // --- Execution ---
@@ -212,7 +212,7 @@ class FlowManager {
   }
 
   _saveLog(flowId, runTimestamp, output) {
-    ensureDir();
+    ensureDirSync();
     try {
       fs.writeFileSync(logPath(flowId, runTimestamp), output, 'utf-8');
     } catch (e) {
@@ -286,16 +286,15 @@ class FlowManager {
   async _recordRun(flowId, status, runTimestamp) {
     const flow = await this.get(flowId);
     if (!flow) return;
-    if (!flow.runs) flow.runs = [];
-    flow.runs.push({
-      date: new Date().toISOString().slice(0, 10),
-      timestamp: new Date().toISOString(),
+    const now = new Date().toISOString();
+    const runs = flow.runs || [];
+    runs.push({
+      date: now.slice(0, 10),
+      timestamp: now,
       logTimestamp: runTimestamp,
       status,
     });
-    if (flow.runs.length > MAX_RUN_HISTORY) {
-      flow.runs = flow.runs.slice(-MAX_RUN_HISTORY);
-    }
+    flow.runs = runs.length > MAX_RUN_HISTORY ? runs.slice(-MAX_RUN_HISTORY) : runs;
     await this.save(flow);
   }
 }
