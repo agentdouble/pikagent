@@ -24,42 +24,54 @@ const BOARD_TERMINAL_OPTIONS = {
   allowProposedApi: true,
 };
 
+const STATUS_CONFIG = {
+  running: { label: 'Running', cardClass: 'board-card-running', badgeClass: 'board-card-status board-status-running' },
+  waiting: { label: 'Waiting', cardClass: 'board-card-waiting', badgeClass: 'board-card-status board-status-waiting' },
+};
+
+const BUS_EVENTS = ['terminal:created', 'terminal:removed', 'terminal:exited'];
+
+// --- DOM helper ---
+
+function _el(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'className') el.className = v;
+    else if (k === 'textContent') el.textContent = v;
+    else if (k === 'innerHTML') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el[k] = v;
+  }
+  for (const child of children) {
+    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
+    else if (child) el.appendChild(child);
+  }
+  return el;
+}
+
 export class BoardView {
   constructor(container, tabManager) {
     this.container = container;
     this.tabManager = tabManager;
-    this.cards = new Map(); // termId -> { element, term, fitAddon, unsubData, resizeObs, info, status, dataBytes }
+    this.cards = new Map();
     this.disposed = false;
+    this._hiddenTerms = new Set();
 
     this.render();
-    this.setupListeners();
+    this._setupListeners();
     this._startPolling();
   }
 
   render() {
     this.container.innerHTML = '';
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'board-wrapper';
+    this.hiddenBarEl = _el('div', { className: 'board-hidden-bar' });
+    this.emptyEl = _el('div', { className: 'board-empty', textContent: 'No agents running. Start Claude or Codex in a workspace terminal.' });
+    this.boardEl = _el('div', { className: 'board-container' }, this.emptyEl);
 
-    // Hidden cards bar (shows minimized agents) — outside grid
-    this.hiddenBarEl = document.createElement('div');
-    this.hiddenBarEl.className = 'board-hidden-bar';
-    wrapper.appendChild(this.hiddenBarEl);
-
-    // Grid container for cards only
-    const board = document.createElement('div');
-    board.className = 'board-container';
-    this.boardEl = board;
-
-    this.emptyEl = document.createElement('div');
-    this.emptyEl.className = 'board-empty';
-    this.emptyEl.textContent = 'No agents running. Start Claude or Codex in a workspace terminal.';
-    board.appendChild(this.emptyEl);
-
-    wrapper.appendChild(board);
-    this.container.appendChild(wrapper);
-    this._hiddenTerms = new Set();
+    this.container.appendChild(
+      _el('div', { className: 'board-wrapper' }, this.hiddenBarEl, this.boardEl),
+    );
   }
 
   async scanAgents() {
@@ -68,20 +80,14 @@ export class BoardView {
     try {
       const agents = await window.api.pty.checkAgents();
 
-      // Remove cards for terminals that no longer have agents
       for (const [termId] of this.cards) {
-        if (!agents[termId]) {
-          this.removeCard(termId);
-        }
+        if (!agents[termId]) this.removeCard(termId);
       }
 
-      // Add cards for newly detected agents
       for (const [termId, agentName] of Object.entries(agents)) {
         if (!this.cards.has(termId)) {
           const tabName = this._getTabNameForTerminal(termId);
-          if (tabName) {
-            this.addCard(termId, { tabName, agent: agentName });
-          }
+          if (tabName) this.addCard(termId, { tabName, agent: agentName });
         }
       }
 
@@ -96,50 +102,34 @@ export class BoardView {
     this.emptyEl.style.display = this.cards.size === 0 ? 'block' : 'none';
   }
 
-  /** Check data volume since last poll and toggle running/waiting status */
   _checkIdleCards() {
     for (const [, data] of this.cards) {
-      if (data.dataBytes >= DATA_VOLUME_THRESHOLD && data.status !== 'running') {
-        this._setCardStatus(data, 'running');
-      } else if (data.dataBytes < DATA_VOLUME_THRESHOLD && data.status !== 'waiting') {
-        this._setCardStatus(data, 'waiting');
-      }
-      // Reset counter for next interval
+      const status = data.dataBytes >= DATA_VOLUME_THRESHOLD ? 'running' : 'waiting';
+      this._setCardStatus(data, status);
       data.dataBytes = 0;
     }
   }
 
-  /** Update card visual status */
   _setCardStatus(data, status) {
     if (data.status === status) return;
     data.status = status;
 
-    const el = data.element;
-    const badge = el.querySelector('.board-card-status');
+    const cfg = STATUS_CONFIG[status];
+    const { element } = data;
+    const badge = element.querySelector('.board-card-status');
 
-    el.classList.remove('board-card-running', 'board-card-waiting');
+    element.classList.remove(STATUS_CONFIG.running.cardClass, STATUS_CONFIG.waiting.cardClass);
+    element.classList.add(cfg.cardClass);
 
-    if (status === 'running') {
-      el.classList.add('board-card-running');
-      if (badge) {
-        badge.textContent = 'Running';
-        badge.className = 'board-card-status board-status-running';
-      }
-    } else {
-      el.classList.add('board-card-waiting');
-      if (badge) {
-        badge.textContent = 'Waiting';
-        badge.className = 'board-card-status board-status-waiting';
-      }
+    if (badge) {
+      badge.textContent = cfg.label;
+      badge.className = cfg.badgeClass;
     }
   }
 
   _findTabForTerminal(termId) {
     for (const [tabId, tab] of this.tabManager.tabs) {
-      if (!tab.terminalPanel) continue;
-      if (tab.terminalPanel.terminals?.has(termId)) {
-        return { tabId, tab };
-      }
+      if (tab.terminalPanel?.terminals?.has(termId)) return { tabId, tab };
     }
     return null;
   }
@@ -148,7 +138,6 @@ export class BoardView {
     return this._findTabForTerminal(termId)?.tab.name ?? null;
   }
 
-  /** Auto-hide cards whose terminal belongs to a NoShortcut tab */
   _autoHideNoShortcut() {
     for (const [termId, data] of this.cards) {
       const match = this._findTabForTerminal(termId);
@@ -161,59 +150,36 @@ export class BoardView {
   }
 
   _buildCardHeader(termId, info, card) {
-    const header = document.createElement('div');
-    header.className = 'board-card-header';
+    const nameGroup = _el('div', { className: 'board-card-name-group' },
+      _el('span', { className: 'board-card-name', textContent: `${info.agent} \u2014 ${info.tabName}` }),
+      _el('span', { className: STATUS_CONFIG.running.badgeClass, textContent: STATUS_CONFIG.running.label }),
+    );
 
-    const nameGroup = document.createElement('div');
-    nameGroup.className = 'board-card-name-group';
+    const headerBtns = _el('div', { className: 'board-card-btns' },
+      _el('button', {
+        className: 'board-card-btn', innerHTML: '&#8599;', title: 'Go to workspace',
+        onClick: () => {
+          const match = this._findTabForTerminal(termId);
+          if (match) this.tabManager.switchTo(match.tabId);
+        },
+      }),
+      _el('button', {
+        className: 'board-card-btn', innerHTML: '&minus;', title: 'Hide',
+        onClick: () => {
+          card.classList.add('board-card-hidden');
+          this._hiddenTerms.add(termId);
+          this._updateHiddenBar();
+        },
+      }),
+    );
 
-    const name = document.createElement('span');
-    name.className = 'board-card-name';
-    name.textContent = `${info.agent} \u2014 ${info.tabName}`;
-    nameGroup.appendChild(name);
-
-    const statusBadge = document.createElement('span');
-    statusBadge.className = 'board-card-status board-status-running';
-    statusBadge.textContent = 'Running';
-    nameGroup.appendChild(statusBadge);
-
-    header.appendChild(nameGroup);
-
-    const headerBtns = document.createElement('div');
-    headerBtns.className = 'board-card-btns';
-
-    const goBtn = document.createElement('button');
-    goBtn.className = 'board-card-btn';
-    goBtn.innerHTML = '&#8599;';
-    goBtn.title = 'Go to workspace';
-    goBtn.addEventListener('click', () => {
-      const match = this._findTabForTerminal(termId);
-      if (match) this.tabManager.switchTo(match.tabId);
-    });
-    headerBtns.appendChild(goBtn);
-
-    const hideBtn = document.createElement('button');
-    hideBtn.className = 'board-card-btn';
-    hideBtn.innerHTML = '&minus;';
-    hideBtn.title = 'Hide';
-    hideBtn.addEventListener('click', () => {
-      card.classList.add('board-card-hidden');
-      this._hiddenTerms.add(termId);
-      this._updateHiddenBar();
-    });
-    headerBtns.appendChild(hideBtn);
-
-    header.appendChild(headerBtns);
-    return header;
+    return _el('div', { className: 'board-card-header' }, nameGroup, headerBtns);
   }
 
   _createBoardTerminal(termContainer, termId) {
-    const term = new Terminal({
-      theme: getTerminalTheme(),
-      ...BOARD_TERMINAL_OPTIONS,
-    });
-
+    const term = new Terminal({ theme: getTerminalTheme(), ...BOARD_TERMINAL_OPTIONS });
     const fitAddon = new FitAddon();
+
     term.loadAddon(fitAddon);
     term.loadAddon(new WebLinksAddon((e, url) => {
       e.preventDefault();
@@ -221,25 +187,20 @@ export class BoardView {
     }));
     term.registerLinkProvider(new FilePathLinkProvider(term, () => null));
     term.open(termContainer);
-
-    term.onData((data) => {
-      window.api.pty.write({ id: termId, data });
-    });
+    term.onData((data) => window.api.pty.write({ id: termId, data }));
 
     return { term, fitAddon };
   }
 
   addCard(termId, info) {
-    const card = document.createElement('div');
-    card.className = 'board-card board-card-running';
+    const termContainer = _el('div', { className: 'board-card-terminal' });
+    const card = _el('div', { className: 'board-card board-card-running' });
 
     card.appendChild(this._buildCardHeader(termId, info, card));
-
-    const termContainer = document.createElement('div');
-    termContainer.className = 'board-card-terminal';
     card.appendChild(termContainer);
 
     const { term, fitAddon } = this._createBoardTerminal(termContainer, termId);
+    const fitOnly = () => { try { fitAddon.fit(); } catch {} };
 
     const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
 
@@ -248,61 +209,55 @@ export class BoardView {
       cardData.dataBytes += data.length;
     });
 
-    // Fit the xterm to the card container but do NOT resize the PTY.
-    // The workspace terminal is the master that controls PTY dimensions.
-    const fitOnly = () => {
-      try { fitAddon.fit(); } catch {}
-    };
-
     this.boardEl.insertBefore(card, this.emptyEl);
 
     cardData.resizeObs = new ResizeObserver(fitOnly);
     cardData.resizeObs.observe(termContainer);
-
     this.cards.set(termId, cardData);
 
     setTimeout(fitOnly, FIT_SETTLE_DELAY_MS);
   }
 
-  removeCard(termId) {
-    const data = this.cards.get(termId);
-    if (!data) return;
+  _disposeCard(data) {
     if (data.unsubData) data.unsubData();
     if (data.resizeObs) data.resizeObs.disconnect();
     data.term.dispose();
+  }
+
+  removeCard(termId) {
+    const data = this.cards.get(termId);
+    if (!data) return;
+    this._disposeCard(data);
     data.element.remove();
     this.cards.delete(termId);
-    if (this._hiddenTerms) this._hiddenTerms.delete(termId);
+    this._hiddenTerms.delete(termId);
     this._updateHiddenBar();
   }
 
   _updateHiddenBar() {
     if (!this.hiddenBarEl) return;
     this.hiddenBarEl.innerHTML = '';
-    if (!this._hiddenTerms || this._hiddenTerms.size === 0) return;
+    if (this._hiddenTerms.size === 0) return;
 
     for (const termId of this._hiddenTerms) {
       const card = this.cards.get(termId);
       if (!card) continue;
 
-      const chip = document.createElement('button');
-      chip.className = 'board-hidden-chip';
-      chip.textContent = card.info.agent + ' \u2014 ' + card.info.tabName;
-      chip.title = 'Show';
-      chip.addEventListener('click', () => {
-        card.element.classList.remove('board-card-hidden');
-        this._hiddenTerms.delete(termId);
-        this._updateHiddenBar();
-        // Refit after unhide
-        setTimeout(() => {
-          try { card.fitAddon.fit(); } catch {}
-        }, FIT_UNHIDE_DELAY_MS);
-      });
-      this.hiddenBarEl.appendChild(chip);
+      this.hiddenBarEl.appendChild(_el('button', {
+        className: 'board-hidden-chip',
+        textContent: `${card.info.agent} \u2014 ${card.info.tabName}`,
+        title: 'Show',
+        onClick: () => {
+          card.element.classList.remove('board-card-hidden');
+          this._hiddenTerms.delete(termId);
+          this._updateHiddenBar();
+          setTimeout(() => { try { card.fitAddon.fit(); } catch {} }, FIT_UNHIDE_DELAY_MS);
+        },
+      }));
     }
   }
 
-  setupListeners() {
+  _setupListeners() {
     this._onCreated = () => {
       if (!this.disposed) this.scanAgents();
     };
@@ -311,17 +266,16 @@ export class BoardView {
       this._updateEmptyState();
     };
 
-    bus.on('terminal:created', this._onCreated);
-    bus.on('terminal:removed', this._onTerminalGone);
-    bus.on('terminal:exited', this._onTerminalGone);
+    bus.on(BUS_EVENTS[0], this._onCreated);
+    bus.on(BUS_EVENTS[1], this._onTerminalGone);
+    bus.on(BUS_EVENTS[2], this._onTerminalGone);
   }
 
   focusDirection(dir) {
     const visibleCards = [...this.cards.entries()]
-      .filter(([id]) => !this._hiddenTerms?.has(id));
+      .filter(([id]) => !this._hiddenTerms.has(id));
     if (visibleCards.length === 0) return;
 
-    // Find currently focused card
     const focusedIdx = visibleCards.findIndex(([, data]) =>
       data.element.contains(document.activeElement) || data.term.textarea === document.activeElement
     );
@@ -364,14 +318,12 @@ export class BoardView {
     this.disposed = true;
     this.pause();
 
-    bus.off('terminal:created', this._onCreated);
-    bus.off('terminal:removed', this._onTerminalGone);
-    bus.off('terminal:exited', this._onTerminalGone);
+    for (const event of BUS_EVENTS) {
+      bus.off(event, event === BUS_EVENTS[0] ? this._onCreated : this._onTerminalGone);
+    }
 
     for (const [, data] of this.cards) {
-      if (data.unsubData) data.unsubData();
-      if (data.resizeObs) data.resizeObs.disconnect();
-      data.term.dispose();
+      this._disposeCard(data);
     }
     this.cards.clear();
   }
