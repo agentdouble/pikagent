@@ -1,5 +1,8 @@
 import { contextMenu } from './context-menu.js';
 
+const AUTO_SAVE_DELAY = 500;
+const MENU_OFFSET = 4;
+
 export class ConfigManager {
   constructor(tabManager) {
     this.tabManager = tabManager;
@@ -17,12 +20,19 @@ export class ConfigManager {
     this._restoringConfig = val;
   }
 
+  _el(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
   // ===== Auto Save =====
 
   scheduleAutoSave() {
     if (this._restoringConfig) return;
     if (this._saveTimer) clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => this.autoSave(), 500);
+    this._saveTimer = setTimeout(() => this.autoSave(), AUTO_SAVE_DELAY);
   }
 
   async autoSave() {
@@ -86,63 +96,34 @@ export class ConfigManager {
     const configs = await window.api.config.list();
     const rect = anchorEl.getBoundingClientRect();
 
-    const items = [];
-
-    for (const config of configs) {
-      const isCurrent = config.name === this.currentConfigName;
-      items.push({
-        label: `${isCurrent ? '\u25cf ' : ''}${config.name}`,
-        action: () => this.switchConfig(config.name),
-      });
-    }
+    const items = configs.map((config) => ({
+      label: `${config.name === this.currentConfigName ? '\u25cf ' : ''}${config.name}`,
+      action: () => this.switchConfig(config.name),
+    }));
 
     if (configs.length > 0) {
       items.push({ separator: true });
     }
 
-    items.push({
-      label: 'New Config...',
-      action: () => this.promptConfigName('New Config', (name) => this.newConfig(name)),
-    });
-
-    items.push({
-      label: 'Duplicate Current...',
-      action: () => {
-        const suggested = `${this.currentConfigName || 'Default'} (copy)`;
-        this.promptConfigName(suggested, (name) => this.duplicateConfig(name));
+    items.push(
+      {
+        label: 'New Config...',
+        action: () => this.promptConfigName('New Config', (name) => this.newConfig(name)),
       },
-    });
+      {
+        label: 'Duplicate Current...',
+        action: () => {
+          const suggested = `${this.currentConfigName || 'Default'} (copy)`;
+          this.promptConfigName(suggested, (name) => this.duplicateConfig(name));
+        },
+      },
+    );
 
-    contextMenu.show(rect.left, rect.top - 4, items);
+    contextMenu.show(rect.left, rect.top - MENU_OFFSET, items);
   }
 
   promptConfigName(defaultValue, callback) {
-    const overlay = document.createElement('div');
-    overlay.className = 'config-prompt-overlay';
-
-    const box = document.createElement('div');
-    box.className = 'config-prompt-box';
-
-    const label = document.createElement('label');
-    label.className = 'config-prompt-label';
-    label.textContent = 'Config name';
-
-    const input = document.createElement('input');
-    input.className = 'config-prompt-input';
-    input.type = 'text';
-    input.value = defaultValue;
-
-    const btns = document.createElement('div');
-    btns.className = 'config-prompt-btns';
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'config-prompt-cancel';
-    cancelBtn.textContent = 'Cancel';
-
-    const confirmBtn = document.createElement('button');
-    confirmBtn.className = 'config-prompt-confirm';
-    confirmBtn.textContent = 'Create';
-
+    const overlay = this._el('div', 'config-prompt-overlay');
     const close = () => overlay.remove();
     const confirm = () => {
       const name = input.value.trim();
@@ -150,21 +131,29 @@ export class ConfigManager {
       if (name) callback(name);
     };
 
-    cancelBtn.addEventListener('click', close);
-    confirmBtn.addEventListener('click', confirm);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
+    const input = this._el('input', 'config-prompt-input');
+    input.type = 'text';
+    input.value = defaultValue;
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') confirm();
       if (e.key === 'Escape') close();
     });
 
-    btns.appendChild(cancelBtn);
-    btns.appendChild(confirmBtn);
-    box.appendChild(label);
-    box.appendChild(input);
-    box.appendChild(btns);
+    const cancelBtn = this._el('button', 'config-prompt-cancel', 'Cancel');
+    cancelBtn.addEventListener('click', close);
+
+    const confirmBtn = this._el('button', 'config-prompt-confirm', 'Create');
+    confirmBtn.addEventListener('click', confirm);
+
+    const btns = this._el('div', 'config-prompt-btns');
+    btns.append(cancelBtn, confirmBtn);
+
+    const box = this._el('div', 'config-prompt-box');
+    box.append(this._el('label', 'config-prompt-label', 'Config name'), input, btns);
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     input.focus();
