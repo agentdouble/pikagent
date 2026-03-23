@@ -34,10 +34,23 @@ const ACTION_HANDLERS = {
   showFlow: (tm) => tm.setSidebarMode('flow'),
 };
 
-const MODIFIER_LABELS = {
-  mac: { meta: '⌘', control: '⌃', shift: '⇧', alt: '⌥' },
-  other: { meta: 'Win', control: 'Ctrl', shift: 'Shift', alt: 'Alt' },
-};
+// Ordered list of modifier keys for combo string building
+const MODIFIERS = [
+  { key: 'shiftKey', name: 'shift' },
+  { key: 'ctrlKey', name: 'control' },
+  { key: 'altKey', name: 'alt' },
+  { key: 'metaKey', name: 'meta' },
+];
+
+const IS_MAC = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
+
+const MODIFIER_LABELS = IS_MAC
+  ? { meta: '⌘', control: '⌃', shift: '⇧', alt: '⌥' }
+  : { meta: 'Win', control: 'Ctrl', shift: 'Shift', alt: 'Alt' };
+
+function _capitalizeKey(key) {
+  return key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1);
+}
 
 export class ShortcutManager {
   constructor(tabManager) {
@@ -103,7 +116,7 @@ export class ShortcutManager {
   }
 
   updateBinding(actionId, newKeys) {
-    for (const [combo, id] of [...this.bindings]) {
+    for (const [combo, id] of this.bindings) {
       if (id === actionId) this.bindings.delete(combo);
     }
     for (const key of newKeys) {
@@ -131,21 +144,15 @@ export class ShortcutManager {
   }
 
   _eventToCombo(e) {
-    const parts = [];
-    if (e.shiftKey) parts.push('shift');
-    if (e.ctrlKey) parts.push('control');
-    if (e.altKey) parts.push('alt');
-    if (e.metaKey) parts.push('meta');
+    const parts = MODIFIERS.filter((m) => e[m.key]).map((m) => m.name);
     parts.push(e.key.toLowerCase());
     return parts.join('+');
   }
 
   static formatCombo(combo) {
-    const isMac = navigator.platform.includes('Mac');
-    const labels = MODIFIER_LABELS[isMac ? 'mac' : 'other'];
     return combo
       .split('+')
-      .map((p) => labels[p] ?? (p.length === 1 ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1)))
-      .join(isMac ? '' : '+');
+      .map((p) => MODIFIER_LABELS[p] ?? _capitalizeKey(p))
+      .join(IS_MAC ? '' : '+');
   }
 }
