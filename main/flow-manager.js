@@ -17,8 +17,8 @@ const MS_PER_HOUR = 3_600_000;
 const AGENT_COMMANDS = {
   claude: (prompt, opts = {}) =>
     opts.dangerouslySkipPermissions
-      ? `claude --dangerously-skip-permissions -p '${prompt}'`
-      : `claude --permission-mode auto -p '${prompt}'`,
+      ? `claude --dangerously-skip-permissions --verbose -p '${prompt}'`
+      : `claude --permission-mode auto --verbose -p '${prompt}'`,
   codex: (prompt) => `codex --approval-mode full-auto --quiet '${prompt}'`,
   opencode: (prompt) => `opencode -p '${prompt}'`,
 };
