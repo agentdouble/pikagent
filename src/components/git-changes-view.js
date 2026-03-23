@@ -3,6 +3,14 @@ import { DiffViewer } from './diff-viewer.js';
 
 const STATUS_LABELS = { M: 'M', A: 'A', D: 'D', R: 'R', '?': '?' };
 
+const CHEVRON = { expanded: '▼', collapsed: '▶' };
+
+const CHANGE_SECTIONS = [
+  { key: 'staged', title: 'Staged', isStaged: true },
+  { key: 'unstaged', title: 'Modified', isStaged: false },
+  { key: 'untracked', title: 'Untracked', isStaged: false },
+];
+
 export class GitChangesView {
   constructor(container) {
     this.container = container;
@@ -21,6 +29,14 @@ export class GitChangesView {
     return el;
   }
 
+  _setContent(parent, ...children) {
+    parent.replaceChildren(...children);
+  }
+
+  _renderMessage(parent, cls, text) {
+    this._setContent(parent, this._el('div', cls, text));
+  }
+
   async loadChanges() {
     if (!this.gitCwd) {
       const pathEl = document.querySelector('.path-text');
@@ -28,48 +44,44 @@ export class GitChangesView {
     }
 
     if (!this.gitCwd) {
-      this.container.innerHTML = '<div class="git-empty">No working directory detected</div>';
+      this._renderMessage(this.container, 'git-empty', 'No working directory detected');
       return;
     }
 
-    this.container.innerHTML = '<div class="git-loading">Loading changes...</div>';
+    this._renderMessage(this.container, 'git-loading', 'Loading changes...');
 
     const changes = await window.api.git.localChanges(this.gitCwd);
     this._renderChanges(changes);
   }
 
   _createHeader(total) {
-    const header = this._el('div', 'git-header');
-    header.appendChild(this._el('span', null, `Local Changes (${total})`));
     const refreshBtn = this._el('span', 'git-refresh-btn', '↻');
     refreshBtn.title = 'Refresh';
     refreshBtn.addEventListener('click', () => this.loadChanges());
-    header.appendChild(refreshBtn);
+
+    const header = this._el('div', 'git-header');
+    header.append(
+      this._el('span', null, `Local Changes (${total})`),
+      refreshBtn,
+    );
     return header;
   }
 
   _renderChanges(changes) {
-    this.container.innerHTML = '';
-    const { staged, unstaged, untracked } = changes;
-    const total = staged.length + unstaged.length + untracked.length;
+    const total = CHANGE_SECTIONS.reduce((sum, s) => sum + (changes[s.key]?.length || 0), 0);
 
     if (total === 0) {
-      this.container.innerHTML = '<div class="git-empty">No local changes</div>';
+      this._renderMessage(this.container, 'git-empty', 'No local changes');
       return;
     }
 
-    this.container.appendChild(this._createHeader(total));
-
     const list = this._el('div', 'git-commit-list');
-    const sections = [
-      { title: 'Staged', files: staged, isStaged: true },
-      { title: 'Modified', files: unstaged, isStaged: false },
-      { title: 'Untracked', files: untracked, isStaged: false },
-    ];
-    for (const { title, files, isStaged } of sections) {
-      if (files.length > 0) this._renderSection(list, title, files, isStaged);
+    for (const { key, title, isStaged } of CHANGE_SECTIONS) {
+      const files = changes[key];
+      if (files?.length > 0) this._renderSection(list, title, files, isStaged);
     }
-    this.container.appendChild(list);
+
+    this._setContent(this.container, this._createHeader(total), list);
   }
 
   _createFileItem(file, isStaged) {
@@ -84,12 +96,8 @@ export class GitChangesView {
       this.loadChanges();
     });
 
-    row.appendChild(this._el('span', 'git-chevron', isExpanded ? '▼' : '▶'));
-    row.appendChild(this._el('span', `git-file-status git-status-${file.status}`, STATUS_LABELS[file.status] || file.status));
-
     const fileName = this._el('span', 'git-file-name-label', file.path);
     fileName.title = file.path;
-    row.appendChild(fileName);
 
     const openBtn = this._el('span', 'git-open-btn', '→');
     openBtn.title = 'Open file';
@@ -97,13 +105,19 @@ export class GitChangesView {
       e.stopPropagation();
       bus.emit('file:open', { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
     });
-    row.appendChild(openBtn);
+
+    row.append(
+      this._el('span', 'git-chevron', isExpanded ? CHEVRON.expanded : CHEVRON.collapsed),
+      this._el('span', `git-file-status git-status-${file.status}`, STATUS_LABELS[file.status] || file.status),
+      fileName,
+      openBtn,
+    );
 
     item.appendChild(row);
 
     if (isExpanded && file.status !== '?') {
       const diffContainer = this._el('div', 'git-diff-container');
-      diffContainer.innerHTML = '<div class="git-loading">Loading diff...</div>';
+      diffContainer.appendChild(this._el('div', 'git-loading', 'Loading diff...'));
       item.appendChild(diffContainer);
       this._loadFileDiff(file.path, isStaged, diffContainer);
     }
@@ -124,13 +138,16 @@ export class GitChangesView {
 
   async _loadFileDiff(filePath, isStaged, container) {
     const diff = await window.api.git.fileDiff(this.gitCwd, filePath, isStaged);
-    container.innerHTML = '';
 
     if (!diff) {
-      container.innerHTML = '<div class="git-empty" style="height:auto;padding:8px">No diff available</div>';
+      const msg = this._el('div', 'git-empty', 'No diff available');
+      msg.style.height = 'auto';
+      msg.style.padding = '8px';
+      this._setContent(container, msg);
       return;
     }
 
+    this._setContent(container);
     new DiffViewer(container, diff, filePath);
   }
 }
