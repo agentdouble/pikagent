@@ -438,20 +438,20 @@ export class SettingsModal {
     this.content.appendChild(this._createBottomActions(currentName));
   }
 
-  async _newConfig() {
-    const raw = prompt('Nom de la nouvelle config :');
-    const name = raw?.trim();
-    if (!name || !this.tabManager) return;
-    await this.tabManager.configManager.newConfig(name);
-    this.renderConfigs();
+  _newConfig() {
+    if (!this.tabManager) return;
+    this.tabManager.configManager.promptConfigName('', async (name) => {
+      await this.tabManager.configManager.newConfig(name);
+      this.renderConfigs();
+    });
   }
 
-  async _duplicateConfig(currentName) {
-    const raw = prompt('Nom de la copie :', `${currentName} (copy)`);
-    const name = raw?.trim();
-    if (!name || !this.tabManager) return;
-    await this.tabManager.configManager.duplicateConfig(name);
-    this.renderConfigs();
+  _duplicateConfig(currentName) {
+    if (!this.tabManager) return;
+    this.tabManager.configManager.promptConfigName(`${currentName} (copy)`, async (name) => {
+      await this.tabManager.configManager.duplicateConfig(name);
+      this.renderConfigs();
+    });
   }
 
 }
