@@ -17,8 +17,8 @@ const MODE_BUTTONS = [
 ];
 
 const BOTTOM_CONFIG_BUTTONS = [
-  { label: 'New Config...', promptMsg: 'Nom de la nouvelle config :', defaultValue: () => '' },
-  { label: 'Duplicate Current...', promptMsg: 'Nom de la copie :', defaultValue: (name) => `${name} (copy)` },
+  { label: 'New Config...', action: 'new' },
+  { label: 'Duplicate Current...', action: 'duplicate' },
 ];
 
 export class SettingsModal {
@@ -392,12 +392,9 @@ export class SettingsModal {
     left.appendChild(info);
 
     row.addEventListener('click', async () => {
-      const data = await window.api.config.load(config.name);
-      if (data && this.tabManager) {
-        await this.tabManager.restoreConfig(data);
-        this.tabManager.currentConfigName = config.name;
-        this.renderConfigs();
-      }
+      if (!this.tabManager) return;
+      await this.tabManager.configManager.switchConfig(config.name);
+      this.renderConfigs();
     });
 
     row.appendChild(left);
@@ -407,9 +404,13 @@ export class SettingsModal {
 
   _createBottomActions(currentName) {
     const container = this._el('div', 'config-bottom-actions');
-    for (const { label, promptMsg, defaultValue } of BOTTOM_CONFIG_BUTTONS) {
+    for (const { label, action } of BOTTOM_CONFIG_BUTTONS) {
       const btn = this._el('button', 'config-bottom-btn', label);
-      btn.addEventListener('click', () => this._saveConfigAs(promptMsg, defaultValue(currentName)));
+      if (action === 'new') {
+        btn.addEventListener('click', () => this._newConfig());
+      } else {
+        btn.addEventListener('click', () => this._duplicateConfig(currentName));
+      }
       container.appendChild(btn);
     }
     return container;
@@ -418,7 +419,7 @@ export class SettingsModal {
   async renderConfigs() {
     this._createSectionHeading('Workspace Configs');
 
-    const currentName = this.tabManager?.currentConfigName || 'Default';
+    const currentName = this.tabManager?.configManager?.currentConfigName || 'Default';
 
     // Current loaded config indicator
     const currentBar = this._el('div', 'config-current-bar');
@@ -437,13 +438,19 @@ export class SettingsModal {
     this.content.appendChild(this._createBottomActions(currentName));
   }
 
-  async _saveConfigAs(promptMsg, defaultValue = '') {
-    const raw = prompt(promptMsg, defaultValue);
+  async _newConfig() {
+    const raw = prompt('Nom de la nouvelle config :');
     const name = raw?.trim();
     if (!name || !this.tabManager) return;
-    const data = this.tabManager.serialize();
-    await window.api.config.save(name, data);
-    this.tabManager.currentConfigName = name;
+    await this.tabManager.configManager.newConfig(name);
+    this.renderConfigs();
+  }
+
+  async _duplicateConfig(currentName) {
+    const raw = prompt('Nom de la copie :', `${currentName} (copy)`);
+    const name = raw?.trim();
+    if (!name || !this.tabManager) return;
+    await this.tabManager.configManager.duplicateConfig(name);
     this.renderConfigs();
   }
 
