@@ -1,10 +1,26 @@
+/** Viewport edge padding (px) when clamping menu position. */
+const VIEWPORT_PADDING = 8;
+
+function _el(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'className') el.className = v;
+    else if (k === 'textContent') el.textContent = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el[k] = v;
+  }
+  for (const child of children) {
+    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
+    else if (child) el.appendChild(child);
+  }
+  return el;
+}
+
 export class ContextMenu {
   constructor() {
-    this.el = document.createElement('div');
-    this.el.className = 'context-menu';
+    this.el = _el('div', { className: 'context-menu' });
     document.body.appendChild(this.el);
 
-    // Close on click/mousedown outside or Escape
     document.addEventListener('mousedown', (e) => {
       if (!this.el.contains(e.target)) this.close();
     });
@@ -13,48 +29,27 @@ export class ContextMenu {
     });
   }
 
-  show(x, y, items) {
-    this.el.innerHTML = '';
+  _buildItem(item) {
+    if (item.separator) return _el('div', { className: 'context-menu-separator' });
 
-    for (const item of items) {
-      if (item.separator) {
-        const sep = document.createElement('div');
-        sep.className = 'context-menu-separator';
-        this.el.appendChild(sep);
-        continue;
-      }
-
-      const row = document.createElement('div');
-      row.className = 'context-menu-item';
-
-      const label = document.createElement('span');
-      label.textContent = item.label;
-      row.appendChild(label);
-
-      if (item.shortcut) {
-        const shortcut = document.createElement('span');
-        shortcut.className = 'context-menu-shortcut';
-        shortcut.textContent = item.shortcut;
-        row.appendChild(shortcut);
-      }
-
-      row.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.close();
-        item.action();
-      });
-
-      this.el.appendChild(row);
+    const children = [_el('span', { textContent: item.label })];
+    if (item.shortcut) {
+      children.push(_el('span', { className: 'context-menu-shortcut', textContent: item.shortcut }));
     }
 
-    // Position: keep within viewport
-    this.el.style.display = 'block';
-    const rect = this.el.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    return _el('div', {
+      className: 'context-menu-item',
+      onClick: (e) => { e.stopPropagation(); this.close(); item.action(); },
+    }, ...children);
+  }
 
-    this.el.style.left = `${Math.min(x, vw - rect.width - 8)}px`;
-    this.el.style.top = `${Math.min(y, vh - rect.height - 8)}px`;
+  show(x, y, items) {
+    this.el.replaceChildren(...items.map((item) => this._buildItem(item)));
+
+    this.el.style.display = 'block';
+    const { width, height } = this.el.getBoundingClientRect();
+    this.el.style.left = `${Math.min(x, window.innerWidth - width - VIEWPORT_PADDING)}px`;
+    this.el.style.top = `${Math.min(y, window.innerHeight - height - VIEWPORT_PADDING)}px`;
   }
 
   close() {
