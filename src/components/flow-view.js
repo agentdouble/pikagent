@@ -23,6 +23,7 @@ export class FlowView {
     this.flows = [];
     this.disposed = false;
     this._liveTerminals = new Map(); // flowId -> { term, fitAddon, unsubData, resizeObs, containerEl }
+    this._logTerminals = new Map();  // flowId -> { term, fitAddon, resizeObs }
     this._expandedCards = new Set(); // flowId of expanded cards
     this._runningMap = {}; // flowId -> ptyId
 
@@ -57,32 +58,36 @@ export class FlowView {
     this._renderList();
   }
 
+  // --- DOM helpers ---
+
+  _el(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  _disposeAllFromMap(map) {
+    for (const [flowId] of map) {
+      this._disposeTerminalEntry(map, flowId);
+    }
+  }
+
   render() {
     this.container.innerHTML = '';
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'flow-container';
+    const wrapper = this._el('div', 'flow-container');
 
-    // Header
-    const header = document.createElement('div');
-    header.className = 'flow-header';
+    const header = this._el('div', 'flow-header');
+    header.appendChild(this._el('h2', 'flow-title', 'Flows'));
 
-    const title = document.createElement('h2');
-    title.className = 'flow-title';
-    title.textContent = 'Flows';
-    header.appendChild(title);
-
-    const addBtn = document.createElement('button');
-    addBtn.className = 'flow-add-btn';
-    addBtn.textContent = '+ Nouveau';
+    const addBtn = this._el('button', 'flow-add-btn', '+ Nouveau');
     addBtn.addEventListener('click', () => this._openModal());
     header.appendChild(addBtn);
 
     wrapper.appendChild(header);
 
-    // List
-    this.listEl = document.createElement('div');
-    this.listEl.className = 'flow-list';
+    this.listEl = this._el('div', 'flow-list');
     wrapper.appendChild(this.listEl);
 
     this.container.appendChild(wrapper);
@@ -93,24 +98,14 @@ export class FlowView {
 
     // Dispose terminals that are no longer needed before clearing DOM
     for (const [flowId] of this._liveTerminals) {
-      if (!this._runningMap[flowId]) {
-        this._disposeLiveTerminal(flowId);
-      }
+      if (!this._runningMap[flowId]) this._disposeLiveTerminal(flowId);
     }
-    // Dispose inline log terminals before re-render
-    if (this._logTerminals) {
-      for (const [flowId] of this._logTerminals) {
-        this._disposeLogTerminal(flowId);
-      }
-    }
+    this._disposeAllFromMap(this._logTerminals);
 
     this.listEl.innerHTML = '';
 
     if (this.flows.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'flow-empty';
-      empty.textContent = EMPTY_LIST_MESSAGE;
-      this.listEl.appendChild(empty);
+      this.listEl.appendChild(this._el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
       return;
     }
 
@@ -123,8 +118,7 @@ export class FlowView {
     const isRunning = !!this._runningMap[flow.id];
     const isExpanded = this._expandedCards.has(flow.id);
 
-    const card = document.createElement('div');
-    card.className = 'flow-card';
+    const card = this._el('div', 'flow-card');
     if (!flow.enabled) card.classList.add('flow-card-disabled');
     if (isRunning) card.classList.add('flow-card-running');
     if (isExpanded) card.classList.add('flow-card-expanded');
@@ -138,8 +132,7 @@ export class FlowView {
     } else if (isExpanded) {
       const lastRun = (flow.runs || []).slice(-1)[0];
       if (lastRun) {
-        const termArea = document.createElement('div');
-        termArea.className = 'flow-card-terminal';
+        const termArea = this._el('div', 'flow-card-terminal');
         card.appendChild(termArea);
         this._loadLogIntoContainer(flow.id, lastRun, termArea);
       }
@@ -165,40 +158,19 @@ export class FlowView {
   }
 
   _createCardHeader(flow, isRunning) {
-    const headerRow = document.createElement('div');
-    headerRow.className = 'flow-card-header';
+    const headerRow = this._el('div', 'flow-card-header');
 
     // Left: name + schedule + running badge
-    const info = document.createElement('div');
-    info.className = 'flow-card-info';
-
-    const nameRow = document.createElement('div');
-    nameRow.className = 'flow-card-name-row';
-
-    const name = document.createElement('span');
-    name.className = 'flow-card-name';
-    name.textContent = flow.name;
-    nameRow.appendChild(name);
-
-    if (isRunning) {
-      const badge = document.createElement('span');
-      badge.className = 'flow-running-badge';
-      badge.textContent = 'En cours...';
-      nameRow.appendChild(badge);
-    }
-
+    const info = this._el('div', 'flow-card-info');
+    const nameRow = this._el('div', 'flow-card-name-row');
+    nameRow.appendChild(this._el('span', 'flow-card-name', flow.name));
+    if (isRunning) nameRow.appendChild(this._el('span', 'flow-running-badge', 'En cours...'));
     info.appendChild(nameRow);
-
-    const schedule = document.createElement('div');
-    schedule.className = 'flow-card-schedule';
-    schedule.textContent = this._formatSchedule(flow.schedule);
-    info.appendChild(schedule);
-
+    info.appendChild(this._el('div', 'flow-card-schedule', this._formatSchedule(flow.schedule)));
     headerRow.appendChild(info);
 
     // Right: run dots + actions
-    const right = document.createElement('div');
-    right.className = 'flow-card-right';
+    const right = this._el('div', 'flow-card-right');
     right.appendChild(this._createRunDots(flow));
     right.appendChild(this._createCardActions(flow, isRunning));
     headerRow.appendChild(right);
@@ -207,12 +179,9 @@ export class FlowView {
   }
 
   _createRunDots(flow) {
-    const dots = document.createElement('div');
-    dots.className = 'flow-card-dots';
-    const runs = (flow.runs || []).slice(-MAX_VISIBLE_RUNS);
-    for (const run of runs) {
-      const dot = document.createElement('button');
-      dot.className = `flow-dot flow-dot-${run.status}`;
+    const dots = this._el('div', 'flow-card-dots');
+    for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
+      const dot = this._el('button', `flow-dot flow-dot-${run.status}`);
       dot.title = `${run.date} — ${STATUS_LABELS[run.status] || run.status}\nCliquer pour voir le log`;
       dot.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -224,26 +193,23 @@ export class FlowView {
   }
 
   _createCardActions(flow, isRunning) {
-    const actions = document.createElement('div');
-    actions.className = 'flow-card-actions';
+    const actions = this._el('div', 'flow-card-actions');
 
-    if (!isRunning) {
-      actions.appendChild(this._createActionButton('▶', 'Exécuter maintenant', () => window.api.flow.runNow(flow.id)));
+    const buttons = [
+      !isRunning && ['▶', 'Exécuter maintenant', () => window.api.flow.runNow(flow.id)],
+      [flow.enabled ? '⏸' : '⏵', flow.enabled ? 'Désactiver' : 'Activer',
+        async () => { await window.api.flow.toggle(flow.id); this.refresh(); }],
+      ['✎', 'Modifier', () => this._openModal(flow)],
+      ['✕', 'Supprimer', async () => {
+        this._disposeLiveTerminal(flow.id);
+        await window.api.flow.delete(flow.id);
+        this.refresh();
+      }, 'flow-card-btn-danger'],
+    ];
+
+    for (const entry of buttons) {
+      if (entry) actions.appendChild(this._createActionButton(...entry));
     }
-
-    actions.appendChild(this._createActionButton(
-      flow.enabled ? '⏸' : '⏵',
-      flow.enabled ? 'Désactiver' : 'Activer',
-      async () => { await window.api.flow.toggle(flow.id); this.refresh(); },
-    ));
-
-    actions.appendChild(this._createActionButton('✎', 'Modifier', () => this._openModal(flow)));
-
-    actions.appendChild(this._createActionButton('✕', 'Supprimer', async () => {
-      this._disposeLiveTerminal(flow.id);
-      await window.api.flow.delete(flow.id);
-      this.refresh();
-    }, 'flow-card-btn-danger'));
 
     return actions;
   }
@@ -251,14 +217,9 @@ export class FlowView {
   // === Live Terminal (for running flows) ===
 
   _createActionButton(icon, title, onClick, extraClass = '') {
-    const btn = document.createElement('button');
-    btn.className = extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn';
-    btn.textContent = icon;
+    const btn = this._el('button', extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn', icon);
     btn.title = title;
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onClick();
-    });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
     return btn;
   }
 
@@ -300,8 +261,7 @@ export class FlowView {
       return existing.containerEl;
     }
 
-    const containerEl = document.createElement('div');
-    containerEl.className = 'flow-card-terminal';
+    const containerEl = this._el('div', 'flow-card-terminal');
 
     const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
       scrollback: LIVE_SCROLLBACK,
@@ -343,13 +303,10 @@ export class FlowView {
     });
 
     term.write(log || NO_LOG_MESSAGE);
-
-    this._logTerminals = this._logTerminals || new Map();
     this._logTerminals.set(flowId, { term, fitAddon, resizeObs });
   }
 
   _disposeLogTerminal(flowId) {
-    if (!this._logTerminals) return;
     this._disposeTerminalEntry(this._logTerminals, flowId);
   }
 
@@ -358,36 +315,19 @@ export class FlowView {
   async _showRunLog(flow, run) {
     const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
 
-    const overlay = document.createElement('div');
-    overlay.className = 'flow-modal-overlay';
-
-    const modal = document.createElement('div');
-    modal.className = 'flow-log-modal';
+    const overlay = this._el('div', 'flow-modal-overlay');
+    const modal = this._el('div', 'flow-log-modal');
 
     // Header
-    const header = document.createElement('div');
-    header.className = 'flow-log-header';
-
-    const title = document.createElement('span');
-    title.className = 'flow-log-title';
-    title.textContent = `${flow.name} — ${run.date}`;
-    header.appendChild(title);
-
-    const statusBadge = document.createElement('span');
-    statusBadge.className = `flow-log-status flow-log-status-${run.status}`;
-    statusBadge.textContent = STATUS_LABELS[run.status] || run.status;
-    header.appendChild(statusBadge);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'flow-log-close';
-    closeBtn.textContent = '✕';
+    const header = this._el('div', 'flow-log-header');
+    header.appendChild(this._el('span', 'flow-log-title', `${flow.name} — ${run.date}`));
+    header.appendChild(this._el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
+    const closeBtn = this._el('button', 'flow-log-close', '✕');
     header.appendChild(closeBtn);
-
     modal.appendChild(header);
 
     // Terminal to replay the log
-    const termContainer = document.createElement('div');
-    termContainer.className = 'flow-log-terminal';
+    const termContainer = this._el('div', 'flow-log-terminal');
     modal.appendChild(termContainer);
 
     overlay.appendChild(modal);
@@ -440,13 +380,7 @@ export class FlowView {
     this.disposed = true;
     if (this._unsubStarted) this._unsubStarted();
     if (this._unsubComplete) this._unsubComplete();
-    for (const [flowId] of this._liveTerminals) {
-      this._disposeLiveTerminal(flowId);
-    }
-    if (this._logTerminals) {
-      for (const [flowId] of this._logTerminals) {
-        this._disposeLogTerminal(flowId);
-      }
-    }
+    this._disposeAllFromMap(this._liveTerminals);
+    this._disposeAllFromMap(this._logTerminals);
   }
 }
