@@ -6,6 +6,9 @@ const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const SESSIONS_FILE = path.join(BASE_DIR, 'sessions.json');
 const MAX_SESSIONS = 200;
 const POLL_INTERVAL_MS = 5000;
+const MS_PER_SEC = 1000;
+const FLOW_PREFIX = 'flow-';
+const ID_RAND_LEN = 8;
 
 let _dirReady = null;
 
@@ -22,6 +25,14 @@ async function readJson(filePath) {
   } catch {
     return null;
   }
+}
+
+function _generateId() {
+  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 2 + ID_RAND_LEN)}`;
+}
+
+function _durationSec(startedAt) {
+  return Math.round((Date.now() - new Date(startedAt).getTime()) / MS_PER_SEC);
 }
 
 class SessionManager {
@@ -78,7 +89,7 @@ class SessionManager {
   }
 
   async _startSession(termId, agentName) {
-    if (termId.startsWith('flow-')) return;
+    if (termId.startsWith(FLOW_PREFIX)) return;
 
     let cwd = null;
     try {
@@ -88,7 +99,7 @@ class SessionManager {
     }
 
     this._activeSessions[termId] = {
-      id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: _generateId(),
       termId,
       agent: agentName,
       cwd: cwd || os.homedir(),
@@ -105,7 +116,7 @@ class SessionManager {
     this._saveRecord({
       ...session,
       endedAt: new Date().toISOString(),
-      durationSec: Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000),
+      durationSec: _durationSec(session.startedAt),
       status,
     });
   }
@@ -142,7 +153,7 @@ class SessionManager {
   getActiveSessions() {
     return Object.values(this._activeSessions).map((s) => ({
       ...s,
-      durationSec: Math.round((Date.now() - new Date(s.startedAt).getTime()) / 1000),
+      durationSec: _durationSec(s.startedAt),
       status: 'running',
     }));
   }
