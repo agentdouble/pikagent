@@ -6,29 +6,44 @@ const INDENT_STEP = 16;
 const CHEVRON_EXPANDED = '▾';
 const CHEVRON_COLLAPSED = '▸';
 const DEBOUNCE_DELAY = 400;
+const INPUT_BLUR_DELAY = 100;
 const WATCH_PREFIX = 'watch_';
 
 const SVG_NEW_FILE = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>';
 const SVG_NEW_FOLDER = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>';
 const SVG_REFRESH = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>';
 
+function _el(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'className') el.className = v;
+    else if (k === 'textContent') el.textContent = v;
+    else if (k === 'innerHTML') el.innerHTML = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el[k] = v;
+  }
+  for (const child of children) {
+    if (child != null) el.appendChild(child);
+  }
+  return el;
+}
+
 export class FileTree {
   constructor(container) {
     this.container = container;
-    this.termCwds = new Map();  // termId -> cwd
-    this.sections = new Map();  // cwd -> { termIds: Set, sectionEl, expandedDirs, watchId }
+    this.termCwds = new Map();
+    this.sections = new Map();
     this.debounceTimers = new Map();
     this.render();
     this.listenForChanges();
   }
 
   render() {
-    this.container.innerHTML = '';
-    this.treeEl = document.createElement('div');
-    this.treeEl.className = 'file-tree-content';
+    this.container.replaceChildren();
+    this.treeEl = _el('div', { className: 'file-tree-content' });
     this.container.appendChild(this.treeEl);
 
-    // Global drop fallback on the container (drops into root of first section)
     this._setupDropZone(this.container, () => {
       const firstCwd = this.sections.keys().next().value;
       return firstCwd || null;
@@ -37,7 +52,6 @@ export class FileTree {
 
   listenForChanges() {
     this.unsubFs = window.api.fs.onChanged(({ id }) => {
-      // id is the watchId, which is the cwd string
       if (this.debounceTimers.has(id)) {
         clearTimeout(this.debounceTimers.get(id));
       }
@@ -55,24 +69,19 @@ export class FileTree {
     const prevCwd = this.termCwds.get(termId);
     if (prevCwd === dirPath) return;
 
-    // Remove from previous section if exists
     if (prevCwd) {
       this._removeTermFromSection(termId, prevCwd);
     }
 
     this.termCwds.set(termId, dirPath);
 
-    // Add to existing section or create new one
     const existing = this.sections.get(dirPath);
     if (existing) {
       existing.termIds.add(termId);
-      // Section already visible, nothing to do
       return;
     }
 
-    // Create new section
-    const sectionEl = document.createElement('div');
-    sectionEl.className = 'file-tree-section';
+    const sectionEl = _el('div', { className: 'file-tree-section' });
     const expandedDirs = new Set([dirPath]);
     const watchId = `${WATCH_PREFIX}${dirPath}`;
     this.sections.set(dirPath, { termIds: new Set([termId]), sectionEl, expandedDirs, watchId });
@@ -96,7 +105,6 @@ export class FileTree {
     section.termIds.delete(termId);
 
     if (section.termIds.size === 0) {
-      // No terminals left for this cwd — remove section entirely
       window.api.fs.unwatch(section.watchId);
       section.sectionEl.remove();
       this.sections.delete(cwd);
@@ -104,7 +112,6 @@ export class FileTree {
   }
 
   async refreshSection(watchIdOrCwd) {
-    // watchId format is "watch_/path/to/dir", cwd is just "/path/to/dir"
     let cwd = watchIdOrCwd;
     if (cwd.startsWith(WATCH_PREFIX)) {
       cwd = cwd.slice(WATCH_PREFIX.length);
@@ -112,7 +119,6 @@ export class FileTree {
     const section = this.sections.get(cwd);
     if (!section) return;
 
-    // Guard against concurrent refreshes for the same section
     if (section._refreshing) {
       section._pendingRefresh = true;
       return;
@@ -122,81 +128,46 @@ export class FileTree {
     const wasCollapsed =
       section.sectionEl.querySelector('.file-tree-section-content.collapsed') !== null;
 
-    section.sectionEl.innerHTML = '';
-
-    const header = document.createElement('div');
-    header.className = 'file-tree-section-header';
+    section.sectionEl.replaceChildren();
 
     const folderName = cwd.split('/').filter(Boolean).pop() || '/';
+    const contentEl = _el('div', { className: `file-tree-section-content${wasCollapsed ? ' collapsed' : ''}` });
 
-    const chevron = document.createElement('span');
-    chevron.className = 'file-tree-section-chevron';
-    chevron.textContent = wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
-
-    const label = document.createElement('span');
-    label.className = 'file-tree-section-label';
-    label.textContent = folderName;
-    label.title = cwd;
-
-    const actions = document.createElement('div');
-    actions.className = 'file-tree-section-actions';
-
-    const btnNewFile = document.createElement('button');
-    btnNewFile.className = 'file-tree-action-btn';
-    btnNewFile.title = 'New File';
-    btnNewFile.innerHTML = SVG_NEW_FILE;
-    btnNewFile.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'file');
+    const chevron = _el('span', {
+      className: 'file-tree-section-chevron',
+      textContent: wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED,
     });
 
-    const btnNewFolder = document.createElement('button');
-    btnNewFolder.className = 'file-tree-action-btn';
-    btnNewFolder.title = 'New Folder';
-    btnNewFolder.innerHTML = SVG_NEW_FOLDER;
-    btnNewFolder.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'folder');
-    });
+    const headerActions = [
+      { title: 'New File', svg: SVG_NEW_FILE, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'file') },
+      { title: 'New Folder', svg: SVG_NEW_FOLDER, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'folder') },
+      { title: 'Refresh', svg: SVG_REFRESH, action: () => this.refreshSection(cwd) },
+    ];
 
-    const btnRefresh = document.createElement('button');
-    btnRefresh.className = 'file-tree-action-btn';
-    btnRefresh.title = 'Refresh';
-    btnRefresh.innerHTML = SVG_REFRESH;
-    btnRefresh.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.refreshSection(cwd);
-    });
+    const header = _el('div', {
+      className: 'file-tree-section-header',
+      onClick: () => {
+        const collapsed = contentEl.classList.toggle('collapsed');
+        chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
+      },
+      onContextmenu: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, section.expandedDirs);
+      },
+    },
+      chevron,
+      _el('span', { className: 'file-tree-section-label', textContent: folderName, title: cwd }),
+      _el('div', { className: 'file-tree-section-actions' },
+        ...headerActions.map(({ title, svg, action }) =>
+          _el('button', { className: 'file-tree-action-btn', title, innerHTML: svg, onClick: (e) => { e.stopPropagation(); action(); } })
+        )
+      ),
+    );
 
-    actions.appendChild(btnNewFile);
-    actions.appendChild(btnNewFolder);
-    actions.appendChild(btnRefresh);
+    section.sectionEl.append(header, contentEl);
 
-    header.appendChild(chevron);
-    header.appendChild(label);
-    header.appendChild(actions);
-    section.sectionEl.appendChild(header);
-
-    const contentEl = document.createElement('div');
-    contentEl.className = 'file-tree-section-content';
-    if (wasCollapsed) contentEl.classList.add('collapsed');
-    section.sectionEl.appendChild(contentEl);
-
-    header.addEventListener('click', () => {
-      const collapsed = contentEl.classList.toggle('collapsed');
-      chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
-    });
-
-    // Context menu on section header (root folder)
-    header.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, section.expandedDirs);
-    });
-
-    // Drop on section header → drop into root cwd
     this._setupDropZone(header, cwd);
-    // Drop on section content area (empty space) → drop into root cwd
     this._setupDropZone(contentEl, cwd);
 
     try {
@@ -284,7 +255,7 @@ export class FileTree {
       if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
     });
     input.addEventListener('blur', () => {
-      setTimeout(() => { if (!committed) commit(); }, 100);
+      setTimeout(() => { if (!committed) commit(); }, INPUT_BLUR_DELAY);
     });
     input.addEventListener('click', (e) => e.stopPropagation());
   }
@@ -293,10 +264,7 @@ export class FileTree {
 
   promptRename(entryPath, nameEl) {
     const oldName = entryPath.split('/').pop();
-    const input = document.createElement('input');
-    input.className = 'file-tree-rename-input';
-    input.type = 'text';
-    input.value = oldName;
+    const input = _el('input', { className: 'file-tree-rename-input', type: 'text', value: oldName });
 
     nameEl.style.display = 'none';
     nameEl.parentElement.appendChild(input);
@@ -321,11 +289,12 @@ export class FileTree {
   // --- New File / Folder inline input ---
 
   promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type) {
-    const input = document.createElement('input');
-    input.className = 'file-tree-new-input';
-    input.type = 'text';
-    input.placeholder = type === 'folder' ? 'folder name' : 'filename';
-    input.style.marginLeft = `${INDENT_BASE + (depth + 1) * INDENT_STEP}px`;
+    const input = _el('input', {
+      className: 'file-tree-new-input',
+      type: 'text',
+      placeholder: type === 'folder' ? 'folder name' : 'filename',
+      style: { marginLeft: `${INDENT_BASE + (depth + 1) * INDENT_STEP}px` },
+    });
 
     parentContentEl.prepend(input);
     input.focus();
@@ -345,7 +314,7 @@ export class FileTree {
     });
   }
 
-  // --- Drag & Drop from external (Finder, etc.) ---
+  // --- Drag & Drop ---
 
   _setupDropZone(el, getTargetDir) {
     el.addEventListener('dragover', (e) => {
@@ -390,7 +359,7 @@ export class FileTree {
 
   _collapseDir(dirPath, childContainer, chevron, expandedDirs) {
     expandedDirs.delete(dirPath);
-    childContainer.innerHTML = '';
+    childContainer.replaceChildren();
     chevron.textContent = CHEVRON_COLLAPSED;
     chevron.classList.remove('expanded');
   }
@@ -401,12 +370,7 @@ export class FileTree {
     const entries = await window.api.fs.readdir(dirPath);
 
     for (const entry of entries) {
-      const row = document.createElement('div');
-      row.className = 'file-tree-item';
-      row.style.paddingLeft = `${INDENT_BASE + depth * INDENT_STEP}px`;
-
-      const chevron = document.createElement('span');
-      chevron.className = 'file-tree-chevron';
+      const chevron = _el('span', { className: 'file-tree-chevron' });
 
       if (entry.isDirectory) {
         const isExpanded = expandedDirs.has(entry.path);
@@ -414,24 +378,23 @@ export class FileTree {
         chevron.classList.toggle('expanded', isExpanded);
       }
 
-      const name = document.createElement('span');
-      name.className = 'file-tree-name';
-      name.textContent = entry.name;
+      const name = _el('span', { className: 'file-tree-name', textContent: entry.name });
 
-      row.appendChild(chevron);
-      row.appendChild(name);
+      const row = _el('div', {
+        className: 'file-tree-item',
+        style: { paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px` },
+      }, chevron, name);
+
       parentEl.appendChild(row);
 
       if (entry.isDirectory) {
-        const childContainer = document.createElement('div');
-        childContainer.className = 'file-tree-children';
+        const childContainer = _el('div', { className: 'file-tree-children' });
         parentEl.appendChild(childContainer);
 
         if (expandedDirs.has(entry.path)) {
           await this.renderDir(entry.path, childContainer, depth + 1, expandedDirs);
         }
 
-        // Drop on directory row → drop into that directory
         this._setupDropZone(row, entry.path);
 
         row.addEventListener('click', async () => {
@@ -442,11 +405,9 @@ export class FileTree {
           }
         });
 
-        // Right-click on directory
         row.addEventListener('contextmenu', async (e) => {
           e.preventDefault();
           e.stopPropagation();
-          // Auto-expand the dir so the new file input goes inside
           if (!expandedDirs.has(entry.path)) {
             await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
           }
@@ -461,7 +422,6 @@ export class FileTree {
           bus.emit('file:open', { path: entry.path, name: entry.name });
         });
 
-        // Right-click on file
         row.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
