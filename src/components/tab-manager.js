@@ -1019,13 +1019,12 @@ export class TabManager {
     const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup || null;
+    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup ?? null;
     for (let i = 1; i < ids.length; i++) {
       const candidate = ids[(idx + i) % ids.length];
       const tab = this.tabs.get(candidate);
       if (tab.noShortcut) continue;
-      // If active tab has a color, only cycle within same color
-      if (activeColor && tab.colorGroup !== activeColor) continue;
+      if ((tab.colorGroup ?? null) !== activeColor) continue;
       this.switchTo(candidate);
       return;
     }
@@ -1035,13 +1034,12 @@ export class TabManager {
     const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup || null;
+    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup ?? null;
     for (let i = 1; i < ids.length; i++) {
       const candidate = ids[(idx - i + ids.length) % ids.length];
       const tab = this.tabs.get(candidate);
       if (tab.noShortcut) continue;
-      // If active tab has a color, only cycle within same color
-      if (activeColor && tab.colorGroup !== activeColor) continue;
+      if ((tab.colorGroup ?? null) !== activeColor) continue;
       this.switchTo(candidate);
       return;
     }
