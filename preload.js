@@ -1,119 +1,116 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Generic IPC listener helper (for non-PTY channels)
-function onIpc(channel) {
+// --- Helpers ---
+
+/** Wraps ipcRenderer.on; returns unsubscribe function */
+function _onIpc(channel) {
   return (cb) => {
-    const listener = (event, payload) => cb(payload);
+    const listener = (_, payload) => cb(payload);
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
   };
 }
 
-// Targeted dispatch maps for PTY: one IPC listener, routed by terminal ID
-const _dataListeners = new Map(); // id → Set<callback>
-const _exitListeners = new Map(); // id → Set<callback>
+/** Single-arg (or no-arg) forward to main process */
+const _fwd = (ch) => (arg) => ipcRenderer.invoke(ch, arg);
 
-ipcRenderer.on('pty:data', (event, { id, data }) => {
+/** Multi-arg forward: packs positional args into a keyed object */
+const _pack = (ch, keys) => (...args) =>
+  ipcRenderer.invoke(ch, Object.fromEntries(keys.map((k, i) => [k, args[i]])));
+
+// --- Targeted PTY dispatch (one listener per event, routed by terminal ID) ---
+
+const _dataListeners = new Map();
+const _exitListeners = new Map();
+
+ipcRenderer.on('pty:data', (_, { id, data }) => {
   const cbs = _dataListeners.get(id);
   if (cbs) for (const cb of cbs) cb(data);
 });
 
-ipcRenderer.on('pty:exit', (event, { id, exitCode }) => {
+ipcRenderer.on('pty:exit', (_, { id, exitCode }) => {
   const cbs = _exitListeners.get(id);
   if (cbs) for (const cb of cbs) cb({ id, exitCode });
 });
 
+/** Creates a subscribe/unsubscribe pair for a targeted PTY listener map */
+function _ptyListener(map) {
+  return (id, cb) => {
+    if (!map.has(id)) map.set(id, new Set());
+    map.get(id).add(cb);
+    return () => {
+      const set = map.get(id);
+      if (set) { set.delete(cb); if (set.size === 0) map.delete(id); }
+    };
+  };
+}
+
+// --- Exposed API ---
+
 contextBridge.exposeInMainWorld('api', {
-  // PTY
   pty: {
-    create: (opts) => ipcRenderer.invoke('pty:create', opts),
-    write: (opts) => ipcRenderer.invoke('pty:write', opts),
-    resize: (opts) => ipcRenderer.invoke('pty:resize', opts),
-    kill: (opts) => ipcRenderer.invoke('pty:kill', opts),
-    getCwd: (opts) => ipcRenderer.invoke('pty:getcwd', opts),
-    checkAgents: () => ipcRenderer.invoke('pty:checkAgents'),
-    onData: (id, cb) => {
-      if (!_dataListeners.has(id)) _dataListeners.set(id, new Set());
-      _dataListeners.get(id).add(cb);
-      return () => {
-        const set = _dataListeners.get(id);
-        if (set) { set.delete(cb); if (set.size === 0) _dataListeners.delete(id); }
-      };
-    },
-    onExit: (id, cb) => {
-      if (!_exitListeners.has(id)) _exitListeners.set(id, new Set());
-      _exitListeners.get(id).add(cb);
-      return () => {
-        const set = _exitListeners.get(id);
-        if (set) { set.delete(cb); if (set.size === 0) _exitListeners.delete(id); }
-      };
-    },
+    create:      _fwd('pty:create'),
+    write:       _fwd('pty:write'),
+    resize:      _fwd('pty:resize'),
+    kill:        _fwd('pty:kill'),
+    getCwd:      _fwd('pty:getcwd'),
+    checkAgents: _fwd('pty:checkAgents'),
+    onData:      _ptyListener(_dataListeners),
+    onExit:      _ptyListener(_exitListeners),
   },
 
-  // File System
   fs: {
-    readdir: (dirPath) => ipcRenderer.invoke('fs:readdir', dirPath),
-    readfile: (filePath) => ipcRenderer.invoke('fs:readfile', filePath),
-    writefile: (filePath, content) => ipcRenderer.invoke('fs:writefile', { filePath, content }),
-    mkdir: (dirPath) => ipcRenderer.invoke('fs:mkdir', dirPath),
-    trash: (filePath) => ipcRenderer.invoke('fs:trash', filePath),
-    homedir: () => ipcRenderer.invoke('fs:homedir'),
-    copy: (filePath) => ipcRenderer.invoke('fs:copy', filePath),
-    rename: (oldPath, newName) => ipcRenderer.invoke('fs:rename', { oldPath, newName }),
-    copyTo: (srcPath, destDir) => ipcRenderer.invoke('fs:copyTo', { srcPath, destDir }),
-    watch: (id, dirPath) => ipcRenderer.invoke('fs:watch', { id, dirPath }),
-    unwatch: (id) => ipcRenderer.invoke('fs:unwatch', { id }),
-    onChanged: onIpc('fs:changed'),
+    readdir:   _fwd('fs:readdir'),
+    readfile:  _fwd('fs:readfile'),
+    mkdir:     _fwd('fs:mkdir'),
+    homedir:   _fwd('fs:homedir'),
+    copy:      _fwd('fs:copy'),
+    trash:     _fwd('fs:trash'),
+    writefile: _pack('fs:writefile', ['filePath', 'content']),
+    rename:    _pack('fs:rename', ['oldPath', 'newName']),
+    copyTo:    _pack('fs:copyTo', ['srcPath', 'destDir']),
+    watch:     _pack('fs:watch', ['id', 'dirPath']),
+    unwatch:   _pack('fs:unwatch', ['id']),
+    onChanged: _onIpc('fs:changed'),
   },
 
-  // Shell / Clipboard
   shell: {
-    showInFolder: (filePath) => ipcRenderer.invoke('shell:showInFolder', filePath),
-    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
-    openPath: (filePath) => ipcRenderer.invoke('shell:openPath', filePath),
+    showInFolder: _fwd('shell:showInFolder'),
+    openExternal: _fwd('shell:openExternal'),
+    openPath:     _fwd('shell:openPath'),
   },
-  clipboard: {
-    write: (text) => ipcRenderer.invoke('clipboard:write', text),
-  },
-  dialog: {
-    openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
-  },
+  clipboard: { write: _fwd('clipboard:write') },
+  dialog:    { openFolder: _fwd('dialog:openFolder') },
 
-  // Git
   git: {
-    branch: (cwd) => ipcRenderer.invoke('git:branch', cwd),
-    remote: (cwd) => ipcRenderer.invoke('git:remote', cwd),
-    localChanges: (cwd) => ipcRenderer.invoke('git:localChanges', cwd),
-    fileDiff: (cwd, filePath, isStaged) => ipcRenderer.invoke('git:fileDiff', { cwd, filePath, isStaged }),
+    branch:       _fwd('git:branch'),
+    remote:       _fwd('git:remote'),
+    localChanges: _fwd('git:localChanges'),
+    fileDiff:     _pack('git:fileDiff', ['cwd', 'filePath', 'isStaged']),
   },
 
-  // Flows
   flow: {
-    save: (flow) => ipcRenderer.invoke('flow:save', flow),
-    get: (id) => ipcRenderer.invoke('flow:get', id),
-    list: () => ipcRenderer.invoke('flow:list'),
-    delete: (id) => ipcRenderer.invoke('flow:delete', id),
-    toggle: (id) => ipcRenderer.invoke('flow:toggle', id),
-    runNow: (id) => ipcRenderer.invoke('flow:runNow', id),
-    getRunning: () => ipcRenderer.invoke('flow:getRunning'),
-    getRunLog: (flowId, logTimestamp) => ipcRenderer.invoke('flow:getRunLog', { flowId, logTimestamp }),
-    onRunStarted: onIpc('flow:runStarted'),
-    onRunComplete: onIpc('flow:runComplete'),
+    save:          _fwd('flow:save'),
+    get:           _fwd('flow:get'),
+    list:          _fwd('flow:list'),
+    delete:        _fwd('flow:delete'),
+    toggle:        _fwd('flow:toggle'),
+    runNow:        _fwd('flow:runNow'),
+    getRunning:    _fwd('flow:getRunning'),
+    getRunLog:     _pack('flow:getRunLog', ['flowId', 'logTimestamp']),
+    onRunStarted:  _onIpc('flow:runStarted'),
+    onRunComplete: _onIpc('flow:runComplete'),
   },
 
-  // Usage Metrics
-  usage: {
-    getMetrics: () => ipcRenderer.invoke('usage:getMetrics'),
-  },
+  usage: { getMetrics: _fwd('usage:getMetrics') },
 
-  // Workspace Configs
   config: {
-    save: (name, data) => ipcRenderer.invoke('config:save', { name, data }),
-    load: (name) => ipcRenderer.invoke('config:load', name),
-    list: () => ipcRenderer.invoke('config:list'),
-    delete: (name) => ipcRenderer.invoke('config:delete', name),
-    setDefault: (name) => ipcRenderer.invoke('config:setDefault', name),
-    getDefault: () => ipcRenderer.invoke('config:getDefault'),
-    loadDefault: () => ipcRenderer.invoke('config:loadDefault'),
+    save:        _pack('config:save', ['name', 'data']),
+    load:        _fwd('config:load'),
+    list:        _fwd('config:list'),
+    delete:      _fwd('config:delete'),
+    setDefault:  _fwd('config:setDefault'),
+    getDefault:  _fwd('config:getDefault'),
+    loadDefault: _fwd('config:loadDefault'),
   },
 });
