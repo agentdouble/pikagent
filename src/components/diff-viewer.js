@@ -190,6 +190,16 @@ export class DiffViewer {
     this.hunks = parsed.hunks;
     this.rows = buildSideBySideRows(this.hunks);
 
+    let additions = 0, deletions = 0;
+    for (const hunk of this.hunks) {
+      for (const c of hunk.changes) {
+        if (c.type === 'add') additions++;
+        if (c.type === 'remove') deletions++;
+      }
+    }
+    this._additions = additions;
+    this._deletions = deletions;
+
     this.render();
   }
 
@@ -201,7 +211,7 @@ export class DiffViewer {
   }
 
   render() {
-    this.container.innerHTML = '';
+    this.container.replaceChildren();
     this.container.className = 'diff-viewer';
 
     this.container.appendChild(this._buildToolbar());
@@ -219,18 +229,11 @@ export class DiffViewer {
   }
 
   _buildStats() {
-    let additions = 0, deletions = 0;
-    for (const hunk of this.hunks) {
-      for (const c of hunk.changes) {
-        if (c.type === 'add') additions++;
-        if (c.type === 'remove') deletions++;
-      }
-    }
     const stats = this._el('span', 'diff-stats');
     stats.append(
-      this._el('span', 'diff-stat-add', `+${additions}`),
+      this._el('span', 'diff-stat-add', `+${this._additions}`),
       document.createTextNode(' '),
-      this._el('span', 'diff-stat-del', `-${deletions}`),
+      this._el('span', 'diff-stat-del', `-${this._deletions}`),
     );
     return stats;
   }
@@ -356,30 +359,35 @@ export class DiffViewer {
     const codeEl = this._el('span', 'diff-code');
 
     if (wordSegments) {
-      for (const seg of wordSegments) {
-        codeEl.appendChild(this._el('span',
-          seg.highlighted ? (type === 'remove' ? 'diff-word-del' : 'diff-word-add') : null,
-          seg.text));
-      }
+      this._renderWordSegments(codeEl, wordSegments, type);
     } else if (type !== 'empty') {
-      const highlighted = this._highlight(content);
-      if (highlighted) {
-        codeEl.innerHTML = highlighted;
-      } else {
-        codeEl.textContent = content;
-      }
+      this._highlightInto(codeEl, content);
     }
 
     cell.appendChild(codeEl);
     return cell;
   }
 
-  _highlight(text) {
-    if (!window.hljs || !text || this.lang === 'plaintext') return null;
+  _renderWordSegments(codeEl, segments, type) {
+    const hlClass = type === 'remove' ? 'diff-word-del' : 'diff-word-add';
+    for (const seg of segments) {
+      codeEl.appendChild(this._el('span', seg.highlighted ? hlClass : null, seg.text));
+    }
+  }
+
+  _highlightInto(codeEl, text) {
+    if (!window.hljs || !text || this.lang === 'plaintext') {
+      codeEl.textContent = text;
+      return;
+    }
     try {
-      return window.hljs.highlight(text, { language: this.lang, ignoreIllegals: true }).value;
+      const code = document.createElement('code');
+      code.className = `language-${this.lang}`;
+      code.textContent = text;
+      window.hljs.highlightElement(code);
+      codeEl.appendChild(code);
     } catch {
-      return null;
+      codeEl.textContent = text;
     }
   }
 }
