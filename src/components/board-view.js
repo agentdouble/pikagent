@@ -29,7 +29,9 @@ const STATUS_CONFIG = {
   waiting: { label: 'Waiting', cardClass: 'board-card-waiting', badgeClass: 'board-card-status board-status-waiting' },
 };
 
-const BUS_EVENTS = ['terminal:created', 'terminal:removed', 'terminal:exited'];
+const EVT_CREATED  = 'terminal:created';
+const EVT_REMOVED  = 'terminal:removed';
+const EVT_EXITED   = 'terminal:exited';
 
 // --- DOM helper ---
 
@@ -38,7 +40,6 @@ function _el(tag, attrs = {}, ...children) {
   for (const [k, v] of Object.entries(attrs)) {
     if (k === 'className') el.className = v;
     else if (k === 'textContent') el.textContent = v;
-    else if (k === 'innerHTML') el.innerHTML = v;
     else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
     else el[k] = v;
   }
@@ -47,6 +48,10 @@ function _el(tag, attrs = {}, ...children) {
     else if (child) el.appendChild(child);
   }
   return el;
+}
+
+function _safeFit(fitAddon) {
+  try { fitAddon.fit(); } catch {}
 }
 
 export class BoardView {
@@ -63,7 +68,7 @@ export class BoardView {
   }
 
   render() {
-    this.container.innerHTML = '';
+    this.container.replaceChildren();
 
     this.hiddenBarEl = _el('div', { className: 'board-hidden-bar' });
     this.emptyEl = _el('div', { className: 'board-empty', textContent: 'No agents running. Start Claude or Codex in a workspace terminal.' });
@@ -157,14 +162,14 @@ export class BoardView {
 
     const headerBtns = _el('div', { className: 'board-card-btns' },
       _el('button', {
-        className: 'board-card-btn', innerHTML: '&#8599;', title: 'Go to workspace',
+        className: 'board-card-btn', textContent: '\u2197', title: 'Go to workspace',
         onClick: () => {
           const match = this._findTabForTerminal(termId);
           if (match) this.tabManager.switchTo(match.tabId);
         },
       }),
       _el('button', {
-        className: 'board-card-btn', innerHTML: '&minus;', title: 'Hide',
+        className: 'board-card-btn', textContent: '\u2212', title: 'Hide',
         onClick: () => {
           card.classList.add('board-card-hidden');
           this._hiddenTerms.add(termId);
@@ -200,7 +205,7 @@ export class BoardView {
     card.appendChild(termContainer);
 
     const { term, fitAddon } = this._createBoardTerminal(termContainer, termId);
-    const fitOnly = () => { try { fitAddon.fit(); } catch {} };
+    const fitOnly = () => _safeFit(fitAddon);
 
     const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
 
@@ -236,7 +241,7 @@ export class BoardView {
 
   _updateHiddenBar() {
     if (!this.hiddenBarEl) return;
-    this.hiddenBarEl.innerHTML = '';
+    this.hiddenBarEl.replaceChildren();
     if (this._hiddenTerms.size === 0) return;
 
     for (const termId of this._hiddenTerms) {
@@ -251,7 +256,7 @@ export class BoardView {
           card.element.classList.remove('board-card-hidden');
           this._hiddenTerms.delete(termId);
           this._updateHiddenBar();
-          setTimeout(() => { try { card.fitAddon.fit(); } catch {} }, FIT_UNHIDE_DELAY_MS);
+          setTimeout(() => _safeFit(card.fitAddon), FIT_UNHIDE_DELAY_MS);
         },
       }));
     }
@@ -266,9 +271,9 @@ export class BoardView {
       this._updateEmptyState();
     };
 
-    bus.on(BUS_EVENTS[0], this._onCreated);
-    bus.on(BUS_EVENTS[1], this._onTerminalGone);
-    bus.on(BUS_EVENTS[2], this._onTerminalGone);
+    bus.on(EVT_CREATED, this._onCreated);
+    bus.on(EVT_REMOVED, this._onTerminalGone);
+    bus.on(EVT_EXITED, this._onTerminalGone);
   }
 
   focusDirection(dir) {
@@ -318,9 +323,9 @@ export class BoardView {
     this.disposed = true;
     this.pause();
 
-    for (const event of BUS_EVENTS) {
-      bus.off(event, event === BUS_EVENTS[0] ? this._onCreated : this._onTerminalGone);
-    }
+    bus.off(EVT_CREATED, this._onCreated);
+    bus.off(EVT_REMOVED, this._onTerminalGone);
+    bus.off(EVT_EXITED, this._onTerminalGone);
 
     for (const [, data] of this.cards) {
       this._disposeCard(data);
