@@ -30,6 +30,16 @@ const TABS = [
 
 const RATE_THRESHOLD = 70;
 
+const RUN_CHART_SEGMENTS = [
+  { key: 'success', cls: 'usage-chart-bar-success' },
+  { key: 'error', cls: 'usage-chart-bar-error' },
+  { key: 'running', cls: 'usage-chart-bar-running' },
+];
+
+function _runTooltip(day) {
+  return `${day.label}: ${day.total} (${day.success} ok, ${day.error} err${day.running ? `, ${day.running} en cours` : ''})`;
+}
+
 function _rateColor(rate) {
   return rate >= RATE_THRESHOLD ? 'var(--green)' : '#ff6b6b';
 }
@@ -51,7 +61,7 @@ export class UsageView {
   }
 
   async render() {
-    this.el.innerHTML = '';
+    this.el.replaceChildren();
 
     this.el.appendChild(_el('div', { className: 'usage-header' },
       _el('div', { className: 'usage-header-left' },
@@ -61,6 +71,7 @@ export class UsageView {
     ));
 
     const tabBar = _el('div', { className: 'usage-tabs' });
+    const tabBtns = [];
     for (const tab of TABS) {
       const btn = _el('button', {
         className: `usage-tab ${this.activeTab === tab.id ? 'usage-tab-active' : ''}`,
@@ -68,10 +79,11 @@ export class UsageView {
         onClick: () => {
           this.activeTab = tab.id;
           this._renderBody();
-          tabBar.querySelectorAll('.usage-tab').forEach((t) => t.classList.remove('usage-tab-active'));
+          for (const b of tabBtns) b.classList.remove('usage-tab-active');
           btn.classList.add('usage-tab-active');
         },
       });
+      tabBtns.push(btn);
       tabBar.appendChild(btn);
     }
     this.el.appendChild(tabBar);
@@ -92,7 +104,7 @@ export class UsageView {
   }
 
   _renderBody() {
-    this.bodyEl.innerHTML = '';
+    this.bodyEl.replaceChildren();
     if (!this.metrics) return;
 
     if (this.activeTab === 'agents') this._renderAgentsTab();
@@ -113,12 +125,8 @@ export class UsageView {
     this._renderChart(this.bodyEl, {
       title: 'Sessions par jour',
       data: m.perDay,
-      segments: [
-        { key: 'success', cls: 'usage-chart-bar-success' },
-        { key: 'error', cls: 'usage-chart-bar-error' },
-        { key: 'running', cls: 'usage-chart-bar-running' },
-      ],
-      tooltip: (day) => `${day.label}: ${day.total} (${day.success} ok, ${day.error} err${day.running ? `, ${day.running} en cours` : ''})`,
+      segments: RUN_CHART_SEGMENTS,
+      tooltip: _runTooltip,
     });
     this._renderTable(this.bodyEl, {
       title: 'Par agent',
@@ -203,12 +211,8 @@ export class UsageView {
     this._renderChart(this.bodyEl, {
       title: 'Runs par jour',
       data: f.perDay,
-      segments: [
-        { key: 'success', cls: 'usage-chart-bar-success' },
-        { key: 'error', cls: 'usage-chart-bar-error' },
-        { key: 'running', cls: 'usage-chart-bar-running' },
-      ],
-      tooltip: (day) => `${day.label}: ${day.total} (${day.success} ok, ${day.error} err${day.running ? `, ${day.running} en cours` : ''})`,
+      segments: RUN_CHART_SEGMENTS,
+      tooltip: _runTooltip,
     });
     this._renderTable(this.bodyEl, {
       title: 'Par flow',
@@ -244,7 +248,7 @@ export class UsageView {
   // ===== Shared rendering =====
 
   _renderEmpty(text, sub) {
-    this.bodyEl.innerHTML = '';
+    this.bodyEl.replaceChildren();
     this.bodyEl.appendChild(_el('div', { className: 'usage-empty' },
       _el('div', { className: 'usage-empty-text', textContent: text }),
       sub && _el('div', { className: 'usage-empty-sub', textContent: sub }),
