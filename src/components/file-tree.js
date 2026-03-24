@@ -9,16 +9,20 @@ const DEBOUNCE_DELAY = 400;
 const INPUT_BLUR_DELAY = 100;
 const WATCH_PREFIX = 'watch_';
 
-const SVG_NEW_FILE = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>';
-const SVG_NEW_FOLDER = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>';
-const SVG_REFRESH = '<svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>';
+function _parseSvg(svgStr) {
+  const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
+  return doc.documentElement;
+}
+
+const SVG_NEW_FILE = _parseSvg('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>');
+const SVG_NEW_FOLDER = _parseSvg('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>');
+const SVG_REFRESH = _parseSvg('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>');
 
 function _el(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (k === 'className') el.className = v;
     else if (k === 'textContent') el.textContent = v;
-    else if (k === 'innerHTML') el.innerHTML = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
     else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
     else el[k] = v;
@@ -35,6 +39,7 @@ export class FileTree {
     this.termCwds = new Map();
     this.sections = new Map();
     this.debounceTimers = new Map();
+    this._activeRow = null;
     this.render();
     this.listenForChanges();
   }
@@ -139,9 +144,9 @@ export class FileTree {
     });
 
     const headerActions = [
-      { title: 'New File', svg: SVG_NEW_FILE, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'file') },
-      { title: 'New Folder', svg: SVG_NEW_FOLDER, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'folder') },
-      { title: 'Refresh', svg: SVG_REFRESH, action: () => this.refreshSection(cwd) },
+      { title: 'New File', icon: SVG_NEW_FILE, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'file') },
+      { title: 'New Folder', icon: SVG_NEW_FOLDER, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'folder') },
+      { title: 'Refresh', icon: SVG_REFRESH, action: () => this.refreshSection(cwd) },
     ];
 
     const header = _el('div', {
@@ -159,9 +164,11 @@ export class FileTree {
       chevron,
       _el('span', { className: 'file-tree-section-label', textContent: folderName, title: cwd }),
       _el('div', { className: 'file-tree-section-actions' },
-        ...headerActions.map(({ title, svg, action }) =>
-          _el('button', { className: 'file-tree-action-btn', title, innerHTML: svg, onClick: (e) => { e.stopPropagation(); action(); } })
-        )
+        ...headerActions.map(({ title, icon, action }) => {
+          const btn = _el('button', { className: 'file-tree-action-btn', title, onClick: (e) => { e.stopPropagation(); action(); } });
+          btn.appendChild(icon.cloneNode(true));
+          return btn;
+        })
       ),
     );
 
@@ -366,67 +373,74 @@ export class FileTree {
 
   // --- Render directory entries ---
 
+  _buildRow(entry, depth) {
+    const chevron = _el('span', { className: 'file-tree-chevron' });
+    const name = _el('span', { className: 'file-tree-name', textContent: entry.name });
+    const row = _el('div', {
+      className: 'file-tree-item',
+      style: { paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px` },
+    }, chevron, name);
+    return { row, chevron, name };
+  }
+
+  async _renderDirEntry(entry, parentEl, depth, expandedDirs) {
+    const { row, chevron, name } = this._buildRow(entry, depth);
+    const isExpanded = expandedDirs.has(entry.path);
+    chevron.textContent = isExpanded ? CHEVRON_EXPANDED : CHEVRON_COLLAPSED;
+    chevron.classList.toggle('expanded', isExpanded);
+
+    const childContainer = _el('div', { className: 'file-tree-children' });
+    parentEl.append(row, childContainer);
+
+    if (isExpanded) {
+      await this.renderDir(entry.path, childContainer, depth + 1, expandedDirs);
+    }
+
+    this._setupDropZone(row, entry.path);
+
+    row.addEventListener('click', async () => {
+      if (expandedDirs.has(entry.path)) {
+        this._collapseDir(entry.path, childContainer, chevron, expandedDirs);
+      } else {
+        await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
+      }
+    });
+
+    row.addEventListener('contextmenu', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!expandedDirs.has(entry.path)) {
+        await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
+      }
+      this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
+    });
+  }
+
+  _renderFileEntry(entry, parentEl, depth) {
+    const { row, name } = this._buildRow(entry, depth);
+    parentEl.appendChild(row);
+
+    row.addEventListener('click', () => {
+      if (this._activeRow) this._activeRow.classList.remove('active');
+      row.classList.add('active');
+      this._activeRow = row;
+      bus.emit('file:open', { path: entry.path, name: entry.name });
+    });
+
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.showFileContextMenu(e.clientX, e.clientY, entry.path, name);
+    });
+  }
+
   async renderDir(dirPath, parentEl, depth, expandedDirs) {
     const entries = await window.api.fs.readdir(dirPath);
-
     for (const entry of entries) {
-      const chevron = _el('span', { className: 'file-tree-chevron' });
-
       if (entry.isDirectory) {
-        const isExpanded = expandedDirs.has(entry.path);
-        chevron.textContent = isExpanded ? CHEVRON_EXPANDED : CHEVRON_COLLAPSED;
-        chevron.classList.toggle('expanded', isExpanded);
-      }
-
-      const name = _el('span', { className: 'file-tree-name', textContent: entry.name });
-
-      const row = _el('div', {
-        className: 'file-tree-item',
-        style: { paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px` },
-      }, chevron, name);
-
-      parentEl.appendChild(row);
-
-      if (entry.isDirectory) {
-        const childContainer = _el('div', { className: 'file-tree-children' });
-        parentEl.appendChild(childContainer);
-
-        if (expandedDirs.has(entry.path)) {
-          await this.renderDir(entry.path, childContainer, depth + 1, expandedDirs);
-        }
-
-        this._setupDropZone(row, entry.path);
-
-        row.addEventListener('click', async () => {
-          if (expandedDirs.has(entry.path)) {
-            this._collapseDir(entry.path, childContainer, chevron, expandedDirs);
-          } else {
-            await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
-          }
-        });
-
-        row.addEventListener('contextmenu', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!expandedDirs.has(entry.path)) {
-            await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
-          }
-          this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
-        });
+        await this._renderDirEntry(entry, parentEl, depth, expandedDirs);
       } else {
-        row.addEventListener('click', () => {
-          this.container.querySelectorAll('.file-tree-item.active').forEach((el) => {
-            el.classList.remove('active');
-          });
-          row.classList.add('active');
-          bus.emit('file:open', { path: entry.path, name: entry.name });
-        });
-
-        row.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.showFileContextMenu(e.clientX, e.clientY, entry.path, name);
-        });
+        this._renderFileEntry(entry, parentEl, depth);
       }
     }
   }
