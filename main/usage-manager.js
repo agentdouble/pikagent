@@ -22,11 +22,20 @@ const GIT_TIMEOUT_MS = 5000;
 
 const SUCCESS_STATUSES = new Set(['success', 'completed']);
 const ERROR_STATUSES = new Set(['error', 'exited']);
+const TOKEN_KEYS = ['input', 'output', 'cacheRead', 'cacheCreate'];
 
 let _metricsCache = null;
 let _metricsCacheTime = 0;
 
 // ===== Helpers =====
+
+function _newTokenTotals() {
+  return { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
+}
+
+function _addTokens(target, source) {
+  for (const k of TOKEN_KEYS) target[k] += source[k] || 0;
+}
 
 function countByStatus(items, field = 'status') {
   let success = 0;
@@ -178,7 +187,7 @@ function parseTokenUsage(line, cutoffMs) {
 }
 
 async function readProjectTokens(projDir, cutoffMs) {
-  const totals = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
+  const totals = _newTokenTotals();
   const perDayMap = {};
 
   const files = (await fsp.readdir(projDir)).filter((f) => f.endsWith('.jsonl'));
@@ -190,10 +199,7 @@ async function readProjectTokens(projDir, cutoffMs) {
       const usage = parseTokenUsage(line, cutoffMs);
       if (!usage) continue;
 
-      totals.input += usage.input;
-      totals.output += usage.output;
-      totals.cacheRead += usage.cacheRead;
-      totals.cacheCreate += usage.cacheCreate;
+      _addTokens(totals, usage);
 
       if (usage.dateKey) {
         if (!perDayMap[usage.dateKey]) perDayMap[usage.dateKey] = { input: 0, output: 0 };
@@ -219,13 +225,12 @@ async function collectProjectTokens(days) {
   try {
     const allEntries = await fsp.readdir(CLAUDE_PROJECTS_DIR, { withFileTypes: true });
     const projects = allEntries.filter((d) => d.isDirectory()).map((d) => d.name);
-    const results = await Promise.all(
+    return Promise.all(
       projects.map(async (proj) => {
         const data = await readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);
         return { proj, ...data };
       })
     );
-    return results;
   } catch (err) {
     console.error('[usage-manager] Failed to read Claude projects:', err.message);
     return [];
@@ -236,14 +241,11 @@ function aggregateTokenData(labels, projectResults) {
   const globalPerDay = {};
   for (const day of labels) globalPerDay[day.date] = { input: 0, output: 0 };
 
-  const totals = { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
+  const totals = _newTokenTotals();
   const perProjectMap = {};
 
   for (const { proj, totals: pt, perDayMap } of projectResults) {
-    totals.input += pt.input;
-    totals.output += pt.output;
-    totals.cacheRead += pt.cacheRead;
-    totals.cacheCreate += pt.cacheCreate;
+    _addTokens(totals, pt);
 
     for (const [dateKey, dayData] of Object.entries(perDayMap)) {
       if (globalPerDay[dateKey]) {
@@ -261,12 +263,10 @@ function aggregateTokenData(labels, projectResults) {
     }
   }
 
-  const perDay = labels.map((day) => ({
-    ...day,
-    input: globalPerDay[day.date]?.input || 0,
-    output: globalPerDay[day.date]?.output || 0,
-    total: (globalPerDay[day.date]?.input || 0) + (globalPerDay[day.date]?.output || 0),
-  }));
+  const perDay = labels.map((day) => {
+    const g = globalPerDay[day.date];
+    return { ...day, input: g.input, output: g.output, total: g.input + g.output };
+  });
 
   const perProject = Object.entries(perProjectMap)
     .map(([project, data]) => ({ project, ...data }))
@@ -323,38 +323,12 @@ async function getMostModifiedFiles(cwds) {
     .slice(0, TOP_FILES_LIMIT);
 }
 
-// ===== Aggregation =====
+// ===== Metric builders =====
 
-function getByAgent(sessions) {
-  const grouped = {};
-  for (const s of sessions) {
-    const name = s.agent || 'Unknown';
-    if (!grouped[name]) grouped[name] = [];
-    grouped[name].push(s);
-  }
-  return Object.entries(grouped).map(([agent, items]) => ({
-    agent,
-    totalSessions: items.length,
-    successRate: computeRate(items).rate,
-    avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
-    active: items.filter((s) => s.status === 'running').length,
-  }));
-}
-
-async function getMetrics() {
-  const now = Date.now();
-  if (_metricsCache && (now - _metricsCacheTime) < CACHE_TTL) {
-    return _metricsCache;
-  }
-
-  // --- Flow metrics ---
-  const flows = await getAllFlows();
-  const flowRuns = getFlowRuns(flows);
-  const flowDurations = flowRuns.map(getFlowRunDuration);
-
-  const flowMetrics = {
+function _buildFlowMetrics(flows, flowRuns) {
+  return {
     rate: computeRate(flowRuns),
-    duration: computeDuration(flowDurations),
+    duration: computeDuration(flowRuns.map(getFlowRunDuration)),
     perDay: perDay(flowRuns, (r) => r.date, DEFAULT_DAYS),
     flowStats: flows.map((flow) => {
       const runs = flowRuns.filter((r) => r.flowId === flow.id);
@@ -372,38 +346,68 @@ async function getMetrics() {
     totalFlows: flows.length,
     activeFlows: flows.filter((f) => f.enabled).length,
   };
+}
 
-  // --- Agent session metrics ---
+function _buildAgentMetrics() {
   const sessions = sessionManager.getSessions();
   const activeSessions = sessionManager.getActiveSessions();
   const allSessions = [...sessions, ...activeSessions];
-
-  const agentMetrics = {
-    rate: computeRate(allSessions),
-    duration: computeDuration(allSessions.map((s) => s.durationSec)),
-    perDay: perDay(allSessions, (s) => dateStr(s.startedAt), DEFAULT_DAYS),
-    byAgent: getByAgent(allSessions),
-    totalSessions: allSessions.length,
-    activeSessions: activeSessions.length,
+  return {
+    metrics: {
+      rate: computeRate(allSessions),
+      duration: computeDuration(allSessions.map((s) => s.durationSec)),
+      perDay: perDay(allSessions, (s) => dateStr(s.startedAt), DEFAULT_DAYS),
+      byAgent: _getByAgent(allSessions),
+      totalSessions: allSessions.length,
+      activeSessions: activeSessions.length,
+    },
+    allSessions,
   };
+}
 
-  // --- Combined files from all cwds ---
-  const allCwds = [
-    ...new Set([
-      ...flowRuns.map((r) => r.cwd),
-      ...allSessions.map((s) => s.cwd),
-    ].filter(Boolean)),
-  ];
+function _getByAgent(sessions) {
+  const grouped = {};
+  for (const s of sessions) {
+    const name = s.agent || 'Unknown';
+    if (!grouped[name]) grouped[name] = [];
+    grouped[name].push(s);
+  }
+  return Object.entries(grouped).map(([agent, items]) => ({
+    agent,
+    totalSessions: items.length,
+    successRate: computeRate(items).rate,
+    avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
+    active: items.filter((s) => s.status === 'running').length,
+  }));
+}
 
-  // --- Token metrics + modified files in parallel ---
+function _collectUniqueCwds(flowRuns, sessions) {
+  return [...new Set([
+    ...flowRuns.map((r) => r.cwd),
+    ...sessions.map((s) => s.cwd),
+  ].filter(Boolean))];
+}
+
+// ===== Aggregation =====
+
+async function getMetrics() {
+  const now = Date.now();
+  if (_metricsCache && (now - _metricsCacheTime) < CACHE_TTL) {
+    return _metricsCache;
+  }
+
+  const flows = await getAllFlows();
+  const flowRuns = getFlowRuns(flows);
+  const { metrics: agentMetrics, allSessions } = _buildAgentMetrics();
+
   const [tokens, mostModifiedFiles] = await Promise.all([
     getTokenMetrics(DEFAULT_DAYS),
-    getMostModifiedFiles(allCwds),
+    getMostModifiedFiles(_collectUniqueCwds(flowRuns, allSessions)),
   ]);
 
   const result = {
     tokens,
-    flow: flowMetrics,
+    flow: _buildFlowMetrics(flows, flowRuns),
     agent: agentMetrics,
     mostModifiedFiles,
     hasData: flows.length > 0 || allSessions.length > 0 || tokens.total > 0,
