@@ -6,6 +6,24 @@ import { bus } from '../utils/events.js';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 
+/* ── Constants ────────────────────────────────────────────────── */
+const FONT_SIZE = 13;
+const LINE_HEIGHT = 1.3;
+const CWD_POLL_MS = 1500;
+const EDGE_THRESHOLD = 0.3;
+const INDICATOR_PAD = 2;
+const MIN_RESIZE_RATIO = 0.1;
+const MAX_RESIZE_RATIO = 0.9;
+const DRAG_GRIP = '⠿';
+
+/* ── DOM helper ───────────────────────────────────────────────── */
+function _el(tag, cls, props) {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  if (props) Object.assign(el, props);
+  return el;
+}
+
 class TerminalInstance {
   constructor(container, cwd) {
     this.id = generateId('term');
@@ -16,8 +34,8 @@ class TerminalInstance {
     this.terminal = new Terminal({
       theme: getTerminalTheme(),
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: 13,
-      lineHeight: 1.3,
+      fontSize: FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
       cursorBlink: true,
       cursorStyle: 'bar',
       allowProposedApi: true,
@@ -73,7 +91,7 @@ class TerminalInstance {
         this.cwd = cwd;
         bus.emit('terminal:cwdChanged', { id: this.id, cwd });
       }
-    }, 1500);
+    }, CWD_POLL_MS);
   }
 
   fit() {
@@ -143,23 +161,86 @@ export class TerminalPanel {
 
   /** Create a split-handle element wired for resizing. */
   _createSplitHandle(direction, splitEl) {
-    const handle = document.createElement('div');
-    handle.className = `split-handle split-handle-${direction}`;
+    const handle = _el('div', `split-handle split-handle-${direction}`);
     this.setupResizeHandle(handle, splitEl, direction);
     return handle;
   }
 
   /** Create a split-container div with direction and flex. */
   _createSplitContainer(direction, flex = '1') {
-    const el = document.createElement('div');
-    el.className = `split-container split-${direction}`;
+    const el = _el('div', `split-container split-${direction}`);
     el.style.flex = String(flex);
     return el;
   }
 
-  init() {
+  /** Reset container to blank terminal-panel state. */
+  _resetContainer() {
     this.container.innerHTML = '';
     this.container.className = 'terminal-panel';
+  }
+
+  /** Build the top bar (drag handle + close button) for a terminal node. */
+  _buildTopBar(node) {
+    const topBar = _el('div', 'terminal-top-bar');
+
+    const dragHandle = _el('div', 'terminal-drag-handle', { title: 'Drag to move' });
+    dragHandle.innerHTML = `<span class="drag-grip">${DRAG_GRIP}</span>`;
+
+    const closeBtn = _el('button', 'terminal-close-btn', {
+      textContent: '×',
+      title: 'Close terminal',
+    });
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.removeTerminal(node.terminal.id);
+    });
+
+    topBar.appendChild(dragHandle);
+    topBar.appendChild(closeBtn);
+
+    this.setupDrag(dragHandle, node);
+    return topBar;
+  }
+
+  /**
+   * Start a mouse-drag session: set cursor, throttle moves via RAF, clean up on mouseup.
+   */
+  _trackMouse(cursor, onMove, onDone) {
+    let rafPending = false;
+    const move = (e) => {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => { rafPending = false; onMove(e); });
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      onDone();
+    };
+    document.body.style.cursor = cursor;
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }
+
+  /** Return the two panels adjacent to a split-handle: [before, after]. */
+  _adjacentPanels(handle, splitEl) {
+    const children = Array.from(splitEl.children);
+    const idx = children.indexOf(handle);
+    let before = null, after = null;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (!children[i].classList.contains('split-handle')) { before = children[i]; break; }
+    }
+    for (let i = idx + 1; i < children.length; i++) {
+      if (!children[i].classList.contains('split-handle')) { after = children[i]; break; }
+    }
+    return [before, after];
+  }
+
+  init() {
+    this._resetContainer();
 
     const node = this.createTerminalNode();
     this.root = node;
@@ -168,20 +249,17 @@ export class TerminalPanel {
   }
 
   restoreFromTree(tree) {
-    // Dispose existing terminals created by init()
     for (const [id, node] of this.terminals) {
       node.terminal.dispose();
     }
     this.terminals.clear();
 
-    this.container.innerHTML = '';
-    this.container.className = 'terminal-panel';
+    this._resetContainer();
 
     const node = this.buildFromTree(tree);
     this.root = node;
     this.container.appendChild(node.element);
 
-    // Activate the first terminal
     const first = this.terminals.values().next().value;
     if (first) this.setActive(first);
     this.fitAll();
@@ -194,7 +272,6 @@ export class TerminalPanel {
       return node;
     }
 
-    // Split node
     const splitEl = this._createSplitContainer(tree.direction, tree.flex || 1);
 
     const splitNode = new SplitNode('split');
@@ -215,33 +292,11 @@ export class TerminalPanel {
   createTerminalNode(cwd = null) {
     const spawnCwd = cwd || this.cwd;
     const node = new SplitNode('terminal');
-    const wrapper = document.createElement('div');
-    wrapper.className = 'terminal-wrapper';
 
-    // Top bar with drag handle and close button
-    const topBar = document.createElement('div');
-    topBar.className = 'terminal-top-bar';
+    const wrapper = _el('div', 'terminal-wrapper');
+    const termContainer = _el('div', 'terminal-container');
 
-    const dragHandle = document.createElement('div');
-    dragHandle.className = 'terminal-drag-handle';
-    dragHandle.title = 'Drag to move';
-    dragHandle.innerHTML = '<span class="drag-grip">⠿</span>';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'terminal-close-btn';
-    closeBtn.textContent = '×';
-    closeBtn.title = 'Close terminal';
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.removeTerminal(node.terminal.id);
-    });
-
-    topBar.appendChild(dragHandle);
-    topBar.appendChild(closeBtn);
-    wrapper.appendChild(topBar);
-
-    const termContainer = document.createElement('div');
-    termContainer.className = 'terminal-container';
+    wrapper.appendChild(this._buildTopBar(node));
     wrapper.appendChild(termContainer);
 
     node.element = wrapper;
@@ -254,9 +309,6 @@ export class TerminalPanel {
       this.setActive(node);
     });
 
-    // --- Drag setup on the handle ---
-    this.setupDrag(dragHandle, node);
-
     return node;
   }
 
@@ -264,53 +316,32 @@ export class TerminalPanel {
 
   setupDrag(handle, sourceNode) {
     handle.addEventListener('mousedown', (e) => {
-      if (this.terminals.size < 2) return; // nothing to reorder
+      if (this.terminals.size < 2) return;
       e.preventDefault();
       e.stopPropagation();
 
       this._dragSourceId = sourceNode.terminal.id;
       sourceNode.element.classList.add('dragging');
-      document.body.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-
-      // Create floating indicator
       this._createDropIndicator();
 
-      let dragRafPending = false;
-      const onMouseMove = (ev) => {
-        if (dragRafPending) return;
-        dragRafPending = true;
-        requestAnimationFrame(() => {
-          dragRafPending = false;
-          this._updateDropTarget(ev.clientX, ev.clientY);
-        });
-      };
-
-      const onMouseUp = (ev) => {
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-        sourceNode.element.classList.remove('dragging');
-        this._removeDropIndicator();
-
-        if (this._dropTarget && this._dropSide && this._dropTarget !== this._dragSourceId) {
-          this.moveTerminal(this._dragSourceId, this._dropTarget, this._dropSide);
-        }
-
-        this._dragSourceId = null;
-        this._dropTarget = null;
-        this._dropSide = null;
-      };
-
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      this._trackMouse('grabbing',
+        (ev) => this._updateDropTarget(ev.clientX, ev.clientY),
+        () => {
+          sourceNode.element.classList.remove('dragging');
+          this._removeDropIndicator();
+          if (this._dropTarget && this._dropSide && this._dropTarget !== this._dragSourceId) {
+            this.moveTerminal(this._dragSourceId, this._dropTarget, this._dropSide);
+          }
+          this._dragSourceId = null;
+          this._dropTarget = null;
+          this._dropSide = null;
+        },
+      );
     });
   }
 
   _createDropIndicator() {
-    this._dropIndicator = document.createElement('div');
-    this._dropIndicator.className = 'drop-indicator';
+    this._dropIndicator = _el('div', 'drop-indicator');
     this.container.appendChild(this._dropIndicator);
   }
 
@@ -319,7 +350,6 @@ export class TerminalPanel {
       this._dropIndicator.remove();
       this._dropIndicator = null;
     }
-    // Remove all hover highlights
     this.container.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
   }
 
@@ -328,7 +358,6 @@ export class TerminalPanel {
     this._dropSide = null;
     if (this._dropIndicator) this._dropIndicator.style.display = 'none';
 
-    // Remove previous highlights
     this.container.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
 
     for (const [termId, node] of this.terminals) {
@@ -337,23 +366,20 @@ export class TerminalPanel {
       const rect = node.element.getBoundingClientRect();
       if (mx < rect.left || mx > rect.right || my < rect.top || my > rect.bottom) continue;
 
-      // Determine which side (edge zone = 30% from each edge)
       const relX = (mx - rect.left) / rect.width;
       const relY = (my - rect.top) / rect.height;
 
       let side;
-      const edgeThreshold = 0.3;
-
-      if (relX < edgeThreshold && relX < relY && relX < (1 - relY)) {
+      if (relX < EDGE_THRESHOLD && relX < relY && relX < (1 - relY)) {
         side = 'left';
-      } else if (relX > (1 - edgeThreshold) && (1 - relX) < relY && (1 - relX) < (1 - relY)) {
+      } else if (relX > (1 - EDGE_THRESHOLD) && (1 - relX) < relY && (1 - relX) < (1 - relY)) {
         side = 'right';
-      } else if (relY < edgeThreshold) {
+      } else if (relY < EDGE_THRESHOLD) {
         side = 'top';
-      } else if (relY > (1 - edgeThreshold)) {
+      } else if (relY > (1 - EDGE_THRESHOLD)) {
         side = 'bottom';
       } else {
-        side = 'center'; // swap
+        side = 'center';
       }
 
       this._dropTarget = termId;
@@ -369,7 +395,7 @@ export class TerminalPanel {
     if (!this._dropIndicator) return;
     const s = this._dropIndicator.style;
     s.display = 'block';
-    const pad = 2;
+    const pad = INDICATOR_PAD;
     const isHoriz = side === 'left' || side === 'right';
     const halfW = rect.width / 2;
     const halfH = rect.height / 2;
@@ -400,16 +426,10 @@ export class TerminalPanel {
 
     const sourceEl = sourceNode.element;
     const targetEl = targetNode.element;
-    const sourceFlex = sourceEl.style.flex;
 
-    // --- Detach source from its current container ---
     this._detachElement(sourceEl);
 
-    // --- Insert at target ---
     if (side === 'center') {
-      // Swap positions: put source where target is, target where source was
-      // Since source is already detached, just insert source before target, then done
-      // Actually for center, let's just place source before target in the same container
       targetEl.parentElement.insertBefore(sourceEl, targetEl);
       sourceEl.style.flex = targetEl.style.flex;
     } else {
@@ -423,7 +443,6 @@ export class TerminalPanel {
         parentEl.classList.contains(`split-${direction}`);
 
       if (parentIsSameDirection) {
-        // Insert into existing split container
         const handle = this._createSplitHandle(direction, parentEl);
         if (insertBefore) {
           targetEl.insertAdjacentElement('beforebegin', sourceEl);
@@ -434,7 +453,6 @@ export class TerminalPanel {
         }
         this.equalizeChildren(parentEl);
       } else {
-        // Wrap target in a new split container
         const splitEl = this._createSplitContainer(direction, targetEl.style.flex || '1');
         parentEl.replaceChild(splitEl, targetEl);
         targetEl.style.flex = '1';
@@ -459,7 +477,6 @@ export class TerminalPanel {
     el.remove();
 
     if (parentEl.classList.contains('split-container')) {
-      // Remove one adjacent handle
       const handles = Array.from(parentEl.querySelectorAll(':scope > .split-handle'));
       if (handles.length > 0) {
         handles[handles.length - 1].remove();
@@ -468,7 +485,6 @@ export class TerminalPanel {
       const remainingPanels = this._getPanels(parentEl);
 
       if (remainingPanels.length === 1) {
-        // Unwrap: replace split container with sole remaining child
         const survivor = remainingPanels[0];
         const grandParent = parentEl.parentElement;
         if (grandParent) {
@@ -482,7 +498,6 @@ export class TerminalPanel {
     }
   }
 
-  /** If a split container has only one child panel left, unwrap it. */
   _unwrapIfSingle(el) {
     if (!el || !el.classList.contains('split-container')) return;
     const panels = this._getPanels(el);
@@ -499,13 +514,11 @@ export class TerminalPanel {
   setActive(node) {
     if (node.type !== 'terminal') return;
 
-    // Pause CWD polling on all terminals, resume only the active one
     for (const [, n] of this.terminals) {
       n.terminal.cwdPollingPaused = true;
     }
     node.terminal.cwdPollingPaused = false;
 
-    // Remove active from all
     this.container.querySelectorAll('.terminal-wrapper.active').forEach((el) => {
       el.classList.remove('active');
     });
@@ -537,7 +550,6 @@ export class TerminalPanel {
       const tx = rect.left + rect.width / 2;
       const ty = rect.top + rect.height / 2;
 
-      // Check if the candidate is in the right direction
       let inDirection = false;
       if (dir === 'left' && tx < cx) inDirection = true;
       if (dir === 'right' && tx > cx) inDirection = true;
@@ -562,18 +574,15 @@ export class TerminalPanel {
       parentEl.classList.contains('split-container') &&
       parentEl.classList.contains(`split-${direction}`);
 
-    // Inherit cwd from the terminal being split
     const sourceCwd = targetNode.terminal ? targetNode.terminal.cwd : this.cwd;
     const newTermNode = this.createTerminalNode(sourceCwd);
 
     if (parentIsSameDirection) {
-      // Flat: insert new terminal + handle right after target in existing container
       const handle = this._createSplitHandle(direction, parentEl);
       targetNode.element.insertAdjacentElement('afterend', handle);
       handle.insertAdjacentElement('afterend', newTermNode.element);
       this.equalizeChildren(parentEl);
     } else {
-      // Wrap: create a new split container
       const splitEl = this._createSplitContainer(direction, targetNode.element.style.flex || '1');
       parentEl.replaceChild(splitEl, targetNode.element);
 
@@ -602,54 +611,18 @@ export class TerminalPanel {
   }
 
   setupResizeHandle(handle, splitEl, direction) {
-    let resizeRafPending = false;
-    const onMouseMove = (e) => {
-      if (resizeRafPending) return;
-      resizeRafPending = true;
-      requestAnimationFrame(() => {
-        resizeRafPending = false;
-        this._doResize(e, handle, splitEl, direction);
-      });
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      bus.emit('layout:changed');
-    };
-
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
-      document.body.style.userSelect = 'none';
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      const cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
+      this._trackMouse(cursor,
+        (ev) => this._doResize(ev, handle, splitEl, direction),
+        () => bus.emit('layout:changed'),
+      );
     });
   }
 
   _doResize(e, handle, splitEl, direction) {
-      if (this._getPanels(splitEl).length < 2) return;
-
-      // Find which two panels this handle sits between
-      const allChildren = Array.from(splitEl.children);
-      const handleIndex = allChildren.indexOf(handle);
-      // Panel before handle and panel after handle
-      let panelBefore = null;
-      let panelAfter = null;
-      for (let i = handleIndex - 1; i >= 0; i--) {
-        if (!allChildren[i].classList.contains('split-handle')) {
-          panelBefore = allChildren[i];
-          break;
-        }
-      }
-      for (let i = handleIndex + 1; i < allChildren.length; i++) {
-        if (!allChildren[i].classList.contains('split-handle')) {
-          panelAfter = allChildren[i];
-          break;
-        }
-      }
+      const [panelBefore, panelAfter] = this._adjacentPanels(handle, splitEl);
       if (!panelBefore || !panelAfter) return;
 
       const rectBefore = panelBefore.getBoundingClientRect();
@@ -667,9 +640,8 @@ export class TerminalPanel {
       }
 
       let ratio = (mousePos - startPos) / totalSize;
-      ratio = Math.max(0.1, Math.min(0.9, ratio));
+      ratio = Math.max(MIN_RESIZE_RATIO, Math.min(MAX_RESIZE_RATIO, ratio));
 
-      // Get current total flex for these two panels
       const flexBefore = parseFloat(panelBefore.style.flex) || 1;
       const flexAfter = parseFloat(panelAfter.style.flex) || 1;
       const totalFlex = flexBefore + flexAfter;
@@ -716,7 +688,6 @@ export class TerminalPanel {
   }
 
   serialize() {
-    // Serialize purely from the DOM to avoid root/node sync issues
     const rootEl = this.container.firstElementChild;
     if (!rootEl) return { type: 'terminal', cwd: this.cwd, flex: 1 };
     return this.serializeElement(rootEl);
