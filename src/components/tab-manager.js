@@ -9,6 +9,20 @@ import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
 
+// ── Constants ──
+const DRAG_THRESHOLD = 5;
+const PANEL_MIN_WIDTH = 150;
+const LEFT_MAX_WIDTH = 500;
+const RIGHT_MAX_WIDTH = 900;
+const FIT_DELAY_MS = 200;
+
+const ACTIVITY_BUTTONS = [
+  { label: 'work', mode: 'work' },
+  { label: 'BOARD', mode: 'board' },
+  { label: 'FLOW', mode: 'flow' },
+  { label: 'USAGE', mode: 'usage' },
+];
+
 class WorkspaceTab {
   constructor(id, name, cwd) {
     this.id = id;
@@ -116,6 +130,32 @@ export class TabManager {
     return null;
   }
 
+  _el(tag, cls, text) {
+    const el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  _reattachLayout(tab) {
+    this.workspaceContainer.innerHTML = '';
+    this.workspaceContainer.appendChild(tab.layoutElement);
+    if (tab.terminalPanel) {
+      tab.terminalPanel.fitAll();
+      if (tab.terminalPanel.activeTerminal) {
+        tab.terminalPanel.activeTerminal.terminal.focus();
+      }
+    }
+  }
+
+  _syncFileTree(tab) {
+    if (tab.fileTree && tab.terminalPanel) {
+      for (const [termId, node] of tab.terminalPanel.terminals) {
+        tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
+      }
+    }
+  }
+
   // ===== Activity Bar =====
 
   renderActivityBar() {
@@ -123,55 +163,21 @@ export class TabManager {
     if (!activityBar) return;
     activityBar.innerHTML = '';
 
-    const topSection = document.createElement('div');
-    topSection.className = 'activity-bar-top';
+    const topSection = this._el('div', 'activity-bar-top');
 
-    // Work button
-    const workBtn = document.createElement('button');
-    workBtn.className = 'activity-btn';
-    if (this.sidebarMode === 'work') workBtn.classList.add('active');
-    workBtn.textContent = 'work';
-    workBtn.addEventListener('click', () => this.setSidebarMode('work'));
-    topSection.appendChild(workBtn);
+    for (const { label, mode } of ACTIVITY_BUTTONS) {
+      const btn = this._el('button', 'activity-btn', label);
+      if (this.sidebarMode === mode) btn.classList.add('active');
+      btn.addEventListener('click', () => this.setSidebarMode(mode));
+      topSection.appendChild(btn);
+    }
 
-    // Board button
-    const boardBtn = document.createElement('button');
-    boardBtn.className = 'activity-btn';
-    if (this.sidebarMode === 'board') boardBtn.classList.add('active');
-    boardBtn.textContent = 'BOARD';
-    boardBtn.addEventListener('click', () => this.setSidebarMode('board'));
-    topSection.appendChild(boardBtn);
-
-    // Flow button
-    const flowBtn = document.createElement('button');
-    flowBtn.className = 'activity-btn';
-    if (this.sidebarMode === 'flow') flowBtn.classList.add('active');
-    flowBtn.textContent = 'FLOW';
-    flowBtn.addEventListener('click', () => this.setSidebarMode('flow'));
-    topSection.appendChild(flowBtn);
-
-    // Usage button
-    const usageBtn = document.createElement('button');
-    usageBtn.className = 'activity-btn';
-    if (this.sidebarMode === 'usage') usageBtn.classList.add('active');
-    usageBtn.textContent = 'USAGE';
-    usageBtn.addEventListener('click', () => this.setSidebarMode('usage'));
-    topSection.appendChild(usageBtn);
-
-    // More button
-    const moreBtn = document.createElement('button');
-    moreBtn.className = 'activity-btn';
-    moreBtn.textContent = '\u2026';
-    topSection.appendChild(moreBtn);
-
+    topSection.appendChild(this._el('button', 'activity-btn', '\u2026'));
     activityBar.appendChild(topSection);
 
     // Bottom section with settings
-    const bottomSection = document.createElement('div');
-    bottomSection.className = 'activity-bar-bottom';
-
-    const settingsBtn = document.createElement('button');
-    settingsBtn.className = 'activity-btn activity-btn-settings';
+    const bottomSection = this._el('div', 'activity-bar-bottom');
+    const settingsBtn = this._el('button', 'activity-btn activity-btn-settings');
     settingsBtn.innerHTML = '<span class="activity-btn-icon">&#9881;</span>Settings';
     settingsBtn.addEventListener('click', () => {
       if (this.onOpenSettings) this.onOpenSettings();
@@ -217,14 +223,7 @@ export class TabManager {
       const tab = this.tabs.get(this.activeTabId);
       if (tab) {
         if (tab.layoutElement) {
-          this.workspaceContainer.innerHTML = '';
-          this.workspaceContainer.appendChild(tab.layoutElement);
-          if (tab.terminalPanel) {
-            tab.terminalPanel.fitAll();
-            if (tab.terminalPanel.activeTerminal) {
-              tab.terminalPanel.activeTerminal.terminal.focus();
-            }
-          }
+          this._reattachLayout(tab);
         } else {
           this.renderWorkspace(tab);
         }
@@ -265,7 +264,7 @@ export class TabManager {
       this.boardView.resume();
     } else {
       // First time: create board
-      const container = document.createElement('div');
+      const container = this._el('div');
       container.style.height = '100%';
       this.workspaceContainer.appendChild(container);
       this._boardContainerEl = container;
@@ -282,7 +281,7 @@ export class TabManager {
       this.workspaceContainer.appendChild(this._flowContainerEl);
       this.flowView.refresh();
     } else {
-      const container = document.createElement('div');
+      const container = this._el('div');
       container.style.height = '100%';
       this.workspaceContainer.appendChild(container);
       this._flowContainerEl = container;
@@ -299,7 +298,7 @@ export class TabManager {
       this.workspaceContainer.appendChild(this._usageContainerEl);
       this.usageView.refresh();
     } else {
-      const container = document.createElement('div');
+      const container = this._el('div');
       container.style.height = '100%';
       this.workspaceContainer.appendChild(container);
       this._usageContainerEl = container;
@@ -365,19 +364,8 @@ export class TabManager {
       // If this tab is already active, just re-show its layout
       if (id === this.activeTabId) {
         if (tab.layoutElement) {
-          this.workspaceContainer.innerHTML = '';
-          this.workspaceContainer.appendChild(tab.layoutElement);
-          if (tab.terminalPanel) {
-            tab.terminalPanel.fitAll();
-            if (tab.terminalPanel.activeTerminal) {
-              tab.terminalPanel.activeTerminal.terminal.focus();
-            }
-          }
-          if (tab.fileTree && tab.terminalPanel) {
-            for (const [termId, node] of tab.terminalPanel.terminals) {
-              tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
-            }
-          }
+          this._reattachLayout(tab);
+          this._syncFileTree(tab);
           bus.emit('workspace:activated');
         }
         this.renderTabBar();
@@ -401,22 +389,8 @@ export class TabManager {
     this.renderTabBar();
 
     if (tab.layoutElement) {
-      // Reattach existing layout (terminals stay alive!)
-      this.workspaceContainer.innerHTML = '';
-      this.workspaceContainer.appendChild(tab.layoutElement);
-      if (tab.terminalPanel) {
-        tab.terminalPanel.fitAll();
-        if (tab.terminalPanel.activeTerminal) {
-          tab.terminalPanel.activeTerminal.terminal.focus();
-        }
-      }
-      // Sync file tree with current terminal CWDs
-      if (tab.fileTree && tab.terminalPanel) {
-        for (const [termId, node] of tab.terminalPanel.terminals) {
-          tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
-        }
-      }
-      // Load pinned files into this workspace
+      this._reattachLayout(tab);
+      this._syncFileTree(tab);
       bus.emit('workspace:activated');
     } else {
       // First time rendering this tab
@@ -447,23 +421,18 @@ export class TabManager {
     this._tabElements = new Map(); // id -> DOM element (for drag targeting)
 
     for (const [id, tab] of this.tabs) {
-      const tabEl = document.createElement('div');
-      tabEl.className = 'tab';
+      const tabEl = this._el('div', 'tab');
       tabEl.dataset.tabId = id;
       if (id === this.activeTabId) tabEl.classList.add('active');
       if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
 
-      const nameEl = document.createElement('span');
-      nameEl.className = 'tab-name';
-      nameEl.textContent = tab.name;
+      const nameEl = this._el('span', 'tab-name', tab.name);
       nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
       tabEl.appendChild(nameEl);
 
       // Show close button when there are more than 1 tab
       if (this.tabs.size > 1) {
-        const closeEl = document.createElement('span');
-        closeEl.className = 'tab-close';
-        closeEl.textContent = '\u00d7';
+        const closeEl = this._el('span', 'tab-close', '\u00d7');
         closeEl.addEventListener('click', (e) => {
           e.stopPropagation();
           this.closeTab(id);
@@ -494,9 +463,7 @@ export class TabManager {
     }
 
     // Add tab button
-    const addBtn = document.createElement('div');
-    addBtn.className = 'tab tab-add';
-    addBtn.textContent = '+';
+    const addBtn = this._el('div', 'tab tab-add', '+');
     addBtn.addEventListener('click', () => this.createTab());
     this.tabBar.appendChild(addBtn);
   }
@@ -517,7 +484,7 @@ export class TabManager {
       dragging = false;
 
       const onMouseMove = (ev) => {
-        if (!dragging && Math.abs(ev.clientX - startX) > 5) {
+        if (!dragging && Math.abs(ev.clientX - startX) > DRAG_THRESHOLD) {
           dragging = true;
           tabEl.classList.add('tab-dragging');
           document.body.style.cursor = 'grabbing';
@@ -617,10 +584,6 @@ export class TabManager {
       const el = this._tabElements.get(id);
       el.style.transition = 'transform 0.2s ease';
 
-      // Tabs that need to shift to make room
-      const effectiveIdx = i > dragIdx ? i : i;
-      const effectiveInsert = insertIdx > dragIdx ? insertIdx : insertIdx;
-
       if (dragIdx < insertIdx) {
         // Dragging right: shift left the tabs between old and new position
         el.style.transform = (i > dragIdx && i < insertIdx) ? `translateX(${-shiftAmount}px)` : '';
@@ -678,87 +641,53 @@ export class TabManager {
     this.workspaceContainer.innerHTML = '';
 
     // Build 3-panel layout
-    const layout = document.createElement('div');
-    layout.className = 'workspace-layout';
+    const layout = this._el('div', 'workspace-layout');
 
     // --- Left Panel: File Tree ---
-    const leftPanel = document.createElement('div');
-    leftPanel.className = 'panel panel-left';
-
-    const leftHeader = document.createElement('div');
-    leftHeader.className = 'panel-header';
-    leftHeader.innerHTML = '<span class="panel-title">Explorer</span>';
+    const leftPanel = this._el('div', 'panel panel-left');
+    const leftHeader = this._el('div', 'panel-header');
+    leftHeader.appendChild(this._el('span', 'panel-title', 'Explorer'));
     leftPanel.appendChild(leftHeader);
 
-    const treeContainer = document.createElement('div');
-    treeContainer.className = 'file-tree';
+    const treeContainer = this._el('div', 'file-tree');
     leftPanel.appendChild(treeContainer);
 
     // --- Left resize handle ---
-    const leftHandle = document.createElement('div');
-    leftHandle.className = 'panel-resize-handle';
+    const leftHandle = this._el('div', 'panel-resize-handle');
     this.setupPanelResize(leftHandle, leftPanel, 'left');
 
+    // --- Right Panel: File Viewer ---
+    const rightPanel = this._el('div', 'panel panel-right');
+    const viewerContainer = this._el('div', 'file-viewer');
+    rightPanel.appendChild(viewerContainer);
+
+    const rightHandle = this._el('div', 'panel-resize-handle');
+    this.setupPanelResize(rightHandle, rightPanel, 'right');
+
     // --- Center Panel: Terminals ---
-    const centerPanel = document.createElement('div');
-    centerPanel.className = 'panel panel-center';
+    const centerPanel = this._el('div', 'panel panel-center');
+    const centerHeader = this._el('div', 'panel-header');
 
-    const centerHeader = document.createElement('div');
-    centerHeader.className = 'panel-header';
+    const pathInfo = this._el('div', 'path-info');
 
-    const pathInfo = document.createElement('div');
-    pathInfo.className = 'path-info';
-
-    const pathArrowLeft = document.createElement('span');
-    pathArrowLeft.className = 'path-arrow';
-    pathArrowLeft.textContent = '\u2190';
+    const pathArrowLeft = this._el('span', 'path-arrow', '\u2190');
     pathArrowLeft.title = 'Collapse left panel';
     pathArrowLeft.addEventListener('click', () => this.togglePanel(leftPanel, 'left', pathArrowLeft));
 
-    const pathText = document.createElement('span');
-    pathText.className = 'path-text';
-    pathText.textContent = tab.cwd;
+    const pathText = this._el('span', 'path-text', tab.cwd);
+    const branchBadge = this._el('span', 'branch-badge', '');
 
-    const branchBadge = document.createElement('span');
-    branchBadge.className = 'branch-badge';
-    branchBadge.textContent = '';
-
-    const pathArrowRight = document.createElement('span');
-    pathArrowRight.className = 'path-arrow';
-    pathArrowRight.textContent = '\u2192';
+    const pathArrowRight = this._el('span', 'path-arrow', '\u2192');
     pathArrowRight.title = 'Collapse right panel';
     pathArrowRight.addEventListener('click', () => this.togglePanel(rightPanel, 'right', pathArrowRight));
 
-    pathInfo.appendChild(pathArrowLeft);
-    pathInfo.appendChild(pathText);
-    pathInfo.appendChild(branchBadge);
-    pathInfo.appendChild(pathArrowRight);
+    pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
     centerHeader.appendChild(pathInfo);
-
-    const termLabel = document.createElement('div');
-    termLabel.className = 'term-label';
-    termLabel.textContent = 'Terminal';
-    centerHeader.appendChild(termLabel);
-
+    centerHeader.appendChild(this._el('div', 'term-label', 'Terminal'));
     centerPanel.appendChild(centerHeader);
 
-    const termContainer = document.createElement('div');
-    termContainer.className = 'terminal-area';
+    const termContainer = this._el('div', 'terminal-area');
     centerPanel.appendChild(termContainer);
-
-    // --- Right resize handle ---
-    const rightHandle = document.createElement('div');
-    rightHandle.className = 'panel-resize-handle';
-
-    // --- Right Panel: File Viewer ---
-    const rightPanel = document.createElement('div');
-    rightPanel.className = 'panel panel-right';
-
-    const viewerContainer = document.createElement('div');
-    viewerContainer.className = 'file-viewer';
-    rightPanel.appendChild(viewerContainer);
-
-    this.setupPanelResize(rightHandle, rightPanel, 'right');
 
     layout.appendChild(leftPanel);
     layout.appendChild(leftHandle);
@@ -798,10 +727,7 @@ export class TabManager {
         if (panels.rightCollapsed) rightPanel.classList.add('collapsed');
       }
 
-      // Register all terminals in the file tree
-      for (const [termId, node] of tab.terminalPanel.terminals) {
-        tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
-      }
+      this._syncFileTree(tab);
 
       delete tab._restoreData;
     } else {
@@ -840,7 +766,7 @@ export class TabManager {
 
     const tab = this.tabs.get(this.activeTabId);
     if (tab && tab.terminalPanel) {
-      setTimeout(() => tab.terminalPanel.fitAll(), 200);
+      setTimeout(() => tab.terminalPanel.fitAll(), FIT_DELAY_MS);
     }
     this.configManager.scheduleAutoSave();
   }
@@ -852,8 +778,8 @@ export class TabManager {
     const onMouseMove = (e) => {
       const dx = e.clientX - startX;
       const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-      const maxWidth = side === 'right' ? 900 : 500;
-      panel.style.width = `${Math.max(150, Math.min(maxWidth, newWidth))}px`;
+      const maxWidth = side === 'right' ? RIGHT_MAX_WIDTH : LEFT_MAX_WIDTH;
+      panel.style.width = `${Math.max(PANEL_MIN_WIDTH, Math.min(maxWidth, newWidth))}px`;
       panel.style.flex = 'none';
 
       const tab = this.tabs.get(this.activeTabId);
