@@ -21,6 +21,13 @@ const BOTTOM_CONFIG_BUTTONS = [
   { label: 'Duplicate Current...', action: 'duplicate' },
 ];
 
+const THEME_PREVIEW_LINES = [
+  [{ text: '$ ', colorKey: 'green' }, { text: 'npm start', colorKey: 'foreground' }],
+  [{ text: '> ', colorKey: 'cyan' }, { text: 'ready', colorKey: 'green' }],
+];
+
+const COLOR_DOT_KEYS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan'];
+
 export class SettingsModal {
   constructor(shortcutManager) {
     this.shortcutManager = shortcutManager;
@@ -137,7 +144,7 @@ export class SettingsModal {
   }
 
   _createSectionHeading(title, ...extras) {
-    this.content.innerHTML = '';
+    this.content.replaceChildren();
     const heading = this._el('div', 'settings-section-header');
     heading.appendChild(this._el('h3', null, title));
     for (const el of extras) heading.appendChild(el);
@@ -165,18 +172,13 @@ export class SettingsModal {
     const preview = this._el('div', 'theme-preview');
     preview.style.background = theme.background;
 
-    preview.appendChild(this._createThemePreviewLine(
-      [{ text: '$ ', colorKey: 'green' }, { text: 'npm start', colorKey: 'foreground' }],
-      theme
-    ));
-    preview.appendChild(this._createThemePreviewLine(
-      [{ text: '> ', colorKey: 'cyan' }, { text: 'ready', colorKey: 'green' }],
-      theme
-    ));
+    for (const segments of THEME_PREVIEW_LINES) {
+      preview.appendChild(this._createThemePreviewLine(segments, theme));
+    }
 
     // Color dots
     const dots = this._el('div', 'theme-preview-dots');
-    for (const key of ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan']) {
+    for (const key of COLOR_DOT_KEYS) {
       const dot = this._el('span', 'theme-dot');
       dot.style.background = theme[key];
       dots.appendChild(dot);
