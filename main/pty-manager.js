@@ -13,34 +13,51 @@ const KNOWN_AGENTS = [
 
 const EXEC_TIMEOUT_MS = 1000;
 const CWD_TIMEOUT_MS = 2000;
+const DEFAULT_COLS = 80;
+const DEFAULT_ROWS = 24;
+const TERM = 'xterm-256color';
+const DEFAULT_SHELL =
+  process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/zsh');
 
 class PtyManager {
   constructor() {
     this.processes = new Map();
   }
 
+  _getProc(id) {
+    return this.processes.get(id) ?? null;
+  }
+
+  async _exec(cmd, args, timeout = EXEC_TIMEOUT_MS) {
+    const { stdout } = await execFileAsync(cmd, args, {
+      encoding: 'utf8',
+      timeout,
+    });
+    return stdout;
+  }
+
   create({ id, cwd, cols, rows }) {
-    const shell = process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/zsh');
-    const proc = pty.spawn(shell, [], {
-      name: 'xterm-256color',
-      cols: cols || 80,
-      rows: rows || 24,
+    const proc = pty.spawn(DEFAULT_SHELL, [], {
+      name: TERM,
+      cols: cols || DEFAULT_COLS,
+      rows: rows || DEFAULT_ROWS,
       cwd: cwd || os.homedir(),
-      env: { ...process.env, TERM: 'xterm-256color' },
+      env: { ...process.env, TERM },
     });
     this.processes.set(id, proc);
     return proc;
   }
 
   async getCwd(id) {
-    const proc = this.processes.get(id);
+    const proc = this._getProc(id);
     if (!proc) return null;
     try {
-      const { stdout } = await execFileAsync('lsof', ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'], {
-        encoding: 'utf-8',
-        timeout: CWD_TIMEOUT_MS,
-      });
-      const match = stdout.match(/^n(.+)$/m);
+      const out = await this._exec(
+        'lsof',
+        ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'],
+        CWD_TIMEOUT_MS,
+      );
+      const match = out.match(/^n(.+)$/m);
       return match ? match[1] : null;
     } catch {
       return null;
@@ -48,21 +65,18 @@ class PtyManager {
   }
 
   write(id, data) {
-    const proc = this.processes.get(id);
-    if (proc) proc.write(data);
+    this._getProc(id)?.write(data);
   }
 
   resize(id, cols, rows) {
-    const proc = this.processes.get(id);
-    if (proc) proc.resize(cols, rows);
+    this._getProc(id)?.resize(cols, rows);
   }
 
   kill(id) {
-    const proc = this.processes.get(id);
-    if (proc) {
-      proc.kill();
-      this.processes.delete(id);
-    }
+    const proc = this._getProc(id);
+    if (!proc) return;
+    proc.kill();
+    this.processes.delete(id);
   }
 
   async checkAgents() {
@@ -79,23 +93,26 @@ class PtyManager {
     return agents;
   }
 
+  async _getChildPids(pid) {
+    const out = await this._exec('pgrep', ['-P', String(pid)]);
+    return out.trim().split('\n').filter(Boolean).map((p) => p.trim());
+  }
+
+  _matchAgent(psOutput) {
+    const lower = psOutput.toLowerCase();
+    for (const [pattern, name] of KNOWN_AGENTS) {
+      if (lower.includes(pattern)) return name;
+    }
+    return null;
+  }
+
   async _checkAgent(id, proc) {
     try {
-      const { stdout } = await execFileAsync('pgrep', ['-P', String(proc.pid)], {
-        encoding: 'utf8',
-        timeout: EXEC_TIMEOUT_MS,
-      });
-      const childPids = stdout.trim().split('\n').filter(Boolean).map((p) => p.trim());
+      const childPids = await this._getChildPids(proc.pid);
       if (childPids.length === 0) return null;
 
-      const { stdout: psOut } = await execFileAsync('ps', ['-o', 'args=', '-p', childPids.join(',')], {
-        encoding: 'utf8',
-        timeout: EXEC_TIMEOUT_MS,
-      });
-      const lower = psOut.toLowerCase();
-      for (const [pattern, name] of KNOWN_AGENTS) {
-        if (lower.includes(pattern)) return name;
-      }
+      const psOut = await this._exec('ps', ['-o', 'args=', '-p', childPids.join(',')]);
+      return this._matchAgent(psOut);
     } catch {}
     return null;
   }
