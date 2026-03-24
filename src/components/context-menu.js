@@ -32,7 +32,29 @@ export class ContextMenu {
   _buildItem(item) {
     if (item.separator) return _el('div', { className: 'context-menu-separator' });
 
-    const children = [_el('span', { textContent: item.label })];
+    // Submenu item
+    if (item.children) {
+      const wrapper = _el('div', { className: 'context-menu-item context-menu-submenu' });
+
+      const labelRow = _el('span');
+      labelRow.textContent = item.label;
+      wrapper.appendChild(labelRow);
+      wrapper.appendChild(_el('span', { className: 'context-menu-arrow', textContent: '\u25B8' }));
+
+      const sub = _el('div', { className: 'context-menu context-menu-sub' });
+      for (const child of item.children) sub.appendChild(this._buildItem(child));
+      wrapper.appendChild(sub);
+
+      return wrapper;
+    }
+
+    const children = [];
+    if (item.colorDot) {
+      const dot = _el('span', { className: 'context-menu-color-dot' });
+      dot.style.background = item.colorDot;
+      children.push(dot);
+    }
+    children.push(_el('span', { textContent: item.label }));
     if (item.shortcut) {
       children.push(_el('span', { className: 'context-menu-shortcut', textContent: item.shortcut }));
     }

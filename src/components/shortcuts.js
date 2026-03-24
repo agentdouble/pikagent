@@ -1,3 +1,5 @@
+import { COLOR_GROUPS } from './tab-manager.js';
+
 const STORAGE_KEY = 'pickagent:keybindings';
 
 const DEFAULT_BINDINGS = [
@@ -15,6 +17,12 @@ const DEFAULT_BINDINGS = [
   { id: 'showBoard', label: 'Show Board', keys: ['meta+b', 'control+b'] },
   { id: 'showWork', label: 'Show Work', keys: ['meta+e', 'control+e'] },
   { id: 'showFlow', label: 'Show Flow', keys: ['shift+meta+f', 'shift+control+f'] },
+  // Color group shortcuts (no default keys — user binds them in settings)
+  ...COLOR_GROUPS.map((cg) => ({
+    id: `goToColor_${cg.id}`,
+    label: `Go to ${cg.label} group`,
+    keys: [],
+  })),
 ];
 
 // Action handlers keyed by id — each receives the tabManager instance
@@ -32,6 +40,10 @@ const ACTION_HANDLERS = {
   showBoard: (tm) => tm.switchToBoard(),
   showWork: (tm) => tm.setSidebarMode('work'),
   showFlow: (tm) => tm.setSidebarMode('flow'),
+  // Color group navigation
+  ...Object.fromEntries(
+    COLOR_GROUPS.map((cg) => [`goToColor_${cg.id}`, (tm) => tm.goToColorGroup(cg.id)]),
+  ),
 };
 
 // Ordered list of modifier keys for combo string building
@@ -67,6 +79,7 @@ export class ShortcutManager {
   static ALWAYS_ALLOWED = new Set([
     'nextTab', 'prevTab', 'showBoard', 'showWork', 'showFlow',
     'splitVertical', 'splitHorizontal',
+    ...COLOR_GROUPS.map((cg) => `goToColor_${cg.id}`),
   ]);
 
   _registerActions() {

@@ -45,6 +45,42 @@
   margin: 4px 0;
 }
 
+/* ===== Submenu ===== */
+.context-menu-submenu {
+  position: relative;
+}
+
+.context-menu-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 12px;
+}
+
+.context-menu-submenu:hover > .context-menu-arrow {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.context-menu-sub {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  min-width: 150px;
+}
+
+.context-menu-submenu:hover > .context-menu-sub {
+  display: block;
+}
+
+/* ===== Color Dot in Menu ===== */
+.context-menu-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
 /* ===== New File Inline Input ===== */
 .file-tree-new-input {
   width: calc(100% - 24px);

@@ -23,12 +23,22 @@ const ACTIVITY_BUTTONS = [
   { label: 'USAGE', mode: 'usage' },
 ];
 
+export const COLOR_GROUPS = [
+  { id: 'red', label: 'Red', color: '#e94560' },
+  { id: 'blue', label: 'Blue', color: '#74c0fc' },
+  { id: 'green', label: 'Green', color: '#51cf66' },
+  { id: 'yellow', label: 'Yellow', color: '#ffd43b' },
+  { id: 'purple', label: 'Purple', color: '#b197fc' },
+  { id: 'orange', label: 'Orange', color: '#ffa94d' },
+];
+
 class WorkspaceTab {
   constructor(id, name, cwd) {
     this.id = id;
     this.name = name;
     this.cwd = cwd;
     this.noShortcut = false;
+    this.colorGroup = null; // null or COLOR_GROUPS id ('red','blue',...)
     this.fileTree = null;
     this.terminalPanel = null;
     this.fileViewer = null;
@@ -426,6 +436,17 @@ export class TabManager {
       if (id === this.activeTabId) tabEl.classList.add('active');
       if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
 
+      // Color group indicator
+      if (tab.colorGroup) {
+        const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
+        if (cg) {
+          const dot = this._el('span', 'tab-color-dot');
+          dot.style.background = cg.color;
+          tabEl.appendChild(dot);
+          tabEl.style.borderBottomColor = id === this.activeTabId ? cg.color : '';
+        }
+      }
+
       const nameEl = this._el('span', 'tab-name', tab.name);
       nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
       tabEl.appendChild(nameEl);
@@ -447,12 +468,22 @@ export class TabManager {
 
       tabEl.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        const colorItems = COLOR_GROUPS.map((cg) => ({
+          label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,
+          colorDot: cg.color,
+          action: () => this.setTabColorGroup(id, tab.colorGroup === cg.id ? null : cg.id),
+        }));
+        if (tab.colorGroup) {
+          colorItems.push({ label: 'Remove color', action: () => this.setTabColorGroup(id, null) });
+        }
         contextMenu.show(e.clientX, e.clientY, [
           { label: 'Rename', action: () => this.renameTab(id, nameEl) },
           {
             label: tab.noShortcut ? '\u2713 NoShortcut' : 'NoShortcut',
             action: () => this.toggleNoShortcut(id),
           },
+          { separator: true },
+          { label: 'Color Group', children: colorItems },
           { separator: true },
           { label: 'Close', action: () => this.closeTab(id) },
         ]);
@@ -848,6 +879,7 @@ export class TabManager {
         name: tab.name,
         cwd: tab.cwd,
         noShortcut: tab.noShortcut || false,
+        colorGroup: tab.colorGroup || null,
         splitTree: null,
         panels: {},
       };
@@ -907,6 +939,7 @@ export class TabManager {
       const id = generateId('tab');
       const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || this.defaultCwd || '/');
       tab.noShortcut = tabData.noShortcut || false;
+      tab.colorGroup = tabData.colorGroup || null;
       tab._restoreData = tabData;
       this.tabs.set(id, tab);
     }
@@ -919,6 +952,31 @@ export class TabManager {
     this.switchTo(tabIds[activeIdx]);
 
     this.configManager.isRestoring = false;
+  }
+
+  // ===== Color Groups =====
+
+  setTabColorGroup(id, colorGroupId) {
+    const tab = this.tabs.get(id);
+    if (!tab) return;
+    tab.colorGroup = colorGroupId;
+    this.renderTabBar();
+    this.configManager.scheduleAutoSave();
+  }
+
+  goToColorGroup(colorGroupId) {
+    // Find the first tab in this color group (or the last active one)
+    const ids = Array.from(this.tabs.keys());
+    // Prefer next tab after current in that color
+    const currentIdx = ids.indexOf(this.activeTabId);
+    for (let i = 1; i <= ids.length; i++) {
+      const candidate = ids[(currentIdx + i) % ids.length];
+      const tab = this.tabs.get(candidate);
+      if (tab.colorGroup === colorGroupId && !tab.noShortcut) {
+        this.switchTo(candidate);
+        return;
+      }
+    }
   }
 
   // ===== NoShortcut =====
@@ -961,12 +1019,15 @@ export class TabManager {
     const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
+    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup || null;
     for (let i = 1; i < ids.length; i++) {
       const candidate = ids[(idx + i) % ids.length];
-      if (!this.tabs.get(candidate).noShortcut) {
-        this.switchTo(candidate);
-        return;
-      }
+      const tab = this.tabs.get(candidate);
+      if (tab.noShortcut) continue;
+      // If active tab has a color, only cycle within same color
+      if (activeColor && tab.colorGroup !== activeColor) continue;
+      this.switchTo(candidate);
+      return;
     }
   }
 
@@ -974,12 +1035,15 @@ export class TabManager {
     const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
+    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup || null;
     for (let i = 1; i < ids.length; i++) {
       const candidate = ids[(idx - i + ids.length) % ids.length];
-      if (!this.tabs.get(candidate).noShortcut) {
-        this.switchTo(candidate);
-        return;
-      }
+      const tab = this.tabs.get(candidate);
+      if (tab.noShortcut) continue;
+      // If active tab has a color, only cycle within same color
+      if (activeColor && tab.colorGroup !== activeColor) continue;
+      this.switchTo(candidate);
+      return;
     }
   }
 }
