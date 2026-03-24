@@ -3,6 +3,13 @@ import { bus } from '../utils/events.js';
 import { GitChangesView } from './git-changes-view.js';
 import { contextMenu } from './context-menu.js';
 
+// ===== Constants =====
+
+const SAVE_FLASH_MS = 600;
+const TAB_SIZE = 2;
+const TAB_SPACES = ' '.repeat(TAB_SIZE);
+const EMPTY_MESSAGE = 'Click a file to view its content';
+
 // Global pinned files: path -> { name }
 const pinnedFiles = new Map();
 
@@ -16,7 +23,7 @@ export class FileViewer {
     this.lineNumbers = null;
     this.highlightLayer = null;
     this.mode = 'files'; // 'files' | 'git'
-    this.gitChanges = null; // initialized after render()
+    this.gitChanges = null;
     this.render();
     this.listen();
   }
@@ -30,10 +37,10 @@ export class FileViewer {
     return el;
   }
 
-  render() {
-    this.container.innerHTML = '';
+  // ===== Build =====
 
-    this.container.appendChild(this._el('div', 'file-viewer-spacer'));
+  render() {
+    this.container.replaceChildren(this._el('div', 'file-viewer-spacer'));
 
     this.btnFiles = this._el('button', 'mode-btn active', 'Files');
     this.btnFiles.addEventListener('click', () => this.switchMode('files'));
@@ -188,7 +195,7 @@ export class FileViewer {
   }
 
   renderTabs() {
-    this.tabsBar.innerHTML = '';
+    this.tabsBar.replaceChildren();
     for (const [filePath, file] of this.openFiles) {
       this.tabsBar.appendChild(this._createTabEl(filePath, file));
     }
@@ -234,16 +241,16 @@ export class FileViewer {
       if (e.key === 'Tab') {
         e.preventDefault();
         const { selectionStart: start, selectionEnd: end, value: val } = this.editorEl;
-        this.editorEl.value = val.substring(0, start) + '  ' + val.substring(end);
-        this.editorEl.selectionStart = this.editorEl.selectionEnd = start + 2;
+        this.editorEl.value = val.substring(0, start) + TAB_SPACES + val.substring(end);
+        this.editorEl.selectionStart = this.editorEl.selectionEnd = start + TAB_SIZE;
         this.editorEl.dispatchEvent(new Event('input'));
       }
     });
   }
 
   renderEditor() {
-    this.editorWrapper.innerHTML = '';
-    this.statusBar.innerHTML = '';
+    this.editorWrapper.replaceChildren();
+    this.statusBar.replaceChildren();
 
     const file = this.openFiles.get(this.activeFile);
     if (!file) { this.showEmpty(); return; }
@@ -251,7 +258,7 @@ export class FileViewer {
     this.breadcrumb.textContent = this.activeFile;
 
     if (file.error) {
-      this.editorWrapper.innerHTML = `<div class="file-viewer-error">${file.error}</div>`;
+      this.editorWrapper.replaceChildren(this._el('div', 'file-viewer-error', file.error));
       return;
     }
 
@@ -266,11 +273,12 @@ export class FileViewer {
   updateLineNumbers() {
     if (!this.lineNumbers || !this.editorEl) return;
     const count = this.editorEl.value.split('\n').length;
-    const lines = [];
+    const frag = document.createDocumentFragment();
     for (let i = 1; i <= count; i++) {
-      lines.push(`<span>${i}</span>`);
+      if (i > 1) frag.appendChild(document.createTextNode('\n'));
+      frag.appendChild(this._el('span', null, String(i)));
     }
-    this.lineNumbers.innerHTML = lines.join('\n');
+    this.lineNumbers.replaceChildren(frag);
   }
 
   updateHighlight() {
@@ -283,8 +291,7 @@ export class FileViewer {
     // Need trailing newline so the pre sizing matches the textarea
     code.textContent = this.editorEl.value + '\n';
 
-    this.highlightLayer.innerHTML = '';
-    this.highlightLayer.appendChild(code);
+    this.highlightLayer.replaceChildren(code);
 
     if (window.hljs) {
       window.hljs.highlightElement(code);
@@ -303,18 +310,18 @@ export class FileViewer {
   updateStatusBar() {
     if (!this.statusBar || !this.editorEl) return;
     const file = this.openFiles.get(this.activeFile);
-    if (!file) { this.statusBar.innerHTML = ''; return; }
+    if (!file) { this.statusBar.replaceChildren(); return; }
 
     const { line, col, totalLines } = this._getCursorPosition();
     const modified = this.isModified(this.activeFile);
 
-    this.statusBar.innerHTML = `
-      <span class="status-item">${file.lang}</span>
-      <span class="status-item">Ln ${line}, Col ${col}</span>
-      <span class="status-item">${totalLines} lines</span>
-      ${modified ? '<span class="status-item status-modified">Modified</span>' : '<span class="status-item status-saved">Saved</span>'}
-      <span class="status-save-hint">${modified ? '⌘S to save' : ''}</span>
-    `;
+    this.statusBar.replaceChildren(
+      this._el('span', 'status-item', file.lang),
+      this._el('span', 'status-item', `Ln ${line}, Col ${col}`),
+      this._el('span', 'status-item', `${totalLines} lines`),
+      this._el('span', modified ? 'status-item status-modified' : 'status-item status-saved', modified ? 'Modified' : 'Saved'),
+      this._el('span', 'status-save-hint', modified ? '\u2318S to save' : ''),
+    );
   }
 
   async saveActive() {
@@ -323,7 +330,7 @@ export class FileViewer {
 
     const result = await window.api.fs.writefile(this.activeFile, file.content);
     if (result.error) {
-      this.statusBar.innerHTML = `<span class="status-item status-error">Save failed: ${result.error}</span>`;
+      this.statusBar.replaceChildren(this._el('span', 'status-item status-error', `Save failed: ${result.error}`));
       return;
     }
 
@@ -333,7 +340,7 @@ export class FileViewer {
 
     // Flash save indicator
     this.statusBar.classList.add('save-flash');
-    setTimeout(() => this.statusBar.classList.remove('save-flash'), 600);
+    setTimeout(() => this.statusBar.classList.remove('save-flash'), SAVE_FLASH_MS);
   }
 
   closeFile(filePath) {
@@ -363,8 +370,7 @@ export class FileViewer {
   }
 
   showEmpty() {
-    this.editorWrapper.innerHTML =
-      '<div class="file-viewer-empty">Click a file to view its content</div>';
-    this.statusBar.innerHTML = '';
+    this.editorWrapper.replaceChildren(this._el('div', 'file-viewer-empty', EMPTY_MESSAGE));
+    this.statusBar.replaceChildren();
   }
 }
