@@ -3,18 +3,36 @@ import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { openFlowModal, SCHEDULE_LABELS, DAY_NAMES } from './flow-modal.js';
 
-const TERMINAL_FONT_FAMILY = '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace';
-const TERMINAL_FONT_SIZE = 12;
-const TERMINAL_LINE_HEIGHT = 1.3;
 const FIT_DELAY_MS = 50;
 const LOG_SCROLLBACK = 50000;
 const LIVE_SCROLLBACK = 10000;
+
+const READONLY_TERMINAL_OPTIONS = {
+  fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
+  fontSize: 12,
+  lineHeight: 1.3,
+  cursorBlink: false,
+  disableStdin: true,
+};
 
 const STATUS_LABELS = { success: 'Succès', error: 'Erreur' };
 const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';
 const NO_LOG_MODAL_MESSAGE = '\r\n  Log non disponible.\r\n';
 const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos tâches.';
 const MAX_VISIBLE_RUNS = 5;
+
+// --- DOM helpers ---
+
+function _el(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+
+function _safeFit(fitAddon) {
+  try { fitAddon.fit(); } catch {}
+}
 
 export class FlowView {
   constructor(container, tabManager) {
@@ -58,15 +76,6 @@ export class FlowView {
     this._renderList();
   }
 
-  // --- DOM helpers ---
-
-  _el(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
-  }
-
   _disposeAllFromMap(map) {
     for (const [flowId] of map) {
       this._disposeTerminalEntry(map, flowId);
@@ -74,20 +83,20 @@ export class FlowView {
   }
 
   render() {
-    this.container.innerHTML = '';
+    this.container.replaceChildren();
 
-    const wrapper = this._el('div', 'flow-container');
+    const wrapper = _el('div', 'flow-container');
 
-    const header = this._el('div', 'flow-header');
-    header.appendChild(this._el('h2', 'flow-title', 'Flows'));
+    const header = _el('div', 'flow-header');
+    header.appendChild(_el('h2', 'flow-title', 'Flows'));
 
-    const addBtn = this._el('button', 'flow-add-btn', '+ Nouveau');
+    const addBtn = _el('button', 'flow-add-btn', '+ Nouveau');
     addBtn.addEventListener('click', () => this._openModal());
     header.appendChild(addBtn);
 
     wrapper.appendChild(header);
 
-    this.listEl = this._el('div', 'flow-list');
+    this.listEl = _el('div', 'flow-list');
     wrapper.appendChild(this.listEl);
 
     this.container.appendChild(wrapper);
@@ -102,10 +111,10 @@ export class FlowView {
     }
     this._disposeAllFromMap(this._logTerminals);
 
-    this.listEl.innerHTML = '';
+    this.listEl.replaceChildren();
 
     if (this.flows.length === 0) {
-      this.listEl.appendChild(this._el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
+      this.listEl.appendChild(_el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
       return;
     }
 
@@ -118,7 +127,7 @@ export class FlowView {
     const isRunning = !!this._runningMap[flow.id];
     const isExpanded = this._expandedCards.has(flow.id);
 
-    const card = this._el('div', 'flow-card');
+    const card = _el('div', 'flow-card');
     if (!flow.enabled) card.classList.add('flow-card-disabled');
     if (isRunning) card.classList.add('flow-card-running');
     if (isExpanded) card.classList.add('flow-card-expanded');
@@ -132,7 +141,7 @@ export class FlowView {
     } else if (isExpanded) {
       const lastRun = (flow.runs || []).slice(-1)[0];
       if (lastRun) {
-        const termArea = this._el('div', 'flow-card-terminal');
+        const termArea = _el('div', 'flow-card-terminal');
         card.appendChild(termArea);
         this._loadLogIntoContainer(flow.id, lastRun, termArea);
       }
@@ -158,19 +167,19 @@ export class FlowView {
   }
 
   _createCardHeader(flow, isRunning) {
-    const headerRow = this._el('div', 'flow-card-header');
+    const headerRow = _el('div', 'flow-card-header');
 
     // Left: name + schedule + running badge
-    const info = this._el('div', 'flow-card-info');
-    const nameRow = this._el('div', 'flow-card-name-row');
-    nameRow.appendChild(this._el('span', 'flow-card-name', flow.name));
-    if (isRunning) nameRow.appendChild(this._el('span', 'flow-running-badge', 'En cours...'));
+    const info = _el('div', 'flow-card-info');
+    const nameRow = _el('div', 'flow-card-name-row');
+    nameRow.appendChild(_el('span', 'flow-card-name', flow.name));
+    if (isRunning) nameRow.appendChild(_el('span', 'flow-running-badge', 'En cours...'));
     info.appendChild(nameRow);
-    info.appendChild(this._el('div', 'flow-card-schedule', this._formatSchedule(flow.schedule)));
+    info.appendChild(_el('div', 'flow-card-schedule', this._formatSchedule(flow.schedule)));
     headerRow.appendChild(info);
 
     // Right: run dots + actions
-    const right = this._el('div', 'flow-card-right');
+    const right = _el('div', 'flow-card-right');
     right.appendChild(this._createRunDots(flow));
     right.appendChild(this._createCardActions(flow, isRunning));
     headerRow.appendChild(right);
@@ -179,9 +188,9 @@ export class FlowView {
   }
 
   _createRunDots(flow) {
-    const dots = this._el('div', 'flow-card-dots');
+    const dots = _el('div', 'flow-card-dots');
     for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
-      const dot = this._el('button', `flow-dot flow-dot-${run.status}`);
+      const dot = _el('button', `flow-dot flow-dot-${run.status}`);
       dot.title = `${run.date} — ${STATUS_LABELS[run.status] || run.status}\nCliquer pour voir le log`;
       dot.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -193,7 +202,7 @@ export class FlowView {
   }
 
   _createCardActions(flow, isRunning) {
-    const actions = this._el('div', 'flow-card-actions');
+    const actions = _el('div', 'flow-card-actions');
 
     const buttons = [
       !isRunning && ['▶', 'Exécuter maintenant', () => window.api.flow.runNow(flow.id)],
@@ -217,36 +226,27 @@ export class FlowView {
   // === Live Terminal (for running flows) ===
 
   _createActionButton(icon, title, onClick, extraClass = '') {
-    const btn = this._el('button', extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn', icon);
+    const btn = _el('button', extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn', icon);
     btn.title = title;
     btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
     return btn;
   }
 
-  _createReadonlyTerminal(containerEl, opts = {}) {
+  _createReadonlyTerminal(containerEl, termOpts = {}) {
     const term = new Terminal({
       theme: getTerminalTheme(),
-      fontFamily: TERMINAL_FONT_FAMILY,
-      fontSize: TERMINAL_FONT_SIZE,
-      lineHeight: TERMINAL_LINE_HEIGHT,
-      cursorBlink: false,
-      scrollback: opts.scrollback || LIVE_SCROLLBACK,
-      disableStdin: true,
-      ...(opts.cursorStyle ? { cursorStyle: opts.cursorStyle } : {}),
+      ...READONLY_TERMINAL_OPTIONS,
+      scrollback: LIVE_SCROLLBACK,
+      ...termOpts,
     });
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerEl);
 
-    const resizeObs = new ResizeObserver(() => {
-      try { fitAddon.fit(); } catch {}
-    });
+    const resizeObs = new ResizeObserver(() => _safeFit(fitAddon));
     resizeObs.observe(containerEl);
-
-    setTimeout(() => {
-      try { fitAddon.fit(); } catch {}
-    }, FIT_DELAY_MS);
+    setTimeout(() => _safeFit(fitAddon), FIT_DELAY_MS);
 
     return { term, fitAddon, resizeObs };
   }
@@ -255,13 +255,11 @@ export class FlowView {
     // If we already have a terminal for this flow, reattach it
     const existing = this._liveTerminals.get(flowId);
     if (existing) {
-      setTimeout(() => {
-        try { existing.fitAddon.fit(); } catch {}
-      }, FIT_DELAY_MS);
+      setTimeout(() => _safeFit(existing.fitAddon), FIT_DELAY_MS);
       return existing.containerEl;
     }
 
-    const containerEl = this._el('div', 'flow-card-terminal');
+    const containerEl = _el('div', 'flow-card-terminal');
 
     const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
       scrollback: LIVE_SCROLLBACK,
@@ -315,19 +313,19 @@ export class FlowView {
   async _showRunLog(flow, run) {
     const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
 
-    const overlay = this._el('div', 'flow-modal-overlay');
-    const modal = this._el('div', 'flow-log-modal');
+    const overlay = _el('div', 'flow-modal-overlay');
+    const modal = _el('div', 'flow-log-modal');
 
     // Header
-    const header = this._el('div', 'flow-log-header');
-    header.appendChild(this._el('span', 'flow-log-title', `${flow.name} — ${run.date}`));
-    header.appendChild(this._el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
-    const closeBtn = this._el('button', 'flow-log-close', '✕');
+    const header = _el('div', 'flow-log-header');
+    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${run.date}`));
+    header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
+    const closeBtn = _el('button', 'flow-log-close', '✕');
     header.appendChild(closeBtn);
     modal.appendChild(header);
 
     // Terminal to replay the log
-    const termContainer = this._el('div', 'flow-log-terminal');
+    const termContainer = _el('div', 'flow-log-terminal');
     modal.appendChild(termContainer);
 
     overlay.appendChild(modal);
