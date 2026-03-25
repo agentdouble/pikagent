@@ -1,4 +1,3 @@
-const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
@@ -23,9 +22,13 @@ const AGENT_COMMANDS = {
   opencode: (prompt) => `opencode -p '${prompt}'`,
 };
 
+let _dirReady = null;
+
 async function ensureDir() {
-  await fsp.mkdir(FLOWS_DIR, { recursive: true });
-  await fsp.mkdir(LOGS_DIR, { recursive: true });
+  if (!_dirReady) {
+    _dirReady = fsp.mkdir(LOGS_DIR, { recursive: true });
+  }
+  return _dirReady;
 }
 
 function flowPath(id) {
@@ -34,12 +37,6 @@ function flowPath(id) {
 
 function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
-}
-
-// Sync ensureDir for startup only (called once)
-function ensureDirSync() {
-  fs.mkdirSync(FLOWS_DIR, { recursive: true });
-  fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
 class FlowManager {
@@ -157,7 +154,7 @@ class FlowManager {
   // --- Helpers ---
 
   _getLastRun(flow) {
-    return flow.runs?.length ? flow.runs[flow.runs.length - 1] : null;
+    return flow.runs?.at(-1) ?? null;
   }
 
   // --- Scheduling ---
@@ -211,10 +208,10 @@ class FlowManager {
     return `${buildCmd(escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
   }
 
-  _saveLog(flowId, runTimestamp, output) {
-    ensureDirSync();
+  async _saveLog(flowId, runTimestamp, output) {
+    await ensureDir();
     try {
-      fs.writeFileSync(logPath(flowId, runTimestamp), output, 'utf-8');
+      await fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8');
     } catch (e) {
       console.warn('Failed to save flow log:', e);
     }
@@ -228,16 +225,16 @@ class FlowManager {
       this._sendToWindow('pty:data', { id: ptyId, data });
     });
 
-    proc.onExit(({ exitCode }) => {
+    proc.onExit(async ({ exitCode }) => {
       this._ptyManager.processes.delete(ptyId);
-      this._saveLog(flow.id, runTimestamp, outputBuffer);
+      this._runningFlows.delete(flow.id);
 
       const status = exitCode === 0 ? 'success' : 'error';
       this._sendToWindow('pty:exit', { id: ptyId, exitCode });
       this._sendToWindow('flow:runComplete', { flowId: flow.id, ptyId, exitCode });
 
-      this._recordRun(flow.id, status, runTimestamp);
-      this._runningFlows.delete(flow.id);
+      await this._saveLog(flow.id, runTimestamp, outputBuffer);
+      await this._recordRun(flow.id, status, runTimestamp);
     });
   }
 
@@ -257,7 +254,7 @@ class FlowManager {
       });
 
       this._setupPtyListeners(proc, flow, ptyId, runTimestamp);
-      this._runningFlows.set(flow.id, { ptyId, proc, output: '' });
+      this._runningFlows.set(flow.id, { ptyId, proc });
 
       this._sendToWindow('flow:runStarted', {
         flowId: flow.id,
