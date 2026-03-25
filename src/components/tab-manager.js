@@ -147,8 +147,12 @@ export class TabManager {
     return el;
   }
 
+  _activeTab() {
+    return this.tabs.get(this.activeTabId);
+  }
+
   _reattachLayout(tab) {
-    this.workspaceContainer.innerHTML = '';
+    this.workspaceContainer.replaceChildren();
     this.workspaceContainer.appendChild(tab.layoutElement);
     if (tab.terminalPanel) {
       tab.terminalPanel.fitAll();
@@ -171,7 +175,7 @@ export class TabManager {
   renderActivityBar() {
     const activityBar = document.getElementById('activity-bar');
     if (!activityBar) return;
-    activityBar.innerHTML = '';
+    activityBar.replaceChildren();
 
     const topSection = this._el('div', 'activity-bar-top');
 
@@ -188,7 +192,7 @@ export class TabManager {
     // Bottom section with settings
     const bottomSection = this._el('div', 'activity-bar-bottom');
     const settingsBtn = this._el('button', 'activity-btn activity-btn-settings');
-    settingsBtn.innerHTML = '<span class="activity-btn-icon">&#9881;</span>Settings';
+    settingsBtn.append(this._el('span', 'activity-btn-icon', '\u2699'), 'Settings');
     settingsBtn.addEventListener('click', () => {
       if (this.onOpenSettings) this.onOpenSettings();
     });
@@ -205,12 +209,10 @@ export class TabManager {
 
     // Detach previous view
     if (prevMode === 'work') {
-      if (this.activeTabId) {
-        const prev = this.tabs.get(this.activeTabId);
-        if (prev && prev.layoutElement) {
-          this._capturePanelWidths(prev);
-          prev.layoutElement.remove();
-        }
+      const prev = this._activeTab();
+      if (prev?.layoutElement) {
+        this._capturePanelWidths(prev);
+        prev.layoutElement.remove();
       }
     } else if (prevMode === 'board') {
       if (this.boardView) this.boardView.pause();
@@ -230,13 +232,11 @@ export class TabManager {
       this.renderFlow();
     } else {
       // work
-      const tab = this.tabs.get(this.activeTabId);
-      if (tab) {
-        if (tab.layoutElement) {
-          this._reattachLayout(tab);
-        } else {
-          this.renderWorkspace(tab);
-        }
+      const tab = this._activeTab();
+      if (tab?.layoutElement) {
+        this._reattachLayout(tab);
+      } else if (tab) {
+        this.renderWorkspace(tab);
       }
     }
 
@@ -261,7 +261,7 @@ export class TabManager {
   }
 
   renderBoard() {
-    this.workspaceContainer.innerHTML = '';
+    this.workspaceContainer.replaceChildren();
 
     if (this.boardView && this._boardContainerEl) {
       // Reattach existing board (keeps output history)
@@ -285,7 +285,7 @@ export class TabManager {
   // ===== Flow =====
 
   renderFlow() {
-    this.workspaceContainer.innerHTML = '';
+    this.workspaceContainer.replaceChildren();
 
     if (this.flowView && this._flowContainerEl) {
       this.workspaceContainer.appendChild(this._flowContainerEl);
@@ -302,7 +302,7 @@ export class TabManager {
   // ===== Usage =====
 
   renderUsage() {
-    this.workspaceContainer.innerHTML = '';
+    this.workspaceContainer.replaceChildren();
 
     if (this.usageView && this._usageContainerEl) {
       this.workspaceContainer.appendChild(this._usageContainerEl);
@@ -426,7 +426,7 @@ export class TabManager {
   // ===== Tab Bar Rendering =====
 
   renderTabBar() {
-    this.tabBar.innerHTML = '';
+    this.tabBar.replaceChildren();
 
     this._tabElements = new Map(); // id -> DOM element (for drag targeting)
 
@@ -669,7 +669,7 @@ export class TabManager {
   // ===== Workspace Rendering (called only once per tab) =====
 
   async renderWorkspace(tab) {
-    this.workspaceContainer.innerHTML = '';
+    this.workspaceContainer.replaceChildren();
 
     // Build 3-panel layout
     const layout = this._el('div', 'workspace-layout');
@@ -795,10 +795,7 @@ export class TabManager {
       }
     }
 
-    const tab = this.tabs.get(this.activeTabId);
-    if (tab && tab.terminalPanel) {
-      setTimeout(() => tab.terminalPanel.fitAll(), FIT_DELAY_MS);
-    }
+    setTimeout(() => this._activeTab()?.terminalPanel?.fitAll(), FIT_DELAY_MS);
     this.configManager.scheduleAutoSave();
   }
 
@@ -813,8 +810,7 @@ export class TabManager {
       panel.style.width = `${Math.max(PANEL_MIN_WIDTH, Math.min(maxWidth, newWidth))}px`;
       panel.style.flex = 'none';
 
-      const tab = this.tabs.get(this.activeTabId);
-      if (tab && tab.terminalPanel) tab.terminalPanel.fitAll();
+      this._activeTab()?.terminalPanel?.fitAll();
     };
 
     const onMouseUp = () => {
@@ -990,20 +986,17 @@ export class TabManager {
   }
 
   isActiveNoShortcut() {
-    const tab = this.tabs.get(this.activeTabId);
-    return tab ? tab.noShortcut : false;
+    return this._activeTab()?.noShortcut ?? false;
   }
 
   // ===== Shortcut helpers =====
 
   splitHorizontal() {
-    const tab = this.tabs.get(this.activeTabId);
-    if (tab && tab.terminalPanel) tab.terminalPanel.splitActive('horizontal');
+    this._activeTab()?.terminalPanel?.splitActive('horizontal');
   }
 
   splitVertical() {
-    const tab = this.tabs.get(this.activeTabId);
-    if (tab && tab.terminalPanel) tab.terminalPanel.splitActive('vertical');
+    this._activeTab()?.terminalPanel?.splitActive('vertical');
   }
 
   focusDirection(direction) {
@@ -1011,17 +1004,16 @@ export class TabManager {
       this.boardView.focusDirection(direction);
       return;
     }
-    const tab = this.tabs.get(this.activeTabId);
-    if (tab && tab.terminalPanel) tab.terminalPanel.focusDirection(direction);
+    this._activeTab()?.terminalPanel?.focusDirection(direction);
   }
 
-  nextTab() {
+  _cycleTab(step) {
     const ids = Array.from(this.tabs.keys());
     if (ids.length < 2) return;
     const idx = ids.indexOf(this.activeTabId);
-    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup ?? null;
+    const activeColor = this._activeTab()?.colorGroup ?? null;
     for (let i = 1; i < ids.length; i++) {
-      const candidate = ids[(idx + i) % ids.length];
+      const candidate = ids[(idx + step * i + ids.length) % ids.length];
       const tab = this.tabs.get(candidate);
       if (tab.noShortcut) continue;
       if ((tab.colorGroup ?? null) !== activeColor) continue;
@@ -1030,18 +1022,6 @@ export class TabManager {
     }
   }
 
-  prevTab() {
-    const ids = Array.from(this.tabs.keys());
-    if (ids.length < 2) return;
-    const idx = ids.indexOf(this.activeTabId);
-    const activeColor = this.tabs.get(this.activeTabId)?.colorGroup ?? null;
-    for (let i = 1; i < ids.length; i++) {
-      const candidate = ids[(idx - i + ids.length) % ids.length];
-      const tab = this.tabs.get(candidate);
-      if (tab.noShortcut) continue;
-      if ((tab.colorGroup ?? null) !== activeColor) continue;
-      this.switchTo(candidate);
-      return;
-    }
-  }
+  nextTab() { this._cycleTab(1); }
+  prevTab() { this._cycleTab(-1); }
 }
