@@ -1,342 +1,113 @@
+const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
+
+function _theme(chrome, ansi, bright) {
+  const t = {
+    background: chrome[0], foreground: chrome[1], cursor: chrome[2],
+    cursorAccent: chrome[3], selectionBackground: chrome[4],
+  };
+  for (let i = 0; i < ANSI.length; i++) {
+    t[ANSI[i]] = ansi[i];
+    t[`bright${ANSI[i][0].toUpperCase()}${ANSI[i].slice(1)}`] = bright[i];
+  }
+  return t;
+}
+
 export const TERMINAL_THEMES = {
-  'Pikagent': {
-    background: '#1a1a2e',
-    foreground: '#e0e0e0',
-    cursor: '#e0e0e0',
-    cursorAccent: '#1a1a2e',
-    selectionBackground: '#3a3a5e',
-    black: '#1a1a2e',
-    red: '#ff6b6b',
-    green: '#51cf66',
-    yellow: '#ffd43b',
-    blue: '#74c0fc',
-    magenta: '#da77f2',
-    cyan: '#66d9e8',
-    white: '#e0e0e0',
-    brightBlack: '#555577',
-    brightRed: '#ff8787',
-    brightGreen: '#69db7c',
-    brightYellow: '#ffe066',
-    brightBlue: '#91d5ff',
-    brightMagenta: '#e599f7',
-    brightCyan: '#99e9f2',
-    brightWhite: '#ffffff',
-  },
-  'Dracula': {
-    background: '#282a36',
-    foreground: '#f8f8f2',
-    cursor: '#f8f8f2',
-    cursorAccent: '#282a36',
-    selectionBackground: '#44475a',
-    black: '#21222c',
-    red: '#ff5555',
-    green: '#50fa7b',
-    yellow: '#f1fa8c',
-    blue: '#bd93f9',
-    magenta: '#ff79c6',
-    cyan: '#8be9fd',
-    white: '#f8f8f2',
-    brightBlack: '#6272a4',
-    brightRed: '#ff6e6e',
-    brightGreen: '#69ff94',
-    brightYellow: '#ffffa5',
-    brightBlue: '#d6acff',
-    brightMagenta: '#ff92df',
-    brightCyan: '#a4ffff',
-    brightWhite: '#ffffff',
-  },
-  'One Dark': {
-    background: '#282c34',
-    foreground: '#abb2bf',
-    cursor: '#528bff',
-    cursorAccent: '#282c34',
-    selectionBackground: '#3e4451',
-    black: '#282c34',
-    red: '#e06c75',
-    green: '#98c379',
-    yellow: '#e5c07b',
-    blue: '#61afef',
-    magenta: '#c678dd',
-    cyan: '#56b6c2',
-    white: '#abb2bf',
-    brightBlack: '#5c6370',
-    brightRed: '#be5046',
-    brightGreen: '#98c379',
-    brightYellow: '#d19a66',
-    brightBlue: '#61afef',
-    brightMagenta: '#c678dd',
-    brightCyan: '#56b6c2',
-    brightWhite: '#ffffff',
-  },
-  'Nord': {
-    background: '#2e3440',
-    foreground: '#d8dee9',
-    cursor: '#d8dee9',
-    cursorAccent: '#2e3440',
-    selectionBackground: '#434c5e',
-    black: '#3b4252',
-    red: '#bf616a',
-    green: '#a3be8c',
-    yellow: '#ebcb8b',
-    blue: '#81a1c1',
-    magenta: '#b48ead',
-    cyan: '#88c0d0',
-    white: '#e5e9f0',
-    brightBlack: '#4c566a',
-    brightRed: '#bf616a',
-    brightGreen: '#a3be8c',
-    brightYellow: '#ebcb8b',
-    brightBlue: '#81a1c1',
-    brightMagenta: '#b48ead',
-    brightCyan: '#8fbcbb',
-    brightWhite: '#eceff4',
-  },
-  'Tokyo Night': {
-    background: '#1a1b26',
-    foreground: '#c0caf5',
-    cursor: '#c0caf5',
-    cursorAccent: '#1a1b26',
-    selectionBackground: '#33467c',
-    black: '#15161e',
-    red: '#f7768e',
-    green: '#9ece6a',
-    yellow: '#e0af68',
-    blue: '#7aa2f7',
-    magenta: '#bb9af7',
-    cyan: '#7dcfff',
-    white: '#a9b1d6',
-    brightBlack: '#414868',
-    brightRed: '#f7768e',
-    brightGreen: '#9ece6a',
-    brightYellow: '#e0af68',
-    brightBlue: '#7aa2f7',
-    brightMagenta: '#bb9af7',
-    brightCyan: '#7dcfff',
-    brightWhite: '#c0caf5',
-  },
-  'Catppuccin Mocha': {
-    background: '#1e1e2e',
-    foreground: '#cdd6f4',
-    cursor: '#f5e0dc',
-    cursorAccent: '#1e1e2e',
-    selectionBackground: '#45475a',
-    black: '#45475a',
-    red: '#f38ba8',
-    green: '#a6e3a1',
-    yellow: '#f9e2af',
-    blue: '#89b4fa',
-    magenta: '#f5c2e7',
-    cyan: '#94e2d5',
-    white: '#bac2de',
-    brightBlack: '#585b70',
-    brightRed: '#f38ba8',
-    brightGreen: '#a6e3a1',
-    brightYellow: '#f9e2af',
-    brightBlue: '#89b4fa',
-    brightMagenta: '#f5c2e7',
-    brightCyan: '#94e2d5',
-    brightWhite: '#a6adc8',
-  },
-  'Solarized Dark': {
-    background: '#002b36',
-    foreground: '#839496',
-    cursor: '#839496',
-    cursorAccent: '#002b36',
-    selectionBackground: '#073642',
-    black: '#073642',
-    red: '#dc322f',
-    green: '#859900',
-    yellow: '#b58900',
-    blue: '#268bd2',
-    magenta: '#d33682',
-    cyan: '#2aa198',
-    white: '#eee8d5',
-    brightBlack: '#586e75',
-    brightRed: '#cb4b16',
-    brightGreen: '#586e75',
-    brightYellow: '#657b83',
-    brightBlue: '#839496',
-    brightMagenta: '#6c71c4',
-    brightCyan: '#93a1a1',
-    brightWhite: '#fdf6e3',
-  },
-  'Gruvbox Dark': {
-    background: '#282828',
-    foreground: '#ebdbb2',
-    cursor: '#ebdbb2',
-    cursorAccent: '#282828',
-    selectionBackground: '#504945',
-    black: '#282828',
-    red: '#cc241d',
-    green: '#98971a',
-    yellow: '#d79921',
-    blue: '#458588',
-    magenta: '#b16286',
-    cyan: '#689d6a',
-    white: '#a89984',
-    brightBlack: '#928374',
-    brightRed: '#fb4934',
-    brightGreen: '#b8bb26',
-    brightYellow: '#fabd2f',
-    brightBlue: '#83a598',
-    brightMagenta: '#d3869b',
-    brightCyan: '#8ec07c',
-    brightWhite: '#ebdbb2',
-  },
-  'Monokai': {
-    background: '#272822',
-    foreground: '#f8f8f2',
-    cursor: '#f8f8f0',
-    cursorAccent: '#272822',
-    selectionBackground: '#49483e',
-    black: '#272822',
-    red: '#f92672',
-    green: '#a6e22e',
-    yellow: '#f4bf75',
-    blue: '#66d9ef',
-    magenta: '#ae81ff',
-    cyan: '#a1efe4',
-    white: '#f8f8f2',
-    brightBlack: '#75715e',
-    brightRed: '#f92672',
-    brightGreen: '#a6e22e',
-    brightYellow: '#f4bf75',
-    brightBlue: '#66d9ef',
-    brightMagenta: '#ae81ff',
-    brightCyan: '#a1efe4',
-    brightWhite: '#f9f8f5',
-  },
-  'GitHub Dark': {
-    background: '#0d1117',
-    foreground: '#c9d1d9',
-    cursor: '#c9d1d9',
-    cursorAccent: '#0d1117',
-    selectionBackground: '#264f78',
-    black: '#0d1117',
-    red: '#ff7b72',
-    green: '#7ee787',
-    yellow: '#d29922',
-    blue: '#79c0ff',
-    magenta: '#d2a8ff',
-    cyan: '#a5d6ff',
-    white: '#c9d1d9',
-    brightBlack: '#484f58',
-    brightRed: '#ffa198',
-    brightGreen: '#56d364',
-    brightYellow: '#e3b341',
-    brightBlue: '#79c0ff',
-    brightMagenta: '#d2a8ff',
-    brightCyan: '#a5d6ff',
-    brightWhite: '#f0f6fc',
-  },
-  'Pikagent Light': {
-    background: '#ffffff',
-    foreground: '#1f2937',
-    cursor: '#1f2937',
-    cursorAccent: '#ffffff',
-    selectionBackground: '#c7d2fe',
-    black: '#1f2937',
-    red: '#dc2626',
-    green: '#16a34a',
-    yellow: '#ca8a04',
-    blue: '#2563eb',
-    magenta: '#9333ea',
-    cyan: '#0891b2',
-    white: '#f3f4f6',
-    brightBlack: '#6b7280',
-    brightRed: '#ef4444',
-    brightGreen: '#22c55e',
-    brightYellow: '#eab308',
-    brightBlue: '#3b82f6',
-    brightMagenta: '#a855f7',
-    brightCyan: '#06b6d4',
-    brightWhite: '#ffffff',
-  },
-  'Solarized Light': {
-    background: '#fdf6e3',
-    foreground: '#657b83',
-    cursor: '#657b83',
-    cursorAccent: '#fdf6e3',
-    selectionBackground: '#eee8d5',
-    black: '#073642',
-    red: '#dc322f',
-    green: '#859900',
-    yellow: '#b58900',
-    blue: '#268bd2',
-    magenta: '#d33682',
-    cyan: '#2aa198',
-    white: '#eee8d5',
-    brightBlack: '#586e75',
-    brightRed: '#cb4b16',
-    brightGreen: '#586e75',
-    brightYellow: '#657b83',
-    brightBlue: '#839496',
-    brightMagenta: '#6c71c4',
-    brightCyan: '#93a1a1',
-    brightWhite: '#fdf6e3',
-  },
-  'GitHub Light': {
-    background: '#ffffff',
-    foreground: '#24292f',
-    cursor: '#24292f',
-    cursorAccent: '#ffffff',
-    selectionBackground: '#ddf4ff',
-    black: '#24292f',
-    red: '#cf222e',
-    green: '#1a7f37',
-    yellow: '#9a6700',
-    blue: '#0969da',
-    magenta: '#8250df',
-    cyan: '#1b7c83',
-    white: '#f6f8fa',
-    brightBlack: '#57606a',
-    brightRed: '#a40e26',
-    brightGreen: '#2da44e',
-    brightYellow: '#bf8700',
-    brightBlue: '#218bff',
-    brightMagenta: '#a475f9',
-    brightCyan: '#3192aa',
-    brightWhite: '#ffffff',
-  },
+  'Pikagent': _theme(
+    ['#1a1a2e', '#e0e0e0', '#e0e0e0', '#1a1a2e', '#3a3a5e'],
+    ['#1a1a2e', '#ff6b6b', '#51cf66', '#ffd43b', '#74c0fc', '#da77f2', '#66d9e8', '#e0e0e0'],
+    ['#555577', '#ff8787', '#69db7c', '#ffe066', '#91d5ff', '#e599f7', '#99e9f2', '#ffffff'],
+  ),
+  'Dracula': _theme(
+    ['#282a36', '#f8f8f2', '#f8f8f2', '#282a36', '#44475a'],
+    ['#21222c', '#ff5555', '#50fa7b', '#f1fa8c', '#bd93f9', '#ff79c6', '#8be9fd', '#f8f8f2'],
+    ['#6272a4', '#ff6e6e', '#69ff94', '#ffffa5', '#d6acff', '#ff92df', '#a4ffff', '#ffffff'],
+  ),
+  'One Dark': _theme(
+    ['#282c34', '#abb2bf', '#528bff', '#282c34', '#3e4451'],
+    ['#282c34', '#e06c75', '#98c379', '#e5c07b', '#61afef', '#c678dd', '#56b6c2', '#abb2bf'],
+    ['#5c6370', '#be5046', '#98c379', '#d19a66', '#61afef', '#c678dd', '#56b6c2', '#ffffff'],
+  ),
+  'Nord': _theme(
+    ['#2e3440', '#d8dee9', '#d8dee9', '#2e3440', '#434c5e'],
+    ['#3b4252', '#bf616a', '#a3be8c', '#ebcb8b', '#81a1c1', '#b48ead', '#88c0d0', '#e5e9f0'],
+    ['#4c566a', '#bf616a', '#a3be8c', '#ebcb8b', '#81a1c1', '#b48ead', '#8fbcbb', '#eceff4'],
+  ),
+  'Tokyo Night': _theme(
+    ['#1a1b26', '#c0caf5', '#c0caf5', '#1a1b26', '#33467c'],
+    ['#15161e', '#f7768e', '#9ece6a', '#e0af68', '#7aa2f7', '#bb9af7', '#7dcfff', '#a9b1d6'],
+    ['#414868', '#f7768e', '#9ece6a', '#e0af68', '#7aa2f7', '#bb9af7', '#7dcfff', '#c0caf5'],
+  ),
+  'Catppuccin Mocha': _theme(
+    ['#1e1e2e', '#cdd6f4', '#f5e0dc', '#1e1e2e', '#45475a'],
+    ['#45475a', '#f38ba8', '#a6e3a1', '#f9e2af', '#89b4fa', '#f5c2e7', '#94e2d5', '#bac2de'],
+    ['#585b70', '#f38ba8', '#a6e3a1', '#f9e2af', '#89b4fa', '#f5c2e7', '#94e2d5', '#a6adc8'],
+  ),
+  'Solarized Dark': _theme(
+    ['#002b36', '#839496', '#839496', '#002b36', '#073642'],
+    ['#073642', '#dc322f', '#859900', '#b58900', '#268bd2', '#d33682', '#2aa198', '#eee8d5'],
+    ['#586e75', '#cb4b16', '#586e75', '#657b83', '#839496', '#6c71c4', '#93a1a1', '#fdf6e3'],
+  ),
+  'Gruvbox Dark': _theme(
+    ['#282828', '#ebdbb2', '#ebdbb2', '#282828', '#504945'],
+    ['#282828', '#cc241d', '#98971a', '#d79921', '#458588', '#b16286', '#689d6a', '#a89984'],
+    ['#928374', '#fb4934', '#b8bb26', '#fabd2f', '#83a598', '#d3869b', '#8ec07c', '#ebdbb2'],
+  ),
+  'Monokai': _theme(
+    ['#272822', '#f8f8f2', '#f8f8f0', '#272822', '#49483e'],
+    ['#272822', '#f92672', '#a6e22e', '#f4bf75', '#66d9ef', '#ae81ff', '#a1efe4', '#f8f8f2'],
+    ['#75715e', '#f92672', '#a6e22e', '#f4bf75', '#66d9ef', '#ae81ff', '#a1efe4', '#f9f8f5'],
+  ),
+  'GitHub Dark': _theme(
+    ['#0d1117', '#c9d1d9', '#c9d1d9', '#0d1117', '#264f78'],
+    ['#0d1117', '#ff7b72', '#7ee787', '#d29922', '#79c0ff', '#d2a8ff', '#a5d6ff', '#c9d1d9'],
+    ['#484f58', '#ffa198', '#56d364', '#e3b341', '#79c0ff', '#d2a8ff', '#a5d6ff', '#f0f6fc'],
+  ),
+  'Pikagent Light': _theme(
+    ['#ffffff', '#1f2937', '#1f2937', '#ffffff', '#c7d2fe'],
+    ['#1f2937', '#dc2626', '#16a34a', '#ca8a04', '#2563eb', '#9333ea', '#0891b2', '#f3f4f6'],
+    ['#6b7280', '#ef4444', '#22c55e', '#eab308', '#3b82f6', '#a855f7', '#06b6d4', '#ffffff'],
+  ),
+  'Solarized Light': _theme(
+    ['#fdf6e3', '#657b83', '#657b83', '#fdf6e3', '#eee8d5'],
+    ['#073642', '#dc322f', '#859900', '#b58900', '#268bd2', '#d33682', '#2aa198', '#eee8d5'],
+    ['#586e75', '#cb4b16', '#586e75', '#657b83', '#839496', '#6c71c4', '#93a1a1', '#fdf6e3'],
+  ),
+  'GitHub Light': _theme(
+    ['#ffffff', '#24292f', '#24292f', '#ffffff', '#ddf4ff'],
+    ['#24292f', '#cf222e', '#1a7f37', '#9a6700', '#0969da', '#8250df', '#1b7c83', '#f6f8fa'],
+    ['#57606a', '#a40e26', '#2da44e', '#bf8700', '#218bff', '#a475f9', '#3192aa', '#ffffff'],
+  ),
 };
 
-const STORAGE_KEY = 'pikagent-terminal-theme';
-const STORAGE_KEY_PREV = 'pikagent-terminal-theme-prev';
+const STORAGE = { theme: 'pikagent-terminal-theme', prev: 'pikagent-terminal-theme-prev' };
 
 const LIGHT_THEMES = new Set(['Pikagent Light', 'Solarized Light', 'GitHub Light']);
 const DEFAULT_LIGHT = 'Pikagent Light';
 const DEFAULT_DARK = 'Pikagent';
 
-export function isLightTerminalTheme(name) {
+function _isLight(name) {
   return LIGHT_THEMES.has(name);
 }
 
 export function getTerminalTheme() {
-  const name = localStorage.getItem(STORAGE_KEY) || DEFAULT_DARK;
+  const name = localStorage.getItem(STORAGE.theme) || DEFAULT_DARK;
   return TERMINAL_THEMES[name] || TERMINAL_THEMES[DEFAULT_DARK];
 }
 
 export function getTerminalThemeName() {
-  return localStorage.getItem(STORAGE_KEY) || DEFAULT_DARK;
+  return localStorage.getItem(STORAGE.theme) || DEFAULT_DARK;
 }
 
 export function setTerminalTheme(name) {
-  localStorage.setItem(STORAGE_KEY, name);
+  localStorage.setItem(STORAGE.theme, name);
 }
 
 export function switchTerminalForMode(mode) {
   const current = getTerminalThemeName();
-  const currentIsLight = isLightTerminalTheme(current);
-
-  if (mode === 'light' && !currentIsLight) {
-    localStorage.setItem(STORAGE_KEY_PREV, current);
-    setTerminalTheme(DEFAULT_LIGHT);
-    return true;
-  }
-  if (mode === 'dark' && currentIsLight) {
-    const prev = localStorage.getItem(STORAGE_KEY_PREV) || DEFAULT_DARK;
-    setTerminalTheme(prev);
-    return true;
-  }
-  return false;
+  const wantLight = mode === 'light';
+  if (wantLight === _isLight(current)) return false;
+  if (wantLight) localStorage.setItem(STORAGE.prev, current);
+  setTerminalTheme(wantLight ? DEFAULT_LIGHT : (localStorage.getItem(STORAGE.prev) || DEFAULT_DARK));
+  return true;
 }
