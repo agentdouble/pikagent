@@ -4,6 +4,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { bus } from '../utils/events.js';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
+import { _el, _safeFit } from '../utils/dom.js';
 
 // Minimum bytes of meaningful output per poll interval to consider agent "working".
 // ANSI escape codes (cursor moves, color resets, status bar refreshes) produce
@@ -32,27 +33,6 @@ const STATUS_CONFIG = {
 const EVT_CREATED  = 'terminal:created';
 const EVT_REMOVED  = 'terminal:removed';
 const EVT_EXITED   = 'terminal:exited';
-
-// --- DOM helper ---
-
-function _el(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'className') el.className = v;
-    else if (k === 'textContent') el.textContent = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
-    else el[k] = v;
-  }
-  for (const child of children) {
-    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
-    else if (child) el.appendChild(child);
-  }
-  return el;
-}
-
-function _safeFit(fitAddon) {
-  try { fitAddon.fit(); } catch {}
-}
 
 export class BoardView {
   constructor(container, tabManager) {

@@ -2,6 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { openFlowModal, SCHEDULE_LABELS, DAY_NAMES } from './flow-modal.js';
+import { _safeFit } from '../utils/dom.js';
 
 const FIT_DELAY_MS = 50;
 const LOG_SCROLLBACK = 50000;
@@ -28,10 +29,6 @@ function _el(tag, className, text) {
   if (className) el.className = className;
   if (text !== undefined) el.textContent = text;
   return el;
-}
-
-function _safeFit(fitAddon) {
-  try { fitAddon.fit(); } catch {}
 }
 
 export class FlowView {

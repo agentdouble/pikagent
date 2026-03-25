@@ -1,20 +1,4 @@
-// --- DOM helpers ---
-
-function _el(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'className') el.className = v;
-    else if (k === 'textContent') el.textContent = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
-    else el[k] = v;
-  }
-  for (const child of children) {
-    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
-    else if (child) el.appendChild(child);
-  }
-  return el;
-}
+import { _el } from '../utils/dom.js';
 
 function _td(text, attrs = {}) {
   return _el('td', { ...attrs, textContent: text });
