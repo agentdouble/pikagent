@@ -7,14 +7,21 @@ import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 
 /* ── Constants ────────────────────────────────────────────────── */
-const FONT_SIZE = 13;
-const LINE_HEIGHT = 1.3;
 const CWD_POLL_MS = 1500;
 const EDGE_THRESHOLD = 0.3;
 const INDICATOR_PAD = 2;
 const MIN_RESIZE_RATIO = 0.1;
 const MAX_RESIZE_RATIO = 0.9;
 const DRAG_GRIP = '⠿';
+
+const TERMINAL_OPTIONS = {
+  fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
+  fontSize: 13,
+  lineHeight: 1.3,
+  cursorBlink: true,
+  cursorStyle: 'bar',
+  allowProposedApi: true,
+};
 
 /* ── DOM helper ───────────────────────────────────────────────── */
 function _el(tag, cls, props) {
@@ -31,15 +38,7 @@ class TerminalInstance {
     this.cwd = cwd;
     this.disposed = false;
 
-    this.terminal = new Terminal({
-      theme: getTerminalTheme(),
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-      fontSize: FONT_SIZE,
-      lineHeight: LINE_HEIGHT,
-      cursorBlink: true,
-      cursorStyle: 'bar',
-      allowProposedApi: true,
-    });
+    this.terminal = new Terminal({ theme: getTerminalTheme(), ...TERMINAL_OPTIONS });
 
     this.fitAddon = new FitAddon();
     this.terminal.loadAddon(this.fitAddon);
@@ -175,7 +174,7 @@ export class TerminalPanel {
 
   /** Reset container to blank terminal-panel state. */
   _resetContainer() {
-    this.container.innerHTML = '';
+    this.container.replaceChildren();
     this.container.className = 'terminal-panel';
   }
 
@@ -184,7 +183,7 @@ export class TerminalPanel {
     const topBar = _el('div', 'terminal-top-bar');
 
     const dragHandle = _el('div', 'terminal-drag-handle', { title: 'Drag to move' });
-    dragHandle.innerHTML = `<span class="drag-grip">${DRAG_GRIP}</span>`;
+    dragHandle.appendChild(_el('span', 'drag-grip', { textContent: DRAG_GRIP }));
 
     const closeBtn = _el('button', 'terminal-close-btn', {
       textContent: '×',
@@ -622,34 +621,24 @@ export class TerminalPanel {
   }
 
   _doResize(e, handle, splitEl, direction) {
-      const [panelBefore, panelAfter] = this._adjacentPanels(handle, splitEl);
-      if (!panelBefore || !panelAfter) return;
+    const [panelBefore, panelAfter] = this._adjacentPanels(handle, splitEl);
+    if (!panelBefore || !panelAfter) return;
 
-      const rectBefore = panelBefore.getBoundingClientRect();
-      const rectAfter = panelAfter.getBoundingClientRect();
+    const rectBefore = panelBefore.getBoundingClientRect();
+    const rectAfter = panelAfter.getBoundingClientRect();
 
-      let totalSize, mousePos, startPos;
-      if (direction === 'horizontal') {
-        totalSize = rectBefore.width + rectAfter.width;
-        startPos = rectBefore.left;
-        mousePos = e.clientX;
-      } else {
-        totalSize = rectBefore.height + rectAfter.height;
-        startPos = rectBefore.top;
-        mousePos = e.clientY;
-      }
+    const isHoriz = direction === 'horizontal';
+    const totalSize = isHoriz ? rectBefore.width + rectAfter.width : rectBefore.height + rectAfter.height;
+    const startPos = isHoriz ? rectBefore.left : rectBefore.top;
+    const mousePos = isHoriz ? e.clientX : e.clientY;
 
-      let ratio = (mousePos - startPos) / totalSize;
-      ratio = Math.max(MIN_RESIZE_RATIO, Math.min(MAX_RESIZE_RATIO, ratio));
+    const ratio = Math.max(MIN_RESIZE_RATIO, Math.min(MAX_RESIZE_RATIO, (mousePos - startPos) / totalSize));
 
-      const flexBefore = parseFloat(panelBefore.style.flex) || 1;
-      const flexAfter = parseFloat(panelAfter.style.flex) || 1;
-      const totalFlex = flexBefore + flexAfter;
+    const totalFlex = (parseFloat(panelBefore.style.flex) || 1) + (parseFloat(panelAfter.style.flex) || 1);
+    panelBefore.style.flex = `${totalFlex * ratio}`;
+    panelAfter.style.flex = `${totalFlex * (1 - ratio)}`;
 
-      panelBefore.style.flex = `${totalFlex * ratio}`;
-      panelAfter.style.flex = `${totalFlex * (1 - ratio)}`;
-
-      this.fitAll();
+    this.fitAll();
   }
 
   fitAll() {
