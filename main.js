@@ -9,9 +9,7 @@ app.whenReady().then(() => {
   ipcHandlers.register(() => window.get());
 
   app.on('activate', () => {
-    if (!window.get() || window.get().isDestroyed()) {
-      window.create();
-    }
+    if (!window.get()) window.create();
   });
 });
 
