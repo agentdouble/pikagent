@@ -224,6 +224,8 @@ export class FileTree {
       { label: 'New File', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'file') },
       { label: 'New Folder', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'folder') },
       { separator: true },
+      { label: 'Open as Workspace', action: () => bus.emit('workspace:openFromFolder', { cwd: dirPath }) },
+      { separator: true },
       ...this._commonContextItems(dirPath, nameEl, `Delete folder "${dirName}" and all its contents?`),
     ]);
   }

@@ -120,16 +120,23 @@ export class TabManager {
       this.configManager.scheduleAutoSave();
     };
 
+    const onOpenFromFolder = ({ cwd }) => {
+      const folderName = cwd.split('/').filter(Boolean).pop() || '/';
+      this.createTab(folderName, cwd);
+    };
+
     bus.on('terminal:cwdChanged', onCwdChanged);
     bus.on('terminal:created', onCreated);
     bus.on('terminal:removed', onRemoved);
     bus.on('layout:changed', onLayoutChanged);
+    bus.on('workspace:openFromFolder', onOpenFromFolder);
 
     this._busListeners.push(
       ['terminal:cwdChanged', onCwdChanged],
       ['terminal:created', onCreated],
       ['terminal:removed', onRemoved],
       ['layout:changed', onLayoutChanged],
+      ['workspace:openFromFolder', onOpenFromFolder],
     );
   }
 
@@ -303,10 +310,10 @@ export class TabManager {
 
   // ===== Tab Management =====
 
-  createTab(name = null) {
+  createTab(name = null, cwd = null) {
     const id = generateId('tab');
     const tabName = name || `Workspace ${this.tabs.size + 1}`;
-    const tab = new WorkspaceTab(id, tabName, this.defaultCwd || '/');
+    const tab = new WorkspaceTab(id, tabName, cwd || this.defaultCwd || '/');
     this.tabs.set(id, tab);
     this.renderTabBar();
     this.switchTo(id);
