@@ -1,28 +1,15 @@
 const fsp = require('fs/promises');
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
+const { readJson, ensureDirOnce } = require('./fs-utils');
+
 const MAX_SESSIONS = 200;
 const POLL_INTERVAL_MS = 5000;
 const MS_PER_SEC = 1000;
 const FLOW_PREFIX = 'flow-';
 const ID_RAND_LEN = 8;
 
-let _dirReady = null;
-
-async function ensureDir() {
-  if (!_dirReady) {
-    _dirReady = fsp.mkdir(BASE_DIR, { recursive: true });
-  }
-  return _dirReady;
-}
-
-async function readJson(filePath) {
-  try {
-    return JSON.parse(await fsp.readFile(filePath, 'utf-8'));
-  } catch {
-    return null;
-  }
-}
+const ensureDir = ensureDirOnce(BASE_DIR);
 
 function _generateId() {
   return `session-${Date.now()}-${Math.random().toString(36).slice(2, 2 + ID_RAND_LEN)}`;

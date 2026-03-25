@@ -5,6 +5,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const sessionManager = require('./session-manager');
 const { FLOWS_DIR, CLAUDE_PROJECTS_DIR } = require('./paths');
+const { readDirJson } = require('./fs-utils');
 
 const execFileAsync = promisify(execFile);
 
@@ -75,22 +76,7 @@ function dayLabels(days = DEFAULT_DAYS) {
 // ===== Flow data =====
 
 async function getAllFlows() {
-  try {
-    await fsp.mkdir(FLOWS_DIR, { recursive: true });
-    const files = (await fsp.readdir(FLOWS_DIR)).filter((f) => f.endsWith('.json'));
-    const results = await Promise.all(
-      files.map(async (f) => {
-        try {
-          return JSON.parse(await fsp.readFile(path.join(FLOWS_DIR, f), 'utf-8'));
-        } catch {
-          return null;
-        }
-      })
-    );
-    return results.filter(Boolean);
-  } catch {
-    return [];
-  }
+  return readDirJson(FLOWS_DIR);
 }
 
 function getFlowRuns(flows) {

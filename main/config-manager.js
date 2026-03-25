@@ -1,9 +1,10 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
-const DEFAULT_META = { defaultConfig: null };
+const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 
-let _dirReady = null;
+const DEFAULT_META = { defaultConfig: null };
+const ensureDir = ensureDirOnce(CONFIG_DIR);
 let _metaCache = null;
 
 function sanitizeName(name) {
@@ -12,21 +13,6 @@ function sanitizeName(name) {
 
 function configPath(name) {
   return path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
-}
-
-async function ensureDir() {
-  if (!_dirReady) {
-    _dirReady = fsp.mkdir(CONFIG_DIR, { recursive: true });
-  }
-  return _dirReady;
-}
-
-async function readJson(filePath) {
-  try {
-    return JSON.parse(await fsp.readFile(filePath, 'utf-8'));
-  } catch {
-    return null;
-  }
 }
 
 async function readMeta() {
@@ -62,20 +48,15 @@ async function list() {
   await ensureDir();
   const meta = await readMeta();
   try {
-    const files = (await fsp.readdir(CONFIG_DIR)).filter((f) => f.endsWith('.json'));
-    const results = await Promise.all(
-      files.map(async (f) => {
-        const data = await readJson(path.join(CONFIG_DIR, f));
-        if (!data || data.name === '__autosave__') return null;
-        return {
-          name: data.name,
-          updatedAt: data.updatedAt,
-          tabCount: data.tabs ? data.tabs.length : 0,
-          isDefault: meta.defaultConfig === data.name,
-        };
-      })
-    );
-    return results.filter(Boolean);
+    const configs = await readDirJson(CONFIG_DIR);
+    return configs
+      .filter((data) => data.name !== '__autosave__')
+      .map((data) => ({
+        name: data.name,
+        updatedAt: data.updatedAt,
+        tabCount: data.tabs ? data.tabs.length : 0,
+        isDefault: meta.defaultConfig === data.name,
+      }));
   } catch (err) {
     console.warn('config-manager: list failed:', err.message);
     return [];

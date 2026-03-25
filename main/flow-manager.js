@@ -2,6 +2,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { FLOWS_DIR, LOGS_DIR } = require('./paths');
+const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 
 const SCHEDULER_INTERVAL_MS = 60_000;
 const SHELL_INIT_DELAY_MS = 500;
@@ -19,14 +20,7 @@ const AGENT_COMMANDS = {
   opencode: (prompt) => `opencode -p '${prompt}'`,
 };
 
-let _dirReady = null;
-
-async function ensureDir() {
-  if (!_dirReady) {
-    _dirReady = fsp.mkdir(LOGS_DIR, { recursive: true });
-  }
-  return _dirReady;
-}
+const ensureDir = ensureDirOnce(LOGS_DIR);
 
 function flowPath(id) {
   return path.join(FLOWS_DIR, `${id}.json`);
@@ -84,30 +78,12 @@ class FlowManager {
   }
 
   async get(id) {
-    try {
-      return JSON.parse(await fsp.readFile(flowPath(id), 'utf-8'));
-    } catch {
-      return null;
-    }
+    return readJson(flowPath(id));
   }
 
   async list() {
     await ensureDir();
-    try {
-      const files = (await fsp.readdir(FLOWS_DIR)).filter((f) => f.endsWith('.json'));
-      const results = await Promise.all(
-        files.map(async (f) => {
-          try {
-            return JSON.parse(await fsp.readFile(path.join(FLOWS_DIR, f), 'utf-8'));
-          } catch {
-            return null;
-          }
-        })
-      );
-      return results.filter(Boolean);
-    } catch {
-      return [];
-    }
+    return readDirJson(FLOWS_DIR);
   }
 
   async remove(id) {
