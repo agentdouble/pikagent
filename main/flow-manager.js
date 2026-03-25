@@ -1,10 +1,7 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
-
-const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
-const FLOWS_DIR = path.join(BASE_DIR, 'flows');
-const LOGS_DIR = path.join(FLOWS_DIR, 'logs');
+const { FLOWS_DIR, LOGS_DIR } = require('./paths');
 
 const SCHEDULER_INTERVAL_MS = 60_000;
 const SHELL_INIT_DELAY_MS = 500;

@@ -1,9 +1,6 @@
 const fsp = require('fs/promises');
-const path = require('path');
 const os = require('os');
-
-const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
-const SESSIONS_FILE = path.join(BASE_DIR, 'sessions.json');
+const { BASE_DIR, SESSIONS_FILE } = require('./paths');
 const MAX_SESSIONS = 200;
 const POLL_INTERVAL_MS = 5000;
 const MS_PER_SEC = 1000;

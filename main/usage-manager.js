@@ -4,14 +4,11 @@ const os = require('os');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const sessionManager = require('./session-manager');
+const { FLOWS_DIR, CLAUDE_PROJECTS_DIR } = require('./paths');
 
 const execFileAsync = promisify(execFile);
 
 // ===== Constants =====
-
-const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
-const FLOWS_DIR = path.join(BASE_DIR, 'flows');
-const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 
 const CACHE_TTL = 30000;
 const DEFAULT_DAYS = 30;

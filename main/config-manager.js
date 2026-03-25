@@ -1,10 +1,6 @@
 const fsp = require('fs/promises');
 const path = require('path');
-const os = require('os');
-
-const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
-const CONFIG_DIR = path.join(BASE_DIR, 'configs');
-const META_FILE = path.join(BASE_DIR, 'meta.json');
+const { CONFIG_DIR, META_FILE } = require('./paths');
 const DEFAULT_META = { defaultConfig: null };
 
 let _dirReady = null;
