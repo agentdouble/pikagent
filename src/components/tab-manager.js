@@ -170,6 +170,23 @@ export class TabManager {
     }
   }
 
+  /** Reattach or create a side-panel view (board, flow, usage). Returns true if reattached. */
+  _renderSideView(viewKey, containerKey, ViewClass, ...ctorArgs) {
+    this.workspaceContainer.replaceChildren();
+
+    if (this[viewKey] && this[containerKey]) {
+      this.workspaceContainer.appendChild(this[containerKey]);
+      return true;
+    }
+
+    const container = this._el('div');
+    container.style.height = '100%';
+    this.workspaceContainer.appendChild(container);
+    this[containerKey] = container;
+    this[viewKey] = new ViewClass(container, ...ctorArgs);
+    return false;
+  }
+
   // ===== Activity Bar =====
 
   renderActivityBar() {
@@ -201,37 +218,36 @@ export class TabManager {
     activityBar.appendChild(bottomSection);
   }
 
-  setSidebarMode(mode) {
-    if (mode === this.sidebarMode) return;
-
-    const prevMode = this.sidebarMode;
-    this.sidebarMode = mode;
-
-    // Detach previous view
-    if (prevMode === 'work') {
+  _detachSidebarView(mode) {
+    if (mode === 'work') {
       const prev = this._activeTab();
       if (prev?.layoutElement) {
         this._capturePanelWidths(prev);
         prev.layoutElement.remove();
       }
-    } else if (prevMode === 'board') {
-      if (this.boardView) this.boardView.pause();
-      if (this._boardContainerEl) this._boardContainerEl.remove();
-    } else if (prevMode === 'flow') {
-      if (this._flowContainerEl) this._flowContainerEl.remove();
-    } else if (prevMode === 'usage') {
-      if (this._usageContainerEl) this._usageContainerEl.remove();
-    }
-
-    // Attach new view
-    if (mode === 'usage') {
-      this.renderUsage();
     } else if (mode === 'board') {
+      this.boardView?.pause();
+      this._boardContainerEl?.remove();
+    } else if (mode === 'flow') {
+      this._flowContainerEl?.remove();
+    } else if (mode === 'usage') {
+      this._usageContainerEl?.remove();
+    }
+  }
+
+  setSidebarMode(mode) {
+    if (mode === this.sidebarMode) return;
+
+    this._detachSidebarView(this.sidebarMode);
+    this.sidebarMode = mode;
+
+    if (mode === 'board') {
       this.renderBoard();
     } else if (mode === 'flow') {
       this.renderFlow();
+    } else if (mode === 'usage') {
+      this.renderUsage();
     } else {
-      // work
       const tab = this._activeTab();
       if (tab?.layoutElement) {
         this._reattachLayout(tab);
@@ -261,58 +277,27 @@ export class TabManager {
   }
 
   renderBoard() {
-    this.workspaceContainer.replaceChildren();
-
-    if (this.boardView && this._boardContainerEl) {
-      // Reattach existing board (keeps output history)
-      this.workspaceContainer.appendChild(this._boardContainerEl);
-      // Refit all card terminals
+    if (this._renderSideView('boardView', '_boardContainerEl', BoardView, this)) {
       for (const [, card] of this.boardView.cards) {
         try { card.fitAddon.fit(); } catch {}
       }
-      // Resume polling and rescan
       this.boardView.resume();
-    } else {
-      // First time: create board
-      const container = this._el('div');
-      container.style.height = '100%';
-      this.workspaceContainer.appendChild(container);
-      this._boardContainerEl = container;
-      this.boardView = new BoardView(container, this);
     }
   }
 
   // ===== Flow =====
 
   renderFlow() {
-    this.workspaceContainer.replaceChildren();
-
-    if (this.flowView && this._flowContainerEl) {
-      this.workspaceContainer.appendChild(this._flowContainerEl);
+    if (this._renderSideView('flowView', '_flowContainerEl', FlowView, this)) {
       this.flowView.refresh();
-    } else {
-      const container = this._el('div');
-      container.style.height = '100%';
-      this.workspaceContainer.appendChild(container);
-      this._flowContainerEl = container;
-      this.flowView = new FlowView(container, this);
     }
   }
 
   // ===== Usage =====
 
   renderUsage() {
-    this.workspaceContainer.replaceChildren();
-
-    if (this.usageView && this._usageContainerEl) {
-      this.workspaceContainer.appendChild(this._usageContainerEl);
+    if (this._renderSideView('usageView', '_usageContainerEl', UsageView)) {
       this.usageView.refresh();
-    } else {
-      const container = this._el('div');
-      container.style.height = '100%';
-      this.workspaceContainer.appendChild(container);
-      this._usageContainerEl = container;
-      this.usageView = new UsageView(container);
     }
   }
 
@@ -885,24 +870,9 @@ export class TabManager {
         tabData.splitTree = tab.terminalPanel.serialize();
       }
 
-      // Panel widths
-      const isActive = id === this.activeTabId;
-      if (isActive && tab.layoutElement) {
-        // Active tab: read from live DOM
-        const left = tab.layoutElement.querySelector('.panel-left');
-        const right = tab.layoutElement.querySelector('.panel-right');
-        if (left) {
-          tabData.panels.leftWidth = left.getBoundingClientRect().width;
-          tabData.panels.leftCollapsed = left.classList.contains('collapsed');
-        }
-        if (right) {
-          tabData.panels.rightWidth = right.getBoundingClientRect().width;
-          tabData.panels.rightCollapsed = right.classList.contains('collapsed');
-        }
-      } else if (tab._panelWidths) {
-        // Inactive tab: use cached widths captured at detach time
-        tabData.panels = { ...tab._panelWidths };
-      }
+      // Panel widths — active tab: snapshot from live DOM; inactive: use cached
+      if (id === this.activeTabId) this._capturePanelWidths(tab);
+      if (tab._panelWidths) tabData.panels = { ...tab._panelWidths };
 
       tabs.push(tabData);
       i++;
