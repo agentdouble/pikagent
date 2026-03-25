@@ -5,6 +5,7 @@ import { generateId } from '../utils/id.js';
 import { bus } from '../utils/events.js';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
+import { _el } from '../utils/dom.js';
 
 /* ── Constants ────────────────────────────────────────────────── */
 const CWD_POLL_MS = 1500;
@@ -23,13 +24,6 @@ const TERMINAL_OPTIONS = {
   allowProposedApi: true,
 };
 
-/* ── DOM helper ───────────────────────────────────────────────── */
-function _el(tag, cls, props) {
-  const el = document.createElement(tag);
-  if (cls) el.className = cls;
-  if (props) Object.assign(el, props);
-  return el;
-}
 
 class TerminalInstance {
   constructor(container, cwd) {

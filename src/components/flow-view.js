@@ -2,7 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { openFlowModal, SCHEDULE_LABELS, DAY_NAMES } from './flow-modal.js';
-import { _safeFit } from '../utils/dom.js';
+import { _el, _safeFit } from '../utils/dom.js';
 
 const FIT_DELAY_MS = 50;
 const LOG_SCROLLBACK = 50000;
@@ -22,14 +22,6 @@ const NO_LOG_MODAL_MESSAGE = '\r\n  Log non disponible.\r\n';
 const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos tâches.';
 const MAX_VISIBLE_RUNS = 5;
 
-// --- DOM helpers ---
-
-function _el(tag, className, text) {
-  const el = document.createElement(tag);
-  if (className) el.className = className;
-  if (text !== undefined) el.textContent = text;
-  return el;
-}
 
 export class FlowView {
   constructor(container, tabManager) {

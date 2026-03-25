@@ -2,6 +2,7 @@ import { detectLanguage } from '../utils/file-icons.js';
 import { bus } from '../utils/events.js';
 import { GitChangesView } from './git-changes-view.js';
 import { contextMenu } from './context-menu.js';
+import { _el } from '../utils/dom.js';
 
 // ===== Constants =====
 
@@ -30,42 +31,35 @@ export class FileViewer {
 
   static get pinnedFiles() { return pinnedFiles; }
 
-  _el(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
-  }
-
   // ===== Build =====
 
   render() {
-    this.container.replaceChildren(this._el('div', 'file-viewer-spacer'));
+    this.container.replaceChildren(_el('div', 'file-viewer-spacer'));
 
-    this.btnFiles = this._el('button', 'mode-btn active', 'Files');
+    this.btnFiles = _el('button', 'mode-btn active', 'Files');
     this.btnFiles.addEventListener('click', () => this.switchMode('files'));
-    this.btnGit = this._el('button', 'mode-btn', 'Git Changes');
+    this.btnGit = _el('button', 'mode-btn', 'Git Changes');
     this.btnGit.addEventListener('click', () => this.switchMode('git'));
 
-    this.modeBar = this._el('div', 'file-viewer-mode-bar');
+    this.modeBar = _el('div', 'file-viewer-mode-bar');
     this.modeBar.append(this.btnFiles, this.btnGit);
     this.container.appendChild(this.modeBar);
 
-    this.tabsBar = this._el('div', 'file-viewer-tabs');
+    this.tabsBar = _el('div', 'file-viewer-tabs');
     this.container.appendChild(this.tabsBar);
 
-    this.breadcrumb = this._el('div', 'file-viewer-breadcrumb');
+    this.breadcrumb = _el('div', 'file-viewer-breadcrumb');
     this.container.appendChild(this.breadcrumb);
 
-    this.editorWrapper = this._el('div', 'editor-wrapper');
+    this.editorWrapper = _el('div', 'editor-wrapper');
     this.container.appendChild(this.editorWrapper);
 
-    this.gitViewEl = this._el('div', 'git-changes-view');
+    this.gitViewEl = _el('div', 'git-changes-view');
     this.gitViewEl.style.display = 'none';
     this.container.appendChild(this.gitViewEl);
     this.gitChanges = new GitChangesView(this.gitViewEl);
 
-    this.statusBar = this._el('div', 'editor-status-bar');
+    this.statusBar = _el('div', 'editor-status-bar');
     this.container.appendChild(this.statusBar);
 
     this.showEmpty();
@@ -167,17 +161,17 @@ export class FileViewer {
   }
 
   _createTabEl(filePath, file) {
-    const tab = this._el('div', 'file-tab');
+    const tab = _el('div', 'file-tab');
     if (filePath === this.activeFile) tab.classList.add('active');
 
     const pinned = this.isPinned(filePath);
     const modified = this.isModified(filePath);
 
-    if (pinned) tab.appendChild(this._el('span', 'file-tab-pin', '\u{1F4CC}'));
-    tab.appendChild(this._el('span', 'file-tab-modified', modified ? '\u25CF' : ''));
-    tab.appendChild(this._el('span', null, file.name));
+    if (pinned) tab.appendChild(_el('span', 'file-tab-pin', '\u{1F4CC}'));
+    tab.appendChild(_el('span', 'file-tab-modified', modified ? '\u25CF' : ''));
+    tab.appendChild(_el('span', null, file.name));
 
-    const close = this._el('span', 'file-tab-close', '\u00D7');
+    const close = _el('span', 'file-tab-close', '\u00D7');
     close.addEventListener('click', (e) => { e.stopPropagation(); this.closeFile(filePath); });
     tab.appendChild(close);
 
@@ -202,16 +196,16 @@ export class FileViewer {
   }
 
   _createEditorDOM(file) {
-    this.lineNumbers = this._el('div', 'editor-line-numbers');
-    this.highlightLayer = this._el('pre', 'editor-highlight-layer');
+    this.lineNumbers = _el('div', 'editor-line-numbers');
+    this.highlightLayer = _el('pre', 'editor-highlight-layer');
 
-    this.editorEl = this._el('textarea', 'editor-textarea');
+    this.editorEl = _el('textarea', 'editor-textarea');
     this.editorEl.value = file.content;
     this.editorEl.spellcheck = false;
     this.editorEl.setAttribute('autocorrect', 'off');
     this.editorEl.setAttribute('autocapitalize', 'off');
 
-    const editArea = this._el('div', 'editor-edit-area');
+    const editArea = _el('div', 'editor-edit-area');
     editArea.append(this.highlightLayer, this.editorEl);
     this.editorWrapper.append(this.lineNumbers, editArea);
   }
@@ -258,7 +252,7 @@ export class FileViewer {
     this.breadcrumb.textContent = this.activeFile;
 
     if (file.error) {
-      this.editorWrapper.replaceChildren(this._el('div', 'file-viewer-error', file.error));
+      this.editorWrapper.replaceChildren(_el('div', 'file-viewer-error', file.error));
       return;
     }
 
@@ -276,7 +270,7 @@ export class FileViewer {
     const frag = document.createDocumentFragment();
     for (let i = 1; i <= count; i++) {
       if (i > 1) frag.appendChild(document.createTextNode('\n'));
-      frag.appendChild(this._el('span', null, String(i)));
+      frag.appendChild(_el('span', null, String(i)));
     }
     this.lineNumbers.replaceChildren(frag);
   }
@@ -316,11 +310,11 @@ export class FileViewer {
     const modified = this.isModified(this.activeFile);
 
     this.statusBar.replaceChildren(
-      this._el('span', 'status-item', file.lang),
-      this._el('span', 'status-item', `Ln ${line}, Col ${col}`),
-      this._el('span', 'status-item', `${totalLines} lines`),
-      this._el('span', modified ? 'status-item status-modified' : 'status-item status-saved', modified ? 'Modified' : 'Saved'),
-      this._el('span', 'status-save-hint', modified ? '\u2318S to save' : ''),
+      _el('span', 'status-item', file.lang),
+      _el('span', 'status-item', `Ln ${line}, Col ${col}`),
+      _el('span', 'status-item', `${totalLines} lines`),
+      _el('span', modified ? 'status-item status-modified' : 'status-item status-saved', modified ? 'Modified' : 'Saved'),
+      _el('span', 'status-save-hint', modified ? '\u2318S to save' : ''),
     );
   }
 
@@ -330,7 +324,7 @@ export class FileViewer {
 
     const result = await window.api.fs.writefile(this.activeFile, file.content);
     if (result.error) {
-      this.statusBar.replaceChildren(this._el('span', 'status-item status-error', `Save failed: ${result.error}`));
+      this.statusBar.replaceChildren(_el('span', 'status-item status-error', `Save failed: ${result.error}`));
       return;
     }
 
@@ -370,7 +364,7 @@ export class FileViewer {
   }
 
   showEmpty() {
-    this.editorWrapper.replaceChildren(this._el('div', 'file-viewer-empty', EMPTY_MESSAGE));
+    this.editorWrapper.replaceChildren(_el('div', 'file-viewer-empty', EMPTY_MESSAGE));
     this.statusBar.replaceChildren();
   }
 }

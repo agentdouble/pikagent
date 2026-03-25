@@ -1,5 +1,6 @@
 import { bus } from '../utils/events.js';
 import { DiffViewer } from './diff-viewer.js';
+import { _el } from '../utils/dom.js';
 
 const STATUS_LABELS = { M: 'M', A: 'A', D: 'D', R: 'R', '?': '?' };
 
@@ -22,19 +23,12 @@ export class GitChangesView {
     this.gitCwd = cwd;
   }
 
-  _el(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
-  }
-
   _setContent(parent, ...children) {
     parent.replaceChildren(...children);
   }
 
   _renderMessage(parent, cls, text) {
-    this._setContent(parent, this._el('div', cls, text));
+    this._setContent(parent, _el('div', cls, text));
   }
 
   async loadChanges() {
@@ -55,13 +49,13 @@ export class GitChangesView {
   }
 
   _createHeader(total) {
-    const refreshBtn = this._el('span', 'git-refresh-btn', '↻');
+    const refreshBtn = _el('span', 'git-refresh-btn', '↻');
     refreshBtn.title = 'Refresh';
     refreshBtn.addEventListener('click', () => this.loadChanges());
 
-    const header = this._el('div', 'git-header');
+    const header = _el('div', 'git-header');
     header.append(
-      this._el('span', null, `Local Changes (${total})`),
+      _el('span', null, `Local Changes (${total})`),
       refreshBtn,
     );
     return header;
@@ -75,7 +69,7 @@ export class GitChangesView {
       return;
     }
 
-    const list = this._el('div', 'git-commit-list');
+    const list = _el('div', 'git-commit-list');
     for (const { key, title, isStaged } of CHANGE_SECTIONS) {
       const files = changes[key];
       if (files?.length > 0) this._renderSection(list, title, files, isStaged);
@@ -88,18 +82,18 @@ export class GitChangesView {
     const key = `${isStaged ? 's' : 'u'}:${file.path}`;
     const isExpanded = this.expandedFile === key;
 
-    const item = this._el('div', 'git-file-row');
+    const item = _el('div', 'git-file-row');
 
-    const row = this._el('div', 'git-file-item');
+    const row = _el('div', 'git-file-item');
     row.addEventListener('click', () => {
       this.expandedFile = this.expandedFile === key ? null : key;
       this.loadChanges();
     });
 
-    const fileName = this._el('span', 'git-file-name-label', file.path);
+    const fileName = _el('span', 'git-file-name-label', file.path);
     fileName.title = file.path;
 
-    const openBtn = this._el('span', 'git-open-btn', '→');
+    const openBtn = _el('span', 'git-open-btn', '→');
     openBtn.title = 'Open file';
     openBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -107,8 +101,8 @@ export class GitChangesView {
     });
 
     row.append(
-      this._el('span', 'git-chevron', isExpanded ? CHEVRON.expanded : CHEVRON.collapsed),
-      this._el('span', `git-file-status git-status-${file.status}`, STATUS_LABELS[file.status] || file.status),
+      _el('span', 'git-chevron', isExpanded ? CHEVRON.expanded : CHEVRON.collapsed),
+      _el('span', `git-file-status git-status-${file.status}`, STATUS_LABELS[file.status] || file.status),
       fileName,
       openBtn,
     );
@@ -116,8 +110,8 @@ export class GitChangesView {
     item.appendChild(row);
 
     if (isExpanded && file.status !== '?') {
-      const diffContainer = this._el('div', 'git-diff-container');
-      diffContainer.appendChild(this._el('div', 'git-loading', 'Loading diff...'));
+      const diffContainer = _el('div', 'git-diff-container');
+      diffContainer.appendChild(_el('div', 'git-loading', 'Loading diff...'));
       item.appendChild(diffContainer);
       this._loadFileDiff(file.path, isStaged, diffContainer);
     }
@@ -126,8 +120,8 @@ export class GitChangesView {
   }
 
   _renderSection(container, title, files, isStaged) {
-    const section = this._el('div', 'git-section');
-    section.appendChild(this._el('div', 'git-section-header', `${title} (${files.length})`));
+    const section = _el('div', 'git-section');
+    section.appendChild(_el('div', 'git-section-header', `${title} (${files.length})`));
 
     for (const file of files) {
       section.appendChild(this._createFileItem(file, isStaged));
@@ -140,7 +134,7 @@ export class GitChangesView {
     const diff = await window.api.git.fileDiff(this.gitCwd, filePath, isStaged);
 
     if (!diff) {
-      const msg = this._el('div', 'git-empty', 'No diff available');
+      const msg = _el('div', 'git-empty', 'No diff available');
       msg.style.height = 'auto';
       msg.style.padding = '8px';
       this._setContent(container, msg);

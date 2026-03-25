@@ -1,20 +1,7 @@
+import { _el } from '../utils/dom.js';
+
 /** Viewport edge padding (px) when clamping menu position. */
 const VIEWPORT_PADDING = 8;
-
-function _el(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'className') el.className = v;
-    else if (k === 'textContent') el.textContent = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
-    else el[k] = v;
-  }
-  for (const child of children) {
-    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
-    else if (child) el.appendChild(child);
-  }
-  return el;
-}
 
 export class ContextMenu {
   constructor() {

@@ -1,6 +1,7 @@
 import { ShortcutManager } from './shortcuts.js';
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
+import { _el } from '../utils/dom.js';
 
 const MODAL_CLOSE_TRANSITION_MS = 200;
 const MODIFIER_KEYS = ['Shift', 'Control', 'Alt', 'Meta'];
@@ -43,15 +44,6 @@ export class SettingsModal {
     this.build();
   }
 
-  // ===== DOM Helpers =====
-
-  _el(tag, className, textContent) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (textContent !== undefined) el.textContent = textContent;
-    return el;
-  }
-
   _applyThemeToTerminals() {
     if (!this.tabManager) return;
     const theme = getTerminalTheme();
@@ -63,28 +55,28 @@ export class SettingsModal {
   // ===== Build =====
 
   build() {
-    this.overlay = this._el('div', 'settings-overlay');
+    this.overlay = _el('div', 'settings-overlay');
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.close();
     });
 
-    this.modal = this._el('div', 'settings-modal');
+    this.modal = _el('div', 'settings-modal');
 
     // Header
-    const header = this._el('div', 'settings-header');
-    header.appendChild(this._el('h2', 'settings-title', 'Settings'));
-    const closeBtn = this._el('button', 'settings-close-btn', '×');
+    const header = _el('div', 'settings-header');
+    header.appendChild(_el('h2', 'settings-title', 'Settings'));
+    const closeBtn = _el('button', 'settings-close-btn', '×');
     closeBtn.addEventListener('click', () => this.close());
     header.appendChild(closeBtn);
     this.modal.appendChild(header);
 
     // Nav (sidebar)
-    const body = this._el('div', 'settings-body');
-    const nav = this._el('div', 'settings-nav');
+    const body = _el('div', 'settings-body');
+    const nav = _el('div', 'settings-nav');
 
     this.navItems = {};
     for (const { key, label } of NAV_SECTIONS) {
-      const item = this._el('div', 'settings-nav-item', label);
+      const item = _el('div', 'settings-nav-item', label);
       if (key === this.activeSection) item.classList.add('active');
       item.addEventListener('click', () => this.showSection(key));
       nav.appendChild(item);
@@ -92,7 +84,7 @@ export class SettingsModal {
     }
 
     // Content
-    this.content = this._el('div', 'settings-content');
+    this.content = _el('div', 'settings-content');
 
     body.appendChild(nav);
     body.appendChild(this.content);
@@ -145,8 +137,8 @@ export class SettingsModal {
 
   _createSectionHeading(title, ...extras) {
     this.content.replaceChildren();
-    const heading = this._el('div', 'settings-section-header');
-    heading.appendChild(this._el('h3', null, title));
+    const heading = _el('div', 'settings-section-header');
+    heading.appendChild(_el('h3', null, title));
     for (const el of extras) heading.appendChild(el);
     this.content.appendChild(heading);
     return heading;
@@ -155,9 +147,9 @@ export class SettingsModal {
   // ===== Appearance Section =====
 
   _createThemePreviewLine(segments, theme) {
-    const line = this._el('div', 'theme-preview-line');
+    const line = _el('div', 'theme-preview-line');
     for (const { text, colorKey } of segments) {
-      const span = this._el('span', null, text);
+      const span = _el('span', null, text);
       span.style.color = theme[colorKey];
       line.appendChild(span);
     }
@@ -165,11 +157,11 @@ export class SettingsModal {
   }
 
   _createThemeCard(name, theme, isActive) {
-    const card = this._el('div', 'theme-card');
+    const card = _el('div', 'theme-card');
     if (isActive) card.classList.add('theme-active');
 
     // Preview block
-    const preview = this._el('div', 'theme-preview');
+    const preview = _el('div', 'theme-preview');
     preview.style.background = theme.background;
 
     for (const segments of THEME_PREVIEW_LINES) {
@@ -177,16 +169,16 @@ export class SettingsModal {
     }
 
     // Color dots
-    const dots = this._el('div', 'theme-preview-dots');
+    const dots = _el('div', 'theme-preview-dots');
     for (const key of COLOR_DOT_KEYS) {
-      const dot = this._el('span', 'theme-dot');
+      const dot = _el('span', 'theme-dot');
       dot.style.background = theme[key];
       dots.appendChild(dot);
     }
     preview.appendChild(dots);
 
     card.appendChild(preview);
-    card.appendChild(this._el('div', 'theme-card-label', name));
+    card.appendChild(_el('div', 'theme-card-label', name));
 
     card.addEventListener('click', () => {
       setTerminalTheme(name);
@@ -201,14 +193,14 @@ export class SettingsModal {
     this._createSectionHeading('Appearance');
 
     // Day/Night mode toggle
-    const modeRow = this._el('div', 'theme-mode-row');
-    modeRow.appendChild(this._el('span', 'theme-mode-label', 'Mode'));
+    const modeRow = _el('div', 'theme-mode-row');
+    modeRow.appendChild(_el('span', 'theme-mode-label', 'Mode'));
 
-    const modeToggle = this._el('div', 'theme-mode-toggle');
+    const modeToggle = _el('div', 'theme-mode-toggle');
     const currentMode = getAppTheme();
 
     for (const { mode, label } of MODE_BUTTONS) {
-      const btn = this._el('button', 'theme-mode-btn', label);
+      const btn = _el('button', 'theme-mode-btn', label);
       if (currentMode === mode) btn.classList.add('active');
       btn.addEventListener('click', () => {
         setAppTheme(mode);
@@ -222,10 +214,10 @@ export class SettingsModal {
     this.content.appendChild(modeRow);
 
     // Terminal theme grid
-    this.content.appendChild(this._el('h4', 'theme-sub-heading', 'Terminal Theme'));
+    this.content.appendChild(_el('h4', 'theme-sub-heading', 'Terminal Theme'));
 
     const currentThemeName = getTerminalThemeName();
-    const grid = this._el('div', 'theme-grid');
+    const grid = _el('div', 'theme-grid');
     for (const [name, theme] of Object.entries(TERMINAL_THEMES)) {
       grid.appendChild(this._createThemeCard(name, theme, name === currentThemeName));
     }
@@ -239,25 +231,25 @@ export class SettingsModal {
   // ===== Keybindings Section =====
 
   renderKeybindings() {
-    const resetBtn = this._el('button', 'settings-reset-btn', 'Reset to defaults');
+    const resetBtn = _el('button', 'settings-reset-btn', 'Reset to defaults');
     resetBtn.addEventListener('click', () => {
       this.shortcutManager.resetToDefaults();
       this.renderKeybindings();
     });
     this._createSectionHeading('Keyboard Shortcuts', resetBtn);
 
-    const list = this._el('div', 'keybinding-list');
+    const list = _el('div', 'keybinding-list');
 
     for (const binding of this.shortcutManager.getBindingsList()) {
-      const row = this._el('div', 'keybinding-row');
-      row.appendChild(this._el('div', 'keybinding-label', binding.label));
+      const row = _el('div', 'keybinding-row');
+      row.appendChild(_el('div', 'keybinding-label', binding.label));
 
-      const keysContainer = this._el('div', 'keybinding-keys');
+      const keysContainer = _el('div', 'keybinding-keys');
       for (let i = 0; i < binding.keys.length; i++) {
         keysContainer.appendChild(this.createKeyBadge(binding, i));
       }
 
-      const addBtn = this._el('button', 'keybinding-add-btn', '+');
+      const addBtn = _el('button', 'keybinding-add-btn', '+');
       addBtn.title = 'Add keybinding';
       addBtn.addEventListener('click', () => {
         binding.keys.push('');
@@ -274,9 +266,9 @@ export class SettingsModal {
   }
 
   createKeyBadge(binding, index) {
-    const wrapper = this._el('div', 'keybinding-badge-wrapper');
+    const wrapper = _el('div', 'keybinding-badge-wrapper');
 
-    const badge = this._el('span', 'keybinding-badge');
+    const badge = _el('span', 'keybinding-badge');
     badge.textContent = binding.keys[index]
       ? ShortcutManager.formatCombo(binding.keys[index])
       : 'Not set';
@@ -286,7 +278,7 @@ export class SettingsModal {
       this.startRecording(binding.id, index, badge);
     });
 
-    const removeBtn = this._el('span', 'keybinding-badge-remove', '×');
+    const removeBtn = _el('span', 'keybinding-badge-remove', '×');
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       binding.keys.splice(index, 1);
@@ -337,7 +329,7 @@ export class SettingsModal {
   // ===== Workspace Configs Section =====
 
   _createConfigActions(config) {
-    const actions = this._el('div', 'config-actions');
+    const actions = _el('div', 'config-actions');
 
     const descriptors = [
       ...(!config.isDefault ? [{
@@ -359,7 +351,7 @@ export class SettingsModal {
     ];
 
     for (const { label, title, cls, handler } of descriptors) {
-      const btn = this._el('button', cls || 'config-action-btn', label);
+      const btn = _el('button', cls || 'config-action-btn', label);
       if (title) btn.title = title;
       btn.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
       actions.appendChild(btn);
@@ -369,27 +361,27 @@ export class SettingsModal {
   }
 
   _createConfigRow(config, currentName) {
-    const row = this._el('div', 'config-row');
+    const row = _el('div', 'config-row');
     if (config.name === currentName) row.classList.add('config-active');
 
     // Left: radio + info
-    const left = this._el('div', 'config-row-left');
+    const left = _el('div', 'config-row-left');
 
-    const radio = this._el('span', 'config-radio');
+    const radio = _el('span', 'config-radio');
     if (config.isDefault) radio.classList.add('config-radio-default');
     left.appendChild(radio);
 
-    const info = this._el('div', 'config-info');
+    const info = _el('div', 'config-info');
 
-    const nameEl = this._el('span', 'config-name', config.name);
+    const nameEl = _el('span', 'config-name', config.name);
     if (config.isDefault) {
-      nameEl.appendChild(this._el('span', 'config-default-tag', 'default'));
+      nameEl.appendChild(_el('span', 'config-default-tag', 'default'));
     }
     info.appendChild(nameEl);
 
     const tabCount = config.tabCount || 0;
     const date = config.updatedAt ? new Date(config.updatedAt).toLocaleDateString() : '';
-    info.appendChild(this._el('span', 'config-meta', `${tabCount} tab${tabCount !== 1 ? 's' : ''} · ${date}`));
+    info.appendChild(_el('span', 'config-meta', `${tabCount} tab${tabCount !== 1 ? 's' : ''} · ${date}`));
 
     left.appendChild(info);
 
@@ -405,9 +397,9 @@ export class SettingsModal {
   }
 
   _createBottomActions(currentName) {
-    const container = this._el('div', 'config-bottom-actions');
+    const container = _el('div', 'config-bottom-actions');
     for (const { label, action } of BOTTOM_CONFIG_BUTTONS) {
-      const btn = this._el('button', 'config-bottom-btn', label);
+      const btn = _el('button', 'config-bottom-btn', label);
       if (action === 'new') {
         btn.addEventListener('click', () => this._newConfig());
       } else {
@@ -424,14 +416,14 @@ export class SettingsModal {
     const currentName = this.tabManager?.configManager?.currentConfigName || 'Default';
 
     // Current loaded config indicator
-    const currentBar = this._el('div', 'config-current-bar');
-    currentBar.appendChild(this._el('span', 'config-current-label', 'Config chargée :'));
-    currentBar.appendChild(this._el('span', 'config-current-value', currentName));
+    const currentBar = _el('div', 'config-current-bar');
+    currentBar.appendChild(_el('span', 'config-current-label', 'Config chargée :'));
+    currentBar.appendChild(_el('span', 'config-current-value', currentName));
     this.content.appendChild(currentBar);
 
     // Config list
     const configs = await window.api.config.list();
-    const list = this._el('div', 'config-list');
+    const list = _el('div', 'config-list');
     for (const config of configs) {
       list.appendChild(this._createConfigRow(config, currentName));
     }

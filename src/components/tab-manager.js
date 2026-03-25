@@ -8,6 +8,7 @@ import { UsageView } from './usage-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
+import { _el } from '../utils/dom.js';
 
 // ── Constants ──
 const DRAG_THRESHOLD = 5;
@@ -140,13 +141,6 @@ export class TabManager {
     return null;
   }
 
-  _el(tag, cls, text) {
-    const el = document.createElement(tag);
-    if (cls) el.className = cls;
-    if (text !== undefined) el.textContent = text;
-    return el;
-  }
-
   _activeTab() {
     return this.tabs.get(this.activeTabId);
   }
@@ -179,7 +173,7 @@ export class TabManager {
       return true;
     }
 
-    const container = this._el('div');
+    const container = _el('div');
     container.style.height = '100%';
     this.workspaceContainer.appendChild(container);
     this[containerKey] = container;
@@ -194,22 +188,22 @@ export class TabManager {
     if (!activityBar) return;
     activityBar.replaceChildren();
 
-    const topSection = this._el('div', 'activity-bar-top');
+    const topSection = _el('div', 'activity-bar-top');
 
     for (const { label, mode } of ACTIVITY_BUTTONS) {
-      const btn = this._el('button', 'activity-btn', label);
+      const btn = _el('button', 'activity-btn', label);
       if (this.sidebarMode === mode) btn.classList.add('active');
       btn.addEventListener('click', () => this.setSidebarMode(mode));
       topSection.appendChild(btn);
     }
 
-    topSection.appendChild(this._el('button', 'activity-btn', '\u2026'));
+    topSection.appendChild(_el('button', 'activity-btn', '\u2026'));
     activityBar.appendChild(topSection);
 
     // Bottom section with settings
-    const bottomSection = this._el('div', 'activity-bar-bottom');
-    const settingsBtn = this._el('button', 'activity-btn activity-btn-settings');
-    settingsBtn.append(this._el('span', 'activity-btn-icon', '\u2699'), 'Settings');
+    const bottomSection = _el('div', 'activity-bar-bottom');
+    const settingsBtn = _el('button', 'activity-btn activity-btn-settings');
+    settingsBtn.append(_el('span', 'activity-btn-icon', '\u2699'), 'Settings');
     settingsBtn.addEventListener('click', () => {
       if (this.onOpenSettings) this.onOpenSettings();
     });
@@ -416,7 +410,7 @@ export class TabManager {
     this._tabElements = new Map(); // id -> DOM element (for drag targeting)
 
     for (const [id, tab] of this.tabs) {
-      const tabEl = this._el('div', 'tab');
+      const tabEl = _el('div', 'tab');
       tabEl.dataset.tabId = id;
       if (id === this.activeTabId) tabEl.classList.add('active');
       if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
@@ -425,20 +419,20 @@ export class TabManager {
       if (tab.colorGroup) {
         const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
         if (cg) {
-          const dot = this._el('span', 'tab-color-dot');
+          const dot = _el('span', 'tab-color-dot');
           dot.style.background = cg.color;
           tabEl.appendChild(dot);
           tabEl.style.borderBottomColor = id === this.activeTabId ? cg.color : '';
         }
       }
 
-      const nameEl = this._el('span', 'tab-name', tab.name);
+      const nameEl = _el('span', 'tab-name', tab.name);
       nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
       tabEl.appendChild(nameEl);
 
       // Show close button when there are more than 1 tab
       if (this.tabs.size > 1) {
-        const closeEl = this._el('span', 'tab-close', '\u00d7');
+        const closeEl = _el('span', 'tab-close', '\u00d7');
         closeEl.addEventListener('click', (e) => {
           e.stopPropagation();
           this.closeTab(id);
@@ -479,7 +473,7 @@ export class TabManager {
     }
 
     // Add tab button
-    const addBtn = this._el('div', 'tab tab-add', '+');
+    const addBtn = _el('div', 'tab tab-add', '+');
     addBtn.addEventListener('click', () => this.createTab());
     this.tabBar.appendChild(addBtn);
   }
@@ -657,52 +651,52 @@ export class TabManager {
     this.workspaceContainer.replaceChildren();
 
     // Build 3-panel layout
-    const layout = this._el('div', 'workspace-layout');
+    const layout = _el('div', 'workspace-layout');
 
     // --- Left Panel: File Tree ---
-    const leftPanel = this._el('div', 'panel panel-left');
-    const leftHeader = this._el('div', 'panel-header');
-    leftHeader.appendChild(this._el('span', 'panel-title', 'Explorer'));
+    const leftPanel = _el('div', 'panel panel-left');
+    const leftHeader = _el('div', 'panel-header');
+    leftHeader.appendChild(_el('span', 'panel-title', 'Explorer'));
     leftPanel.appendChild(leftHeader);
 
-    const treeContainer = this._el('div', 'file-tree');
+    const treeContainer = _el('div', 'file-tree');
     leftPanel.appendChild(treeContainer);
 
     // --- Left resize handle ---
-    const leftHandle = this._el('div', 'panel-resize-handle');
+    const leftHandle = _el('div', 'panel-resize-handle');
     this.setupPanelResize(leftHandle, leftPanel, 'left');
 
     // --- Right Panel: File Viewer ---
-    const rightPanel = this._el('div', 'panel panel-right');
-    const viewerContainer = this._el('div', 'file-viewer');
+    const rightPanel = _el('div', 'panel panel-right');
+    const viewerContainer = _el('div', 'file-viewer');
     rightPanel.appendChild(viewerContainer);
 
-    const rightHandle = this._el('div', 'panel-resize-handle');
+    const rightHandle = _el('div', 'panel-resize-handle');
     this.setupPanelResize(rightHandle, rightPanel, 'right');
 
     // --- Center Panel: Terminals ---
-    const centerPanel = this._el('div', 'panel panel-center');
-    const centerHeader = this._el('div', 'panel-header');
+    const centerPanel = _el('div', 'panel panel-center');
+    const centerHeader = _el('div', 'panel-header');
 
-    const pathInfo = this._el('div', 'path-info');
+    const pathInfo = _el('div', 'path-info');
 
-    const pathArrowLeft = this._el('span', 'path-arrow', '\u2190');
+    const pathArrowLeft = _el('span', 'path-arrow', '\u2190');
     pathArrowLeft.title = 'Collapse left panel';
     pathArrowLeft.addEventListener('click', () => this.togglePanel(leftPanel, 'left', pathArrowLeft));
 
-    const pathText = this._el('span', 'path-text', tab.cwd);
-    const branchBadge = this._el('span', 'branch-badge', '');
+    const pathText = _el('span', 'path-text', tab.cwd);
+    const branchBadge = _el('span', 'branch-badge', '');
 
-    const pathArrowRight = this._el('span', 'path-arrow', '\u2192');
+    const pathArrowRight = _el('span', 'path-arrow', '\u2192');
     pathArrowRight.title = 'Collapse right panel';
     pathArrowRight.addEventListener('click', () => this.togglePanel(rightPanel, 'right', pathArrowRight));
 
     pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
     centerHeader.appendChild(pathInfo);
-    centerHeader.appendChild(this._el('div', 'term-label', 'Terminal'));
+    centerHeader.appendChild(_el('div', 'term-label', 'Terminal'));
     centerPanel.appendChild(centerHeader);
 
-    const termContainer = this._el('div', 'terminal-area');
+    const termContainer = _el('div', 'terminal-area');
     centerPanel.appendChild(termContainer);
 
     layout.appendChild(leftPanel);

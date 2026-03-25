@@ -1,4 +1,5 @@
 import { contextMenu } from './context-menu.js';
+import { _el } from '../utils/dom.js';
 
 const AUTO_SAVE_DELAY = 500;
 const MENU_OFFSET = 4;
@@ -18,13 +19,6 @@ export class ConfigManager {
 
   set isRestoring(val) {
     this._restoringConfig = val;
-  }
-
-  _el(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
   }
 
   // ===== Auto Save =====
@@ -123,7 +117,7 @@ export class ConfigManager {
   }
 
   promptConfigName(defaultValue, callback) {
-    const overlay = this._el('div', 'config-prompt-overlay');
+    const overlay = _el('div', 'config-prompt-overlay');
     const close = () => overlay.remove();
     const confirm = () => {
       const name = input.value.trim();
@@ -131,7 +125,7 @@ export class ConfigManager {
       if (name) callback(name);
     };
 
-    const input = this._el('input', 'config-prompt-input');
+    const input = _el('input', 'config-prompt-input');
     input.type = 'text';
     input.value = defaultValue;
     input.addEventListener('keydown', (e) => {
@@ -139,17 +133,17 @@ export class ConfigManager {
       if (e.key === 'Escape') close();
     });
 
-    const cancelBtn = this._el('button', 'config-prompt-cancel', 'Cancel');
+    const cancelBtn = _el('button', 'config-prompt-cancel', 'Cancel');
     cancelBtn.addEventListener('click', close);
 
-    const confirmBtn = this._el('button', 'config-prompt-confirm', 'Create');
+    const confirmBtn = _el('button', 'config-prompt-confirm', 'Create');
     confirmBtn.addEventListener('click', confirm);
 
-    const btns = this._el('div', 'config-prompt-btns');
+    const btns = _el('div', 'config-prompt-btns');
     btns.append(cancelBtn, confirmBtn);
 
-    const box = this._el('div', 'config-prompt-box');
-    box.append(this._el('label', 'config-prompt-label', 'Config name'), input, btns);
+    const box = _el('div', 'config-prompt-box');
+    box.append(_el('label', 'config-prompt-label', 'Config name'), input, btns);
 
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) close();

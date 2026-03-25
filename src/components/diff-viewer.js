@@ -1,4 +1,5 @@
 import { detectLanguage } from '../utils/file-icons.js';
+import { _el } from '../utils/dom.js';
 
 const LCS_MAX_PRODUCT = 50_000;
 const HUNK_FLASH_DURATION_MS = 600;
@@ -203,45 +204,38 @@ export class DiffViewer {
     this.render();
   }
 
-  _el(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
-  }
-
   render() {
     this.container.replaceChildren();
     this.container.className = 'diff-viewer';
 
     this.container.appendChild(this._buildToolbar());
 
-    this.content = this._el('div', 'diff-viewer-content');
+    this.content = _el('div', 'diff-viewer-content');
     this.container.appendChild(this.content);
 
     this.viewMode === 'split' ? this._renderSplit() : this._renderUnified();
   }
 
   _buildToolbar() {
-    const toolbar = this._el('div', 'diff-toolbar');
+    const toolbar = _el('div', 'diff-toolbar');
     toolbar.append(this._buildStats(), this._buildViewToggle(), this._buildNavigation());
     return toolbar;
   }
 
   _buildStats() {
-    const stats = this._el('span', 'diff-stats');
+    const stats = _el('span', 'diff-stats');
     stats.append(
-      this._el('span', 'diff-stat-add', `+${this._additions}`),
+      _el('span', 'diff-stat-add', `+${this._additions}`),
       document.createTextNode(' '),
-      this._el('span', 'diff-stat-del', `-${this._deletions}`),
+      _el('span', 'diff-stat-del', `-${this._deletions}`),
     );
     return stats;
   }
 
   _buildViewToggle() {
-    const toggleGroup = this._el('div', 'diff-toggle-group');
+    const toggleGroup = _el('div', 'diff-toggle-group');
     for (const mode of VIEW_MODES) {
-      const btn = this._el('button',
+      const btn = _el('button',
         `diff-toggle-btn${this.viewMode === mode ? ' active' : ''}`,
         mode[0].toUpperCase() + mode.slice(1));
       btn.addEventListener('click', () => { this.viewMode = mode; this.render(); });
@@ -251,19 +245,19 @@ export class DiffViewer {
   }
 
   _buildNavigation() {
-    const nav = this._el('div', 'diff-nav');
+    const nav = _el('div', 'diff-nav');
 
-    const btnPrev = this._el('button', 'diff-nav-btn', '\u25B2');
+    const btnPrev = _el('button', 'diff-nav-btn', '\u25B2');
     btnPrev.title = 'Previous change';
     btnPrev.addEventListener('click', () => this._navigateHunk(-1));
 
-    const btnNext = this._el('button', 'diff-nav-btn', '\u25BC');
+    const btnNext = _el('button', 'diff-nav-btn', '\u25BC');
     btnNext.title = 'Next change';
     btnNext.addEventListener('click', () => this._navigateHunk(1));
 
     nav.append(
       btnPrev,
-      this._el('span', 'diff-nav-label', `${this.hunks.length} chunk${this.hunks.length !== 1 ? 's' : ''}`),
+      _el('span', 'diff-nav-label', `${this.hunks.length} chunk${this.hunks.length !== 1 ? 's' : ''}`),
       btnNext,
     );
     return nav;
@@ -282,15 +276,15 @@ export class DiffViewer {
   }
 
   _appendSplitCells(rowEl, leftCell, rightCell) {
-    rowEl.append(leftCell, this._el('div', 'diff-separator'), rightCell);
+    rowEl.append(leftCell, _el('div', 'diff-separator'), rightCell);
   }
 
   _renderSplit() {
     this.hunkElements = [];
-    const table = this._el('div', 'diff-table diff-split');
+    const table = _el('div', 'diff-table diff-split');
 
     for (const row of this.rows) {
-      const rowEl = this._el('div', 'diff-row');
+      const rowEl = _el('div', 'diff-row');
 
       if (row.type === 'hunk') {
         rowEl.classList.add('diff-row-hunk');
@@ -322,12 +316,12 @@ export class DiffViewer {
 
   _renderUnified() {
     this.hunkElements = [];
-    const table = this._el('div', 'diff-table diff-unified');
+    const table = _el('div', 'diff-table diff-unified');
 
     for (const hunk of this.hunks) {
-      const hunkRow = this._el('div', 'diff-row diff-row-hunk');
+      const hunkRow = _el('div', 'diff-row diff-row-hunk');
       this.hunkElements.push(hunkRow);
-      hunkRow.appendChild(this._el('div', 'diff-cell diff-cell-hunk diff-cell-full',
+      hunkRow.appendChild(_el('div', 'diff-cell diff-cell-hunk diff-cell-full',
         `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.context}`));
       table.appendChild(hunkRow);
 
@@ -338,12 +332,12 @@ export class DiffViewer {
         const config = UNIFIED_CHANGE_CONFIG[change.type];
         if (!config) continue;
 
-        const row = this._el('div', `diff-row ${config.cssClass}`);
+        const row = _el('div', `diff-row ${config.cssClass}`);
         row.append(
-          this._el('div', 'diff-line-no', config.showOld ? oldLine++ : ''),
-          this._el('div', 'diff-line-no', config.showNew ? newLine++ : ''),
-          this._el('div', 'diff-prefix', config.prefix),
-          this._el('div', 'diff-code', change.content),
+          _el('div', 'diff-line-no', config.showOld ? oldLine++ : ''),
+          _el('div', 'diff-line-no', config.showNew ? newLine++ : ''),
+          _el('div', 'diff-prefix', config.prefix),
+          _el('div', 'diff-code', change.content),
         );
         table.appendChild(row);
       }
@@ -353,10 +347,10 @@ export class DiffViewer {
   }
 
   _createCell(lineNo, content, type, wordSegments) {
-    const cell = this._el('div', `diff-cell diff-cell-${type}`);
-    cell.appendChild(this._el('span', 'diff-line-no', lineNo));
+    const cell = _el('div', `diff-cell diff-cell-${type}`);
+    cell.appendChild(_el('span', 'diff-line-no', lineNo));
 
-    const codeEl = this._el('span', 'diff-code');
+    const codeEl = _el('span', 'diff-code');
 
     if (wordSegments) {
       this._renderWordSegments(codeEl, wordSegments, type);
@@ -371,7 +365,7 @@ export class DiffViewer {
   _renderWordSegments(codeEl, segments, type) {
     const hlClass = type === 'remove' ? 'diff-word-del' : 'diff-word-add';
     for (const seg of segments) {
-      codeEl.appendChild(this._el('span', seg.highlighted ? hlClass : null, seg.text));
+      codeEl.appendChild(_el('span', seg.highlighted ? hlClass : null, seg.text));
     }
   }
 
