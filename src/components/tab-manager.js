@@ -8,6 +8,7 @@ import { UsageView } from './usage-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
+import { WebviewInstance } from './webview-panel.js';
 import { _el } from '../utils/dom.js';
 
 // ── Constants ──
@@ -49,6 +50,12 @@ class WorkspaceTab {
     this.branchBadgeEl = null;
     // Cached panel widths (for detached tabs)
     this._panelWidths = null;
+    // Webview tabs (browser preview)
+    this.webviewTabs = []; // [{ id, label, url }]
+    this.activeCenterTab = 'terminal'; // 'terminal' or webview tab id
+    this._centerTabBarEl = null;
+    this._centerContentEl = null;
+    this._webviewEls = new Map(); // id -> { container, instance }
   }
 }
 
@@ -351,6 +358,12 @@ export class TabManager {
 
     // Dispose terminal panel (kills PTY processes)
     if (tab.terminalPanel) tab.terminalPanel.dispose();
+    if (tab._webviewEls) {
+      for (const [, wv] of tab._webviewEls) {
+        if (wv.instance) wv.instance.dispose();
+      }
+      tab._webviewEls.clear();
+    }
     if (tab.fileTree) tab.fileTree.dispose();
     if (tab.layoutElement) tab.layoutElement.remove();
     this.tabs.delete(id);
@@ -722,11 +735,16 @@ export class TabManager {
 
     pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
     centerHeader.appendChild(pathInfo);
-    centerHeader.appendChild(_el('div', 'term-label', 'Terminal'));
+    const centerTabBar = _el('div', 'center-tab-bar');
+    centerHeader.appendChild(centerTabBar);
+    tab._centerTabBarEl = centerTabBar;
     centerPanel.appendChild(centerHeader);
 
     const termContainer = _el('div', 'terminal-area');
-    centerPanel.appendChild(termContainer);
+    const centerContent = _el('div', 'center-content');
+    centerContent.appendChild(termContainer);
+    centerPanel.appendChild(centerContent);
+    tab._centerContentEl = centerContent;
 
     layout.appendChild(leftPanel);
     layout.appendChild(leftHandle);
@@ -768,6 +786,15 @@ export class TabManager {
 
       this._syncFileTree(tab);
 
+      // Restore webview tabs
+      if (tab._restoreData.webviewTabs) {
+        tab.webviewTabs = tab._restoreData.webviewTabs.map(wt => ({
+          id: generateId('wv'),
+          label: wt.label,
+          url: wt.url,
+        }));
+      }
+
       delete tab._restoreData;
     } else {
       tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
@@ -778,6 +805,14 @@ export class TabManager {
         tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
       }
     }
+
+    // Create webview containers for restored tabs
+    for (const wt of tab.webviewTabs) {
+      this._createWebviewContainer(tab, wt);
+    }
+
+    // Render center tab bar
+    this._renderCenterTabs(tab);
 
     // Fetch git branch
     const branch = await window.api.git.branch(tab.cwd);
@@ -902,6 +937,12 @@ export class TabManager {
         tabData.splitTree = tab.terminalPanel.serialize();
       }
 
+      // Serialize webview tabs
+      tabData.webviewTabs = tab.webviewTabs.map(wt => ({
+        label: wt.label,
+        url: wt.url,
+      }));
+
       // Panel widths — active tab: snapshot from live DOM; inactive: use cached
       if (id === this.activeTabId) this._capturePanelWidths(tab);
       if (tab._panelWidths) tabData.panels = { ...tab._panelWidths };
@@ -916,6 +957,11 @@ export class TabManager {
   _disposeAllTabs() {
     for (const [id, tab] of [...this.tabs]) {
       if (tab.terminalPanel) tab.terminalPanel.dispose();
+      if (tab._webviewEls) {
+        for (const [, wv] of tab._webviewEls) {
+          if (wv.instance) wv.instance.dispose();
+        }
+      }
       if (tab.fileTree) tab.fileTree.dispose();
       if (tab.layoutElement) tab.layoutElement.remove();
       this.tabs.delete(id);
@@ -963,6 +1009,137 @@ export class TabManager {
     this.switchTo(tabIds[activeIdx]);
 
     this.configManager.isRestoring = false;
+  }
+
+  // ===== Center Tab Bar (Terminal / Webview) =====
+
+  _renderCenterTabs(tab) {
+    const bar = tab._centerTabBarEl;
+    if (!bar) return;
+    bar.replaceChildren();
+
+    // Terminal tab
+    const termTab = _el('button', 'center-tab' + (tab.activeCenterTab === 'terminal' ? ' active' : ''));
+    termTab.textContent = 'TERMINAL';
+    termTab.addEventListener('click', () => this._switchCenterTab(tab, 'terminal'));
+    bar.appendChild(termTab);
+
+    // Webview tabs
+    for (const wt of tab.webviewTabs) {
+      const isActive = tab.activeCenterTab === wt.id;
+      const wvTab = _el('button', 'center-tab' + (isActive ? ' active' : ''));
+
+      const label = _el('span', null, wt.label);
+      wvTab.appendChild(label);
+
+      const closeBtn = _el('span', 'center-tab-close', { textContent: '\u00d7' });
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._removeWebviewTab(tab, wt.id);
+      });
+      wvTab.appendChild(closeBtn);
+
+      wvTab.addEventListener('click', () => this._switchCenterTab(tab, wt.id));
+      bar.appendChild(wvTab);
+    }
+
+    // Add button
+    const addBtn = _el('button', 'center-tab center-tab-add', { textContent: '+', title: 'Add browser preview' });
+    addBtn.addEventListener('click', () => this._showAddWebviewInput(tab, bar, addBtn));
+    bar.appendChild(addBtn);
+  }
+
+  _showAddWebviewInput(tab, bar, addBtn) {
+    const input = _el('input', 'center-tab-url-input');
+    input.type = 'text';
+    input.placeholder = 'localhost:3000';
+    bar.replaceChild(input, addBtn);
+    input.focus();
+
+    const commit = () => {
+      const val = input.value.trim();
+      if (val) {
+        let url, label;
+        if (/^\d+$/.test(val)) {
+          url = `http://localhost:${val}`;
+          label = `Localhost:${val}`;
+        } else {
+          const portMatch = val.match(/^(?:localhost:?)(\d+)$/i);
+          if (portMatch) {
+            url = `http://localhost:${portMatch[1]}`;
+            label = `Localhost:${portMatch[1]}`;
+          } else {
+            url = /^https?:\/\//.test(val) ? val : 'http://' + val;
+            label = val.replace(/^https?:\/\//, '');
+          }
+        }
+        this._addWebviewTab(tab, label, url);
+      } else {
+        this._renderCenterTabs(tab);
+      }
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') commit();
+      if (e.key === 'Escape') this._renderCenterTabs(tab);
+    });
+    input.addEventListener('blur', () => commit());
+  }
+
+  _addWebviewTab(tab, label, url) {
+    const wt = { id: generateId('wv'), label, url };
+    tab.webviewTabs.push(wt);
+    this._createWebviewContainer(tab, wt);
+    this._switchCenterTab(tab, wt.id);
+    this.configManager.scheduleAutoSave();
+  }
+
+  _removeWebviewTab(tab, webviewId) {
+    const idx = tab.webviewTabs.findIndex(wt => wt.id === webviewId);
+    if (idx < 0) return;
+
+    tab.webviewTabs.splice(idx, 1);
+
+    const wvData = tab._webviewEls.get(webviewId);
+    if (wvData) {
+      if (wvData.instance) wvData.instance.dispose();
+      wvData.container.remove();
+      tab._webviewEls.delete(webviewId);
+    }
+
+    if (tab.activeCenterTab === webviewId) {
+      this._switchCenterTab(tab, 'terminal');
+    } else {
+      this._renderCenterTabs(tab);
+    }
+    this.configManager.scheduleAutoSave();
+  }
+
+  _createWebviewContainer(tab, wt) {
+    const container = _el('div', 'webview-area');
+    container.style.display = 'none';
+    tab._centerContentEl.appendChild(container);
+    const instance = new WebviewInstance(container, wt.url);
+    tab._webviewEls.set(wt.id, { container, instance });
+  }
+
+  _switchCenterTab(tab, tabId) {
+    tab.activeCenterTab = tabId;
+
+    // Toggle visibility
+    const termArea = tab._centerContentEl?.querySelector('.terminal-area');
+    if (termArea) termArea.style.display = tabId === 'terminal' ? '' : 'none';
+
+    for (const [id, wvData] of tab._webviewEls) {
+      wvData.container.style.display = id === tabId ? '' : 'none';
+    }
+
+    // Refit terminals when switching back
+    if (tabId === 'terminal' && tab.terminalPanel) {
+      tab.terminalPanel.fitAll();
+    }
+
+    this._renderCenterTabs(tab);
   }
 
   // ===== Color Groups =====

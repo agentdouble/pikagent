@@ -22,6 +22,7 @@ function create() {
       preload: path.join(ROOT, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      webviewTag: true,
     },
   });
 
