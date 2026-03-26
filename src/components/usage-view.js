@@ -1,4 +1,5 @@
 import { _el } from '../utils/dom.js';
+import { formatDuration, formatTokens, runTooltip, rateColor, rateCls } from '../utils/usage-formatters.js';
 
 function _td(text, attrs = {}) {
   return _el('td', { ...attrs, textContent: text });
@@ -12,25 +13,11 @@ const TABS = [
   { id: 'flows', label: 'Flows' },
 ];
 
-const RATE_THRESHOLD = 70;
-
 const RUN_CHART_SEGMENTS = [
   { key: 'success', cls: 'usage-chart-bar-success' },
   { key: 'error', cls: 'usage-chart-bar-error' },
   { key: 'running', cls: 'usage-chart-bar-running' },
 ];
-
-function _runTooltip(day) {
-  return `${day.label}: ${day.total} (${day.success} ok, ${day.error} err${day.running ? `, ${day.running} en cours` : ''})`;
-}
-
-function _rateColor(rate) {
-  return rate >= RATE_THRESHOLD ? 'var(--green)' : '#ff6b6b';
-}
-
-function _rateCls(rate) {
-  return rate >= RATE_THRESHOLD ? 'usage-stat-value-green' : 'usage-stat-value-red';
-}
 
 // --- Component ---
 
@@ -103,14 +90,14 @@ export class UsageView {
     this._renderOverviewCards(this.bodyEl, [
       { label: 'Sessions', value: m.totalSessions, cls: '' },
       { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
-      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: _rateCls(m.rate.rate) },
-      { label: 'Durée moy.', value: this._fmt(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${this._fmt(m.duration.min)} · max: ${this._fmt(m.duration.max)}` : '' },
+      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
+      { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
     ]);
     this._renderChart(this.bodyEl, {
       title: 'Sessions par jour',
       data: m.perDay,
       segments: RUN_CHART_SEGMENTS,
-      tooltip: _runTooltip,
+      tooltip: runTooltip,
     });
     this._renderTable(this.bodyEl, {
       title: 'Par agent',
@@ -121,8 +108,8 @@ export class UsageView {
         _td(a.agent, { className: 'usage-flow-name' }),
         _td(a.totalSessions),
         _td(a.active, { style: { color: a.active > 0 ? 'var(--green)' : 'var(--text-muted)' } }),
-        _td(`${a.successRate}%`, { className: 'usage-flow-rate', style: { color: _rateColor(a.successRate) } }),
-        _td(a.avgDuration > 0 ? this._fmt(a.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
+        _td(`${a.successRate}%`, { className: 'usage-flow-rate', style: { color: rateColor(a.successRate) } }),
+        _td(a.avgDuration > 0 ? formatDuration(a.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
       ),
     });
     const maxFileCount = this.metrics.mostModifiedFiles[0]?.count || 1;
@@ -148,10 +135,10 @@ export class UsageView {
       return;
     }
     this._renderOverviewCards(this.bodyEl, [
-      { label: 'Total', value: this._fmtTokens(t.total), cls: '' },
-      { label: 'Input', value: this._fmtTokens(t.totalInput), cls: 'usage-stat-value-blue' },
-      { label: 'Output', value: this._fmtTokens(t.totalOutput), cls: 'usage-stat-value-green' },
-      { label: 'Cache read', value: this._fmtTokens(t.totalCacheRead), cls: '', sub: t.totalCacheCreate > 0 ? `cache write: ${this._fmtTokens(t.totalCacheCreate)}` : '' },
+      { label: 'Total', value: formatTokens(t.total), cls: '' },
+      { label: 'Input', value: formatTokens(t.totalInput), cls: 'usage-stat-value-blue' },
+      { label: 'Output', value: formatTokens(t.totalOutput), cls: 'usage-stat-value-green' },
+      { label: 'Cache read', value: formatTokens(t.totalCacheRead), cls: '', sub: t.totalCacheCreate > 0 ? `cache write: ${formatTokens(t.totalCacheCreate)}` : '' },
     ]);
     this._renderChart(this.bodyEl, {
       title: 'Tokens par jour (30 derniers jours)',
@@ -160,7 +147,7 @@ export class UsageView {
         { key: 'input', cls: 'usage-chart-bar-running' },
         { key: 'output', cls: 'usage-chart-bar-success' },
       ],
-      tooltip: (day) => `${day.label}: ${this._fmtTokens(day.total)} (in: ${this._fmtTokens(day.input)}, out: ${this._fmtTokens(day.output)})`,
+      tooltip: (day) => `${day.label}: ${formatTokens(day.total)} (in: ${formatTokens(day.input)}, out: ${formatTokens(day.output)})`,
     });
     const maxProjectTotal = t.perProject?.[0]?.total || 1;
     this._renderTable(this.bodyEl, {
@@ -170,9 +157,9 @@ export class UsageView {
       data: t.perProject,
       renderRow: (proj) => _el('tr', {},
         _td(proj.project, { className: 'usage-file-name' }),
-        _td(this._fmtTokens(proj.input), { className: 'usage-file-count', style: { color: 'var(--blue)' } }),
-        _td(this._fmtTokens(proj.output), { className: 'usage-file-count', style: { color: 'var(--green)' } }),
-        _td(this._fmtTokens(proj.total), { className: 'usage-file-count' }),
+        _td(formatTokens(proj.input), { className: 'usage-file-count', style: { color: 'var(--blue)' } }),
+        _td(formatTokens(proj.output), { className: 'usage-file-count', style: { color: 'var(--green)' } }),
+        _td(formatTokens(proj.total), { className: 'usage-file-count' }),
         this._createBarCell((proj.total / maxProjectTotal) * 100),
       ),
     });
@@ -189,14 +176,14 @@ export class UsageView {
     this._renderOverviewCards(this.bodyEl, [
       { label: 'Total Runs', value: f.rate.total, cls: '' },
       { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
-      { label: 'Taux succès', value: `${f.rate.rate}%`, cls: _rateCls(f.rate.rate) },
-      { label: 'Durée moy.', value: this._fmt(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${this._fmt(f.duration.min)} · max: ${this._fmt(f.duration.max)}` : '' },
+      { label: 'Taux succès', value: `${f.rate.rate}%`, cls: rateCls(f.rate.rate) },
+      { label: 'Durée moy.', value: formatDuration(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${formatDuration(f.duration.min)} · max: ${formatDuration(f.duration.max)}` : '' },
     ]);
     this._renderChart(this.bodyEl, {
       title: 'Runs par jour',
       data: f.perDay,
       segments: RUN_CHART_SEGMENTS,
-      tooltip: _runTooltip,
+      tooltip: runTooltip,
     });
     this._renderTable(this.bodyEl, {
       title: 'Par flow',
@@ -215,8 +202,8 @@ export class UsageView {
           }),
         ),
         _td(flow.totalRuns),
-        _td(`${flow.successRate}%`, { className: 'usage-flow-rate', style: { color: _rateColor(flow.successRate) } }),
-        _td(flow.avgDuration > 0 ? this._fmt(flow.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
+        _td(`${flow.successRate}%`, { className: 'usage-flow-rate', style: { color: rateColor(flow.successRate) } }),
+        _td(flow.avgDuration > 0 ? formatDuration(flow.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
       ),
     });
   }
@@ -303,21 +290,4 @@ export class UsageView {
     parent.appendChild(section);
   }
 
-  _fmtTokens(n) {
-    if (n == null || n === 0) return '0';
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-    return `${n}`;
-  }
-
-  _fmt(seconds) {
-    if (!seconds || seconds <= 0) return '0s';
-    if (seconds < 60) return `${seconds}s`;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    if (m < 60) return s > 0 ? `${m}m ${s}s` : `${m}m`;
-    const h = Math.floor(m / 60);
-    const rm = m % 60;
-    return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
-  }
 }
