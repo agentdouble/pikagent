@@ -745,6 +745,7 @@ export class TabManager {
     centerContent.appendChild(termContainer);
     centerPanel.appendChild(centerContent);
     tab._centerContentEl = centerContent;
+    tab._termAreaEl = termContainer;
 
     layout.appendChild(leftPanel);
     layout.appendChild(leftHandle);
@@ -1056,7 +1057,10 @@ export class TabManager {
     bar.replaceChild(input, addBtn);
     input.focus();
 
+    let committed = false;
     const commit = () => {
+      if (committed) return;
+      committed = true;
       const val = input.value.trim();
       if (val) {
         let url, label;
@@ -1127,8 +1131,7 @@ export class TabManager {
     tab.activeCenterTab = tabId;
 
     // Toggle visibility
-    const termArea = tab._centerContentEl?.querySelector('.terminal-area');
-    if (termArea) termArea.style.display = tabId === 'terminal' ? '' : 'none';
+    if (tab._termAreaEl) tab._termAreaEl.style.display = tabId === 'terminal' ? '' : 'none';
 
     for (const [id, wvData] of tab._webviewEls) {
       wvData.container.style.display = id === tabId ? '' : 'none';
