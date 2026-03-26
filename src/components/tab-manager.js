@@ -68,6 +68,7 @@ export class TabManager {
     this.usageView = null;
     this._usageContainerEl = null;
     this.sidebarMode = 'work';
+    this.activeColorFilter = null; // null = show all, or a COLOR_GROUPS id
 
     this.init();
   }
@@ -434,12 +435,57 @@ export class TabManager {
 
   // ===== Tab Bar Rendering =====
 
+  setColorFilter(colorGroupId) {
+    this.activeColorFilter = this.activeColorFilter === colorGroupId ? null : colorGroupId;
+    this.renderTabBar();
+    // If active tab is hidden by filter, switch to first visible tab
+    if (this.activeColorFilter) {
+      const active = this._activeTab();
+      if (!active || active.colorGroup !== this.activeColorFilter) {
+        for (const [id, tab] of this.tabs) {
+          if (tab.colorGroup === this.activeColorFilter) {
+            this.switchTo(id);
+            return;
+          }
+        }
+      }
+    }
+  }
+
   renderTabBar() {
     this.tabBar.replaceChildren();
+
+    // ── Color filter dots ──
+    const usedColors = new Set();
+    for (const [, tab] of this.tabs) {
+      if (tab.colorGroup) usedColors.add(tab.colorGroup);
+    }
+    if (usedColors.size > 0) {
+      const filterWrap = _el('div', 'tab-color-filters');
+      // "All" button
+      const allBtn = _el('span', `tab-filter-dot tab-filter-all${this.activeColorFilter === null ? ' active' : ''}`);
+      allBtn.textContent = '∗';
+      allBtn.addEventListener('click', () => {
+        this.activeColorFilter = null;
+        this.renderTabBar();
+      });
+      filterWrap.appendChild(allBtn);
+      for (const cg of COLOR_GROUPS) {
+        if (!usedColors.has(cg.id)) continue;
+        const dot = _el('span', `tab-filter-dot${this.activeColorFilter === cg.id ? ' active' : ''}`);
+        dot.style.background = cg.color;
+        dot.title = cg.label;
+        dot.addEventListener('click', () => this.setColorFilter(cg.id));
+        filterWrap.appendChild(dot);
+      }
+      this.tabBar.appendChild(filterWrap);
+    }
 
     this._tabElements = new Map(); // id -> DOM element (for drag targeting)
 
     for (const [id, tab] of this.tabs) {
+      // Filter: hide tabs that don't match the active color filter
+      if (this.activeColorFilter && tab.colorGroup !== this.activeColorFilter) continue;
       const tabEl = _el('div', 'tab');
       tabEl.dataset.tabId = id;
       if (id === this.activeTabId) tabEl.classList.add('active');
