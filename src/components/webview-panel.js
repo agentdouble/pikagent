@@ -9,6 +9,7 @@ export class WebviewInstance {
     this.url = url;
     this.disposed = false;
     this._consoleOpen = false;
+    this._mobileMode = false;
     this._logs = [];
     this._build();
   }
@@ -42,10 +43,13 @@ export class WebviewInstance {
       window.api.shell.openExternal(this.url);
     });
 
+    this._mobileBtn = _el('button', 'webview-nav-btn', { textContent: '\u{1F4F1}', title: 'Mobile view' });
+    this._mobileBtn.addEventListener('click', () => this.toggleMobile());
+
     this.consoleToggle = _el('button', 'webview-nav-btn', { textContent: '\u{25b6}', title: 'Toggle console' });
     this.consoleToggle.addEventListener('click', () => this.toggleConsole());
 
-    this.navBar.append(backBtn, fwdBtn, refreshBtn, this.urlInput, openExtBtn, this.consoleToggle);
+    this.navBar.append(backBtn, fwdBtn, refreshBtn, this.urlInput, this._mobileBtn, openExtBtn, this.consoleToggle);
 
     // Webview element
     this.webview = document.createElement('webview');
@@ -69,6 +73,10 @@ export class WebviewInstance {
     this.webview.addEventListener('console-message', (e) => {
       this._addLog(e.level, e.message, e.sourceId, e.line);
     });
+
+    // Webview wrapper (for mobile centering)
+    this._webviewWrapper = _el('div', 'webview-wrapper');
+    this._webviewWrapper.appendChild(this.webview);
 
     // Console panel
     this._consolePanel = _el('div', 'webview-console');
@@ -95,7 +103,7 @@ export class WebviewInstance {
 
     this._consolePanel.append(this._consoleHandle, consoleToolbar, this._consoleList);
 
-    this.container.append(this.navBar, this.webview, this._consolePanel);
+    this.container.append(this.navBar, this._webviewWrapper, this._consolePanel);
   }
 
   _addLog(level, message, source, line) {
@@ -159,6 +167,13 @@ export class WebviewInstance {
     this._logs = [];
     this._consoleList.replaceChildren();
     this._consoleBadge.style.display = 'none';
+  }
+
+  toggleMobile() {
+    this._mobileMode = !this._mobileMode;
+    this._mobileBtn.classList.toggle('active', this._mobileMode);
+    this._webviewWrapper.classList.toggle('mobile', this._mobileMode);
+    this.webview.classList.toggle('mobile', this._mobileMode);
   }
 
   _setupConsoleResize() {

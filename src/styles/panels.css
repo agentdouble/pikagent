@@ -178,10 +178,31 @@
   border-color: var(--accent);
 }
 
+.webview-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.webview-wrapper.mobile {
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary, #1a1a1a);
+}
+
 .webview-frame {
   flex: 1;
   border: none;
   background: #fff;
+}
+
+.webview-frame.mobile {
+  flex: none;
+  width: 375px;
+  height: 667px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px var(--border-color), 0 4px 20px rgba(0,0,0,0.3);
 }
 
 /* ===== Webview Console ===== */
