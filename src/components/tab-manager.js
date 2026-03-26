@@ -65,6 +65,8 @@ export class TabManager {
     this._boardContainerEl = null;
     this.flowView = null;
     this._flowContainerEl = null;
+    this.usageView = null;
+    this._usageContainerEl = null;
     this.sidebarMode = 'work';
 
     this.init();
@@ -230,9 +232,9 @@ export class TabManager {
       this.boardView?.pause();
       this._boardContainerEl?.remove();
     } else if (mode === 'flow') {
-      this._flowContainerEl?.remove();
+      this._disposeFlow();
     } else if (mode === 'usage') {
-      this._usageContainerEl?.remove();
+      this._disposeUsage();
     }
   }
 
@@ -264,7 +266,7 @@ export class TabManager {
     this.setSidebarMode('board');
   }
 
-  // ===== Board =====
+  // ===== Side view disposal =====
 
   _disposeBoard() {
     if (this.boardView) {
@@ -274,6 +276,28 @@ export class TabManager {
     if (this._boardContainerEl) {
       this._boardContainerEl.remove();
       this._boardContainerEl = null;
+    }
+  }
+
+  _disposeFlow() {
+    if (this.flowView) {
+      this.flowView.dispose();
+      this.flowView = null;
+    }
+    if (this._flowContainerEl) {
+      this._flowContainerEl.remove();
+      this._flowContainerEl = null;
+    }
+  }
+
+  _disposeUsage() {
+    if (this.usageView) {
+      this.usageView.dispose();
+      this.usageView = null;
+    }
+    if (this._usageContainerEl) {
+      this._usageContainerEl.remove();
+      this._usageContainerEl = null;
     }
   }
 
@@ -349,11 +373,9 @@ export class TabManager {
     const tab = this.tabs.get(id);
     if (!tab) return;
 
-    // If in board mode, switch back to work mode
-    if (this.sidebarMode === 'board') {
-      if (this._boardContainerEl) {
-        this._boardContainerEl.remove();
-      }
+    // If in a non-work mode, switch back to work mode
+    if (this.sidebarMode !== 'work') {
+      this._detachSidebarView(this.sidebarMode);
       this.sidebarMode = 'work';
       this.renderActivityBar();
 
@@ -901,13 +923,26 @@ export class TabManager {
     this.activeTabId = null;
   }
 
+  dispose() {
+    for (const [event, handler] of this._busListeners) {
+      bus.off(event, handler);
+    }
+    this._busListeners = [];
+    this._disposeBoard();
+    this._disposeFlow();
+    this._disposeUsage();
+    this._disposeAllTabs();
+  }
+
   async restoreConfig(config) {
     if (!config || !config.tabs || config.tabs.length === 0) return;
 
     this.configManager.isRestoring = true;
 
-    // Reset board view (old terminal IDs will be invalid)
+    // Reset side views (old terminal IDs will be invalid)
     this._disposeBoard();
+    this._disposeFlow();
+    this._disposeUsage();
     this._disposeAllTabs();
 
     // Create tabs from config
