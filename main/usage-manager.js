@@ -6,20 +6,18 @@ const { promisify } = require('util');
 const sessionManager = require('./session-manager');
 const { FLOWS_DIR, CLAUDE_PROJECTS_DIR } = require('./paths');
 const { readDirJson } = require('./fs-utils');
+const { DEFAULT_DAYS, countByStatus, computeRate, computeDuration, dateStr, dayLabels, perDay } = require('./stats-helpers');
 
 const execFileAsync = promisify(execFile);
 
 // ===== Constants =====
 
 const CACHE_TTL = 30000;
-const DEFAULT_DAYS = 30;
 const MAX_RUN_DURATION_MS = 24 * 60 * 60 * 1000;
 const TOP_PROJECTS_LIMIT = 10;
 const TOP_FILES_LIMIT = 15;
 const GIT_TIMEOUT_MS = 5000;
 
-const SUCCESS_STATUSES = new Set(['success', 'completed']);
-const ERROR_STATUSES = new Set(['error', 'exited']);
 const TOKEN_KEYS = ['input', 'output', 'cacheRead', 'cacheCreate'];
 
 let _metricsCache = null;
@@ -35,16 +33,6 @@ function _addTokens(target, source) {
   for (const k of TOKEN_KEYS) target[k] += source[k] || 0;
 }
 
-function countByStatus(items, field = 'status') {
-  let success = 0;
-  let error = 0;
-  for (const item of items) {
-    if (SUCCESS_STATUSES.has(item[field])) success++;
-    else if (ERROR_STATUSES.has(item[field])) error++;
-  }
-  return { success, error };
-}
-
 function parseLogTimestamp(logTs) {
   const parts = logTs.split('T');
   if (parts.length !== 2) return null;
@@ -53,24 +41,6 @@ function parseLogTimestamp(logTs) {
     return '.';
   });
   return new Date(`${parts[0]}T${timePart}`);
-}
-
-function dateStr(iso) {
-  return iso ? iso.slice(0, 10) : null;
-}
-
-function dayLabels(days = DEFAULT_DAYS) {
-  const result = [];
-  const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    result.push({
-      date: d.toISOString().slice(0, 10),
-      label: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-    });
-  }
-  return result;
 }
 
 // ===== Flow data =====
@@ -102,46 +72,6 @@ function getFlowRunDuration(run) {
   if (!start || isNaN(start.getTime()) || isNaN(end.getTime())) return null;
   const ms = end.getTime() - start.getTime();
   return ms > 0 && ms < MAX_RUN_DURATION_MS ? Math.round(ms / 1000) : null;
-}
-
-// ===== Generic stats =====
-
-function computeRate(items, statusField = 'status') {
-  if (items.length === 0) return { total: 0, success: 0, error: 0, rate: 0 };
-  const { success, error } = countByStatus(items, statusField);
-  return {
-    total: items.length,
-    success,
-    error,
-    rate: Math.round((success / items.length) * 100),
-  };
-}
-
-function computeDuration(durations) {
-  const valid = durations.filter((d) => d != null && d > 0);
-  if (valid.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
-  const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
-  return {
-    avg: Math.round(avg),
-    min: Math.round(Math.min(...valid)),
-    max: Math.round(Math.max(...valid)),
-    count: valid.length,
-  };
-}
-
-function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
-  const labels = dayLabels(days);
-  return labels.map((day) => {
-    const dayItems = items.filter((r) => dateExtractor(r) === day.date);
-    const { success, error } = countByStatus(dayItems);
-    return {
-      ...day,
-      total: dayItems.length,
-      success,
-      error,
-      running: dayItems.filter((r) => r.status === 'running').length,
-    };
-  });
 }
 
 // ===== Tokens (from Claude session JSONL files) =====
@@ -246,7 +176,7 @@ function aggregateTokenData(labels, projectResults) {
     }
   }
 
-  const perDay = labels.map((day) => {
+  const tokenPerDay = labels.map((day) => {
     const g = globalPerDay[day.date];
     return { ...day, input: g.input, output: g.output, total: g.input + g.output };
   });
@@ -262,7 +192,7 @@ function aggregateTokenData(labels, projectResults) {
     totalCacheRead: totals.cacheRead,
     totalCacheCreate: totals.cacheCreate,
     total: totals.input + totals.output,
-    perDay,
+    perDay: tokenPerDay,
     perProject,
   };
 }
