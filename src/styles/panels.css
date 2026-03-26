@@ -183,3 +183,8 @@
   border: none;
   background: #fff;
 }
+
+/* Prevent webview from capturing mouse during resize/drag */
+body.resizing .webview-frame {
+  pointer-events: none;
+}

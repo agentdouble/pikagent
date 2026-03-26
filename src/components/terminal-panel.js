@@ -210,10 +210,12 @@ export class TerminalPanel {
       document.removeEventListener('mouseup', up);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      document.body.classList.remove('resizing');
       onDone();
     };
     document.body.style.cursor = cursor;
     document.body.style.userSelect = 'none';
+    document.body.classList.add('resizing');
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
   }

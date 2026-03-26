@@ -841,6 +841,7 @@ export class TabManager {
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      document.body.classList.remove('resizing');
       this.configManager.scheduleAutoSave();
     };
 
@@ -850,6 +851,7 @@ export class TabManager {
       startWidth = panel.getBoundingClientRect().width;
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
+      document.body.classList.add('resizing');
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     });
