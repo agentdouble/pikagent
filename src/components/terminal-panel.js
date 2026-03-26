@@ -1,11 +1,9 @@
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from '../utils/id.js';
 import { bus } from '../utils/events.js';
-import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el } from '../utils/dom.js';
+import { createTerminal } from '../utils/terminal-factory.js';
 
 /* ── Constants ────────────────────────────────────────────────── */
 const CWD_POLL_MS = 1500;
@@ -15,16 +13,6 @@ const MIN_RESIZE_RATIO = 0.1;
 const MAX_RESIZE_RATIO = 0.9;
 const DRAG_GRIP = '⠿';
 
-const TERMINAL_OPTIONS = {
-  fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-  fontSize: 13,
-  lineHeight: 1.3,
-  cursorBlink: true,
-  cursorStyle: 'bar',
-  allowProposedApi: true,
-};
-
-
 class TerminalInstance {
   constructor(container, cwd) {
     this.id = generateId('term');
@@ -32,10 +20,16 @@ class TerminalInstance {
     this.cwd = cwd;
     this.disposed = false;
 
-    this.terminal = new Terminal({ theme: getTerminalTheme(), ...TERMINAL_OPTIONS });
+    const { term, fitAddon } = createTerminal(container, {
+      fontSize: 13,
+      lineHeight: 1.3,
+      cursorBlink: true,
+      cursorStyle: 'bar',
+      allowProposedApi: true,
+    });
+    this.terminal = term;
+    this.fitAddon = fitAddon;
 
-    this.fitAddon = new FitAddon();
-    this.terminal.loadAddon(this.fitAddon);
     this.terminal.loadAddon(new WebLinksAddon((e, url) => {
       e.preventDefault();
       window.api.shell.openExternal(url);
@@ -48,7 +42,6 @@ class TerminalInstance {
       return true;
     });
 
-    this.terminal.open(container);
     this.fit();
 
     this.terminal.onData((data) => {

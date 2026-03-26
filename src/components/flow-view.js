@@ -1,20 +1,10 @@
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { openFlowModal, SCHEDULE_LABELS, DAY_NAMES } from './flow-modal.js';
 import { _el, _safeFit } from '../utils/dom.js';
+import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 
 const FIT_DELAY_MS = 50;
 const LOG_SCROLLBACK = 50000;
 const LIVE_SCROLLBACK = 10000;
-
-const READONLY_TERMINAL_OPTIONS = {
-  fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-  fontSize: 12,
-  lineHeight: 1.3,
-  cursorBlink: false,
-  disableStdin: true,
-};
 
 const STATUS_LABELS = { success: 'Succès', error: 'Erreur' };
 const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';
@@ -222,22 +212,16 @@ export class FlowView {
   }
 
   _createReadonlyTerminal(containerEl, termOpts = {}) {
-    const term = new Terminal({
-      theme: getTerminalTheme(),
-      ...READONLY_TERMINAL_OPTIONS,
+    return createTerminal(containerEl, {
+      fontSize: 12,
+      lineHeight: 1.3,
+      cursorBlink: false,
+      disableStdin: true,
       scrollback: LIVE_SCROLLBACK,
+      autoResize: true,
+      fitDelay: FIT_DELAY_MS,
       ...termOpts,
     });
-
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(containerEl);
-
-    const resizeObs = new ResizeObserver(() => _safeFit(fitAddon));
-    resizeObs.observe(containerEl);
-    setTimeout(() => _safeFit(fitAddon), FIT_DELAY_MS);
-
-    return { term, fitAddon, resizeObs };
   }
 
   _createLiveTerminal(flowId, ptyId) {
@@ -268,9 +252,7 @@ export class FlowView {
   _disposeTerminalEntry(map, flowId) {
     const data = map.get(flowId);
     if (!data) return;
-    if (data.unsubData) data.unsubData();
-    if (data.resizeObs) data.resizeObs.disconnect();
-    data.term.dispose();
+    disposeTerminal(data);
     map.delete(flowId);
   }
 

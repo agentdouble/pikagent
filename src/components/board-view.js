@@ -1,10 +1,8 @@
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { bus } from '../utils/events.js';
-import { getTerminalTheme } from '../utils/terminal-themes.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el, _safeFit } from '../utils/dom.js';
+import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 
 // Minimum bytes of meaningful output per poll interval to consider agent "working".
 // ANSI escape codes (cursor moves, color resets, status bar refreshes) produce
@@ -14,16 +12,6 @@ const DATA_VOLUME_THRESHOLD = 200;
 const POLL_INTERVAL_MS = 3000;
 const FIT_SETTLE_DELAY_MS = 100;
 const FIT_UNHIDE_DELAY_MS = 50;
-
-const BOARD_TERMINAL_OPTIONS = {
-  fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace',
-  fontSize: 11,
-  lineHeight: 1.2,
-  cursorBlink: false,
-  cursorStyle: 'bar',
-  scrollback: 10000,
-  allowProposedApi: true,
-};
 
 const STATUS_CONFIG = {
   running: { label: 'Running', cardClass: 'board-card-running', badgeClass: 'board-card-status board-status-running' },
@@ -162,16 +150,20 @@ export class BoardView {
   }
 
   _createBoardTerminal(termContainer, termId) {
-    const term = new Terminal({ theme: getTerminalTheme(), ...BOARD_TERMINAL_OPTIONS });
-    const fitAddon = new FitAddon();
+    const { term, fitAddon } = createTerminal(termContainer, {
+      fontSize: 11,
+      lineHeight: 1.2,
+      cursorBlink: false,
+      cursorStyle: 'bar',
+      scrollback: 10000,
+      allowProposedApi: true,
+    });
 
-    term.loadAddon(fitAddon);
     term.loadAddon(new WebLinksAddon((e, url) => {
       e.preventDefault();
       window.api.shell.openExternal(url);
     }));
     term.registerLinkProvider(new FilePathLinkProvider(term, () => null));
-    term.open(termContainer);
     term.onData((data) => window.api.pty.write({ id: termId, data }));
 
     return { term, fitAddon };
@@ -204,9 +196,7 @@ export class BoardView {
   }
 
   _disposeCard(data) {
-    if (data.unsubData) data.unsubData();
-    if (data.resizeObs) data.resizeObs.disconnect();
-    data.term.dispose();
+    disposeTerminal(data);
   }
 
   removeCard(termId) {
