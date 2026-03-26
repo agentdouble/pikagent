@@ -114,79 +114,13 @@
   font-size: 11px;
 }
 
-/* ===== Center Tab Bar ===== */
-.center-tab-bar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.term-label {
   padding: 4px 12px;
-}
-
-.center-tab {
-  padding: 3px 12px;
   font-size: 11px;
+  color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.center-tab:hover {
-  color: var(--text-primary);
-  border-color: var(--text-secondary);
-}
-
-.center-tab.active {
-  color: var(--text-primary);
-  border-color: var(--accent);
-  background: var(--bg-hover);
-}
-
-.center-tab-add {
-  border-style: dashed;
-  padding: 3px 8px;
-  font-size: 14px;
-  line-height: 1;
-}
-
-.center-tab-close {
-  font-size: 14px;
-  line-height: 1;
-  opacity: 0.5;
-  cursor: pointer;
-}
-
-.center-tab-close:hover {
-  opacity: 1;
-  color: var(--accent);
-}
-
-.center-tab-url-input {
-  padding: 3px 8px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  background: var(--bg-primary);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  color: var(--text-primary);
-  outline: none;
-}
-
-/* ===== Center Content ===== */
-.center-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 /* ===== Webview Area ===== */
