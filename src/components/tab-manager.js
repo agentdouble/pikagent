@@ -768,6 +768,7 @@ export class TabManager {
   }
 
   togglePanel(panel, side, arrowEl) {
+    panel.classList.add('animating');
     panel.classList.toggle('collapsed');
     const isCollapsed = panel.classList.contains('collapsed');
 
@@ -781,22 +782,30 @@ export class TabManager {
       }
     }
 
-    setTimeout(() => this._activeTab()?.terminalPanel?.fitAll(), FIT_DELAY_MS);
+    setTimeout(() => {
+      panel.classList.remove('animating');
+      this._activeTab()?.terminalPanel?.fitAll();
+    }, FIT_DELAY_MS);
     this.configManager.scheduleAutoSave();
   }
 
   setupPanelResize(handle, panel, side) {
     let startX = 0;
     let startWidth = 0;
+    let rafPending = false;
 
     const onMouseMove = (e) => {
-      const dx = e.clientX - startX;
-      const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-      const maxWidth = side === 'right' ? RIGHT_MAX_WIDTH : LEFT_MAX_WIDTH;
-      panel.style.width = `${Math.max(PANEL_MIN_WIDTH, Math.min(maxWidth, newWidth))}px`;
-      panel.style.flex = 'none';
-
-      this._activeTab()?.terminalPanel?.fitAll();
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => {
+        rafPending = false;
+        const dx = e.clientX - startX;
+        const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
+        const maxWidth = side === 'right' ? RIGHT_MAX_WIDTH : LEFT_MAX_WIDTH;
+        panel.style.width = `${Math.max(PANEL_MIN_WIDTH, Math.min(maxWidth, newWidth))}px`;
+        panel.style.flex = 'none';
+        this._activeTab()?.terminalPanel?.fitAll();
+      });
     };
 
     const onMouseUp = () => {
