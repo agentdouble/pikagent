@@ -184,6 +184,141 @@
   background: #fff;
 }
 
+/* ===== Webview Console ===== */
+.webview-console {
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  flex-shrink: 0;
+}
+
+.webview-console-handle {
+  height: 4px;
+  cursor: row-resize;
+  background: transparent;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.webview-console-handle:hover {
+  background: var(--accent);
+}
+
+.webview-console-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.webview-console-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.webview-console-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-on-accent);
+  background: var(--accent);
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 16px;
+}
+
+.webview-console-clear {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.webview-console-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.webview-console-list {
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.webview-log {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 1px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.webview-log:hover {
+  background: var(--bg-hover);
+}
+
+.webview-log-time {
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.webview-log-level {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  min-width: 32px;
+}
+
+.webview-log-level-verbose { color: var(--text-muted); }
+.webview-log-level-info { color: var(--blue, #74c0fc); }
+.webview-log-level-warn { color: var(--yellow, #ffd43b); }
+.webview-log-level-error { color: var(--red, #e94560); }
+
+.webview-log-error {
+  background: rgba(233, 69, 96, 0.06);
+}
+
+.webview-log-warn {
+  background: rgba(255, 212, 59, 0.06);
+}
+
+.webview-log-msg {
+  flex: 1;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-width: 0;
+}
+
+.webview-log-source {
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.webview-nav-btn.active {
+  color: var(--accent);
+}
+
 /* Prevent webview from capturing mouse during resize/drag */
 body.resizing .webview-frame {
   pointer-events: none;
