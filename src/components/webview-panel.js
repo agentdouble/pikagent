@@ -1,7 +1,7 @@
 import { _el } from '../utils/dom.js';
 
 const LOG_LEVELS = ['verbose', 'info', 'warn', 'error'];
-const MAX_LOGS = 500;
+const MAX_LOGS = 5000;
 
 export class WebviewInstance {
   constructor(container, url) {
