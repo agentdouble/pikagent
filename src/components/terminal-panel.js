@@ -13,6 +13,38 @@ const MIN_RESIZE_RATIO = 0.1;
 const MAX_RESIZE_RATIO = 0.9;
 const DRAG_GRIP = '⠿';
 
+/* ── Drop helpers (pure, stateless) ──────────────────────────── */
+
+/** Determine which side of a panel the cursor is closest to. */
+function detectDropSide(relX, relY) {
+  const distLeft = relX;
+  const distRight = 1 - relX;
+  const distTop = relY;
+  const distBottom = 1 - relY;
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+
+  if (minDist > EDGE_THRESHOLD) return 'center';
+  if (minDist === distLeft) return 'left';
+  if (minDist === distRight) return 'right';
+  if (minDist === distTop) return 'top';
+  return 'bottom';
+}
+
+/** Compute indicator bounds {left, top, width, height} for a given side. */
+function computeIndicatorRect(rect, side) {
+  const pad = INDICATOR_PAD;
+  const halfW = rect.width / 2;
+  const halfH = rect.height / 2;
+
+  if (side === 'center') {
+    return { left: rect.left + pad, top: rect.top + pad, width: rect.width - pad * 2, height: rect.height - pad * 2 };
+  }
+  if (side === 'left' || side === 'right') {
+    return { left: rect.left + (side === 'right' ? halfW : 0), top: rect.top + pad, width: halfW, height: rect.height - pad * 2 };
+  }
+  return { left: rect.left + pad, top: rect.top + (side === 'bottom' ? halfH : 0), width: rect.width - pad * 2, height: halfH };
+}
+
 class TerminalInstance {
   constructor(container, cwd) {
     this.id = generateId('term');
@@ -356,19 +388,7 @@ export class TerminalPanel {
 
       const relX = (mx - rect.left) / rect.width;
       const relY = (my - rect.top) / rect.height;
-
-      let side;
-      if (relX < EDGE_THRESHOLD && relX < relY && relX < (1 - relY)) {
-        side = 'left';
-      } else if (relX > (1 - EDGE_THRESHOLD) && (1 - relX) < relY && (1 - relX) < (1 - relY)) {
-        side = 'right';
-      } else if (relY < EDGE_THRESHOLD) {
-        side = 'top';
-      } else if (relY > (1 - EDGE_THRESHOLD)) {
-        side = 'bottom';
-      } else {
-        side = 'center';
-      }
+      const side = detectDropSide(relX, relY);
 
       this._dropTarget = termId;
       this._dropSide = side;
@@ -382,28 +402,12 @@ export class TerminalPanel {
   _positionIndicator(rect, side) {
     if (!this._dropIndicator) return;
     const s = this._dropIndicator.style;
+    const r = computeIndicatorRect(rect, side);
     s.display = 'block';
-    const pad = INDICATOR_PAD;
-    const isHoriz = side === 'left' || side === 'right';
-    const halfW = rect.width / 2;
-    const halfH = rect.height / 2;
-
-    if (side === 'center') {
-      s.left = `${rect.left + pad}px`;
-      s.top = `${rect.top + pad}px`;
-      s.width = `${rect.width - pad * 2}px`;
-      s.height = `${rect.height - pad * 2}px`;
-    } else if (isHoriz) {
-      s.left = `${rect.left + (side === 'right' ? halfW : 0)}px`;
-      s.top = `${rect.top + pad}px`;
-      s.width = `${halfW}px`;
-      s.height = `${rect.height - pad * 2}px`;
-    } else {
-      s.left = `${rect.left + pad}px`;
-      s.top = `${rect.top + (side === 'bottom' ? halfH : 0)}px`;
-      s.width = `${rect.width - pad * 2}px`;
-      s.height = `${halfH}px`;
-    }
+    s.left = `${r.left}px`;
+    s.top = `${r.top}px`;
+    s.width = `${r.width}px`;
+    s.height = `${r.height}px`;
   }
 
   moveTerminal(sourceId, targetId, side) {
