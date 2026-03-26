@@ -5,6 +5,7 @@ import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
 import { generateId } from '../utils/id.js';
 import { _el } from '../utils/dom.js';
+import { getCursorPosition, insertTab, parseWebviewUrl } from '../utils/editor-helpers.js';
 
 // ===== Constants =====
 
@@ -237,9 +238,9 @@ export class FileViewer {
       }
       if (e.key === 'Tab') {
         e.preventDefault();
-        const { selectionStart: start, selectionEnd: end, value: val } = this.editorEl;
-        this.editorEl.value = val.substring(0, start) + TAB_SPACES + val.substring(end);
-        this.editorEl.selectionStart = this.editorEl.selectionEnd = start + TAB_SIZE;
+        const result = insertTab(this.editorEl.value, this.editorEl.selectionStart, this.editorEl.selectionEnd, TAB_SPACES);
+        this.editorEl.value = result.text;
+        this.editorEl.selectionStart = this.editorEl.selectionEnd = result.cursorPos;
         this.editorEl.dispatchEvent(new Event('input'));
       }
     });
@@ -296,12 +297,7 @@ export class FileViewer {
   }
 
   _getCursorPosition() {
-    const pos = this.editorEl.selectionStart;
-    const textBefore = this.editorEl.value.substring(0, pos);
-    const line = textBefore.split('\n').length;
-    const col = pos - textBefore.lastIndexOf('\n');
-    const totalLines = this.editorEl.value.split('\n').length;
-    return { line, col, totalLines };
+    return getCursorPosition(this.editorEl.value, this.editorEl.selectionStart);
   }
 
   updateStatusBar() {
@@ -415,20 +411,7 @@ export class FileViewer {
       committed = true;
       const val = input.value.trim();
       if (val) {
-        let url, label;
-        if (/^\d+$/.test(val)) {
-          url = `http://localhost:${val}`;
-          label = `Localhost:${val}`;
-        } else {
-          const portMatch = val.match(/^(?:localhost:?)(\d+)$/i);
-          if (portMatch) {
-            url = `http://localhost:${portMatch[1]}`;
-            label = `Localhost:${portMatch[1]}`;
-          } else {
-            url = /^https?:\/\//.test(val) ? val : 'http://' + val;
-            label = val.replace(/^https?:\/\//, '');
-          }
-        }
+        const { url, label } = parseWebviewUrl(val);
         this.addWebview(label, url);
       } else {
         this._renderModeBar();
