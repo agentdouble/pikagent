@@ -1,7 +1,14 @@
 import { _el } from '../utils/dom.js';
-
-const LOG_LEVELS = ['verbose', 'info', 'warn', 'error'];
-const MAX_LOGS = 5000;
+import {
+  MAX_LOGS,
+  resolveLogLevel,
+  formatBadgeText,
+  formatLogTime,
+  shortenSource,
+  normalizeUrl,
+  clampConsoleHeight,
+  shortLevelLabel,
+} from '../utils/webview-helpers.js';
 
 export class WebviewInstance {
   constructor(container, url) {
@@ -107,15 +114,14 @@ export class WebviewInstance {
   }
 
   _addLog(level, message, source, line) {
-    const levelName = LOG_LEVELS[level] || 'info';
-    const entry = { level: levelName, message, source, line, time: new Date() };
+    const entry = { level: resolveLogLevel(level), message, source, line, time: new Date() };
     this._logs.push(entry);
     if (this._logs.length > MAX_LOGS) this._logs.shift();
 
     // Update badge count when console is closed
     if (!this._consoleOpen) {
       const count = this._logs.length;
-      this._consoleBadge.textContent = count > 99 ? '99+' : String(count);
+      this._consoleBadge.textContent = formatBadgeText(count);
       this._consoleBadge.style.display = count > 0 ? '' : 'none';
     }
 
@@ -129,20 +135,14 @@ export class WebviewInstance {
   _appendLogEl(entry) {
     const row = _el('div', `webview-log webview-log-${entry.level}`);
 
-    const time = _el('span', 'webview-log-time',
-      entry.time.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-
-    const level = _el('span', `webview-log-level webview-log-level-${entry.level}`,
-      entry.level === 'verbose' ? 'verb' : entry.level);
-
+    const time = _el('span', 'webview-log-time', formatLogTime(entry.time));
+    const level = _el('span', `webview-log-level webview-log-level-${entry.level}`, shortLevelLabel(entry.level));
     const msg = _el('span', 'webview-log-msg', entry.message);
 
     row.append(time, level, msg);
 
     if (entry.source) {
-      const src = entry.source.replace(/.*\//, '');
-      const loc = _el('span', 'webview-log-source', `${src}:${entry.line}`);
-      row.appendChild(loc);
+      row.appendChild(_el('span', 'webview-log-source', `${shortenSource(entry.source)}:${entry.line}`));
     }
 
     this._consoleList.appendChild(row);
@@ -181,9 +181,7 @@ export class WebviewInstance {
     let startHeight = 0;
 
     const onMove = (e) => {
-      const dy = startY - e.clientY;
-      const newH = Math.max(60, Math.min(500, startHeight + dy));
-      this._consolePanel.style.height = `${newH}px`;
+      this._consolePanel.style.height = `${clampConsoleHeight(startHeight, startY - e.clientY)}px`;
     };
 
     const onUp = () => {
@@ -206,8 +204,8 @@ export class WebviewInstance {
     });
   }
 
-  navigate(url) {
-    if (!/^https?:\/\//.test(url)) url = 'http://' + url;
+  navigate(raw) {
+    const url = normalizeUrl(raw);
     this.url = url;
     this.webview.src = url;
     this.urlInput.value = url;
