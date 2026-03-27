@@ -1,4 +1,9 @@
 import { generateId } from '../utils/id.js';
+import { _el } from '../utils/dom.js';
+import {
+  SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
+  DEFAULT_TIME, buildScheduleData,
+} from '../utils/flow-schedule-helpers.js';
 
 const AGENT_OPTIONS = {
   claude: 'Claude',
@@ -6,22 +11,7 @@ const AGENT_OPTIONS = {
   opencode: 'OpenCode',
 };
 
-const SCHEDULE_LABELS = {
-  interval: 'Intervalle',
-  daily: 'Tous les jours',
-  weekdays: 'Jours de la semaine',
-  custom: 'Personnalisé',
-};
-
-const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const INTERVAL_HOURS = [1, 2, 3, 4, 6, 8, 12];
 const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
-const DEFAULT_TIME = '09:00';
-const WEEKDAY_INDICES = [1, 2, 3, 4, 5];
-
-export { SCHEDULE_LABELS, DAY_NAMES };
-
-import { _el } from '../utils/dom.js';
 
 function _vis(el, show) {
   el.style.display = show ? 'flex' : 'none';
@@ -198,17 +188,6 @@ function _buildBottomBar(existing, state) {
   return { bar, agentSelect, skipPermCheckbox: skipPerm.checkbox, schedSelect, timeInput, intervalInput, selectedDays };
 }
 
-function _buildSchedule(schedSelect, timeInput, intervalInput, selectedDays) {
-  const type = schedSelect.value;
-  const schedule = { type };
-  if (type === 'interval') {
-    schedule.intervalHours = parseInt(intervalInput.value, 10);
-  } else {
-    schedule.time = timeInput.value || DEFAULT_TIME;
-    if (type === 'custom') schedule.days = [...selectedDays].sort();
-  }
-  return schedule;
-}
 
 // --- Main entry ---
 
@@ -246,7 +225,7 @@ export function openFlowModal(existing = null) {
             prompt,
             agent: bottom.agentSelect.value,
             cwd: state.selectedCwd || undefined,
-            schedule: _buildSchedule(bottom.schedSelect, bottom.timeInput, bottom.intervalInput, bottom.selectedDays),
+            schedule: buildScheduleData(bottom.schedSelect.value, bottom.timeInput.value, bottom.intervalInput.value, bottom.selectedDays),
             dangerouslySkipPermissions: bottom.agentSelect.value === 'claude' && bottom.skipPermCheckbox.checked,
             enabled: existing?.enabled ?? true,
             runs: existing?.runs || [],

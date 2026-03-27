@@ -1,4 +1,5 @@
-import { openFlowModal, SCHEDULE_LABELS, DAY_NAMES } from './flow-modal.js';
+import { openFlowModal } from './flow-modal.js';
+import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedule-helpers.js';
 import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 
@@ -154,7 +155,7 @@ export class FlowView {
     nameRow.appendChild(_el('span', 'flow-card-name', flow.name));
     if (isRunning) nameRow.appendChild(_el('span', 'flow-running-badge', 'En cours...'));
     info.appendChild(nameRow);
-    info.appendChild(_el('div', 'flow-card-schedule', this._formatSchedule(flow.schedule)));
+    info.appendChild(_el('div', 'flow-card-schedule', formatSchedule(flow.schedule)));
     headerRow.appendChild(info);
 
     // Right: run dots + actions
@@ -318,21 +319,6 @@ export class FlowView {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) close();
     });
-  }
-
-  _formatSchedule(schedule) {
-    if (!schedule) return 'Non planifié';
-    if (schedule.type === 'interval') {
-      const h = schedule.intervalHours || 1;
-      return `Toutes les ${h}h`;
-    }
-    const label = SCHEDULE_LABELS[schedule.type] || schedule.type;
-    const time = schedule.time || '00:00';
-    if (schedule.type === 'custom' && schedule.days) {
-      const dayLabels = schedule.days.map((d) => DAY_NAMES[d]).join(', ');
-      return `${dayLabels} à ${time}`;
-    }
-    return `${label} à ${time}`;
   }
 
   // ===== Creation / Edit Modal =====
