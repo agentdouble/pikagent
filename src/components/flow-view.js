@@ -2,6 +2,7 @@ import { openFlowModal } from './flow-modal.js';
 import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedule-helpers.js';
 import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
+import { generateId } from '../utils/id.js';
 
 const FIT_DELAY_MS = 50;
 const LOG_SCROLLBACK = 50000;
@@ -12,6 +13,7 @@ const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';
 const NO_LOG_MODAL_MESSAGE = '\r\n  Log non disponible.\r\n';
 const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos tâches.';
 const MAX_VISIBLE_RUNS = 5;
+const UNCATEGORIZED = '_uncategorized';
 
 
 export class FlowView {
@@ -19,13 +21,19 @@ export class FlowView {
     this.container = container;
     this.tabManager = tabManager;
     this.flows = [];
+    this.catData = { categories: [], order: {} };
     this.disposed = false;
-    this._liveTerminals = new Map(); // flowId -> { term, fitAddon, unsubData, resizeObs, containerEl }
-    this._logTerminals = new Map();  // flowId -> { term, fitAddon, resizeObs }
-    this._expandedCards = new Set(); // flowId of expanded cards
-    this._runningMap = {}; // flowId -> ptyId
+    this._liveTerminals = new Map();
+    this._logTerminals = new Map();
+    this._expandedCards = new Set();
+    this._collapsedCategories = new Set();
+    this._runningMap = {};
 
-    this._unsubStarted = window.api.flow.onRunStarted(({ flowId, ptyId, flowName }) => {
+    // Drag state
+    this._dragFlowId = null;
+    this._dragSourceCat = null;
+
+    this._unsubStarted = window.api.flow.onRunStarted(({ flowId, ptyId }) => {
       this._runningMap[flowId] = ptyId;
       this._expandedCards.add(flowId);
       this.refresh();
@@ -43,7 +51,6 @@ export class FlowView {
 
   async _initRunning() {
     this._runningMap = await window.api.flow.getRunning();
-    // Auto-expand running flows
     for (const flowId of Object.keys(this._runningMap)) {
       this._expandedCards.add(flowId);
     }
@@ -53,8 +60,57 @@ export class FlowView {
   async refresh() {
     if (this.disposed) return;
     this.flows = await window.api.flow.list();
+    this.catData = await window.api.flow.getCategories();
     this._renderList();
   }
+
+  async _persistCategories() {
+    await window.api.flow.saveCategories(this.catData);
+  }
+
+  // --- Category helpers ---
+
+  _getFlowsForCategory(catId) {
+    const orderedIds = this.catData.order[catId] || [];
+    const flowMap = new Map(this.flows.map(f => [f.id, f]));
+    const ordered = orderedIds.map(id => flowMap.get(id)).filter(Boolean);
+    return ordered;
+  }
+
+  _getUncategorizedFlows() {
+    const assigned = new Set();
+    for (const ids of Object.values(this.catData.order)) {
+      for (const id of ids) assigned.add(id);
+    }
+    const unordered = this.flows.filter(f => !assigned.has(f.id));
+    const orderedIds = this.catData.order[UNCATEGORIZED] || [];
+    const flowMap = new Map(this.flows.map(f => [f.id, f]));
+    const ordered = orderedIds.map(id => flowMap.get(id)).filter(Boolean);
+    // Add any flows not in the order list
+    const inOrder = new Set(orderedIds);
+    for (const f of unordered) {
+      if (!inOrder.has(f.id)) ordered.push(f);
+    }
+    return ordered;
+  }
+
+  _moveFlowToCategory(flowId, targetCatId, insertIndex = -1) {
+    // Remove from all categories
+    for (const key of Object.keys(this.catData.order)) {
+      this.catData.order[key] = this.catData.order[key].filter(id => id !== flowId);
+    }
+    // Add to target
+    if (!this.catData.order[targetCatId]) this.catData.order[targetCatId] = [];
+    const arr = this.catData.order[targetCatId];
+    if (insertIndex >= 0 && insertIndex < arr.length) {
+      arr.splice(insertIndex, 0, flowId);
+    } else {
+      arr.push(flowId);
+    }
+    this._persistCategories();
+  }
+
+  // --- Rendering ---
 
   _disposeAllFromMap(map) {
     for (const [flowId] of map) {
@@ -70,10 +126,16 @@ export class FlowView {
     const header = _el('div', 'flow-header');
     header.appendChild(_el('h2', 'flow-title', 'Flows'));
 
+    const headerRight = _el('div', { className: 'flow-header-right', style: { display: 'flex', gap: '8px' } });
+    const addCatBtn = _el('button', 'flow-add-btn', '+ Catégorie');
+    addCatBtn.addEventListener('click', () => this._addCategory());
+    headerRight.appendChild(addCatBtn);
+
     const addBtn = _el('button', 'flow-add-btn', '+ Nouveau');
     addBtn.addEventListener('click', () => this._openModal());
-    header.appendChild(addBtn);
+    headerRight.appendChild(addBtn);
 
+    header.appendChild(headerRight);
     wrapper.appendChild(header);
 
     this.listEl = _el('div', 'flow-list');
@@ -85,7 +147,6 @@ export class FlowView {
   _renderList() {
     if (!this.listEl) return;
 
-    // Dispose terminals that are no longer needed before clearing DOM
     for (const [flowId] of this._liveTerminals) {
       if (!this._runningMap[flowId]) this._disposeLiveTerminal(flowId);
     }
@@ -93,29 +154,218 @@ export class FlowView {
 
     this.listEl.replaceChildren();
 
-    if (this.flows.length === 0) {
+    const hasCats = this.catData.categories.length > 0;
+    const uncatFlows = this._getUncategorizedFlows();
+    const totalFlows = this.flows.length;
+
+    if (totalFlows === 0 && !hasCats) {
       this.listEl.appendChild(_el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
       return;
     }
 
-    for (const flow of this.flows) {
-      this.listEl.appendChild(this._createCard(flow));
+    // Render categorized groups
+    for (const cat of this.catData.categories) {
+      const flows = this._getFlowsForCategory(cat.id);
+      this.listEl.appendChild(this._createCategoryGroup(cat, flows));
+    }
+
+    // Render uncategorized
+    if (uncatFlows.length > 0 || hasCats) {
+      if (hasCats) {
+        this.listEl.appendChild(this._createCategoryGroup(
+          { id: UNCATEGORIZED, name: 'Sans catégorie' },
+          uncatFlows,
+          true
+        ));
+      } else {
+        // No categories exist, just render flat list
+        for (const flow of uncatFlows) {
+          this.listEl.appendChild(this._createCard(flow, UNCATEGORIZED));
+        }
+      }
     }
   }
 
-  _createCard(flow) {
+  _createCategoryGroup(cat, flows, isUncategorized = false) {
+    const isCollapsed = this._collapsedCategories.has(cat.id);
+    const group = _el('div', `flow-category-group${isCollapsed ? ' flow-category-collapsed' : ''}`);
+    group.dataset.catId = cat.id;
+
+    // Header
+    const header = _el('div', 'flow-category-header');
+
+    const chevron = _el('span', 'flow-category-chevron', '▼');
+    header.appendChild(chevron);
+
+    const name = _el('span', 'flow-category-name', cat.name);
+    header.appendChild(name);
+
+    const count = _el('span', 'flow-category-count', `${flows.length}`);
+    header.appendChild(count);
+
+    if (!isUncategorized) {
+      const actions = _el('div', 'flow-category-actions');
+
+      const renameBtn = _el('button', 'flow-category-btn', '✎');
+      renameBtn.title = 'Renommer';
+      renameBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._renameCategoryInline(cat.id, name);
+      });
+      actions.appendChild(renameBtn);
+
+      const deleteBtn = _el('button', 'flow-category-btn flow-category-btn-danger', '✕');
+      deleteBtn.title = 'Supprimer la catégorie';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._deleteCategory(cat.id);
+      });
+      actions.appendChild(deleteBtn);
+
+      header.appendChild(actions);
+    }
+
+    header.addEventListener('click', () => {
+      if (this._collapsedCategories.has(cat.id)) {
+        this._collapsedCategories.delete(cat.id);
+      } else {
+        this._collapsedCategories.add(cat.id);
+      }
+      this._renderList();
+    });
+
+    group.appendChild(header);
+
+    // Items container (drop zone)
+    const items = _el('div', 'flow-category-items');
+    items.dataset.catId = cat.id;
+
+    // Drop zone events
+    items.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      items.classList.add('flow-drop-zone-active');
+      this._updateDropIndicator(items, e.clientY);
+    });
+
+    items.addEventListener('dragleave', (e) => {
+      if (!items.contains(e.relatedTarget)) {
+        items.classList.remove('flow-drop-zone-active');
+        this._clearDropIndicators(items);
+      }
+    });
+
+    items.addEventListener('drop', (e) => {
+      e.preventDefault();
+      items.classList.remove('flow-drop-zone-active');
+      this._clearDropIndicators(items);
+
+      if (!this._dragFlowId) return;
+
+      const insertIndex = this._getDropIndex(items, e.clientY);
+      this._moveFlowToCategory(this._dragFlowId, cat.id, insertIndex);
+      this._dragFlowId = null;
+      this._dragSourceCat = null;
+      this._renderList();
+    });
+
+    if (!isCollapsed) {
+      for (const flow of flows) {
+        items.appendChild(this._createCard(flow, cat.id));
+      }
+      if (flows.length === 0) {
+        const empty = _el('div', {
+          className: 'flow-empty',
+          style: { padding: '12px 0', fontSize: '12px' },
+          textContent: 'Glissez un flow ici',
+        });
+        items.appendChild(empty);
+      }
+    }
+
+    group.appendChild(items);
+    return group;
+  }
+
+  // --- Drag & Drop helpers ---
+
+  _updateDropIndicator(container, clientY) {
+    this._clearDropIndicators(container);
+
+    const cards = [...container.querySelectorAll(':scope > .flow-card')];
+    if (cards.length === 0) return;
+
+    let insertBefore = null;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (clientY < midY) {
+        insertBefore = card;
+        break;
+      }
+    }
+
+    const indicator = _el('div', 'flow-drop-indicator flow-drop-active');
+    if (insertBefore) {
+      container.insertBefore(indicator, insertBefore);
+    } else {
+      container.appendChild(indicator);
+    }
+  }
+
+  _clearDropIndicators(container) {
+    for (const el of container.querySelectorAll('.flow-drop-indicator')) {
+      el.remove();
+    }
+  }
+
+  _getDropIndex(container, clientY) {
+    const cards = [...container.querySelectorAll(':scope > .flow-card')];
+    for (let i = 0; i < cards.length; i++) {
+      const rect = cards[i].getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (clientY < midY) return i;
+    }
+    return -1; // append at end
+  }
+
+  // --- Card rendering ---
+
+  _createCard(flow, catId) {
     const isRunning = !!this._runningMap[flow.id];
     const isExpanded = this._expandedCards.has(flow.id);
 
     const card = _el('div', 'flow-card');
+    card.dataset.flowId = flow.id;
+    card.draggable = true;
+
     if (!flow.enabled) card.classList.add('flow-card-disabled');
     if (isRunning) card.classList.add('flow-card-running');
     if (isExpanded) card.classList.add('flow-card-expanded');
 
+    // Drag events
+    card.addEventListener('dragstart', (e) => {
+      this._dragFlowId = flow.id;
+      this._dragSourceCat = catId;
+      card.classList.add('flow-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', flow.id);
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('flow-dragging');
+      this._dragFlowId = null;
+      this._dragSourceCat = null;
+      // Clean up all drop indicators
+      for (const el of document.querySelectorAll('.flow-drop-indicator')) el.remove();
+      for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
+        el.classList.remove('flow-drop-zone-active');
+      }
+    });
+
     const headerRow = this._createCardHeader(flow, isRunning);
     card.appendChild(headerRow);
 
-    // Terminal area
     if (isRunning) {
       card.appendChild(this._createLiveTerminal(flow.id, this._runningMap[flow.id]));
     } else if (isExpanded) {
@@ -127,7 +377,6 @@ export class FlowView {
       }
     }
 
-    // Click header to toggle expand/collapse
     headerRow.addEventListener('click', () => {
       if (isRunning) return;
       if (!flow.runs?.length) {
@@ -149,7 +398,6 @@ export class FlowView {
   _createCardHeader(flow, isRunning) {
     const headerRow = _el('div', 'flow-card-header');
 
-    // Left: name + schedule + running badge
     const info = _el('div', 'flow-card-info');
     const nameRow = _el('div', 'flow-card-name-row');
     nameRow.appendChild(_el('span', 'flow-card-name', flow.name));
@@ -158,7 +406,6 @@ export class FlowView {
     info.appendChild(_el('div', 'flow-card-schedule', formatSchedule(flow.schedule)));
     headerRow.appendChild(info);
 
-    // Right: run dots + actions
     const right = _el('div', 'flow-card-right');
     right.appendChild(this._createRunDots(flow));
     right.appendChild(this._createCardActions(flow, isRunning));
@@ -191,6 +438,11 @@ export class FlowView {
       ['✎', 'Modifier', () => this._openModal(flow)],
       ['✕', 'Supprimer', async () => {
         this._disposeLiveTerminal(flow.id);
+        // Remove from category ordering
+        for (const key of Object.keys(this.catData.order)) {
+          this.catData.order[key] = this.catData.order[key].filter(id => id !== flow.id);
+        }
+        await this._persistCategories();
         await window.api.flow.delete(flow.id);
         this.refresh();
       }, 'flow-card-btn-danger'],
@@ -201,6 +453,63 @@ export class FlowView {
     }
 
     return actions;
+  }
+
+  // --- Category management ---
+
+  async _addCategory() {
+    const name = prompt('Nom de la catégorie :');
+    if (!name?.trim()) return;
+    const cat = { id: generateId('cat'), name: name.trim() };
+    this.catData.categories.push(cat);
+    this.catData.order[cat.id] = [];
+    await this._persistCategories();
+    this._renderList();
+  }
+
+  _renameCategoryInline(catId, nameEl) {
+    const cat = this.catData.categories.find(c => c.id === catId);
+    if (!cat) return;
+
+    const input = _el('input', {
+      className: 'flow-category-name-input',
+      value: cat.name,
+    });
+
+    const parent = nameEl.parentNode;
+    parent.replaceChild(input, nameEl);
+    input.focus();
+    input.select();
+
+    const commit = async () => {
+      const newName = input.value.trim();
+      if (newName) cat.name = newName;
+      await this._persistCategories();
+      this._renderList();
+    };
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') { input.value = cat.name; input.blur(); }
+    });
+  }
+
+  async _deleteCategory(catId) {
+    const cat = this.catData.categories.find(c => c.id === catId);
+    if (!cat) return;
+
+    // Move flows to uncategorized
+    const flowIds = this.catData.order[catId] || [];
+    if (!this.catData.order[UNCATEGORIZED]) this.catData.order[UNCATEGORIZED] = [];
+    this.catData.order[UNCATEGORIZED].push(...flowIds);
+
+    // Remove category
+    this.catData.categories = this.catData.categories.filter(c => c.id !== catId);
+    delete this.catData.order[catId];
+
+    await this._persistCategories();
+    this._renderList();
   }
 
   // === Live Terminal (for running flows) ===
@@ -226,7 +535,6 @@ export class FlowView {
   }
 
   _createLiveTerminal(flowId, ptyId) {
-    // If we already have a terminal for this flow, reattach it
     const existing = this._liveTerminals.get(flowId);
     if (existing) {
       setTimeout(() => _safeFit(existing.fitAddon), FIT_DELAY_MS);
@@ -240,7 +548,6 @@ export class FlowView {
       cursorStyle: 'bar',
     });
 
-    // Subscribe to PTY data
     const unsubData = window.api.pty.onData(ptyId, (data) => {
       term.write(data);
     });
@@ -288,7 +595,6 @@ export class FlowView {
     const overlay = _el('div', 'flow-modal-overlay');
     const modal = _el('div', 'flow-log-modal');
 
-    // Header
     const header = _el('div', 'flow-log-header');
     header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${run.date}`));
     header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
@@ -296,7 +602,6 @@ export class FlowView {
     header.appendChild(closeBtn);
     modal.appendChild(header);
 
-    // Terminal to replay the log
     const termContainer = _el('div', 'flow-log-terminal');
     modal.appendChild(termContainer);
 
@@ -324,9 +629,28 @@ export class FlowView {
   // ===== Creation / Edit Modal =====
 
   async _openModal(existing = null) {
-    const flow = await openFlowModal(existing);
+    const flow = await openFlowModal(existing, this.catData.categories);
     if (flow) {
+      // Handle category assignment from modal
+      const catId = flow._category;
+      delete flow._category;
+
       await window.api.flow.save(flow);
+
+      // Update category ordering
+      if (catId) {
+        this._moveFlowToCategory(flow.id, catId);
+      } else if (!existing) {
+        // New flow, add to uncategorized order
+        if (!this.catData.order[UNCATEGORIZED]) this.catData.order[UNCATEGORIZED] = [];
+        // Only add if not already in any category
+        const allOrdered = new Set(Object.values(this.catData.order).flat());
+        if (!allOrdered.has(flow.id)) {
+          this.catData.order[UNCATEGORIZED].push(flow.id);
+          await this._persistCategories();
+        }
+      }
+
       this.refresh();
     }
   }

@@ -98,6 +98,8 @@ contextBridge.exposeInMainWorld('api', {
     runNow:        _fwd('flow:runNow'),
     getRunning:    _fwd('flow:getRunning'),
     getRunLog:     _pack('flow:getRunLog', ['flowId', 'logTimestamp']),
+    getCategories: _fwd('flow:getCategories'),
+    saveCategories: _fwd('flow:saveCategories'),
     onRunStarted:  _onIpc('flow:runStarted'),
     onRunComplete: _onIpc('flow:runComplete'),
   },

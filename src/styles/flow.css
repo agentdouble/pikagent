@@ -42,7 +42,181 @@
 .flow-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+/* ===== Category Groups ===== */
+.flow-category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-category-header {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.flow-category-header:hover {
+  background: var(--bg-hover);
+}
+
+.flow-category-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.flow-category-collapsed .flow-category-chevron {
+  transform: rotate(-90deg);
+}
+
+.flow-category-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-category-name-input {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  font-family: var(--font-ui);
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-category-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.flow-category-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.flow-category-header:hover .flow-category-actions {
+  opacity: 1;
+}
+
+.flow-category-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.flow-category-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.flow-category-btn-danger:hover {
+  color: #ff6b6b;
+}
+
+.flow-category-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 4px;
+  padding-left: 6px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.2s, min-height 0.2s;
+}
+
+.flow-category-collapsed .flow-category-items {
+  display: none;
+}
+
+.flow-add-category-btn {
+  background: none;
+  border: 1px dashed var(--border-color);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.flow-add-category-btn:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+/* ===== Drag and Drop ===== */
+.flow-card.flow-dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+.flow-card {
+  transition: border-color 0.15s, transform 0.15s, opacity 0.15s;
+}
+
+.flow-card[draggable="true"] {
+  cursor: grab;
+}
+
+.flow-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.flow-drop-indicator {
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  margin: -2px 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.flow-drop-indicator.flow-drop-active {
+  opacity: 1;
+}
+
+.flow-category-items.flow-drop-zone-active {
+  border-color: var(--accent);
+  min-height: 40px;
+  background: rgba(var(--accent-rgb, 99, 102, 241), 0.05);
+  border-radius: 4px;
 }
 
 .flow-empty {

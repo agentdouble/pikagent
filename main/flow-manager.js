@@ -1,7 +1,7 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
-const { FLOWS_DIR, LOGS_DIR } = require('./paths');
+const { FLOWS_DIR, LOGS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
 const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const { shouldRun, buildFlowCommand } = require('./flow-helpers');
 
@@ -106,6 +106,20 @@ class FlowManager {
     } catch {
       return null;
     }
+  }
+
+  // --- Categories ---
+
+  async getCategories() {
+    await ensureDir();
+    const data = await readJson(FLOW_CATEGORIES_FILE);
+    return data || { categories: [], order: {} };
+  }
+
+  async saveCategories(data) {
+    await ensureDir();
+    await fsp.writeFile(FLOW_CATEGORIES_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    return data;
   }
 
   async _cleanLogs(flowId) {

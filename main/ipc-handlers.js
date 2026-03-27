@@ -54,7 +54,9 @@ const FORWARD_HANDLERS = [
   ['flow:delete',     flowManager, 'remove'],
   ['flow:toggle',     flowManager, 'toggleEnabled'],
   ['flow:runNow',     flowManager, 'runNow'],
-  ['flow:getRunning', flowManager, 'getRunning'],
+  ['flow:getRunning',    flowManager, 'getRunning'],
+  ['flow:getCategories', flowManager, 'getCategories'],
+  ['flow:saveCategories', flowManager, 'saveCategories'],
   // Usage
   ['usage:getMetrics', usageManager, 'getMetrics'],
 ];

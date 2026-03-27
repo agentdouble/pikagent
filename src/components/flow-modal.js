@@ -189,9 +189,20 @@ function _buildBottomBar(existing, state) {
 }
 
 
+// --- Category picker ---
+
+function _buildCategoryPicker(categories, selectedCatId) {
+  const options = { '': 'Sans catégorie' };
+  for (const cat of categories) {
+    options[cat.id] = cat.name;
+  }
+  const select = _createSelect(options, selectedCatId || '');
+  return { chip: _createChip('\u{1F4C1}', select), select };
+}
+
 // --- Main entry ---
 
-export function openFlowModal(existing = null) {
+export function openFlowModal(existing = null, categories = []) {
   return new Promise((resolve) => {
     const state = { selectedCwd: existing?.cwd || '' };
 
@@ -201,6 +212,9 @@ export function openFlowModal(existing = null) {
 
     const header = _buildHeader(existing, state);
     const bottom = _buildBottomBar(existing, state);
+    const catPicker = categories.length > 0
+      ? _buildCategoryPicker(categories, existing?._category || '')
+      : null;
 
     const close = () => { overlay.remove(); resolve(null); };
 
@@ -219,7 +233,7 @@ export function openFlowModal(existing = null) {
           if (!name || !prompt) return;
 
           overlay.remove();
-          resolve({
+          const result = {
             id: existing?.id || generateId(),
             name,
             prompt,
@@ -229,14 +243,18 @@ export function openFlowModal(existing = null) {
             dangerouslySkipPermissions: bottom.agentSelect.value === 'claude' && bottom.skipPermCheckbox.checked,
             enabled: existing?.enabled ?? true,
             runs: existing?.runs || [],
-          });
+          };
+          if (catPicker) result._category = catPicker.select.value || '';
+          resolve(result);
         },
       }),
     );
 
-    const modal = _el('div', { className: 'flow-modal' },
-      header, fields.nameGroup, fields.promptGroup, bottom.bar, actionBar,
-    );
+    const modalChildren = [header, fields.nameGroup, fields.promptGroup];
+    if (catPicker) modalChildren.push(_el('div', { className: 'flow-modal-group', style: { paddingBottom: '8px' } }, catPicker.chip));
+    modalChildren.push(bottom.bar, actionBar);
+
+    const modal = _el('div', { className: 'flow-modal' }, ...modalChildren);
 
     const overlay = _el('div', { className: 'flow-modal-overlay' },
       modal,
