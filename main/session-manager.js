@@ -2,22 +2,11 @@ const fsp = require('fs/promises');
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
 const { readJson, ensureDirOnce } = require('./fs-utils');
+const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
 
-const MAX_SESSIONS = 200;
 const POLL_INTERVAL_MS = 5000;
-const MS_PER_SEC = 1000;
-const FLOW_PREFIX = 'flow-';
-const ID_RAND_LEN = 8;
 
 const ensureDir = ensureDirOnce(BASE_DIR);
-
-function _generateId() {
-  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 2 + ID_RAND_LEN)}`;
-}
-
-function _durationSec(startedAt) {
-  return Math.round((Date.now() - new Date(startedAt).getTime()) / MS_PER_SEC);
-}
 
 class SessionManager {
   constructor() {
@@ -73,7 +62,7 @@ class SessionManager {
   }
 
   async _startSession(termId, agentName) {
-    if (termId.startsWith(FLOW_PREFIX)) return;
+    if (isFlowTerminal(termId)) return;
 
     let cwd = null;
     try {
@@ -83,7 +72,7 @@ class SessionManager {
     }
 
     this._activeSessions[termId] = {
-      id: _generateId(),
+      id: generateSessionId(),
       termId,
       agent: agentName,
       cwd: cwd || os.homedir(),
@@ -96,13 +85,7 @@ class SessionManager {
     if (!session) return;
 
     delete this._activeSessions[termId];
-
-    this._saveRecord({
-      ...session,
-      endedAt: new Date().toISOString(),
-      durationSec: _durationSec(session.startedAt),
-      status,
-    });
+    this._saveRecord(buildEndedRecord(session, status));
   }
 
   onTerminalExit(termId) {
@@ -115,14 +98,9 @@ class SessionManager {
   async _saveRecord(record) {
     await ensureDir();
 
-    let sessions = this._sessionsCache || [];
-    sessions.push(record);
-    if (sessions.length > MAX_SESSIONS) {
-      sessions = sessions.slice(-MAX_SESSIONS);
-    }
-    this._sessionsCache = sessions;
+    this._sessionsCache = trimSessions([...(this._sessionsCache || []), record]);
 
-    fsp.writeFile(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf-8')
+    fsp.writeFile(SESSIONS_FILE, JSON.stringify(this._sessionsCache, null, 2), 'utf-8')
       .catch((err) => console.warn('session-manager: write failed:', err.message));
   }
 
@@ -135,11 +113,7 @@ class SessionManager {
   }
 
   getActiveSessions() {
-    return Object.values(this._activeSessions).map((s) => ({
-      ...s,
-      durationSec: _durationSec(s.startedAt),
-      status: 'running',
-    }));
+    return Object.values(this._activeSessions).map(buildActiveRecord);
   }
 }
 
