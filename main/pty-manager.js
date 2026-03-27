@@ -2,22 +2,19 @@ const os = require('os');
 const pty = require('node-pty');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const {
+  EXEC_TIMEOUT_MS,
+  CWD_TIMEOUT_MS,
+  DEFAULT_COLS,
+  DEFAULT_ROWS,
+  TERM,
+  DEFAULT_SHELL,
+  matchAgent,
+  parseChildPids,
+  parseCwdFromLsof,
+} = require('./pty-helpers');
 
 const execFileAsync = promisify(execFile);
-
-const KNOWN_AGENTS = [
-  ['claude', 'Claude'],
-  ['codex', 'Codex'],
-  ['opencode', 'OpenCode'],
-];
-
-const EXEC_TIMEOUT_MS = 1000;
-const CWD_TIMEOUT_MS = 2000;
-const DEFAULT_COLS = 80;
-const DEFAULT_ROWS = 24;
-const TERM = 'xterm-256color';
-const DEFAULT_SHELL =
-  process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/zsh');
 
 class PtyManager {
   constructor() {
@@ -57,8 +54,7 @@ class PtyManager {
         ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'],
         CWD_TIMEOUT_MS,
       );
-      const match = out.match(/^n(.+)$/m);
-      return match ? match[1] : null;
+      return parseCwdFromLsof(out);
     } catch {
       return null;
     }
@@ -95,15 +91,7 @@ class PtyManager {
 
   async _getChildPids(pid) {
     const out = await this._exec('pgrep', ['-P', String(pid)]);
-    return out.trim().split('\n').filter(Boolean).map((p) => p.trim());
-  }
-
-  _matchAgent(psOutput) {
-    const lower = psOutput.toLowerCase();
-    for (const [pattern, name] of KNOWN_AGENTS) {
-      if (lower.includes(pattern)) return name;
-    }
-    return null;
+    return parseChildPids(out);
   }
 
   async _checkAgent(id, proc) {
@@ -112,7 +100,7 @@ class PtyManager {
       if (childPids.length === 0) return null;
 
       const psOut = await this._exec('ps', ['-o', 'args=', '-p', childPids.join(',')]);
-      return this._matchAgent(psOut);
+      return matchAgent(psOut);
     } catch {}
     return null;
   }
