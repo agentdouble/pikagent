@@ -3,22 +3,13 @@ const path = require('path');
 const os = require('os');
 const { FLOWS_DIR, LOGS_DIR } = require('./paths');
 const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { shouldRun, buildFlowCommand } = require('./flow-helpers');
 
 const SCHEDULER_INTERVAL_MS = 60_000;
 const SHELL_INIT_DELAY_MS = 500;
 const MAX_RUN_HISTORY = 7;
 const DEFAULT_PTY_COLS = 120;
 const DEFAULT_PTY_ROWS = 30;
-const MS_PER_HOUR = 3_600_000;
-
-const AGENT_COMMANDS = {
-  claude: (prompt, opts = {}) =>
-    opts.dangerouslySkipPermissions
-      ? `claude --dangerously-skip-permissions --verbose -p '${prompt}'`
-      : `claude --permission-mode auto --verbose -p '${prompt}'`,
-  codex: (prompt) => `codex --approval-mode full-auto --quiet '${prompt}'`,
-  opencode: (prompt) => `opencode -p '${prompt}'`,
-};
 
 const ensureDir = ensureDirOnce(LOGS_DIR);
 
@@ -124,12 +115,6 @@ class FlowManager {
     } catch {}
   }
 
-  // --- Helpers ---
-
-  _getLastRun(flow) {
-    return flow.runs?.at(-1) ?? null;
-  }
-
   // --- Scheduling ---
 
   async _tick() {
@@ -139,47 +124,13 @@ class FlowManager {
     for (const flow of flows) {
       if (!flow.enabled) continue;
       if (this._runningFlows.has(flow.id)) continue;
-      if (this._shouldRun(flow, now)) {
+      if (shouldRun(flow, now)) {
         this._execute(flow);
       }
     }
   }
 
-  _shouldRun(flow, now) {
-    const { schedule } = flow;
-    if (!schedule) return false;
-
-    const lastRun = this._getLastRun(flow);
-
-    // Interval-based scheduling
-    if (schedule.type === 'interval') {
-      const intervalMs = (schedule.intervalHours || 1) * MS_PER_HOUR;
-      if (!lastRun) return true;
-      return now.getTime() - new Date(lastRun.timestamp).getTime() >= intervalMs;
-    }
-
-    // Time-based scheduling
-    if (!schedule.time) return false;
-
-    const [hours, minutes] = schedule.time.split(':').map(Number);
-    if (now.getHours() !== hours || now.getMinutes() !== minutes) return false;
-
-    const day = now.getDay();
-    if (schedule.type === 'weekdays' && (day === 0 || day === 6)) return false;
-    if (schedule.type === 'custom' && schedule.days && !schedule.days.includes(day)) return false;
-
-    const todayStr = now.toISOString().slice(0, 10);
-    return !lastRun || lastRun.date !== todayStr;
-  }
-
   // --- Execution ---
-
-  _buildCommand(flow) {
-    const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
-    const agent = flow.agent || 'claude';
-    const buildCmd = AGENT_COMMANDS[agent] || AGENT_COMMANDS.claude;
-    return `${buildCmd(escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
-  }
 
   async _saveLog(flowId, runTimestamp, output) {
     await ensureDir();
@@ -235,7 +186,7 @@ class FlowManager {
         flowName: flow.name,
       });
 
-      const cmd = this._buildCommand(flow);
+      const cmd = buildFlowCommand(flow);
       setTimeout(() => {
         this._ptyManager.write(ptyId, cmd);
       }, SHELL_INIT_DELAY_MS);
