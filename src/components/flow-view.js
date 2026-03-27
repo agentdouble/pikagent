@@ -457,14 +457,60 @@ export class FlowView {
 
   // --- Category management ---
 
-  async _addCategory() {
-    const name = prompt('Nom de la catégorie :');
-    if (!name?.trim()) return;
-    const cat = { id: generateId('cat'), name: name.trim() };
-    this.catData.categories.push(cat);
-    this.catData.order[cat.id] = [];
-    await this._persistCategories();
-    this._renderList();
+  _addCategory() {
+    const overlay = _el('div', 'flow-modal-overlay');
+    const modal = _el('div', {
+      className: 'flow-modal',
+      style: { width: '360px' },
+    });
+
+    const header = _el('div', 'flow-modal-header',
+      _el('h3', { textContent: 'Nouvelle catégorie' }),
+    );
+
+    const input = _el('input', {
+      className: 'flow-modal-input',
+      placeholder: 'Nom de la catégorie',
+    });
+    const group = _el('div', 'flow-modal-group', input);
+
+    const close = () => overlay.remove();
+
+    const confirm = async () => {
+      const name = input.value.trim();
+      if (!name) return;
+      close();
+      const cat = { id: generateId('cat'), name };
+      this.catData.categories.push(cat);
+      this.catData.order[cat.id] = [];
+      await this._persistCategories();
+      this._renderList();
+    };
+
+    const actionBar = _el('div', 'flow-modal-actions',
+      _el('button', {
+        className: 'flow-modal-btn flow-modal-btn-cancel',
+        textContent: 'Annuler',
+        onClick: close,
+      }),
+      _el('button', {
+        className: 'flow-modal-btn flow-modal-btn-create',
+        textContent: 'Créer',
+        onClick: confirm,
+      }),
+    );
+
+    modal.append(header, group, actionBar);
+    overlay.appendChild(modal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    document.body.appendChild(overlay);
+    input.focus();
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') confirm();
+      if (e.key === 'Escape') close();
+    });
   }
 
   _renameCategoryInline(catId, nameEl) {
