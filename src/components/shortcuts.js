@@ -1,4 +1,5 @@
 import { COLOR_GROUPS } from './tab-manager.js';
+import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
 
 const STORAGE_KEY = 'pickagent:keybindings';
 
@@ -45,24 +46,6 @@ const ACTION_HANDLERS = {
     COLOR_GROUPS.map((cg) => [`goToColor_${cg.id}`, (tm) => tm.goToColorGroup(cg.id)]),
   ),
 };
-
-// Ordered list of modifier keys for combo string building
-const MODIFIERS = [
-  { key: 'shiftKey', name: 'shift' },
-  { key: 'ctrlKey', name: 'control' },
-  { key: 'altKey', name: 'alt' },
-  { key: 'metaKey', name: 'meta' },
-];
-
-const IS_MAC = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
-
-const MODIFIER_LABELS = IS_MAC
-  ? { meta: '⌘', control: '⌃', shift: '⇧', alt: '⌥' }
-  : { meta: 'Win', control: 'Ctrl', shift: 'Shift', alt: 'Alt' };
-
-function _capitalizeKey(key) {
-  return key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1);
-}
 
 export class ShortcutManager {
   constructor(tabManager) {
@@ -145,7 +128,7 @@ export class ShortcutManager {
 
   _listen() {
     window.addEventListener('keydown', (e) => {
-      const actionId = this.bindings.get(this._eventToCombo(e));
+      const actionId = this.bindings.get(eventToCombo(e));
       if (!actionId) return;
       if (this.tabManager.isActiveNoShortcut() && !ShortcutManager.ALWAYS_ALLOWED.has(actionId)) return;
       const handler = this.actions.get(actionId);
@@ -156,16 +139,5 @@ export class ShortcutManager {
     });
   }
 
-  _eventToCombo(e) {
-    const parts = MODIFIERS.filter((m) => e[m.key]).map((m) => m.name);
-    parts.push(e.key.toLowerCase());
-    return parts.join('+');
-  }
-
-  static formatCombo(combo) {
-    return combo
-      .split('+')
-      .map((p) => MODIFIER_LABELS[p] ?? _capitalizeKey(p))
-      .join(IS_MAC ? '' : '+');
-  }
+  static formatCombo = formatCombo;
 }

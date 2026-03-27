@@ -1,4 +1,4 @@
-import { ShortcutManager } from './shortcuts.js';
+import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 import { _el } from '../utils/dom.js';
@@ -99,15 +99,7 @@ export class SettingsModal {
 
       if (MODIFIER_KEYS.includes(e.key)) return;
 
-      const parts = [];
-      if (e.shiftKey) parts.push('shift');
-      if (e.ctrlKey) parts.push('control');
-      if (e.altKey) parts.push('alt');
-      if (e.metaKey) parts.push('meta');
-      parts.push(e.key.toLowerCase());
-      const combo = parts.join('+');
-
-      this.finishRecording(combo);
+      this.finishRecording(eventToCombo(e));
     };
   }
 
@@ -270,7 +262,7 @@ export class SettingsModal {
 
     const badge = _el('span', 'keybinding-badge');
     badge.textContent = binding.keys[index]
-      ? ShortcutManager.formatCombo(binding.keys[index])
+      ? formatCombo(binding.keys[index])
       : 'Not set';
     if (!binding.keys[index]) badge.classList.add('unset');
 
@@ -306,7 +298,7 @@ export class SettingsModal {
     this.recording = null;
 
     el.classList.remove('recording');
-    el.textContent = ShortcutManager.formatCombo(combo);
+    el.textContent = formatCombo(combo);
 
     const bindings = this.shortcutManager.getBindingsList();
     const binding = bindings.find((b) => b.id === actionId);
