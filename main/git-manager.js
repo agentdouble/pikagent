@@ -1,17 +1,12 @@
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked } = require('./git-helpers');
 
 const execFileAsync = promisify(execFile);
-
-const DIFF_MAX_BUFFER = 5 * 1024 * 1024;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function execOpts(cwd, extra) {
-  return { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], ...extra };
-}
 
 /** Run a git command, return trimmed stdout or `fallback` on error. */
 async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
@@ -23,15 +18,6 @@ async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
     console.error(`[git-manager] git ${args[0]} failed in ${cwd}:`, err.message);
     return fallback;
   }
-}
-
-/** Parse git name-status output into { status, path, staged } entries. */
-function parseNameStatus(raw, staged) {
-  if (!raw) return [];
-  return raw.split('\n').map((line) => {
-    const [status, ...p] = line.split('\t');
-    return { status, path: p.join('\t'), staged };
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -56,9 +42,7 @@ async function getLocalChanges(cwd) {
 
     const staged = parseNameStatus(stagedRaw, true);
     const unstaged = parseNameStatus(unstagedRaw, false);
-    const untracked = untrackedRaw
-      ? untrackedRaw.split('\n').map((p) => ({ status: '?', path: p, staged: false }))
-      : [];
+    const untracked = parseUntracked(untrackedRaw);
 
     return { staged, unstaged, untracked };
   } catch (err) {
