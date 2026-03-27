@@ -2,14 +2,10 @@ const fsp = require('fs/promises');
 const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
 const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
 
-const DEFAULT_META = { defaultConfig: null };
 const ensureDir = ensureDirOnce(CONFIG_DIR);
 let _metaCache = null;
-
-function sanitizeName(name) {
-  return name.replace(/[^a-zA-Z0-9_\- ]/g, '_').substring(0, 64);
-}
 
 function configPath(name) {
   return path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
@@ -30,12 +26,7 @@ async function writeMeta(meta) {
 async function save(name, data) {
   await ensureDir();
   const existing = await readJson(configPath(name));
-  const config = {
-    ...data,
-    name,
-    createdAt: existing?.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+  const config = buildConfigRecord(name, data, existing, new Date().toISOString());
   await fsp.writeFile(configPath(name), JSON.stringify(config, null, 2), 'utf-8');
   return config;
 }
@@ -49,14 +40,7 @@ async function list() {
   const meta = await readMeta();
   try {
     const configs = await readDirJson(CONFIG_DIR);
-    return configs
-      .filter((data) => data.name !== '__autosave__')
-      .map((data) => ({
-        name: data.name,
-        updatedAt: data.updatedAt,
-        tabCount: data.tabs ? data.tabs.length : 0,
-        isDefault: meta.defaultConfig === data.name,
-      }));
+    return formatConfigList(configs, meta.defaultConfig);
   } catch (err) {
     console.warn('config-manager: list failed:', err.message);
     return [];
