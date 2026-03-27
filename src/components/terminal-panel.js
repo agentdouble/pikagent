@@ -4,46 +4,18 @@ import { bus } from '../utils/events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el } from '../utils/dom.js';
 import { createTerminal } from '../utils/terminal-factory.js';
+import {
+  detectDropSide,
+  computeIndicatorRect,
+  computeResizeRatio,
+  findClosestInDirection,
+  directionFromSide,
+  isInsertBefore,
+} from '../utils/split-helpers.js';
 
 /* ── Constants ────────────────────────────────────────────────── */
 const CWD_POLL_MS = 1500;
-const EDGE_THRESHOLD = 0.3;
-const INDICATOR_PAD = 2;
-const MIN_RESIZE_RATIO = 0.1;
-const MAX_RESIZE_RATIO = 0.9;
 const DRAG_GRIP = '⠿';
-
-/* ── Drop helpers (pure, stateless) ──────────────────────────── */
-
-/** Determine which side of a panel the cursor is closest to. */
-function detectDropSide(relX, relY) {
-  const distLeft = relX;
-  const distRight = 1 - relX;
-  const distTop = relY;
-  const distBottom = 1 - relY;
-  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-
-  if (minDist > EDGE_THRESHOLD) return 'center';
-  if (minDist === distLeft) return 'left';
-  if (minDist === distRight) return 'right';
-  if (minDist === distTop) return 'top';
-  return 'bottom';
-}
-
-/** Compute indicator bounds {left, top, width, height} for a given side. */
-function computeIndicatorRect(rect, side) {
-  const pad = INDICATOR_PAD;
-  const halfW = rect.width / 2;
-  const halfH = rect.height / 2;
-
-  if (side === 'center') {
-    return { left: rect.left + pad, top: rect.top + pad, width: rect.width - pad * 2, height: rect.height - pad * 2 };
-  }
-  if (side === 'left' || side === 'right') {
-    return { left: rect.left + (side === 'right' ? halfW : 0), top: rect.top + pad, width: halfW, height: rect.height - pad * 2 };
-  }
-  return { left: rect.left + pad, top: rect.top + (side === 'bottom' ? halfH : 0), width: rect.width - pad * 2, height: halfH };
-}
 
 class TerminalInstance {
   constructor(container, cwd) {
@@ -425,8 +397,8 @@ export class TerminalPanel {
       targetEl.parentElement.insertBefore(sourceEl, targetEl);
       sourceEl.style.flex = targetEl.style.flex;
     } else {
-      const direction = (side === 'left' || side === 'right') ? 'horizontal' : 'vertical';
-      const insertBefore = (side === 'left' || side === 'top');
+      const direction = directionFromSide(side);
+      const insertBefore = isInsertBefore(side);
 
       const parentEl = targetEl.parentElement;
       const parentIsSameDirection =
@@ -529,34 +501,20 @@ export class TerminalPanel {
     if (!this.activeTerminal || this.terminals.size < 2) return;
 
     const activeRect = this.activeTerminal.element.getBoundingClientRect();
-    const cx = activeRect.left + activeRect.width / 2;
-    const cy = activeRect.top + activeRect.height / 2;
+    const activeCenter = {
+      cx: activeRect.left + activeRect.width / 2,
+      cy: activeRect.top + activeRect.height / 2,
+    };
 
-    let best = null;
-    let bestDist = Infinity;
-
+    const candidates = [];
     for (const [id, node] of this.terminals) {
       if (node === this.activeTerminal) continue;
-
       const rect = node.element.getBoundingClientRect();
-      const tx = rect.left + rect.width / 2;
-      const ty = rect.top + rect.height / 2;
-
-      let inDirection = false;
-      if (dir === 'left' && tx < cx) inDirection = true;
-      if (dir === 'right' && tx > cx) inDirection = true;
-      if (dir === 'up' && ty < cy) inDirection = true;
-      if (dir === 'down' && ty > cy) inDirection = true;
-      if (!inDirection) continue;
-
-      const dist = Math.hypot(tx - cx, ty - cy);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = node;
-      }
+      candidates.push({ id, cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 });
     }
 
-    if (best) this.setActive(best);
+    const bestId = findClosestInDirection(activeCenter, candidates, dir);
+    if (bestId) this.setActive(this.terminals.get(bestId));
   }
 
   split(targetNode, direction) {
@@ -625,7 +583,7 @@ export class TerminalPanel {
     const startPos = isHoriz ? rectBefore.left : rectBefore.top;
     const mousePos = isHoriz ? e.clientX : e.clientY;
 
-    const ratio = Math.max(MIN_RESIZE_RATIO, Math.min(MAX_RESIZE_RATIO, (mousePos - startPos) / totalSize));
+    const ratio = computeResizeRatio(mousePos, startPos, totalSize);
 
     const totalFlex = (parseFloat(panelBefore.style.flex) || 1) + (parseFloat(panelAfter.style.flex) || 1);
     panelBefore.style.flex = `${totalFlex * ratio}`;
