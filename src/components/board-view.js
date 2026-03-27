@@ -3,24 +3,11 @@ import { bus } from '../utils/events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
-
-// Minimum bytes of meaningful output per poll interval to consider agent "working".
-// ANSI escape codes (cursor moves, color resets, status bar refreshes) produce
-// small data bursts even when idle. Real agent output (streaming text, tool
-// results) is much larger. 200 bytes/3s is well above idle noise.
-const DATA_VOLUME_THRESHOLD = 200;
-const POLL_INTERVAL_MS = 3000;
-const FIT_SETTLE_DELAY_MS = 100;
-const FIT_UNHIDE_DELAY_MS = 50;
-
-const STATUS_CONFIG = {
-  running: { label: 'Running', cardClass: 'board-card-running', badgeClass: 'board-card-status board-status-running' },
-  waiting: { label: 'Waiting', cardClass: 'board-card-waiting', badgeClass: 'board-card-status board-status-waiting' },
-};
-
-const EVT_CREATED  = 'terminal:created';
-const EVT_REMOVED  = 'terminal:removed';
-const EVT_EXITED   = 'terminal:exited';
+import {
+  DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
+  STATUS_CONFIG, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
+  resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
+} from '../utils/board-helpers.js';
 
 export class BoardView {
   constructor(container, tabManager) {
@@ -77,8 +64,7 @@ export class BoardView {
 
   _checkIdleCards() {
     for (const [, data] of this.cards) {
-      const status = data.dataBytes >= DATA_VOLUME_THRESHOLD ? 'running' : 'waiting';
-      this._setCardStatus(data, status);
+      this._setCardStatus(data, resolveCardStatus(data.dataBytes));
       data.dataBytes = 0;
     }
   }
@@ -101,14 +87,11 @@ export class BoardView {
   }
 
   _findTabForTerminal(termId) {
-    for (const [tabId, tab] of this.tabManager.tabs) {
-      if (tab.terminalPanel?.terminals?.has(termId)) return { tabId, tab };
-    }
-    return null;
+    return findTabForTerminal(this.tabManager.tabs, termId);
   }
 
   _getTabNameForTerminal(termId) {
-    return this._findTabForTerminal(termId)?.tab.name ?? null;
+    return getTabNameForTerminal(this.tabManager.tabs, termId);
   }
 
   _autoHideNoShortcut() {
@@ -255,16 +238,7 @@ export class BoardView {
       data.element.contains(document.activeElement) || data.term.textarea === document.activeElement
     );
 
-    let nextIdx;
-    if (focusedIdx === -1) {
-      nextIdx = 0;
-    } else if (dir === 'left' || dir === 'up') {
-      nextIdx = (focusedIdx - 1 + visibleCards.length) % visibleCards.length;
-    } else {
-      nextIdx = (focusedIdx + 1) % visibleCards.length;
-    }
-
-    visibleCards[nextIdx][1].term.focus();
+    visibleCards[computeFocusIndex(focusedIdx, dir, visibleCards.length)][1].term.focus();
   }
 
   _startPolling() {
