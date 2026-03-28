@@ -5,6 +5,12 @@
 
 const LCS_MAX_PRODUCT = 50_000;
 
+/** View mode options for the diff viewer. */
+export const VIEW_MODES = ['split', 'unified'];
+
+/** Duration in ms for the hunk flash highlight animation. */
+export const HUNK_FLASH_DURATION_MS = 600;
+
 export const UNIFIED_CHANGE_CONFIG = {
   context: { prefix: ' ', cssClass: 'diff-row-context', showOld: true, showNew: true },
   add:     { prefix: '+', cssClass: 'diff-row-add',     showOld: false, showNew: true },
@@ -121,6 +127,22 @@ export function buildSideBySideRows(hunks) {
   }
 
   return rows;
+}
+
+/**
+ * Count additions and deletions across parsed hunks.
+ * @param {Array} hunks - Parsed hunk objects from parseDiff().
+ * @returns {{ additions: number, deletions: number }}
+ */
+export function countDiffStats(hunks) {
+  let additions = 0, deletions = 0;
+  for (const hunk of hunks) {
+    for (const c of hunk.changes) {
+      if (c.type === 'add') additions++;
+      if (c.type === 'remove') deletions++;
+    }
+  }
+  return { additions, deletions };
 }
 
 function tokenize(str) {

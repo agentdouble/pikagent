@@ -1,9 +1,6 @@
 import { detectLanguage } from '../utils/file-icons.js';
 import { _el } from '../utils/dom.js';
-import { parseDiff, buildSideBySideRows, wordDiff, UNIFIED_CHANGE_CONFIG } from '../utils/diff-parser.js';
-
-const HUNK_FLASH_DURATION_MS = 600;
-const VIEW_MODES = ['split', 'unified'];
+import { parseDiff, buildSideBySideRows, wordDiff, countDiffStats, UNIFIED_CHANGE_CONFIG, VIEW_MODES, HUNK_FLASH_DURATION_MS } from '../utils/diff-parser.js';
 
 /**
  * DiffViewer component - renders a side-by-side diff with syntax highlighting,
@@ -24,15 +21,9 @@ export class DiffViewer {
     this.hunks = parsed.hunks;
     this.rows = buildSideBySideRows(this.hunks);
 
-    let additions = 0, deletions = 0;
-    for (const hunk of this.hunks) {
-      for (const c of hunk.changes) {
-        if (c.type === 'add') additions++;
-        if (c.type === 'remove') deletions++;
-      }
-    }
-    this._additions = additions;
-    this._deletions = deletions;
+    const stats = countDiffStats(this.hunks);
+    this._additions = stats.additions;
+    this._deletions = stats.deletions;
 
     this.render();
   }
