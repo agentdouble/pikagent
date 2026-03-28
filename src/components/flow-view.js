@@ -379,7 +379,8 @@ export class FlowView {
     const dots = _el('div', 'flow-card-dots');
     for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
       const dot = _el('button', `flow-dot flow-dot-${run.status}`);
-      dot.title = `${run.date} — ${STATUS_LABELS[run.status] || run.status}\nCliquer pour voir le log`;
+      const time = run.timestamp ? new Date(run.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+      dot.title = `${run.date}${time ? ' ' + time : ''} — ${STATUS_LABELS[run.status] || run.status}\nCliquer pour voir le log`;
       dot.addEventListener('click', (e) => {
         e.stopPropagation();
         this._showRunLog(flow, run);
@@ -589,7 +590,8 @@ export class FlowView {
     const modal = _el('div', 'flow-log-modal');
 
     const header = _el('div', 'flow-log-header');
-    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${run.date}`));
+    const time = run.timestamp ? new Date(run.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${run.date}${time ? ' ' + time : ''}`));
     header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
     const closeBtn = _el('button', 'flow-log-close', '✕');
     header.appendChild(closeBtn);
