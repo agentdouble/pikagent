@@ -135,6 +135,13 @@ export class TabManager {
 
   _syncFileTree(tab) {
     if (tab.fileTree && tab.terminalPanel) {
+      // Remove stale entries (e.g. ghost terminal from TerminalPanel.init() before restoreFromTree)
+      const activeTermIds = new Set(tab.terminalPanel.terminals.keys());
+      for (const termId of [...tab.fileTree.termCwds.keys()]) {
+        if (!activeTermIds.has(termId)) {
+          tab.fileTree.removeTerminal(termId);
+        }
+      }
       for (const [termId, node] of tab.terminalPanel.terminals) {
         tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
       }
