@@ -1,16 +1,7 @@
 import { bus } from '../utils/events.js';
 import { DiffViewer } from './diff-viewer.js';
 import { _el } from '../utils/dom.js';
-
-const STATUS_LABELS = { M: 'M', A: 'A', D: 'D', R: 'R', '?': '?' };
-
-const CHEVRON = { expanded: '▼', collapsed: '▶' };
-
-const CHANGE_SECTIONS = [
-  { key: 'staged', title: 'Staged', isStaged: true },
-  { key: 'unstaged', title: 'Modified', isStaged: false },
-  { key: 'untracked', title: 'Untracked', isStaged: false },
-];
+import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
 
 export class GitChangesView {
   constructor(container) {
@@ -62,7 +53,7 @@ export class GitChangesView {
   }
 
   _renderChanges(changes) {
-    const total = CHANGE_SECTIONS.reduce((sum, s) => sum + (changes[s.key]?.length || 0), 0);
+    const total = computeTotalChanges(changes);
 
     if (total === 0) {
       this._renderMessage(this.container, 'git-empty', 'No local changes');
@@ -79,7 +70,7 @@ export class GitChangesView {
   }
 
   _createFileItem(file, isStaged) {
-    const key = `${isStaged ? 's' : 'u'}:${file.path}`;
+    const key = buildFileKey(file.path, isStaged);
     const isExpanded = this.expandedFile === key;
 
     const item = _el('div', 'git-file-row');
