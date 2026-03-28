@@ -1,14 +1,11 @@
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { _el } from '../utils/dom.js';
-
-const INDENT_BASE = 12;
-const INDENT_STEP = 16;
-const CHEVRON_EXPANDED = '▾';
-const CHEVRON_COLLAPSED = '▸';
-const DEBOUNCE_DELAY = 400;
-const INPUT_BLUR_DELAY = 100;
-const WATCH_PREFIX = 'watch_';
+import {
+  CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
+  DEBOUNCE_DELAY, INPUT_BLUR_DELAY, WATCH_PREFIX,
+  computeIndent, getRelativePath, extractFolderName, resolveWatchCwd,
+} from '../utils/file-tree-helpers.js';
 
 function _parseSvg(svgStr) {
   const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
@@ -103,10 +100,7 @@ export class FileTree {
   }
 
   async refreshSection(watchIdOrCwd) {
-    let cwd = watchIdOrCwd;
-    if (cwd.startsWith(WATCH_PREFIX)) {
-      cwd = cwd.slice(WATCH_PREFIX.length);
-    }
+    const cwd = resolveWatchCwd(watchIdOrCwd);
     const section = this.sections.get(cwd);
     if (!section) return;
 
@@ -121,7 +115,7 @@ export class FileTree {
 
     section.sectionEl.replaceChildren();
 
-    const folderName = cwd.split('/').filter(Boolean).pop() || '/';
+    const folderName = extractFolderName(cwd);
     const contentEl = _el('div', { className: `file-tree-section-content${wasCollapsed ? ' collapsed' : ''}` });
 
     const chevron = _el('span', {
@@ -176,14 +170,6 @@ export class FileTree {
 
   // --- Context menus ---
 
-  getRelativePath(fullPath, rootCwd) {
-    if (fullPath.startsWith(rootCwd)) {
-      const rel = fullPath.slice(rootCwd.length);
-      return rel.startsWith('/') ? rel.slice(1) : rel;
-    }
-    return fullPath;
-  }
-
   findRootCwd(entryPath) {
     for (const [cwd] of this.sections) {
       if (entryPath.startsWith(cwd)) return cwd;
@@ -198,7 +184,7 @@ export class FileTree {
       { label: 'Rename', action: () => this.promptRename(entryPath, nameEl) },
       { separator: true },
       { label: 'Copy Path', action: () => window.api.clipboard.write(entryPath) },
-      { label: 'Copy Relative Path', action: () => window.api.clipboard.write(this.getRelativePath(entryPath, rootCwd)) },
+      { label: 'Copy Relative Path', action: () => window.api.clipboard.write(getRelativePath(entryPath, rootCwd)) },
       { separator: true },
       { label: 'Duplicate', action: () => window.api.fs.copy(entryPath) },
       { label: 'Reveal in Finder', action: () => window.api.shell.showInFolder(entryPath) },
@@ -288,7 +274,7 @@ export class FileTree {
       className: 'file-tree-new-input',
       type: 'text',
       placeholder: type === 'folder' ? 'folder name' : 'filename',
-      style: { marginLeft: `${INDENT_BASE + (depth + 1) * INDENT_STEP}px` },
+      style: { marginLeft: `${computeIndent(depth + 1)}px` },
     });
 
     parentContentEl.prepend(input);
@@ -366,7 +352,7 @@ export class FileTree {
     const name = _el('span', { className: 'file-tree-name', textContent: entry.name });
     const row = _el('div', {
       className: 'file-tree-item',
-      style: { paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px` },
+      style: { paddingLeft: `${computeIndent(depth)}px` },
     }, chevron, name);
     return { row, chevron, name };
   }
