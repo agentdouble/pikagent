@@ -9,48 +9,14 @@ import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
 import { _el } from '../utils/dom.js';
+import {
+  DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
+  ACTIVITY_BUTTONS, COLOR_GROUPS, WorkspaceTab,
+  clampPanelWidth, panelArrowState, reorderEntries,
+  findCycleTarget, findColorGroupTarget,
+} from '../utils/tab-manager-helpers.js';
 
-// ── Constants ──
-const DRAG_THRESHOLD = 5;
-const PANEL_MIN_WIDTH = 150;
-const LEFT_MAX_WIDTH = 500;
-const RIGHT_MAX_WIDTH = 1400;
-const FIT_DELAY_MS = 200;
-
-const ACTIVITY_BUTTONS = [
-  { label: 'work', mode: 'work' },
-  { label: 'BOARD', mode: 'board' },
-  { label: 'FLOW', mode: 'flow' },
-  { label: 'USAGE', mode: 'usage' },
-];
-
-export const COLOR_GROUPS = [
-  { id: 'red', label: 'Red', color: '#e94560' },
-  { id: 'blue', label: 'Blue', color: '#74c0fc' },
-  { id: 'green', label: 'Green', color: '#51cf66' },
-  { id: 'yellow', label: 'Yellow', color: '#ffd43b' },
-  { id: 'purple', label: 'Purple', color: '#b197fc' },
-  { id: 'orange', label: 'Orange', color: '#ffa94d' },
-];
-
-class WorkspaceTab {
-  constructor(id, name, cwd) {
-    this.id = id;
-    this.name = name;
-    this.cwd = cwd;
-    this.noShortcut = false;
-    this.colorGroup = null; // null or COLOR_GROUPS id ('red','blue',...)
-    this.fileTree = null;
-    this.terminalPanel = null;
-    this.fileViewer = null;
-    this.layoutElement = null;
-    // DOM refs for live updates
-    this.pathTextEl = null;
-    this.branchBadgeEl = null;
-    // Cached panel widths (for detached tabs)
-    this._panelWidths = null;
-  }
-}
+export { COLOR_GROUPS };
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
@@ -703,17 +669,7 @@ export class TabManager {
 
   reorderTab(fromId, toId, before) {
     if (fromId === toId) return;
-
-    // Rebuild the Map in new order
-    const entries = Array.from(this.tabs.entries());
-    const fromIdx = entries.findIndex(([id]) => id === fromId);
-    const fromEntry = entries.splice(fromIdx, 1)[0];
-
-    let toIdx = entries.findIndex(([id]) => id === toId);
-    if (!before) toIdx++;
-    entries.splice(toIdx, 0, fromEntry);
-
-    this.tabs = new Map(entries);
+    this.tabs = new Map(reorderEntries(Array.from(this.tabs.entries()), fromId, toId, before));
     this.renderTabBar();
     this.configManager.scheduleAutoSave();
   }
@@ -866,13 +822,9 @@ export class TabManager {
     const isCollapsed = panel.classList.contains('collapsed');
 
     if (arrowEl) {
-      if (side === 'left') {
-        arrowEl.textContent = isCollapsed ? '\u2192' : '\u2190';
-        arrowEl.title = isCollapsed ? 'Expand left panel' : 'Collapse left panel';
-      } else {
-        arrowEl.textContent = isCollapsed ? '\u2190' : '\u2192';
-        arrowEl.title = isCollapsed ? 'Expand right panel' : 'Collapse right panel';
-      }
+      const arrow = panelArrowState(side, isCollapsed);
+      arrowEl.textContent = arrow.text;
+      arrowEl.title = arrow.title;
     }
 
     setTimeout(() => {
@@ -894,8 +846,7 @@ export class TabManager {
         rafPending = false;
         const dx = e.clientX - startX;
         const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-        const maxWidth = side === 'right' ? RIGHT_MAX_WIDTH : LEFT_MAX_WIDTH;
-        panel.style.width = `${Math.max(PANEL_MIN_WIDTH, Math.min(maxWidth, newWidth))}px`;
+        panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
         panel.style.flex = 'none';
         this._activeTab()?.terminalPanel?.fitAll();
       });
@@ -1055,18 +1006,8 @@ export class TabManager {
   }
 
   goToColorGroup(colorGroupId) {
-    // Find the first tab in this color group (or the last active one)
-    const ids = Array.from(this.tabs.keys());
-    // Prefer next tab after current in that color
-    const currentIdx = ids.indexOf(this.activeTabId);
-    for (let i = 1; i <= ids.length; i++) {
-      const candidate = ids[(currentIdx + i) % ids.length];
-      const tab = this.tabs.get(candidate);
-      if (tab.colorGroup === colorGroupId && !tab.noShortcut) {
-        this.switchTo(candidate);
-        return;
-      }
-    }
+    const target = findColorGroupTarget(this.tabs, this.activeTabId, colorGroupId);
+    if (target) this.switchTo(target);
   }
 
   // ===== NoShortcut =====
@@ -1101,21 +1042,13 @@ export class TabManager {
     this._activeTab()?.terminalPanel?.focusDirection(direction);
   }
 
-  _cycleTab(step) {
-    const ids = Array.from(this.tabs.keys());
-    if (ids.length < 2) return;
-    const idx = ids.indexOf(this.activeTabId);
-    const activeColor = this._activeTab()?.colorGroup ?? null;
-    for (let i = 1; i < ids.length; i++) {
-      const candidate = ids[(idx + step * i + ids.length) % ids.length];
-      const tab = this.tabs.get(candidate);
-      if (tab.noShortcut) continue;
-      if ((tab.colorGroup ?? null) !== activeColor) continue;
-      this.switchTo(candidate);
-      return;
-    }
+  nextTab() {
+    const target = findCycleTarget(this.tabs, this.activeTabId, 1);
+    if (target) this.switchTo(target);
   }
 
-  nextTab() { this._cycleTab(1); }
-  prevTab() { this._cycleTab(-1); }
+  prevTab() {
+    const target = findCycleTarget(this.tabs, this.activeTabId, -1);
+    if (target) this.switchTo(target);
+  }
 }
