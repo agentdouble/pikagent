@@ -2,32 +2,11 @@ import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 import { _el } from '../utils/dom.js';
-
-const MODAL_CLOSE_TRANSITION_MS = 200;
-const MODIFIER_KEYS = ['Shift', 'Control', 'Alt', 'Meta'];
-
-const NAV_SECTIONS = [
-  { key: 'keybindings', label: 'Keyboard Shortcuts' },
-  { key: 'appearance', label: 'Appearance' },
-  { key: 'configs', label: 'Workspace Configs' },
-];
-
-const MODE_BUTTONS = [
-  { mode: 'dark', label: 'Night' },
-  { mode: 'light', label: 'Day' },
-];
-
-const BOTTOM_CONFIG_BUTTONS = [
-  { label: 'New Config...', action: 'new' },
-  { label: 'Duplicate Current...', action: 'duplicate' },
-];
-
-const THEME_PREVIEW_LINES = [
-  [{ text: '$ ', colorKey: 'green' }, { text: 'npm start', colorKey: 'foreground' }],
-  [{ text: '> ', colorKey: 'cyan' }, { text: 'ready', colorKey: 'green' }],
-];
-
-const COLOR_DOT_KEYS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan'];
+import {
+  MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS,
+  MODE_BUTTONS, BOTTOM_CONFIG_BUTTONS, THEME_PREVIEW_LINES,
+  COLOR_DOT_KEYS, formatConfigMeta,
+} from '../utils/settings-helpers.js';
 
 export class SettingsModal {
   constructor(shortcutManager) {
@@ -371,9 +350,7 @@ export class SettingsModal {
     }
     info.appendChild(nameEl);
 
-    const tabCount = config.tabCount || 0;
-    const date = config.updatedAt ? new Date(config.updatedAt).toLocaleDateString() : '';
-    info.appendChild(_el('span', 'config-meta', `${tabCount} tab${tabCount !== 1 ? 's' : ''} · ${date}`));
+    info.appendChild(_el('span', 'config-meta', formatConfigMeta(config.tabCount || 0, config.updatedAt)));
 
     left.appendChild(info);
 

@@ -1,0 +1,45 @@
+/** Fade-out duration (ms) before removing the modal overlay. */
+export const MODAL_CLOSE_TRANSITION_MS = 200;
+
+/** Keys that are only modifiers and should not finalise a shortcut recording. */
+export const MODIFIER_KEYS = ['Shift', 'Control', 'Alt', 'Meta'];
+
+/** Settings sidebar navigation entries. */
+export const NAV_SECTIONS = [
+  { key: 'keybindings', label: 'Keyboard Shortcuts' },
+  { key: 'appearance', label: 'Appearance' },
+  { key: 'configs', label: 'Workspace Configs' },
+];
+
+/** Day/Night mode toggle buttons. */
+export const MODE_BUTTONS = [
+  { mode: 'dark', label: 'Night' },
+  { mode: 'light', label: 'Day' },
+];
+
+/** Bottom action buttons on the Workspace Configs section. */
+export const BOTTOM_CONFIG_BUTTONS = [
+  { label: 'New Config...', action: 'new' },
+  { label: 'Duplicate Current...', action: 'duplicate' },
+];
+
+/** Fake terminal lines used inside theme preview cards. */
+export const THEME_PREVIEW_LINES = [
+  [{ text: '$ ', colorKey: 'green' }, { text: 'npm start', colorKey: 'foreground' }],
+  [{ text: '> ', colorKey: 'cyan' }, { text: 'ready', colorKey: 'green' }],
+];
+
+/** Theme color keys shown as dots under the preview. */
+export const COLOR_DOT_KEYS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan'];
+
+/**
+ * Format a workspace-config metadata string ("3 tabs · 28/03/2026").
+ * @param {number} tabCount
+ * @param {string|null} updatedAt  ISO date string or null
+ * @returns {string}
+ */
+export function formatConfigMeta(tabCount, updatedAt) {
+  const tabs = `${tabCount} tab${tabCount !== 1 ? 's' : ''}`;
+  const date = updatedAt ? new Date(updatedAt).toLocaleDateString() : '';
+  return `${tabs} · ${date}`;
+}
