@@ -1,7 +1,19 @@
 /**
- * Pure helper functions extracted from FileViewer.
+ * Pure helper functions and constants extracted from FileViewer.
  * No DOM or side-effect dependencies — safe to unit-test in isolation.
  */
+
+// ===== Constants =====
+
+export const SAVE_FLASH_MS = 600;
+export const TAB_SIZE = 2;
+export const TAB_SPACES = ' '.repeat(TAB_SIZE);
+export const EMPTY_MESSAGE = 'Click a file to view its content';
+
+/** Global pinned files: path → { name } */
+export const pinnedFiles = new Map();
+
+// ===== Helpers =====
 
 /**
  * Compute cursor line, column, and total line count from raw text + offset.

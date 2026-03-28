@@ -5,17 +5,7 @@ import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
 import { generateId } from '../utils/id.js';
 import { _el } from '../utils/dom.js';
-import { getCursorPosition, insertTab, parseWebviewUrl } from '../utils/editor-helpers.js';
-
-// ===== Constants =====
-
-const SAVE_FLASH_MS = 600;
-const TAB_SIZE = 2;
-const TAB_SPACES = ' '.repeat(TAB_SIZE);
-const EMPTY_MESSAGE = 'Click a file to view its content';
-
-// Global pinned files: path -> { name }
-const pinnedFiles = new Map();
+import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, pinnedFiles } from '../utils/editor-helpers.js';
 
 export class FileViewer {
   constructor(container, isActive) {
