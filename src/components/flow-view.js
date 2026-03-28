@@ -3,17 +3,13 @@ import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedu
 import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 import { generateId } from '../utils/id.js';
-
-const FIT_DELAY_MS = 50;
-const LOG_SCROLLBACK = 50000;
-const LIVE_SCROLLBACK = 10000;
-
-const STATUS_LABELS = { success: 'Succès', error: 'Erreur' };
-const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';
-const NO_LOG_MODAL_MESSAGE = '\r\n  Log non disponible.\r\n';
-const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos tâches.';
-const MAX_VISIBLE_RUNS = 5;
-const UNCATEGORIZED = '_uncategorized';
+import {
+  FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
+  STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
+  EMPTY_LIST_MESSAGE, MAX_VISIBLE_RUNS, UNCATEGORIZED,
+  getFlowsForCategory, getUncategorizedFlows,
+  removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
+} from '../utils/flow-view-helpers.js';
 
 
 export class FlowView {
@@ -70,43 +66,8 @@ export class FlowView {
 
   // --- Category helpers ---
 
-  _getFlowsForCategory(catId) {
-    const orderedIds = this.catData.order[catId] || [];
-    const flowMap = new Map(this.flows.map(f => [f.id, f]));
-    const ordered = orderedIds.map(id => flowMap.get(id)).filter(Boolean);
-    return ordered;
-  }
-
-  _getUncategorizedFlows() {
-    const assigned = new Set();
-    for (const ids of Object.values(this.catData.order)) {
-      for (const id of ids) assigned.add(id);
-    }
-    const unordered = this.flows.filter(f => !assigned.has(f.id));
-    const orderedIds = this.catData.order[UNCATEGORIZED] || [];
-    const flowMap = new Map(this.flows.map(f => [f.id, f]));
-    const ordered = orderedIds.map(id => flowMap.get(id)).filter(Boolean);
-    // Add any flows not in the order list
-    const inOrder = new Set(orderedIds);
-    for (const f of unordered) {
-      if (!inOrder.has(f.id)) ordered.push(f);
-    }
-    return ordered;
-  }
-
   _moveFlowToCategory(flowId, targetCatId, insertIndex = -1) {
-    // Remove from all categories
-    for (const key of Object.keys(this.catData.order)) {
-      this.catData.order[key] = this.catData.order[key].filter(id => id !== flowId);
-    }
-    // Add to target
-    if (!this.catData.order[targetCatId]) this.catData.order[targetCatId] = [];
-    const arr = this.catData.order[targetCatId];
-    if (insertIndex >= 0 && insertIndex < arr.length) {
-      arr.splice(insertIndex, 0, flowId);
-    } else {
-      arr.push(flowId);
-    }
+    moveFlowInOrder(this.catData.order, flowId, targetCatId, insertIndex);
     this._persistCategories();
   }
 
@@ -155,7 +116,7 @@ export class FlowView {
     this.listEl.replaceChildren();
 
     const hasCats = this.catData.categories.length > 0;
-    const uncatFlows = this._getUncategorizedFlows();
+    const uncatFlows = getUncategorizedFlows(this.flows, this.catData.order);
     const totalFlows = this.flows.length;
 
     if (totalFlows === 0 && !hasCats) {
@@ -165,7 +126,7 @@ export class FlowView {
 
     // Render categorized groups
     for (const cat of this.catData.categories) {
-      const flows = this._getFlowsForCategory(cat.id);
+      const flows = getFlowsForCategory(this.flows, this.catData.order, cat.id);
       this.listEl.appendChild(this._createCategoryGroup(cat, flows));
     }
 
@@ -438,10 +399,7 @@ export class FlowView {
       ['✎', 'Modifier', () => this._openModal(flow)],
       ['✕', 'Supprimer', async () => {
         this._disposeLiveTerminal(flow.id);
-        // Remove from category ordering
-        for (const key of Object.keys(this.catData.order)) {
-          this.catData.order[key] = this.catData.order[key].filter(id => id !== flow.id);
-        }
+        removeFlowFromOrder(this.catData.order, flow.id);
         await this._persistCategories();
         await window.api.flow.delete(flow.id);
         this.refresh();
@@ -542,18 +500,7 @@ export class FlowView {
   }
 
   async _deleteCategory(catId) {
-    const cat = this.catData.categories.find(c => c.id === catId);
-    if (!cat) return;
-
-    // Move flows to uncategorized
-    const flowIds = this.catData.order[catId] || [];
-    if (!this.catData.order[UNCATEGORIZED]) this.catData.order[UNCATEGORIZED] = [];
-    this.catData.order[UNCATEGORIZED].push(...flowIds);
-
-    // Remove category
-    this.catData.categories = this.catData.categories.filter(c => c.id !== catId);
-    delete this.catData.order[catId];
-
+    if (!deleteCategoryData(this.catData, catId)) return;
     await this._persistCategories();
     this._renderList();
   }
