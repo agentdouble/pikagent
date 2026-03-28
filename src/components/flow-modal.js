@@ -4,43 +4,10 @@ import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,
 } from '../utils/flow-schedule-helpers.js';
-
-const AGENT_OPTIONS = {
-  claude: 'Claude',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-};
-
-const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
-
-function _vis(el, show) {
-  el.style.display = show ? 'flex' : 'none';
-}
-
-function _createSelect(options, value) {
-  const select = _el('select', { className: 'flow-modal-select' });
-  for (const [val, label] of Object.entries(options)) {
-    select.appendChild(_el('option', { value: val, textContent: label }));
-  }
-  select.value = value;
-  return select;
-}
-
-function _createChip(icon, content, extra = {}) {
-  const children = [];
-  if (icon) children.push(_el('span', { textContent: icon }));
-  children.push(content);
-  return _el('div', { className: 'flow-modal-chip', ...extra }, ...children);
-}
-
-// --- Schedule visibility ---
-
-function _updateScheduleVis(type, chips) {
-  const isInterval = type === 'interval';
-  _vis(chips.timeChip, !isInterval);
-  _vis(chips.intervalChip, isInterval);
-  _vis(chips.daysChip, type === 'custom');
-}
+import {
+  AGENT_OPTIONS, DEFAULT_CWD_LABEL,
+  _vis, _createSelect, _createChip, _updateScheduleVis,
+} from '../utils/flow-modal-helpers.js';
 
 // --- Section builders ---
 
