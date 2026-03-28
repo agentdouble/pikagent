@@ -305,6 +305,7 @@ export class TabManager {
     const id = generateId('tab');
     const tabName = name || `Workspace ${this.tabs.size + 1}`;
     const tab = new WorkspaceTab(id, tabName, cwd || this.defaultCwd || '/');
+    if (this.activeColorFilter) tab.colorGroup = this.activeColorFilter;
     this.tabs.set(id, tab);
     this.renderTabBar();
     this.switchTo(id);
