@@ -1,23 +1,6 @@
 import { _el } from '../utils/dom.js';
 import { formatDuration, formatTokens, runTooltip, rateColor, rateCls } from '../utils/usage-formatters.js';
-
-function _td(text, attrs = {}) {
-  return _el('td', { ...attrs, textContent: text });
-}
-
-// --- Constants ---
-
-const TABS = [
-  { id: 'agents', label: 'Agents (Work)' },
-  { id: 'tokens', label: 'Tokens' },
-  { id: 'flows', label: 'Flows' },
-];
-
-const RUN_CHART_SEGMENTS = [
-  { key: 'success', cls: 'usage-chart-bar-success' },
-  { key: 'error', cls: 'usage-chart-bar-error' },
-  { key: 'running', cls: 'usage-chart-bar-running' },
-];
+import { TABS, RUN_CHART_SEGMENTS, TOKEN_CHART_SEGMENTS, _td, tokenTooltip } from '../utils/usage-view-helpers.js';
 
 // --- Component ---
 
@@ -143,11 +126,8 @@ export class UsageView {
     this._renderChart(this.bodyEl, {
       title: 'Tokens par jour (30 derniers jours)',
       data: t.perDay,
-      segments: [
-        { key: 'input', cls: 'usage-chart-bar-running' },
-        { key: 'output', cls: 'usage-chart-bar-success' },
-      ],
-      tooltip: (day) => `${day.label}: ${formatTokens(day.total)} (in: ${formatTokens(day.input)}, out: ${formatTokens(day.output)})`,
+      segments: TOKEN_CHART_SEGMENTS,
+      tooltip: tokenTooltip,
     });
     const maxProjectTotal = t.perProject?.[0]?.total || 1;
     this._renderTable(this.bodyEl, {
