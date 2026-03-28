@@ -35,6 +35,7 @@ export class TabManager {
     this._usageContainerEl = null;
     this.sidebarMode = 'work';
     this.activeColorFilter = null; // null = show all, or a COLOR_GROUPS id
+    this.excludedColors = new Set(); // COLOR_GROUPS ids to hide
 
     this.init();
   }
@@ -422,6 +423,7 @@ export class TabManager {
   // ===== Tab Bar Rendering =====
 
   setColorFilter(colorGroupId) {
+    this.excludedColors.clear();
     this.activeColorFilter = this.activeColorFilter === colorGroupId ? null : colorGroupId;
     this.renderTabBar();
     // If active tab is hidden by filter, switch to first visible tab
@@ -438,6 +440,26 @@ export class TabManager {
     }
   }
 
+  toggleExcludeColor(colorGroupId) {
+    this.activeColorFilter = null;
+    if (this.excludedColors.has(colorGroupId)) {
+      this.excludedColors.delete(colorGroupId);
+    } else {
+      this.excludedColors.add(colorGroupId);
+    }
+    this.renderTabBar();
+    // If active tab is now excluded, switch to first visible
+    const active = this._activeTab();
+    if (active && this.excludedColors.has(active.colorGroup)) {
+      for (const [id, tab] of this.tabs) {
+        if (!this.excludedColors.has(tab.colorGroup)) {
+          this.switchTo(id);
+          return;
+        }
+      }
+    }
+  }
+
   renderTabBar() {
     this.tabBar.replaceChildren();
 
@@ -449,19 +471,28 @@ export class TabManager {
     if (usedColors.size > 0) {
       const filterWrap = _el('div', 'tab-color-filters');
       // "All" button
-      const allBtn = _el('span', `tab-filter-dot tab-filter-all${this.activeColorFilter === null ? ' active' : ''}`);
+      const noFilter = this.activeColorFilter === null && this.excludedColors.size === 0;
+      const allBtn = _el('span', `tab-filter-dot tab-filter-all${noFilter ? ' active' : ''}`);
       allBtn.textContent = '∗';
       allBtn.addEventListener('click', () => {
         this.activeColorFilter = null;
+        this.excludedColors.clear();
         this.renderTabBar();
       });
       filterWrap.appendChild(allBtn);
       for (const cg of COLOR_GROUPS) {
         if (!usedColors.has(cg.id)) continue;
-        const dot = _el('span', `tab-filter-dot${this.activeColorFilter === cg.id ? ' active' : ''}`);
+        const isIncluded = this.activeColorFilter === cg.id;
+        const isExcluded = this.excludedColors.has(cg.id);
+        const cls = `tab-filter-dot${isIncluded ? ' active' : ''}${isExcluded ? ' excluded' : ''}`;
+        const dot = _el('span', cls);
         dot.style.background = cg.color;
-        dot.title = cg.label;
+        dot.title = `${cg.label}${isExcluded ? ' (excluded)' : ''}`;
         dot.addEventListener('click', () => this.setColorFilter(cg.id));
+        dot.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this.toggleExcludeColor(cg.id);
+        });
         filterWrap.appendChild(dot);
       }
       this.tabBar.appendChild(filterWrap);
@@ -470,8 +501,9 @@ export class TabManager {
     this._tabElements = new Map(); // id -> DOM element (for drag targeting)
 
     for (const [id, tab] of this.tabs) {
-      // Filter: hide tabs that don't match the active color filter
+      // Filter: hide tabs that don't match the active color filter or are excluded
       if (this.activeColorFilter && tab.colorGroup !== this.activeColorFilter) continue;
+      if (this.excludedColors.has(tab.colorGroup)) continue;
       const tabEl = _el('div', 'tab');
       tabEl.dataset.tabId = id;
       if (id === this.activeTabId) tabEl.classList.add('active');
