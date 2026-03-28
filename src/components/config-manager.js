@@ -1,8 +1,12 @@
 import { contextMenu } from './context-menu.js';
 import { _el } from '../utils/dom.js';
-
-const AUTO_SAVE_DELAY = 500;
-const MENU_OFFSET = 4;
+import {
+  AUTO_SAVE_DELAY,
+  MENU_OFFSET,
+  DEFAULT_CONFIG_NAME,
+  configLabel,
+  suggestedDuplicateName,
+} from '../utils/config-manager-helpers.js';
 
 export class ConfigManager {
   constructor(tabManager) {
@@ -32,7 +36,7 @@ export class ConfigManager {
   async autoSave() {
     try {
       const data = this.tabManager.serialize();
-      const name = this.currentConfigName || 'Default';
+      const name = this.currentConfigName || DEFAULT_CONFIG_NAME;
       await window.api.config.save(name, data);
       await window.api.config.setDefault(name);
       this.currentConfigName = name;
@@ -82,7 +86,7 @@ export class ConfigManager {
   updateConfigBar() {
     if (this._configBarEl) {
       const label = this._configBarEl.querySelector('.config-bar-name');
-      if (label) label.textContent = this.currentConfigName || 'Default';
+      if (label) label.textContent = this.currentConfigName || DEFAULT_CONFIG_NAME;
     }
   }
 
@@ -91,7 +95,7 @@ export class ConfigManager {
     const rect = anchorEl.getBoundingClientRect();
 
     const items = configs.map((config) => ({
-      label: `${config.name === this.currentConfigName ? '\u25cf ' : ''}${config.name}`,
+      label: configLabel(config.name, this.currentConfigName),
       action: () => this.switchConfig(config.name),
     }));
 
@@ -107,8 +111,7 @@ export class ConfigManager {
       {
         label: 'Duplicate Current...',
         action: () => {
-          const suggested = `${this.currentConfigName || 'Default'} (copy)`;
-          this.promptConfigName(suggested, (name) => this.duplicateConfig(name));
+          this.promptConfigName(suggestedDuplicateName(this.currentConfigName), (name) => this.duplicateConfig(name));
         },
       },
     );
