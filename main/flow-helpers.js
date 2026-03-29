@@ -21,7 +21,10 @@ const AGENT_COMMANDS = {
     opts.dangerouslySkipPermissions
       ? `claude --dangerously-skip-permissions --verbose -p '${prompt}'`
       : `claude --permission-mode auto --verbose -p '${prompt}'`,
-  codex: (prompt) => `codex --approval-mode full-auto --quiet '${prompt}'`,
+  codex: (prompt, opts = {}) =>
+    opts.dangerouslySkipPermissions
+      ? `codex --approval-mode full-auto --quiet '${prompt}'`
+      : `codex --approval-mode auto-edit --quiet '${prompt}'`,
   opencode: (prompt) => `opencode -p '${prompt}'`,
 };
 

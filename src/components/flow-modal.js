@@ -72,6 +72,11 @@ function _buildCwdPicker(state) {
   return cwdChip;
 }
 
+const SKIP_PERM_CONFIG = {
+  claude: { label: 'Skip permissions', title: 'Lance Claude avec --dangerously-skip-permissions' },
+  codex: { label: 'Full auto', title: 'Lance Codex avec --approval-mode full-auto au lieu de auto-edit' },
+};
+
 function _buildSkipPermToggle(existing, agentSelect) {
   const checkbox = _el('input', { type: 'checkbox', checked: existing?.dangerouslySkipPermissions || false });
   const label = _el('span', { textContent: 'Skip permissions' });
@@ -82,11 +87,18 @@ function _buildSkipPermToggle(existing, agentSelect) {
   }, checkbox, label);
   chip.style.cursor = 'pointer';
   chip.style.gap = '4px';
-  _vis(chip, agentSelect.value === 'claude');
 
-  agentSelect.addEventListener('change', () => {
-    _vis(chip, agentSelect.value === 'claude');
-  });
+  function _updateToggle(agent) {
+    const cfg = SKIP_PERM_CONFIG[agent];
+    _vis(chip, !!cfg);
+    if (cfg) {
+      label.textContent = cfg.label;
+      chip.title = cfg.title;
+    }
+  }
+
+  _updateToggle(agentSelect.value);
+  agentSelect.addEventListener('change', () => _updateToggle(agentSelect.value));
 
   return { chip, checkbox };
 }
@@ -207,7 +219,7 @@ export function openFlowModal(existing = null, categories = []) {
             agent: bottom.agentSelect.value,
             cwd: state.selectedCwd || undefined,
             schedule: buildScheduleData(bottom.schedSelect.value, bottom.timeInput.value, bottom.intervalInput.value, bottom.selectedDays),
-            dangerouslySkipPermissions: bottom.agentSelect.value === 'claude' && bottom.skipPermCheckbox.checked,
+            dangerouslySkipPermissions: !!SKIP_PERM_CONFIG[bottom.agentSelect.value] && bottom.skipPermCheckbox.checked,
             enabled: existing?.enabled ?? true,
             runs: existing?.runs || [],
           };

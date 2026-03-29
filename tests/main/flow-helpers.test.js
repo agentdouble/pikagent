@@ -95,9 +95,17 @@ describe('flow-helpers', () => {
       expect(cmd).toContain('; exit\n');
     });
 
-    it('builds codex command', () => {
+    it('builds codex command with auto-edit by default', () => {
       const flow = { prompt: 'test', agent: 'codex' };
-      expect(buildFlowCommand(flow)).toContain('codex');
+      const cmd = buildFlowCommand(flow);
+      expect(cmd).toContain('codex');
+      expect(cmd).toContain('--approval-mode auto-edit');
+    });
+
+    it('builds codex command with full-auto when dangerouslySkipPermissions', () => {
+      const flow = { prompt: 'test', agent: 'codex', dangerouslySkipPermissions: true };
+      const cmd = buildFlowCommand(flow);
+      expect(cmd).toContain('--approval-mode full-auto');
     });
 
     it('escapes single quotes in prompt', () => {
