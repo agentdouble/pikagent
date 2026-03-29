@@ -7,6 +7,7 @@ import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
   EMPTY_LIST_MESSAGE, MAX_VISIBLE_RUNS, UNCATEGORIZED,
+  formatRunDateTime, buildDotTooltip,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
 } from '../utils/flow-view-helpers.js';
@@ -152,17 +153,36 @@ export class FlowView {
     const group = _el('div', `flow-category-group${isCollapsed ? ' flow-category-collapsed' : ''}`);
     group.dataset.catId = cat.id;
 
-    // Header
+    group.appendChild(this._buildCategoryHeader(cat, flows, isUncategorized));
+
+    const items = _el('div', 'flow-category-items');
+    items.dataset.catId = cat.id;
+    this._setupCategoryDropZone(items, cat.id);
+
+    if (!isCollapsed) {
+      for (const flow of flows) {
+        items.appendChild(this._createCard(flow, cat.id));
+      }
+      if (flows.length === 0) {
+        items.appendChild(_el('div', {
+          className: 'flow-empty',
+          style: { padding: '12px 0', fontSize: '12px' },
+          textContent: 'Glissez un flow ici',
+        }));
+      }
+    }
+
+    group.appendChild(items);
+    return group;
+  }
+
+  _buildCategoryHeader(cat, flows, isUncategorized) {
     const header = _el('div', 'flow-category-header');
 
     const chevron = _el('span', 'flow-category-chevron', '▼');
-    header.appendChild(chevron);
-
     const name = _el('span', 'flow-category-name', cat.name);
-    header.appendChild(name);
-
     const count = _el('span', 'flow-category-count', `${flows.length}`);
-    header.appendChild(count);
+    header.append(chevron, name, count);
 
     if (!isUncategorized) {
       const actions = _el('div', 'flow-category-actions');
@@ -173,7 +193,6 @@ export class FlowView {
         e.stopPropagation();
         this._renameCategoryInline(cat.id, name);
       });
-      actions.appendChild(renameBtn);
 
       const deleteBtn = _el('button', 'flow-category-btn flow-category-btn-danger', '✕');
       deleteBtn.title = 'Supprimer la catégorie';
@@ -181,8 +200,8 @@ export class FlowView {
         e.stopPropagation();
         this._deleteCategory(cat.id);
       });
-      actions.appendChild(deleteBtn);
 
+      actions.append(renameBtn, deleteBtn);
       header.appendChild(actions);
     }
 
@@ -195,13 +214,10 @@ export class FlowView {
       this._renderList();
     });
 
-    group.appendChild(header);
+    return header;
+  }
 
-    // Items container (drop zone)
-    const items = _el('div', 'flow-category-items');
-    items.dataset.catId = cat.id;
-
-    // Drop zone events
+  _setupCategoryDropZone(items, catId) {
     items.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
@@ -224,28 +240,11 @@ export class FlowView {
       if (!this._dragFlowId) return;
 
       const insertIndex = this._getDropIndex(items, e.clientY);
-      this._moveFlowToCategory(this._dragFlowId, cat.id, insertIndex);
+      this._moveFlowToCategory(this._dragFlowId, catId, insertIndex);
       this._dragFlowId = null;
       this._dragSourceCat = null;
       this._renderList();
     });
-
-    if (!isCollapsed) {
-      for (const flow of flows) {
-        items.appendChild(this._createCard(flow, cat.id));
-      }
-      if (flows.length === 0) {
-        const empty = _el('div', {
-          className: 'flow-empty',
-          style: { padding: '12px 0', fontSize: '12px' },
-          textContent: 'Glissez un flow ici',
-        });
-        items.appendChild(empty);
-      }
-    }
-
-    group.appendChild(items);
-    return group;
   }
 
   // --- Drag & Drop helpers ---
@@ -379,8 +378,7 @@ export class FlowView {
     const dots = _el('div', 'flow-card-dots');
     for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
       const dot = _el('button', `flow-dot flow-dot-${run.status}`);
-      const time = run.timestamp ? new Date(run.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-      dot.title = `${run.date}${time ? ' ' + time : ''} — ${STATUS_LABELS[run.status] || run.status}\nCliquer pour voir le log`;
+      dot.title = buildDotTooltip(run);
       dot.addEventListener('click', (e) => {
         e.stopPropagation();
         this._showRunLog(flow, run);
@@ -590,8 +588,7 @@ export class FlowView {
     const modal = _el('div', 'flow-log-modal');
 
     const header = _el('div', 'flow-log-header');
-    const time = run.timestamp ? new Date(run.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${run.date}${time ? ' ' + time : ''}`));
+    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${formatRunDateTime(run.date, run.timestamp)}`));
     header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
     const closeBtn = _el('button', 'flow-log-close', '✕');
     header.appendChild(closeBtn);

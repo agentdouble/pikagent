@@ -14,6 +14,38 @@ export const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos
 export const MAX_VISIBLE_RUNS = 5;
 export const UNCATEGORIZED = '_uncategorized';
 
+// --- Run time formatting ---
+
+const TIME_LOCALE = 'fr-FR';
+const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' };
+
+/**
+ * Format a run timestamp into a short time string (e.g. "14:32").
+ * Returns '' if timestamp is falsy.
+ */
+export function formatRunTime(timestamp) {
+  return timestamp
+    ? new Date(timestamp).toLocaleTimeString(TIME_LOCALE, TIME_FORMAT)
+    : '';
+}
+
+/**
+ * Build a "date time" label from a run's date and timestamp.
+ * e.g. "2025-03-29 14:32" or just "2025-03-29" if no timestamp.
+ */
+export function formatRunDateTime(date, timestamp) {
+  const time = formatRunTime(timestamp);
+  return `${date}${time ? ' ' + time : ''}`;
+}
+
+/**
+ * Build the tooltip text displayed on run-status dots.
+ */
+export function buildDotTooltip(run) {
+  const label = STATUS_LABELS[run.status] || run.status;
+  return `${formatRunDateTime(run.date, run.timestamp)} — ${label}\nCliquer pour voir le log`;
+}
+
 /**
  * Return flows belonging to a given category, ordered by catData.order.
  * @param {Array} flows - all flow objects
