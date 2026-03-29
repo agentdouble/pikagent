@@ -11,19 +11,18 @@ const {
   addTokens,
   parseTokenUsage,
   aggregateTokenData,
+  accumulatePerDay,
+  rankModifiedFiles,
   getFlowRuns,
   buildFlowMetrics,
   buildAgentMetrics,
   collectUniqueCwds,
+  CACHE_TTL,
+  TOP_FILES_LIMIT,
+  GIT_TIMEOUT_MS,
 } = require('./usage-helpers');
 
 const execFileAsync = promisify(execFile);
-
-// ===== Constants =====
-
-const CACHE_TTL = 30000;
-const TOP_FILES_LIMIT = 15;
-const GIT_TIMEOUT_MS = 5000;
 
 let _metricsCache = null;
 let _metricsCacheTime = 0;
@@ -48,12 +47,7 @@ async function readProjectTokens(projDir, cutoffMs) {
       if (!usage) continue;
 
       addTokens(totals, usage);
-
-      if (usage.dateKey) {
-        if (!perDayMap[usage.dateKey]) perDayMap[usage.dateKey] = { input: 0, output: 0 };
-        perDayMap[usage.dateKey].input += usage.input;
-        perDayMap[usage.dateKey].output += usage.output;
-      }
+      accumulatePerDay(perDayMap, usage);
     }
   }
 
@@ -87,8 +81,6 @@ async function getTokenMetrics(days = DEFAULT_DAYS) {
 }
 
 async function getMostModifiedFiles(cwds) {
-  const fileCount = {};
-
   const results = await Promise.all(
     cwds.map(async (cwd) => {
       try {
@@ -104,17 +96,7 @@ async function getMostModifiedFiles(cwds) {
     })
   );
 
-  for (const { cwd, files } of results) {
-    for (const f of files) {
-      const key = `${path.basename(path.dirname(cwd))}/${path.basename(cwd)}/${f}`;
-      fileCount[key] = (fileCount[key] || 0) + 1;
-    }
-  }
-
-  return Object.entries(fileCount)
-    .map(([file, count]) => ({ file, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, TOP_FILES_LIMIT);
+  return rankModifiedFiles(results, TOP_FILES_LIMIT);
 }
 
 // ===== Aggregation =====

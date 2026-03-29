@@ -1,4 +1,5 @@
 const os = require('os');
+const path = require('path');
 const { computeRate, computeDuration, perDay, dateStr, DEFAULT_DAYS } = require('./stats-helpers');
 
 // ===== Constants =====
@@ -6,6 +7,9 @@ const { computeRate, computeDuration, perDay, dateStr, DEFAULT_DAYS } = require(
 const TOKEN_KEYS = ['input', 'output', 'cacheRead', 'cacheCreate'];
 const MAX_RUN_DURATION_MS = 24 * 60 * 60 * 1000;
 const TOP_PROJECTS_LIMIT = 10;
+const CACHE_TTL = 30000;
+const TOP_FILES_LIMIT = 15;
+const GIT_TIMEOUT_MS = 5000;
 
 // ===== Token helpers =====
 
@@ -182,6 +186,31 @@ function buildAgentMetrics(sessions, activeSessions) {
   };
 }
 
+function accumulatePerDay(perDayMap, usage) {
+  if (!usage.dateKey) return;
+  if (!perDayMap[usage.dateKey]) perDayMap[usage.dateKey] = { input: 0, output: 0 };
+  perDayMap[usage.dateKey].input += usage.input;
+  perDayMap[usage.dateKey].output += usage.output;
+}
+
+function buildFileKey(cwd, filePath) {
+  return `${path.basename(path.dirname(cwd))}/${path.basename(cwd)}/${filePath}`;
+}
+
+function rankModifiedFiles(results, limit = TOP_FILES_LIMIT) {
+  const fileCount = {};
+  for (const { cwd, files } of results) {
+    for (const f of files) {
+      const key = buildFileKey(cwd, f);
+      fileCount[key] = (fileCount[key] || 0) + 1;
+    }
+  }
+  return Object.entries(fileCount)
+    .map(([file, count]) => ({ file, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
 function collectUniqueCwds(flowRuns, sessions) {
   return [...new Set([
     ...flowRuns.map((r) => r.cwd),
@@ -193,12 +222,18 @@ module.exports = {
   TOKEN_KEYS,
   MAX_RUN_DURATION_MS,
   TOP_PROJECTS_LIMIT,
+  CACHE_TTL,
+  TOP_FILES_LIMIT,
+  GIT_TIMEOUT_MS,
   newTokenTotals,
   addTokens,
   parseLogTimestamp,
   parseTokenUsage,
   projectShortName,
   aggregateTokenData,
+  accumulatePerDay,
+  buildFileKey,
+  rankModifiedFiles,
   getFlowRuns,
   getFlowRunDuration,
   buildFlowMetrics,

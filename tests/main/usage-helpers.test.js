@@ -7,6 +7,9 @@ const {
   projectShortName,
   getFlowRuns,
   getFlowRunDuration,
+  accumulatePerDay,
+  buildFileKey,
+  rankModifiedFiles,
 } = require('../../main/usage-helpers');
 
 describe('usage-helpers', () => {
@@ -126,6 +129,60 @@ describe('usage-helpers', () => {
     it('returns null for missing timestamps', () => {
       expect(getFlowRunDuration({})).toBe(null);
       expect(getFlowRunDuration({ logTimestamp: 'x' })).toBe(null);
+    });
+  });
+
+  describe('accumulatePerDay', () => {
+    it('accumulates input/output per dateKey', () => {
+      const map = {};
+      accumulatePerDay(map, { dateKey: '2025-03-15', input: 100, output: 50 });
+      accumulatePerDay(map, { dateKey: '2025-03-15', input: 200, output: 30 });
+      expect(map['2025-03-15']).toEqual({ input: 300, output: 80 });
+    });
+
+    it('creates separate entries per date', () => {
+      const map = {};
+      accumulatePerDay(map, { dateKey: '2025-03-15', input: 10, output: 5 });
+      accumulatePerDay(map, { dateKey: '2025-03-16', input: 20, output: 10 });
+      expect(Object.keys(map)).toHaveLength(2);
+    });
+
+    it('does nothing when dateKey is null', () => {
+      const map = {};
+      accumulatePerDay(map, { dateKey: null, input: 100, output: 50 });
+      expect(Object.keys(map)).toHaveLength(0);
+    });
+  });
+
+  describe('buildFileKey', () => {
+    it('builds key from cwd parent, basename and file path', () => {
+      expect(buildFileKey('/home/user/project', 'src/index.js')).toBe('user/project/src/index.js');
+    });
+  });
+
+  describe('rankModifiedFiles', () => {
+    it('counts and ranks files by frequency', () => {
+      const results = [
+        { cwd: '/home/user/proj', files: ['a.js', 'b.js', 'a.js'] },
+        { cwd: '/home/user/proj', files: ['a.js'] },
+      ];
+      const ranked = rankModifiedFiles(results, 10);
+      expect(ranked[0].file).toBe('user/proj/a.js');
+      expect(ranked[0].count).toBe(3);
+      expect(ranked[1].file).toBe('user/proj/b.js');
+      expect(ranked[1].count).toBe(1);
+    });
+
+    it('respects the limit parameter', () => {
+      const results = [
+        { cwd: '/home/user/proj', files: ['a.js', 'b.js', 'c.js'] },
+      ];
+      const ranked = rankModifiedFiles(results, 2);
+      expect(ranked).toHaveLength(2);
+    });
+
+    it('returns empty array for empty input', () => {
+      expect(rankModifiedFiles([], 10)).toEqual([]);
     });
   });
 });
