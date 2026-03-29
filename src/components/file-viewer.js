@@ -5,7 +5,7 @@ import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
 import { generateId } from '../utils/id.js';
 import { _el } from '../utils/dom.js';
-import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, pinnedFiles } from '../utils/editor-helpers.js';
+import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, pinnedFiles } from '../utils/editor-helpers.js';
 
 export class FileViewer {
   constructor(container, isActive) {
@@ -359,33 +359,41 @@ export class FileViewer {
 
   // ===== Mode Bar =====
 
+  _buildStaticModeBtn({ key, label }) {
+    const btn = _el('button', `mode-btn${this.mode === key ? ' active' : ''}`, label);
+    btn.addEventListener('click', () => this.switchMode(key));
+    return btn;
+  }
+
+  _buildWebviewModeBtn(wt) {
+    const btn = _el('button', `mode-btn mode-btn-webview${this.mode === wt.id ? ' active' : ''}`);
+    btn.appendChild(_el('span', null, wt.label));
+    const closeBtn = _el('span', 'mode-btn-close', { textContent: '\u00d7' });
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.removeWebview(wt.id);
+    });
+    btn.appendChild(closeBtn);
+    btn.addEventListener('click', () => this.switchMode(wt.id));
+    return btn;
+  }
+
+  _buildAddWebviewBtn() {
+    const btn = _el('button', 'mode-btn mode-btn-add', { textContent: '+', title: 'Add browser preview' });
+    btn.addEventListener('click', () => this._showAddWebviewInput(btn));
+    return btn;
+  }
+
   _renderModeBar() {
     this.modeBar.replaceChildren();
 
-    const btnFiles = _el('button', 'mode-btn' + (this.mode === 'files' ? ' active' : ''), 'Files');
-    btnFiles.addEventListener('click', () => this.switchMode('files'));
-
-    const btnGit = _el('button', 'mode-btn' + (this.mode === 'git' ? ' active' : ''), 'Git Changes');
-    btnGit.addEventListener('click', () => this.switchMode('git'));
-
-    this.modeBar.append(btnFiles, btnGit);
-
-    for (const wt of this.webviewTabs) {
-      const btn = _el('button', 'mode-btn mode-btn-webview' + (this.mode === wt.id ? ' active' : ''));
-      btn.appendChild(_el('span', null, wt.label));
-      const closeBtn = _el('span', 'mode-btn-close', { textContent: '\u00d7' });
-      closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.removeWebview(wt.id);
-      });
-      btn.appendChild(closeBtn);
-      btn.addEventListener('click', () => this.switchMode(wt.id));
-      this.modeBar.appendChild(btn);
+    for (const mode of STATIC_MODES) {
+      this.modeBar.appendChild(this._buildStaticModeBtn(mode));
     }
-
-    const addBtn = _el('button', 'mode-btn mode-btn-add', { textContent: '+', title: 'Add browser preview' });
-    addBtn.addEventListener('click', () => this._showAddWebviewInput(addBtn));
-    this.modeBar.appendChild(addBtn);
+    for (const wt of this.webviewTabs) {
+      this.modeBar.appendChild(this._buildWebviewModeBtn(wt));
+    }
+    this.modeBar.appendChild(this._buildAddWebviewBtn());
   }
 
   _showAddWebviewInput(addBtn) {

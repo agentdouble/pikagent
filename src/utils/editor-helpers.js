@@ -10,6 +10,12 @@ export const TAB_SIZE = 2;
 export const TAB_SPACES = ' '.repeat(TAB_SIZE);
 export const EMPTY_MESSAGE = 'Click a file to view its content';
 
+/** Static mode buttons displayed in the file-viewer mode bar. */
+export const STATIC_MODES = [
+  { key: 'files', label: 'Files' },
+  { key: 'git', label: 'Git Changes' },
+];
+
 /** Global pinned files: path → { name } */
 export const pinnedFiles = new Map();
 
