@@ -3,23 +3,14 @@ const path = require('path');
 const os = require('os');
 const { FLOWS_DIR, LOGS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
 const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
-const { shouldRun, buildFlowCommand } = require('./flow-helpers');
-
-const SCHEDULER_INTERVAL_MS = 60_000;
-const SHELL_INIT_DELAY_MS = 500;
-const MAX_RUN_HISTORY = 7;
-const DEFAULT_PTY_COLS = 120;
-const DEFAULT_PTY_ROWS = 30;
+const {
+  SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
+  DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
+  flowPath, logPath,
+  shouldRun, buildFlowCommand,
+} = require('./flow-helpers');
 
 const ensureDir = ensureDirOnce(LOGS_DIR);
-
-function flowPath(id) {
-  return path.join(FLOWS_DIR, `${id}.json`);
-}
-
-function logPath(flowId, timestamp) {
-  return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
-}
 
 class FlowManager {
   constructor() {

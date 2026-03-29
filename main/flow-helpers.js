@@ -1,4 +1,20 @@
+const path = require('path');
+const { FLOWS_DIR, LOGS_DIR } = require('./paths');
+
 const MS_PER_HOUR = 3_600_000;
+const SCHEDULER_INTERVAL_MS = 60_000;
+const SHELL_INIT_DELAY_MS = 500;
+const MAX_RUN_HISTORY = 7;
+const DEFAULT_PTY_COLS = 120;
+const DEFAULT_PTY_ROWS = 30;
+
+function flowPath(id) {
+  return path.join(FLOWS_DIR, `${id}.json`);
+}
+
+function logPath(flowId, timestamp) {
+  return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
+}
 
 const AGENT_COMMANDS = {
   claude: (prompt, opts = {}) =>
@@ -45,4 +61,9 @@ function buildFlowCommand(flow) {
   return `${buildCmd(escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
 }
 
-module.exports = { AGENT_COMMANDS, getLastRun, shouldRun, buildFlowCommand };
+module.exports = {
+  SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
+  DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
+  flowPath, logPath,
+  AGENT_COMMANDS, getLastRun, shouldRun, buildFlowCommand,
+};
