@@ -5,6 +5,16 @@ export const MAX_LOGS = 5000;
 export const CONSOLE_MIN_HEIGHT = 60;
 export const CONSOLE_MAX_HEIGHT = 500;
 
+/** Navigation buttons that proxy a webview method (try/catch wrapper). */
+export const WEBVIEW_NAV_ACTIONS = [
+  { text: '\u2190', title: 'Back', method: 'goBack' },
+  { text: '\u2192', title: 'Forward', method: 'goForward' },
+  { text: '\u21BB', title: 'Refresh', method: 'reload' },
+];
+
+/** Console toggle button icons. */
+export const CONSOLE_ICONS = { open: '\u25bc', closed: '\u25b6' };
+
 /** Map numeric console-message level to a readable name. */
 export function resolveLogLevel(numeric) {
   return LOG_LEVELS[numeric] || 'info';

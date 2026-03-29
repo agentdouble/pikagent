@@ -1,6 +1,8 @@
 import { _el } from '../utils/dom.js';
 import {
   MAX_LOGS,
+  WEBVIEW_NAV_ACTIONS,
+  CONSOLE_ICONS,
   resolveLogLevel,
   formatBadgeText,
   formatLogTime,
@@ -22,17 +24,20 @@ export class WebviewInstance {
   }
 
   _build() {
-    // Navigation bar
-    this.navBar = _el('div', 'webview-nav');
+    this.navBar = this._buildNavBar();
+    this._webviewWrapper = this._buildWebview();
+    this._consolePanel = this._buildConsolePanel();
+    this.container.append(this.navBar, this._webviewWrapper, this._consolePanel);
+  }
 
-    const backBtn = _el('button', 'webview-nav-btn', { textContent: '\u2190', title: 'Back' });
-    backBtn.addEventListener('click', () => { try { this.webview.goBack(); } catch {} });
+  _buildNavBar() {
+    const nav = _el('div', 'webview-nav');
 
-    const fwdBtn = _el('button', 'webview-nav-btn', { textContent: '\u2192', title: 'Forward' });
-    fwdBtn.addEventListener('click', () => { try { this.webview.goForward(); } catch {} });
-
-    const refreshBtn = _el('button', 'webview-nav-btn', { textContent: '\u21BB', title: 'Refresh' });
-    refreshBtn.addEventListener('click', () => { try { this.webview.reload(); } catch {} });
+    for (const { text, title, method } of WEBVIEW_NAV_ACTIONS) {
+      const btn = _el('button', 'webview-nav-btn', { textContent: text, title });
+      btn.addEventListener('click', () => { try { this.webview[method](); } catch {} });
+      nav.appendChild(btn);
+    }
 
     this.urlInput = _el('input', 'webview-url-input');
     this.urlInput.type = 'text';
@@ -45,20 +50,20 @@ export class WebviewInstance {
       }
     });
 
-    const openExtBtn = _el('button', 'webview-nav-btn', { textContent: '\u2197', title: 'Open in browser' });
-    openExtBtn.addEventListener('click', () => {
-      window.api.shell.openExternal(this.url);
-    });
-
     this._mobileBtn = _el('button', 'webview-nav-btn', { textContent: '\u{1F4F1}', title: 'Mobile view' });
     this._mobileBtn.addEventListener('click', () => this.toggleMobile());
 
-    this.consoleToggle = _el('button', 'webview-nav-btn', { textContent: '\u{25b6}', title: 'Toggle console' });
+    const openExtBtn = _el('button', 'webview-nav-btn', { textContent: '\u2197', title: 'Open in browser' });
+    openExtBtn.addEventListener('click', () => window.api.shell.openExternal(this.url));
+
+    this.consoleToggle = _el('button', 'webview-nav-btn', { textContent: CONSOLE_ICONS.closed, title: 'Toggle console' });
     this.consoleToggle.addEventListener('click', () => this.toggleConsole());
 
-    this.navBar.append(backBtn, fwdBtn, refreshBtn, this.urlInput, this._mobileBtn, openExtBtn, this.consoleToggle);
+    nav.append(this.urlInput, this._mobileBtn, openExtBtn, this.consoleToggle);
+    return nav;
+  }
 
-    // Webview element
+  _buildWebview() {
     this.webview = document.createElement('webview');
     this.webview.className = 'webview-frame';
     this.webview.src = this.url;
@@ -76,41 +81,34 @@ export class WebviewInstance {
       }
     });
 
-    // Console log capture
     this.webview.addEventListener('console-message', (e) => {
       this._addLog(e.level, e.message, e.sourceId, e.line);
     });
 
-    // Webview wrapper (for mobile centering)
-    this._webviewWrapper = _el('div', 'webview-wrapper');
-    this._webviewWrapper.appendChild(this.webview);
+    const wrapper = _el('div', 'webview-wrapper');
+    wrapper.appendChild(this.webview);
+    return wrapper;
+  }
 
-    // Console panel
-    this._consolePanel = _el('div', 'webview-console');
-    this._consolePanel.style.display = 'none';
+  _buildConsolePanel() {
+    const panel = _el('div', 'webview-console');
+    panel.style.display = 'none';
 
-    // Console toolbar
-    const consoleToolbar = _el('div', 'webview-console-toolbar');
-    const consoleTitle = _el('span', 'webview-console-title', 'Console');
-
+    const toolbar = _el('div', 'webview-console-toolbar');
     this._consoleBadge = _el('span', 'webview-console-badge');
     this._consoleBadge.style.display = 'none';
 
     const clearBtn = _el('button', 'webview-console-clear', { textContent: '\u2298', title: 'Clear console' });
     clearBtn.addEventListener('click', () => this.clearConsole());
+    toolbar.append(_el('span', 'webview-console-title', 'Console'), this._consoleBadge, clearBtn);
 
-    consoleToolbar.append(consoleTitle, this._consoleBadge, clearBtn);
-
-    // Console log list
     this._consoleList = _el('div', 'webview-console-list');
 
-    // Resize handle between webview and console
     this._consoleHandle = _el('div', 'webview-console-handle');
     this._setupConsoleResize();
 
-    this._consolePanel.append(this._consoleHandle, consoleToolbar, this._consoleList);
-
-    this.container.append(this.navBar, this._webviewWrapper, this._consolePanel);
+    panel.append(this._consoleHandle, toolbar, this._consoleList);
+    return panel;
   }
 
   _addLog(level, message, source, line) {
@@ -151,7 +149,7 @@ export class WebviewInstance {
   toggleConsole() {
     this._consoleOpen = !this._consoleOpen;
     this._consolePanel.style.display = this._consoleOpen ? '' : 'none';
-    this.consoleToggle.textContent = this._consoleOpen ? '\u{25bc}' : '\u{25b6}';
+    this.consoleToggle.textContent = this._consoleOpen ? CONSOLE_ICONS.open : CONSOLE_ICONS.closed;
     this.consoleToggle.classList.toggle('active', this._consoleOpen);
 
     if (this._consoleOpen) {
