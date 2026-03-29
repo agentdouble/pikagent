@@ -4,7 +4,7 @@
  */
 
 import { _el } from './dom.js';
-import { formatTokens } from './usage-formatters.js';
+import { formatDuration, formatTokens, runTooltip, rateColor, rateCls } from './usage-formatters.js';
 
 // --- Tab definitions ---
 
@@ -35,4 +35,138 @@ export function _td(text, attrs = {}) {
 
 export function tokenTooltip(day) {
   return `${day.label}: ${formatTokens(day.total)} (in: ${formatTokens(day.input)}, out: ${formatTokens(day.output)})`;
+}
+
+// --- Pure DOM builders ---
+
+export function createBarCell(pct) {
+  return _el('td', { className: 'usage-file-bar-cell' },
+    _el('div', { className: 'usage-file-bar' },
+      _el('div', { className: 'usage-file-bar-fill', style: { width: `${pct}%` } }),
+    ),
+  );
+}
+
+export function createSection(title) {
+  return _el('div', { className: 'usage-section' },
+    _el('div', { className: 'usage-section-title', textContent: title }),
+  );
+}
+
+// --- Tab configurations ---
+
+export function getTabConfig(tabId, metrics) {
+  const builders = { agents: _agentTabConfig, tokens: _tokenTabConfig, flows: _flowTabConfig };
+  return builders[tabId]?.(metrics);
+}
+
+function _agentTabConfig(metrics) {
+  const m = metrics.agent;
+  const maxFileCount = metrics.mostModifiedFiles[0]?.count || 1;
+  return {
+    cards: [
+      { label: 'Sessions', value: m.totalSessions, cls: '' },
+      { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
+      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
+      { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
+    ],
+    chart: { title: 'Sessions par jour', data: m.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
+    tables: [
+      {
+        title: 'Par agent',
+        headers: ['Agent', 'Sessions', 'Actifs', 'Succès', 'Durée moy.'],
+        tableCls: 'usage-flow-table',
+        data: m.byAgent,
+        renderRow: (a) => _el('tr', {},
+          _td(a.agent, { className: 'usage-flow-name' }),
+          _td(a.totalSessions),
+          _td(a.active, { style: { color: a.active > 0 ? 'var(--green)' : 'var(--text-muted)' } }),
+          _td(`${a.successRate}%`, { className: 'usage-flow-rate', style: { color: rateColor(a.successRate) } }),
+          _td(a.avgDuration > 0 ? formatDuration(a.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
+        ),
+      },
+      {
+        title: 'Fichiers les plus modifiés (30 jours)',
+        headers: ['Fichier', 'Modifs', ''],
+        tableCls: 'usage-files-table',
+        data: metrics.mostModifiedFiles,
+        renderRow: (file) => _el('tr', {},
+          _td(file.file, { className: 'usage-file-name', title: file.file }),
+          _td(file.count, { className: 'usage-file-count' }),
+          createBarCell((file.count / maxFileCount) * 100),
+        ),
+      },
+    ],
+  };
+}
+
+function _tokenTabConfig(metrics) {
+  const t = metrics.tokens;
+  if (!t || t.total === 0) {
+    return { empty: ['Aucune donnée de tokens', 'Les tokens sont lus depuis les sessions Claude (~/.claude/projects/)'] };
+  }
+  const maxProjectTotal = t.perProject?.[0]?.total || 1;
+  return {
+    cards: [
+      { label: 'Total', value: formatTokens(t.total), cls: '' },
+      { label: 'Input', value: formatTokens(t.totalInput), cls: 'usage-stat-value-blue' },
+      { label: 'Output', value: formatTokens(t.totalOutput), cls: 'usage-stat-value-green' },
+      { label: 'Cache read', value: formatTokens(t.totalCacheRead), cls: '', sub: t.totalCacheCreate > 0 ? `cache write: ${formatTokens(t.totalCacheCreate)}` : '' },
+    ],
+    chart: { title: 'Tokens par jour (30 derniers jours)', data: t.perDay, segments: TOKEN_CHART_SEGMENTS, tooltip: tokenTooltip },
+    tables: [
+      {
+        title: 'Par projet',
+        headers: ['Projet', 'Input', 'Output', 'Total', ''],
+        tableCls: 'usage-files-table',
+        data: t.perProject,
+        renderRow: (proj) => _el('tr', {},
+          _td(proj.project, { className: 'usage-file-name' }),
+          _td(formatTokens(proj.input), { className: 'usage-file-count', style: { color: 'var(--blue)' } }),
+          _td(formatTokens(proj.output), { className: 'usage-file-count', style: { color: 'var(--green)' } }),
+          _td(formatTokens(proj.total), { className: 'usage-file-count' }),
+          createBarCell((proj.total / maxProjectTotal) * 100),
+        ),
+      },
+    ],
+  };
+}
+
+function _flowTabConfig(metrics) {
+  const f = metrics.flow;
+  if (f.totalFlows === 0) {
+    return { empty: ['Aucun flow configuré', 'Créez des flows depuis la vue FLOW'] };
+  }
+  return {
+    cards: [
+      { label: 'Total Runs', value: f.rate.total, cls: '' },
+      { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
+      { label: 'Taux succès', value: `${f.rate.rate}%`, cls: rateCls(f.rate.rate) },
+      { label: 'Durée moy.', value: formatDuration(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${formatDuration(f.duration.min)} · max: ${formatDuration(f.duration.max)}` : '' },
+    ],
+    chart: { title: 'Runs par jour', data: f.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
+    tables: [
+      {
+        title: 'Par flow',
+        headers: ['Flow', 'Runs', 'Succès', 'Durée moy.'],
+        tableCls: 'usage-flow-table',
+        data: f.flowStats,
+        renderRow: (flow) => _el('tr', {},
+          _el('td', {},
+            _el('span', {
+              className: `usage-flow-name ${!flow.enabled ? 'usage-flow-disabled' : ''}`,
+              textContent: flow.name,
+            }),
+            !flow.enabled && _el('span', {
+              style: { fontSize: '10px', color: 'var(--text-muted)', marginLeft: '6px' },
+              textContent: '(désactivé)',
+            }),
+          ),
+          _td(flow.totalRuns),
+          _td(`${flow.successRate}%`, { className: 'usage-flow-rate', style: { color: rateColor(flow.successRate) } }),
+          _td(flow.avgDuration > 0 ? formatDuration(flow.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
+        ),
+      },
+    ],
+  };
 }
