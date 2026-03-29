@@ -90,6 +90,16 @@ export function findCycleTarget(tabs, activeTabId, step) {
   return null;
 }
 
+// ── Side-view descriptor table ──
+// Each non-"work" sidebar mode owns a view instance and a container element
+// on the TabManager.  `pauseOnDetach` means the view is kept alive (paused)
+// when switching away, instead of being fully disposed.
+export const SIDE_VIEWS = {
+  board: { viewKey: 'boardView', containerKey: '_boardContainerEl', pauseOnDetach: true },
+  flow:  { viewKey: 'flowView',  containerKey: '_flowContainerEl' },
+  usage: { viewKey: 'usageView', containerKey: '_usageContainerEl' },
+};
+
 /** Find the next tab in a given color group (round-robin from current position). */
 export function findColorGroupTarget(tabs, activeTabId, colorGroupId) {
   const ids = Array.from(tabs.keys());

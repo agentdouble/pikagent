@@ -52,7 +52,7 @@ export class ConfigManager {
     if (!name) return;
     await this.autoSave();
     this.currentConfigName = name;
-    this.tabManager._disposeBoard();
+    this.tabManager._disposeSideView('board');
     this.tabManager._disposeAllTabs();
     this.tabManager.createTab('Workspace 1');
     await window.api.config.setDefault(name);

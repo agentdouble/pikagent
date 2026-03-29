@@ -11,7 +11,7 @@ import { ConfigManager } from './config-manager.js';
 import { _el } from '../utils/dom.js';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
-  ACTIVITY_BUTTONS, COLOR_GROUPS, WorkspaceTab,
+  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, WorkspaceTab,
   clampPanelWidth, panelArrowState, reorderEntries,
   findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
@@ -203,13 +203,15 @@ export class TabManager {
         this._capturePanelWidths(prev);
         prev.layoutElement.remove();
       }
-    } else if (mode === 'board') {
-      this.boardView?.pause();
-      this._boardContainerEl?.remove();
-    } else if (mode === 'flow') {
-      this._disposeFlow();
-    } else if (mode === 'usage') {
-      this._disposeUsage();
+      return;
+    }
+    const cfg = SIDE_VIEWS[mode];
+    if (!cfg) return;
+    if (cfg.pauseOnDetach) {
+      this[cfg.viewKey]?.pause();
+      this[cfg.containerKey]?.remove();
+    } else {
+      this._disposeSideView(mode);
     }
   }
 
@@ -241,39 +243,23 @@ export class TabManager {
     this.setSidebarMode('board');
   }
 
-  // ===== Side view disposal =====
+  // ===== Side view disposal (table-driven) =====
 
-  _disposeBoard() {
-    if (this.boardView) {
-      this.boardView.dispose();
-      this.boardView = null;
+  _disposeSideView(mode) {
+    const cfg = SIDE_VIEWS[mode];
+    if (!cfg) return;
+    if (this[cfg.viewKey]) {
+      this[cfg.viewKey].dispose();
+      this[cfg.viewKey] = null;
     }
-    if (this._boardContainerEl) {
-      this._boardContainerEl.remove();
-      this._boardContainerEl = null;
+    if (this[cfg.containerKey]) {
+      this[cfg.containerKey].remove();
+      this[cfg.containerKey] = null;
     }
   }
 
-  _disposeFlow() {
-    if (this.flowView) {
-      this.flowView.dispose();
-      this.flowView = null;
-    }
-    if (this._flowContainerEl) {
-      this._flowContainerEl.remove();
-      this._flowContainerEl = null;
-    }
-  }
-
-  _disposeUsage() {
-    if (this.usageView) {
-      this.usageView.dispose();
-      this.usageView = null;
-    }
-    if (this._usageContainerEl) {
-      this._usageContainerEl.remove();
-      this._usageContainerEl = null;
-    }
+  _disposeAllSideViews() {
+    for (const mode of Object.keys(SIDE_VIEWS)) this._disposeSideView(mode);
   }
 
   renderBoard() {
@@ -998,9 +984,7 @@ export class TabManager {
       bus.off(event, handler);
     }
     this._busListeners = [];
-    this._disposeBoard();
-    this._disposeFlow();
-    this._disposeUsage();
+    this._disposeAllSideViews();
     this._disposeAllTabs();
   }
 
@@ -1010,9 +994,7 @@ export class TabManager {
     this.configManager.isRestoring = true;
 
     // Reset side views (old terminal IDs will be invalid)
-    this._disposeBoard();
-    this._disposeFlow();
-    this._disposeUsage();
+    this._disposeAllSideViews();
     this._disposeAllTabs();
 
     // Create tabs from config
