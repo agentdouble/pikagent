@@ -4,6 +4,7 @@ import { _el } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, INPUT_BLUR_DELAY, WATCH_PREFIX,
+  SVG_ICONS, HEADER_ACTIONS,
   computeIndent, getRelativePath, extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
 
@@ -12,9 +13,17 @@ function _parseSvg(svgStr) {
   return doc.documentElement;
 }
 
-const SVG_NEW_FILE = _parseSvg('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>');
-const SVG_NEW_FOLDER = _parseSvg('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>');
-const SVG_REFRESH = _parseSvg('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>');
+/** Parse all SVG icons once at module load from the declarative SVG_ICONS map. */
+const PARSED_ICONS = Object.fromEntries(
+  Object.entries(SVG_ICONS).map(([k, v]) => [k, _parseSvg(v)])
+);
+
+/** Create a header action button with an SVG icon clone. */
+function _createActionBtn(title, iconNode, action) {
+  const btn = _el('button', { className: 'file-tree-action-btn', title, onClick: (e) => { e.stopPropagation(); action(); } });
+  btn.appendChild(iconNode.cloneNode(true));
+  return btn;
+}
 
 export class FileTree {
   constructor(container) {
@@ -115,43 +124,13 @@ export class FileTree {
 
     section.sectionEl.replaceChildren();
 
-    const folderName = extractFolderName(cwd);
     const contentEl = _el('div', { className: `file-tree-section-content${wasCollapsed ? ' collapsed' : ''}` });
-
     const chevron = _el('span', {
       className: 'file-tree-section-chevron',
       textContent: wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED,
     });
 
-    const headerActions = [
-      { title: 'New File', icon: SVG_NEW_FILE, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'file') },
-      { title: 'New Folder', icon: SVG_NEW_FOLDER, action: () => this.promptNewEntry(cwd, contentEl, 0, section.expandedDirs, 'folder') },
-      { title: 'Refresh', icon: SVG_REFRESH, action: () => this.refreshSection(cwd) },
-    ];
-
-    const header = _el('div', {
-      className: 'file-tree-section-header',
-      onClick: () => {
-        const collapsed = contentEl.classList.toggle('collapsed');
-        chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
-      },
-      onContextmenu: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, section.expandedDirs);
-      },
-    },
-      chevron,
-      _el('span', { className: 'file-tree-section-label', textContent: folderName, title: cwd }),
-      _el('div', { className: 'file-tree-section-actions' },
-        ...headerActions.map(({ title, icon, action }) => {
-          const btn = _el('button', { className: 'file-tree-action-btn', title, onClick: (e) => { e.stopPropagation(); action(); } });
-          btn.appendChild(icon.cloneNode(true));
-          return btn;
-        })
-      ),
-    );
-
+    const header = this._buildSectionHeader(cwd, contentEl, chevron, section.expandedDirs);
     section.sectionEl.append(header, contentEl);
 
     this._setupDropZone(header, cwd);
@@ -166,6 +145,32 @@ export class FileTree {
         this.refreshSection(cwd).catch(() => {});
       }
     }
+  }
+
+  _buildSectionHeader(cwd, contentEl, chevron, expandedDirs) {
+    const actionBtns = HEADER_ACTIONS.map(({ key, title, entryType }) => {
+      const action = entryType
+        ? () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, entryType)
+        : () => this.refreshSection(cwd);
+      return _createActionBtn(title, PARSED_ICONS[key], action);
+    });
+
+    return _el('div', {
+      className: 'file-tree-section-header',
+      onClick: () => {
+        const collapsed = contentEl.classList.toggle('collapsed');
+        chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
+      },
+      onContextmenu: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, expandedDirs);
+      },
+    },
+      chevron,
+      _el('span', { className: 'file-tree-section-label', textContent: extractFolderName(cwd), title: cwd }),
+      _el('div', { className: 'file-tree-section-actions' }, ...actionBtns),
+    );
   }
 
   // --- Context menus ---

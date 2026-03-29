@@ -54,3 +54,17 @@ export function resolveWatchCwd(watchIdOrCwd) {
     ? watchIdOrCwd.slice(WATCH_PREFIX.length)
     : watchIdOrCwd;
 }
+
+/** SVG icon strings for file tree header actions (parsed at load time in the view). */
+export const SVG_ICONS = {
+  newFile:   '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M11.5 1H4.5C3.67 1 3 1.67 3 2.5v11c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-11c0-.83-.67-1.5-1.5-1.5zM7 4h2v2.5h2.5v2H9V11H7V8.5H4.5v-2H7V4z"/></svg>',
+  newFolder: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M14 4H8.72l-1.5-1.5H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zm-3 5.5h-1.5V11h-1V9.5H7v-1h1.5V7h1v1.5H11v1z"/></svg>',
+  refresh:   '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M13.45 5.17A6 6 0 0 0 2.55 5.17L1 3.62V8h4.38L3.72 6.34a4.5 4.5 0 1 1-.34 4.83l-1.36.78A6 6 0 1 0 13.45 5.17z"/></svg>',
+};
+
+/** Declarative table for section header actions — drives the button row via table-driven loop. */
+export const HEADER_ACTIONS = [
+  { key: 'newFile',   title: 'New File',   entryType: 'file'   },
+  { key: 'newFolder', title: 'New Folder', entryType: 'folder' },
+  { key: 'refresh',   title: 'Refresh'                         },
+];
