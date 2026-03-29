@@ -10,7 +10,9 @@
     "dev": "node build.js --watch & electron . &",
     "rebuild": "npx @electron/rebuild",
     "package": "npm run build && electron-builder --mac dir",
-    "package:dmg": "npm run build && electron-builder --mac dmg"
+    "package:dmg": "npm run build && electron-builder --mac dmg",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -18,9 +20,11 @@
   "type": "commonjs",
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
+    "@vitest/coverage-v8": "^4.1.2",
     "electron": "^41.0.3",
     "electron-builder": "^26.0.12",
-    "esbuild": "^0.27.4"
+    "esbuild": "^0.27.4",
+    "vitest": "^4.1.2"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
