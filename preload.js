@@ -1,49 +1,10 @@
-const { contextBridge, ipcRenderer } = require('electron');
-
-// --- Helpers ---
-
-/** Wraps ipcRenderer.on; returns unsubscribe function */
-function _onIpc(channel) {
-  return (cb) => {
-    const listener = (_, payload) => cb(payload);
-    ipcRenderer.on(channel, listener);
-    return () => ipcRenderer.removeListener(channel, listener);
-  };
-}
-
-/** Single-arg (or no-arg) forward to main process */
-const _fwd = (ch) => (arg) => ipcRenderer.invoke(ch, arg);
-
-/** Multi-arg forward: packs positional args into a keyed object */
-const _pack = (ch, keys) => (...args) =>
-  ipcRenderer.invoke(ch, Object.fromEntries(keys.map((k, i) => [k, args[i]])));
+const { contextBridge } = require('electron');
+const { _onIpc, _fwd, _pack, _createTargetedChannel } = require('./preload-helpers');
 
 // --- Targeted PTY dispatch (one listener per event, routed by terminal ID) ---
 
-const _dataListeners = new Map();
-const _exitListeners = new Map();
-
-ipcRenderer.on('pty:data', (_, { id, data }) => {
-  const cbs = _dataListeners.get(id);
-  if (cbs) for (const cb of cbs) cb(data);
-});
-
-ipcRenderer.on('pty:exit', (_, { id, exitCode }) => {
-  const cbs = _exitListeners.get(id);
-  if (cbs) for (const cb of cbs) cb({ id, exitCode });
-});
-
-/** Creates a subscribe/unsubscribe pair for a targeted PTY listener map */
-function _ptyListener(map) {
-  return (id, cb) => {
-    if (!map.has(id)) map.set(id, new Set());
-    map.get(id).add(cb);
-    return () => {
-      const set = map.get(id);
-      if (set) { set.delete(cb); if (set.size === 0) map.delete(id); }
-    };
-  };
-}
+const _onPtyData = _createTargetedChannel('pty:data', ({ id, data }) => ({ id, value: data }));
+const _onPtyExit = _createTargetedChannel('pty:exit', ({ id, exitCode }) => ({ id, value: { id, exitCode } }));
 
 // --- Exposed API ---
 
@@ -55,8 +16,8 @@ contextBridge.exposeInMainWorld('api', {
     kill:        _fwd('pty:kill'),
     getCwd:      _fwd('pty:getcwd'),
     checkAgents: _fwd('pty:checkAgents'),
-    onData:      _ptyListener(_dataListeners),
-    onExit:      _ptyListener(_exitListeners),
+    onData:      _onPtyData,
+    onExit:      _onPtyExit,
   },
 
   fs: {
