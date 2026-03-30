@@ -1,5 +1,6 @@
 const path = require('path');
 const { FLOWS_DIR, LOGS_DIR } = require('./paths');
+const { createStreamParser } = require('./flow-stream-parser');
 
 const MS_PER_HOUR = 3_600_000;
 const SCHEDULER_INTERVAL_MS = 60_000;
@@ -64,9 +65,50 @@ function buildFlowCommand(flow) {
   return `${buildCmd(escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
 }
 
+/**
+ * Creates an output processor that encapsulates parser selection,
+ * buffering, and raw-fallback logic for a flow's PTY output.
+ */
+function createOutputProcessor(agent) {
+  const parser = (agent || 'claude') === 'claude' ? createStreamParser() : null;
+  let outputBuffer = '';
+  let rawBuffer = '';
+
+  return {
+    processData(data) {
+      if (!parser) {
+        outputBuffer += data;
+        return data;
+      }
+      rawBuffer += data;
+      const formatted = parser.push(data);
+      if (formatted) outputBuffer += formatted;
+      return formatted || '';
+    },
+
+    flush() {
+      if (!parser) return '';
+      const remaining = parser.flush();
+      if (remaining) {
+        outputBuffer += remaining;
+        return remaining;
+      }
+      // If no JSON events were parsed, fall back to raw output (claude not found, etc.)
+      if (!parser.hasEvents() && rawBuffer) {
+        outputBuffer = rawBuffer;
+        return rawBuffer;
+      }
+      return '';
+    },
+
+    getOutput() { return outputBuffer; },
+  };
+}
+
 module.exports = {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
   flowPath, logPath,
   AGENT_COMMANDS, getLastRun, shouldRun, buildFlowCommand,
+  createOutputProcessor,
 };

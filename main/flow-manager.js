@@ -7,9 +7,8 @@ const {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
   flowPath, logPath,
-  shouldRun, buildFlowCommand,
+  shouldRun, buildFlowCommand, createOutputProcessor,
 } = require('./flow-helpers');
-const { createStreamParser } = require('./flow-stream-parser');
 
 const ensureDir = ensureDirOnce(LOGS_DIR);
 
@@ -148,49 +147,28 @@ class FlowManager {
   }
 
   _setupPtyListeners(proc, flow, ptyId, runTimestamp) {
-    let outputBuffer = '';
-    let rawBuffer = '';
-    const agent = flow.agent || 'claude';
-    const parser = agent === 'claude' ? createStreamParser() : null;
+    const output = createOutputProcessor(flow.agent);
 
     proc.onData((data) => {
-      if (parser) {
-        rawBuffer += data;
-        const formatted = parser.push(data);
-        if (formatted) {
-          outputBuffer += formatted;
-          this._sendToWindow('pty:data', { id: ptyId, data: formatted });
-        }
-      } else {
-        outputBuffer += data;
-        this._sendToWindow('pty:data', { id: ptyId, data });
-      }
+      const formatted = output.processData(data);
+      if (formatted) this._sendToWindow('pty:data', { id: ptyId, data: formatted });
     });
 
     proc.onExit(async ({ exitCode }) => {
-      if (parser) {
-        const remaining = parser.flush();
-        if (remaining) {
-          outputBuffer += remaining;
-          this._sendToWindow('pty:data', { id: ptyId, data: remaining });
-        }
-        // If no JSON events were parsed, show raw output (claude not found, etc.)
-        if (!parser.hasEvents() && rawBuffer) {
-          outputBuffer = rawBuffer;
-          this._sendToWindow('pty:data', { id: ptyId, data: rawBuffer });
-        }
-      }
+      const remaining = output.flush();
+      if (remaining) this._sendToWindow('pty:data', { id: ptyId, data: remaining });
 
-      this._ptyManager.processes.delete(ptyId);
-      this._runningFlows.delete(flow.id);
-
-      const status = exitCode === 0 ? 'success' : 'error';
-      this._sendToWindow('pty:exit', { id: ptyId, exitCode });
-      this._sendToWindow('flow:runComplete', { flowId: flow.id, ptyId, exitCode });
-
-      await this._saveLog(flow.id, runTimestamp, outputBuffer);
-      await this._recordRun(flow.id, status, runTimestamp);
+      this._cleanupFlowProcess(flow.id, ptyId, exitCode);
+      await this._saveLog(flow.id, runTimestamp, output.getOutput());
+      await this._recordRun(flow.id, exitCode === 0 ? 'success' : 'error', runTimestamp);
     });
+  }
+
+  _cleanupFlowProcess(flowId, ptyId, exitCode) {
+    this._ptyManager.processes.delete(ptyId);
+    this._runningFlows.delete(flowId);
+    this._sendToWindow('pty:exit', { id: ptyId, exitCode });
+    this._sendToWindow('flow:runComplete', { flowId, ptyId, exitCode });
   }
 
   _execute(flow) {
