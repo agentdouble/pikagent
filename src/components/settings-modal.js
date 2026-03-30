@@ -5,7 +5,7 @@ import { _el } from '../utils/dom.js';
 import {
   MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS,
   MODE_BUTTONS, BOTTOM_CONFIG_BUTTONS, THEME_PREVIEW_LINES,
-  COLOR_DOT_KEYS, formatConfigMeta,
+  COLOR_DOT_KEYS, formatConfigMeta, buildActionBtn,
 } from '../utils/settings-helpers.js';
 
 export class SettingsModal {
@@ -40,16 +40,29 @@ export class SettingsModal {
     });
 
     this.modal = _el('div', 'settings-modal');
+    this.modal.appendChild(this._buildHeader());
+    this.modal.appendChild(this._buildBody());
+    this.overlay.appendChild(this.modal);
 
-    // Header
+    this.keyHandler = (e) => {
+      if (!this.recording) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (MODIFIER_KEYS.includes(e.key)) return;
+      this.finishRecording(eventToCombo(e));
+    };
+  }
+
+  _buildHeader() {
     const header = _el('div', 'settings-header');
     header.appendChild(_el('h2', 'settings-title', 'Settings'));
     const closeBtn = _el('button', 'settings-close-btn', '×');
     closeBtn.addEventListener('click', () => this.close());
     header.appendChild(closeBtn);
-    this.modal.appendChild(header);
+    return header;
+  }
 
-    // Nav (sidebar)
+  _buildBody() {
     const body = _el('div', 'settings-body');
     const nav = _el('div', 'settings-nav');
 
@@ -62,24 +75,10 @@ export class SettingsModal {
       this.navItems[key] = item;
     }
 
-    // Content
     this.content = _el('div', 'settings-content');
-
     body.appendChild(nav);
     body.appendChild(this.content);
-    this.modal.appendChild(body);
-    this.overlay.appendChild(this.modal);
-
-    // Keyboard listener for recording
-    this.keyHandler = (e) => {
-      if (!this.recording) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (MODIFIER_KEYS.includes(e.key)) return;
-
-      this.finishRecording(eventToCombo(e));
-    };
+    return body;
   }
 
   showSection(section) {
@@ -304,12 +303,13 @@ export class SettingsModal {
 
     const descriptors = [
       ...(!config.isDefault ? [{
-        label: 'Set Default', title: 'Charger au démarrage',
-        handler: async () => { await window.api.config.setDefault(config.name); this.renderConfigs(); },
+        label: 'Set Default', title: 'Charger au démarrage', cls: 'config-action-btn',
+        onClick: async (e) => { e.stopPropagation(); await window.api.config.setDefault(config.name); this.renderConfigs(); },
       }] : []),
       {
-        label: 'Overwrite', title: 'Écraser avec le workspace actuel',
-        handler: async () => {
+        label: 'Overwrite', title: 'Écraser avec le workspace actuel', cls: 'config-action-btn',
+        onClick: async (e) => {
+          e.stopPropagation();
           if (!this.tabManager) return;
           await window.api.config.save(config.name, this.tabManager.serialize());
           this.renderConfigs();
@@ -317,17 +317,11 @@ export class SettingsModal {
       },
       {
         label: '✕', title: '', cls: 'config-action-btn config-delete-btn',
-        handler: async () => { await window.api.config.delete(config.name); this.renderConfigs(); },
+        onClick: async (e) => { e.stopPropagation(); await window.api.config.delete(config.name); this.renderConfigs(); },
       },
     ];
 
-    for (const { label, title, cls, handler } of descriptors) {
-      const btn = _el('button', cls || 'config-action-btn', label);
-      if (title) btn.title = title;
-      btn.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
-      actions.appendChild(btn);
-    }
-
+    for (const desc of descriptors) actions.appendChild(buildActionBtn(desc));
     return actions;
   }
 
@@ -366,15 +360,13 @@ export class SettingsModal {
   }
 
   _createBottomActions(currentName) {
+    const handlers = {
+      new: () => this._newConfig(),
+      duplicate: () => this._duplicateConfig(currentName),
+    };
     const container = _el('div', 'config-bottom-actions');
     for (const { label, action } of BOTTOM_CONFIG_BUTTONS) {
-      const btn = _el('button', 'config-bottom-btn', label);
-      if (action === 'new') {
-        btn.addEventListener('click', () => this._newConfig());
-      } else {
-        btn.addEventListener('click', () => this._duplicateConfig(currentName));
-      }
-      container.appendChild(btn);
+      container.appendChild(buildActionBtn({ label, cls: 'config-bottom-btn', onClick: handlers[action] }));
     }
     return container;
   }
