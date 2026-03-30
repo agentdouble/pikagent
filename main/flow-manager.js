@@ -9,6 +9,7 @@ const {
   flowPath, logPath,
   shouldRun, buildFlowCommand,
 } = require('./flow-helpers');
+const { createStreamParser } = require('./flow-stream-parser');
 
 const ensureDir = ensureDirOnce(LOGS_DIR);
 
@@ -148,13 +149,38 @@ class FlowManager {
 
   _setupPtyListeners(proc, flow, ptyId, runTimestamp) {
     let outputBuffer = '';
+    let rawBuffer = '';
+    const agent = flow.agent || 'claude';
+    const parser = agent === 'claude' ? createStreamParser() : null;
 
     proc.onData((data) => {
-      outputBuffer += data;
-      this._sendToWindow('pty:data', { id: ptyId, data });
+      if (parser) {
+        rawBuffer += data;
+        const formatted = parser.push(data);
+        if (formatted) {
+          outputBuffer += formatted;
+          this._sendToWindow('pty:data', { id: ptyId, data: formatted });
+        }
+      } else {
+        outputBuffer += data;
+        this._sendToWindow('pty:data', { id: ptyId, data });
+      }
     });
 
     proc.onExit(async ({ exitCode }) => {
+      if (parser) {
+        const remaining = parser.flush();
+        if (remaining) {
+          outputBuffer += remaining;
+          this._sendToWindow('pty:data', { id: ptyId, data: remaining });
+        }
+        // If no JSON events were parsed, show raw output (claude not found, etc.)
+        if (!parser.hasEvents() && rawBuffer) {
+          outputBuffer = rawBuffer;
+          this._sendToWindow('pty:data', { id: ptyId, data: rawBuffer });
+        }
+      }
+
       this._ptyManager.processes.delete(ptyId);
       this._runningFlows.delete(flow.id);
 

@@ -19,8 +19,8 @@ function logPath(flowId, timestamp) {
 const AGENT_COMMANDS = {
   claude: (prompt, opts = {}) =>
     opts.dangerouslySkipPermissions
-      ? `claude --dangerously-skip-permissions --verbose -p '${prompt}'`
-      : `claude --permission-mode auto --verbose -p '${prompt}'`,
+      ? `claude --dangerously-skip-permissions --output-format stream-json -p '${prompt}'`
+      : `claude --permission-mode auto --output-format stream-json -p '${prompt}'`,
   codex: (prompt, opts = {}) =>
     opts.dangerouslySkipPermissions
       ? `codex --approval-mode full-auto --quiet '${prompt}'`
