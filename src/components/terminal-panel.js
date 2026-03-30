@@ -295,40 +295,51 @@ export class TerminalPanel {
     this._detachElement(sourceEl);
 
     if (side === 'center') {
-      targetEl.parentElement.insertBefore(sourceEl, targetEl);
-      sourceEl.style.flex = targetEl.style.flex;
+      this._moveToCenter(sourceEl, targetEl);
     } else {
       const direction = directionFromSide(side);
-      const insertBefore = isInsertBefore(side);
-
+      const before = isInsertBefore(side);
       const parentEl = targetEl.parentElement;
 
       if (this._isSameDirectionSplit(parentEl, direction)) {
-        const handle = this._createSplitHandle(direction, parentEl);
-        if (insertBefore) {
-          targetEl.insertAdjacentElement('beforebegin', sourceEl);
-          sourceEl.insertAdjacentElement('afterend', handle);
-        } else {
-          targetEl.insertAdjacentElement('afterend', handle);
-          handle.insertAdjacentElement('afterend', sourceEl);
-        }
-        this.equalizeChildren(parentEl);
+        this._insertIntoSplit(sourceEl, targetEl, direction, before, parentEl);
       } else {
-        const splitEl = this._createSplitContainer(direction, targetEl.style.flex || '1');
-        parentEl.replaceChild(splitEl, targetEl);
-        targetEl.style.flex = '1';
-        sourceEl.style.flex = '1';
-
-        const [first, second] = insertBefore ? [sourceEl, targetEl] : [targetEl, sourceEl];
-        splitEl.appendChild(first);
-        splitEl.appendChild(this._createSplitHandle(direction, splitEl));
-        splitEl.appendChild(second);
+        this._wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl);
       }
     }
 
     this.fitAll();
     this.setActive(sourceNode);
     bus.emit('layout:changed');
+  }
+
+  _moveToCenter(sourceEl, targetEl) {
+    targetEl.parentElement.insertBefore(sourceEl, targetEl);
+    sourceEl.style.flex = targetEl.style.flex;
+  }
+
+  _insertIntoSplit(sourceEl, targetEl, direction, before, parentEl) {
+    const handle = this._createSplitHandle(direction, parentEl);
+    if (before) {
+      targetEl.insertAdjacentElement('beforebegin', sourceEl);
+      sourceEl.insertAdjacentElement('afterend', handle);
+    } else {
+      targetEl.insertAdjacentElement('afterend', handle);
+      handle.insertAdjacentElement('afterend', sourceEl);
+    }
+    this.equalizeChildren(parentEl);
+  }
+
+  _wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl) {
+    const splitEl = this._createSplitContainer(direction, targetEl.style.flex || '1');
+    parentEl.replaceChild(splitEl, targetEl);
+    targetEl.style.flex = '1';
+    sourceEl.style.flex = '1';
+
+    const [first, second] = before ? [sourceEl, targetEl] : [targetEl, sourceEl];
+    splitEl.appendChild(first);
+    splitEl.appendChild(this._createSplitHandle(direction, splitEl));
+    splitEl.appendChild(second);
   }
 
   _detachElement(el) {
