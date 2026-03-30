@@ -6,7 +6,9 @@ import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
   STATUS_CONFIG, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
+  BOARD_TERMINAL_OPTS, HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
+  formatCardLabel,
 } from '../utils/board-helpers.js';
 
 export class BoardView {
@@ -107,40 +109,36 @@ export class BoardView {
 
   _buildCardHeader(termId, info, card) {
     const nameGroup = _el('div', { className: 'board-card-name-group' },
-      _el('span', { className: 'board-card-name', textContent: `${info.agent} \u2014 ${info.tabName}` }),
+      _el('span', { className: 'board-card-name', textContent: formatCardLabel(info.agent, info.tabName) }),
       _el('span', { className: STATUS_CONFIG.running.badgeClass, textContent: STATUS_CONFIG.running.label }),
     );
 
+    const actionHandlers = {
+      navigate: () => {
+        const match = this._findTabForTerminal(termId);
+        if (match) this.tabManager.switchTo(match.tabId);
+      },
+      hide: () => {
+        card.classList.add('board-card-hidden');
+        this._hiddenTerms.add(termId);
+        this._updateHiddenBar();
+      },
+    };
+
     const headerBtns = _el('div', { className: 'board-card-btns' },
-      _el('button', {
-        className: 'board-card-btn', textContent: '\u2197', title: 'Go to workspace',
-        onClick: () => {
-          const match = this._findTabForTerminal(termId);
-          if (match) this.tabManager.switchTo(match.tabId);
-        },
-      }),
-      _el('button', {
-        className: 'board-card-btn', textContent: '\u2212', title: 'Hide',
-        onClick: () => {
-          card.classList.add('board-card-hidden');
-          this._hiddenTerms.add(termId);
-          this._updateHiddenBar();
-        },
-      }),
+      ...HEADER_BUTTONS.map(btn => _el('button', {
+        className: 'board-card-btn',
+        textContent: btn.text,
+        title: btn.title,
+        onClick: actionHandlers[btn.action],
+      })),
     );
 
     return _el('div', { className: 'board-card-header' }, nameGroup, headerBtns);
   }
 
   _createBoardTerminal(termContainer, termId) {
-    const { term, fitAddon } = createTerminal(termContainer, {
-      fontSize: 11,
-      lineHeight: 1.2,
-      cursorBlink: false,
-      cursorStyle: 'bar',
-      scrollback: 10000,
-      allowProposedApi: true,
-    });
+    const { term, fitAddon } = createTerminal(termContainer, BOARD_TERMINAL_OPTS);
 
     term.loadAddon(new WebLinksAddon((e, url) => {
       e.preventDefault();
@@ -178,14 +176,10 @@ export class BoardView {
     setTimeout(fitOnly, FIT_SETTLE_DELAY_MS);
   }
 
-  _disposeCard(data) {
-    disposeTerminal(data);
-  }
-
   removeCard(termId) {
     const data = this.cards.get(termId);
     if (!data) return;
-    this._disposeCard(data);
+    disposeTerminal(data);
     data.element.remove();
     this.cards.delete(termId);
     this._hiddenTerms.delete(termId);
@@ -203,7 +197,7 @@ export class BoardView {
 
       this.hiddenBarEl.appendChild(_el('button', {
         className: 'board-hidden-chip',
-        textContent: `${card.info.agent} \u2014 ${card.info.tabName}`,
+        textContent: formatCardLabel(card.info.agent, card.info.tabName),
         title: 'Show',
         onClick: () => {
           card.element.classList.remove('board-card-hidden');
@@ -272,7 +266,7 @@ export class BoardView {
     bus.off(EVT_EXITED, this._onTerminalGone);
 
     for (const [, data] of this.cards) {
-      this._disposeCard(data);
+      disposeTerminal(data);
     }
     this.cards.clear();
   }

@@ -21,6 +21,32 @@ export const EVT_CREATED = 'terminal:created';
 export const EVT_REMOVED = 'terminal:removed';
 export const EVT_EXITED = 'terminal:exited';
 
+/** Terminal options used by board card mini-terminals. */
+export const BOARD_TERMINAL_OPTS = {
+  fontSize: 11,
+  lineHeight: 1.2,
+  cursorBlink: false,
+  cursorStyle: 'bar',
+  scrollback: 10000,
+  allowProposedApi: true,
+};
+
+/** Declarative table for card header buttons — drives the button row via table-driven loop. */
+export const HEADER_BUTTONS = [
+  { text: '\u2197', title: 'Go to workspace', action: 'navigate' },
+  { text: '\u2212', title: 'Hide',            action: 'hide' },
+];
+
+/**
+ * Format a card label from agent name and tab name.
+ * @param {string} agent
+ * @param {string} tabName
+ * @returns {string}
+ */
+export function formatCardLabel(agent, tabName) {
+  return `${agent} \u2014 ${tabName}`;
+}
+
 /**
  * Determine card status based on data volume.
  * @param {number} dataBytes - bytes received in the poll interval
