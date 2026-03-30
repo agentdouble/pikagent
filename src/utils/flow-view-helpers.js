@@ -14,6 +14,18 @@ export const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos
 export const MAX_VISIBLE_RUNS = 5;
 export const UNCATEGORIZED = '_uncategorized';
 
+// --- Header button configuration ---
+export const HEADER_BUTTONS = [
+  { label: '+ Catégorie', action: 'addCategory' },
+  { label: '+ Nouveau', action: 'addFlow' },
+];
+
+// --- Category action button configuration ---
+export const CATEGORY_ACTIONS = [
+  { icon: '✎', title: 'Renommer', action: 'rename' },
+  { icon: '✕', title: 'Supprimer la catégorie', cls: 'flow-category-btn-danger', action: 'delete' },
+];
+
 // --- Run time formatting ---
 
 const TIME_LOCALE = 'fr-FR';

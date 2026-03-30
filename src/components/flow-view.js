@@ -7,6 +7,7 @@ import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
   EMPTY_LIST_MESSAGE, MAX_VISIBLE_RUNS, UNCATEGORIZED,
+  HEADER_BUTTONS, CATEGORY_ACTIONS,
   formatRunDateTime, buildDotTooltip,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
@@ -89,13 +90,12 @@ export class FlowView {
     header.appendChild(_el('h2', 'flow-title', 'Flows'));
 
     const headerRight = _el('div', { className: 'flow-header-right', style: { display: 'flex', gap: '8px' } });
-    const addCatBtn = _el('button', 'flow-add-btn', '+ Catégorie');
-    addCatBtn.addEventListener('click', () => this._addCategory());
-    headerRight.appendChild(addCatBtn);
-
-    const addBtn = _el('button', 'flow-add-btn', '+ Nouveau');
-    addBtn.addEventListener('click', () => this._openModal());
-    headerRight.appendChild(addBtn);
+    const headerHandlers = { addCategory: () => this._addCategory(), addFlow: () => this._openModal() };
+    for (const { label, action } of HEADER_BUTTONS) {
+      const btn = _el('button', 'flow-add-btn', label);
+      btn.addEventListener('click', () => headerHandlers[action]());
+      headerRight.appendChild(btn);
+    }
 
     header.appendChild(headerRight);
     wrapper.appendChild(header);
@@ -186,22 +186,16 @@ export class FlowView {
 
     if (!isUncategorized) {
       const actions = _el('div', 'flow-category-actions');
-
-      const renameBtn = _el('button', 'flow-category-btn', '✎');
-      renameBtn.title = 'Renommer';
-      renameBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._renameCategoryInline(cat.id, name);
-      });
-
-      const deleteBtn = _el('button', 'flow-category-btn flow-category-btn-danger', '✕');
-      deleteBtn.title = 'Supprimer la catégorie';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._deleteCategory(cat.id);
-      });
-
-      actions.append(renameBtn, deleteBtn);
+      const catHandlers = {
+        rename: () => this._renameCategoryInline(cat.id, name),
+        delete: () => this._deleteCategory(cat.id),
+      };
+      for (const { icon, title, cls, action } of CATEGORY_ACTIONS) {
+        const btn = _el('button', cls ? `flow-category-btn ${cls}` : 'flow-category-btn', icon);
+        btn.title = title;
+        btn.addEventListener('click', (e) => { e.stopPropagation(); catHandlers[action](); });
+        actions.appendChild(btn);
+      }
       header.appendChild(actions);
     }
 
@@ -581,22 +575,21 @@ export class FlowView {
 
   // === Past Run Log Viewer (modal) ===
 
+  _buildLogModalHeader(flow, run) {
+    const header = _el('div', 'flow-log-header');
+    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${formatRunDateTime(run.date, run.timestamp)}`));
+    header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
+    header.appendChild(_el('button', 'flow-log-close', '✕'));
+    return header;
+  }
+
   async _showRunLog(flow, run) {
     const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
 
     const overlay = _el('div', 'flow-modal-overlay');
     const modal = _el('div', 'flow-log-modal');
-
-    const header = _el('div', 'flow-log-header');
-    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${formatRunDateTime(run.date, run.timestamp)}`));
-    header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
-    const closeBtn = _el('button', 'flow-log-close', '✕');
-    header.appendChild(closeBtn);
-    modal.appendChild(header);
-
     const termContainer = _el('div', 'flow-log-terminal');
-    modal.appendChild(termContainer);
-
+    modal.append(this._buildLogModalHeader(flow, run), termContainer);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
@@ -606,16 +599,9 @@ export class FlowView {
 
     term.write(log || NO_LOG_MODAL_MESSAGE);
 
-    const close = () => {
-      resizeObs.disconnect();
-      term.dispose();
-      overlay.remove();
-    };
-
-    closeBtn.addEventListener('click', close);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
+    const close = () => { resizeObs.disconnect(); term.dispose(); overlay.remove(); };
+    modal.querySelector('.flow-log-close').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
   // ===== Creation / Edit Modal =====
