@@ -737,36 +737,30 @@ export class TabManager {
 
   // ===== Workspace Rendering (called only once per tab) =====
 
-  async renderWorkspace(tab) {
-    this.workspaceContainer.replaceChildren();
-
-    // Build 3-panel layout
-    const layout = _el('div', 'workspace-layout');
-
-    // --- Left Panel: File Tree ---
-    const leftPanel = _el('div', 'panel panel-left');
-    const leftHeader = _el('div', 'panel-header');
-    leftHeader.appendChild(_el('span', 'panel-title', 'Explorer'));
-    leftPanel.appendChild(leftHeader);
-
+  _buildLeftPanel() {
+    const panel = _el('div', 'panel panel-left');
+    const header = _el('div', 'panel-header');
+    header.appendChild(_el('span', 'panel-title', 'Explorer'));
+    panel.appendChild(header);
     const treeContainer = _el('div', 'file-tree');
-    leftPanel.appendChild(treeContainer);
+    panel.appendChild(treeContainer);
+    const handle = _el('div', 'panel-resize-handle');
+    this.setupPanelResize(handle, panel, 'left');
+    return { panel, handle, treeContainer };
+  }
 
-    // --- Left resize handle ---
-    const leftHandle = _el('div', 'panel-resize-handle');
-    this.setupPanelResize(leftHandle, leftPanel, 'left');
-
-    // --- Right Panel: File Viewer ---
-    const rightPanel = _el('div', 'panel panel-right');
+  _buildRightPanel() {
+    const panel = _el('div', 'panel panel-right');
     const viewerContainer = _el('div', 'file-viewer');
-    rightPanel.appendChild(viewerContainer);
+    panel.appendChild(viewerContainer);
+    const handle = _el('div', 'panel-resize-handle');
+    this.setupPanelResize(handle, panel, 'right');
+    return { panel, handle, viewerContainer };
+  }
 
-    const rightHandle = _el('div', 'panel-resize-handle');
-    this.setupPanelResize(rightHandle, rightPanel, 'right');
-
-    // --- Center Panel: Terminals ---
-    const centerPanel = _el('div', 'panel panel-center');
-    const centerHeader = _el('div', 'panel-header');
+  _buildCenterPanel(tab, leftPanel, rightPanel) {
+    const panel = _el('div', 'panel panel-center');
+    const header = _el('div', 'panel-header');
 
     const pathInfo = _el('div', 'path-info');
 
@@ -782,76 +776,67 @@ export class TabManager {
     pathArrowRight.addEventListener('click', () => this.togglePanel(rightPanel, 'right', pathArrowRight));
 
     pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
-    centerHeader.appendChild(pathInfo);
-    centerHeader.appendChild(_el('div', 'term-label', 'Terminal'));
-    centerPanel.appendChild(centerHeader);
+    header.appendChild(pathInfo);
+    header.appendChild(_el('div', 'term-label', 'Terminal'));
+    panel.appendChild(header);
 
     const termContainer = _el('div', 'terminal-area');
-    centerPanel.appendChild(termContainer);
+    panel.appendChild(termContainer);
 
-    layout.appendChild(leftPanel);
-    layout.appendChild(leftHandle);
-    layout.appendChild(centerPanel);
-    layout.appendChild(rightHandle);
-    layout.appendChild(rightPanel);
-    this.workspaceContainer.appendChild(layout);
-
-    // Store layout on tab for persistence
-    tab.layoutElement = layout;
-
-    // Store DOM refs for live cwd updates
     tab.pathTextEl = pathText;
     tab.branchBadgeEl = branchBadge;
 
-    // Initialize components
+    return { panel, termContainer };
+  }
+
+  _restorePanelSizes(panels, leftPanel, rightPanel) {
+    if (!panels) return;
+    if (panels.leftWidth && !panels.leftCollapsed) {
+      leftPanel.style.width = `${panels.leftWidth}px`;
+      leftPanel.style.flex = 'none';
+    }
+    if (panels.leftCollapsed) leftPanel.classList.add('collapsed');
+    if (panels.rightWidth && !panels.rightCollapsed) {
+      rightPanel.style.width = `${panels.rightWidth}px`;
+      rightPanel.style.flex = 'none';
+    }
+    if (panels.rightCollapsed) rightPanel.classList.add('collapsed');
+  }
+
+  async renderWorkspace(tab) {
+    this.workspaceContainer.replaceChildren();
+
+    const layout = _el('div', 'workspace-layout');
+
+    const { panel: leftPanel, handle: leftHandle, treeContainer } = this._buildLeftPanel();
+    const { panel: rightPanel, handle: rightHandle, viewerContainer } = this._buildRightPanel();
+    const { panel: centerPanel, termContainer } = this._buildCenterPanel(tab, leftPanel, rightPanel);
+
+    layout.append(leftPanel, leftHandle, centerPanel, rightHandle, rightPanel);
+    this.workspaceContainer.appendChild(layout);
+
+    tab.layoutElement = layout;
     tab.fileTree = new FileTree(treeContainer);
     tab.fileViewer = new FileViewer(viewerContainer, () => tab.id === this.activeTabId);
 
-    // Restore split tree if available, otherwise create default
-    if (tab._restoreData && tab._restoreData.splitTree) {
+    if (tab._restoreData?.splitTree) {
       tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
       tab.terminalPanel.restoreFromTree(tab._restoreData.splitTree);
-
-      // Restore panel sizes
-      const panels = tab._restoreData.panels;
-      if (panels) {
-        if (panels.leftWidth && !panels.leftCollapsed) {
-          leftPanel.style.width = `${panels.leftWidth}px`;
-          leftPanel.style.flex = 'none';
-        }
-        if (panels.leftCollapsed) leftPanel.classList.add('collapsed');
-        if (panels.rightWidth && !panels.rightCollapsed) {
-          rightPanel.style.width = `${panels.rightWidth}px`;
-          rightPanel.style.flex = 'none';
-        }
-        if (panels.rightCollapsed) rightPanel.classList.add('collapsed');
-      }
-
+      this._restorePanelSizes(tab._restoreData.panels, leftPanel, rightPanel);
       this._syncFileTree(tab);
-
-      // Restore webview tabs into file viewer
       if (tab._restoreData.webviewTabs && tab.fileViewer) {
         tab.fileViewer.setWebviewTabs(tab._restoreData.webviewTabs);
       }
-
       delete tab._restoreData;
     } else {
       tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
-
-      // Register the first terminal in the file tree
       const firstTermId = tab.terminalPanel.activeTerminal?.terminal?.id;
-      if (firstTermId) {
-        tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
-      }
+      if (firstTermId) tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
     }
 
-    // Fetch git branch
     const branch = await window.api.git.branch(tab.cwd);
-    if (branch) {
-      branchBadge.textContent = ` ${branch}`;
-    }
+    if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
 
-    // Load pinned files into this new workspace
     bus.emit('workspace:activated');
   }
 
