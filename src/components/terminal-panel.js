@@ -1,7 +1,7 @@
 import { bus } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
 import { TerminalInstance } from '../utils/terminal-instance.js';
-import { DRAG_GRIP, SplitNode } from '../utils/terminal-panel-helpers.js';
+import { DRAG_GRIP, SplitNode, RESIZE_CURSOR, DIRECTION_PROPS } from '../utils/terminal-panel-helpers.js';
 import {
   detectDropSide,
   computeIndicatorRect,
@@ -49,6 +49,19 @@ export class TerminalPanel {
     const el = _el('div', `split-container split-${direction}`);
     el.style.flex = String(flex);
     return el;
+  }
+
+  /** Check if an element is a split container with the given direction. */
+  _isSameDirectionSplit(el, direction) {
+    return el?.classList.contains('split-container') && el.classList.contains(`split-${direction}`);
+  }
+
+  /** Find the cwd of the terminal whose element matches el. */
+  _findTerminalCwd(el) {
+    for (const [, node] of this.terminals) {
+      if (node.element === el) return node.terminal.cwd;
+    }
+    return this.cwd;
   }
 
   /** Reset container to blank terminal-panel state. */
@@ -289,12 +302,8 @@ export class TerminalPanel {
       const insertBefore = isInsertBefore(side);
 
       const parentEl = targetEl.parentElement;
-      const parentIsSameDirection =
-        parentEl &&
-        parentEl.classList.contains('split-container') &&
-        parentEl.classList.contains(`split-${direction}`);
 
-      if (parentIsSameDirection) {
+      if (this._isSameDirectionSplit(parentEl, direction)) {
         const handle = this._createSplitHandle(direction, parentEl);
         if (insertBefore) {
           targetEl.insertAdjacentElement('beforebegin', sourceEl);
@@ -407,15 +416,11 @@ export class TerminalPanel {
 
   split(targetNode, direction) {
     const parentEl = targetNode.element.parentElement;
-    const parentIsSameDirection =
-      parentEl &&
-      parentEl.classList.contains('split-container') &&
-      parentEl.classList.contains(`split-${direction}`);
 
     const sourceCwd = targetNode.terminal ? targetNode.terminal.cwd : this.cwd;
     const newTermNode = this.createTerminalNode(sourceCwd);
 
-    if (parentIsSameDirection) {
+    if (this._isSameDirectionSplit(parentEl, direction)) {
       const handle = this._createSplitHandle(direction, parentEl);
       targetNode.element.insertAdjacentElement('afterend', handle);
       handle.insertAdjacentElement('afterend', newTermNode.element);
@@ -451,8 +456,7 @@ export class TerminalPanel {
   setupResizeHandle(handle, splitEl, direction) {
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      const cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
-      this._trackMouse(cursor,
+      this._trackMouse(RESIZE_CURSOR[direction],
         (ev) => this._doResize(ev, handle, splitEl, direction),
         () => bus.emit('layout:changed'),
       );
@@ -463,15 +467,12 @@ export class TerminalPanel {
     const [panelBefore, panelAfter] = this._adjacentPanels(handle, splitEl);
     if (!panelBefore || !panelAfter) return;
 
+    const { size, start, mouse } = DIRECTION_PROPS[direction];
     const rectBefore = panelBefore.getBoundingClientRect();
     const rectAfter = panelAfter.getBoundingClientRect();
 
-    const isHoriz = direction === 'horizontal';
-    const totalSize = isHoriz ? rectBefore.width + rectAfter.width : rectBefore.height + rectAfter.height;
-    const startPos = isHoriz ? rectBefore.left : rectBefore.top;
-    const mousePos = isHoriz ? e.clientX : e.clientY;
-
-    const ratio = computeResizeRatio(mousePos, startPos, totalSize);
+    const totalSize = rectBefore[size] + rectAfter[size];
+    const ratio = computeResizeRatio(e[mouse], rectBefore[start], totalSize);
 
     const totalFlex = (parseFloat(panelBefore.style.flex) || 1) + (parseFloat(panelAfter.style.flex) || 1);
     panelBefore.style.flex = `${totalFlex * ratio}`;
@@ -540,16 +541,9 @@ export class TerminalPanel {
     }
 
     if (el.classList.contains('terminal-wrapper')) {
-      let termCwd = this.cwd;
-      for (const [id, tNode] of this.terminals) {
-        if (tNode.element === el) {
-          termCwd = tNode.terminal.cwd;
-          break;
-        }
-      }
       return {
         type: 'terminal',
-        cwd: termCwd,
+        cwd: this._findTerminalCwd(el),
         flex: parseFloat(el.style.flex) || 1,
       };
     }
