@@ -3,7 +3,7 @@ const path = require('path');
 
 const isWatch = process.argv.includes('--watch');
 
-const buildOptions = {
+const rendererOptions = {
   entryPoints: [path.join(__dirname, 'src', 'renderer.js')],
   bundle: true,
   outfile: path.join(__dirname, 'dist', 'renderer.js'),
@@ -19,13 +19,29 @@ const buildOptions = {
   },
 };
 
+const preloadOptions = {
+  entryPoints: [path.join(__dirname, 'preload.js')],
+  bundle: true,
+  outfile: path.join(__dirname, 'dist', 'preload.js'),
+  platform: 'node',
+  format: 'cjs',
+  sourcemap: true,
+  external: ['electron'],
+};
+
 async function build() {
   if (isWatch) {
-    const ctx = await esbuild.context(buildOptions);
-    await ctx.watch();
+    const [rendererCtx, preloadCtx] = await Promise.all([
+      esbuild.context(rendererOptions),
+      esbuild.context(preloadOptions),
+    ]);
+    await Promise.all([rendererCtx.watch(), preloadCtx.watch()]);
     console.log('Watching for changes...');
   } else {
-    await esbuild.build(buildOptions);
+    await Promise.all([
+      esbuild.build(rendererOptions),
+      esbuild.build(preloadOptions),
+    ]);
     console.log('Build complete.');
   }
 }

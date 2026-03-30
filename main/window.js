@@ -19,7 +19,7 @@ function create() {
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a2e',
     webPreferences: {
-      preload: path.join(ROOT, 'preload.js'),
+      preload: path.join(ROOT, 'dist', 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       webviewTag: true,
