@@ -5,7 +5,7 @@ import { _el } from '../utils/dom.js';
 import {
   MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS,
   MODE_BUTTONS, BOTTOM_CONFIG_BUTTONS, THEME_PREVIEW_LINES,
-  COLOR_DOT_KEYS, formatConfigMeta, buildActionBtn,
+  COLOR_DOT_KEYS, CONFIG_ACTIONS, formatConfigMeta, buildActionBtn,
 } from '../utils/settings-helpers.js';
 
 export class SettingsModal {
@@ -299,37 +299,26 @@ export class SettingsModal {
   // ===== Workspace Configs Section =====
 
   _createConfigActions(config) {
+    const handlers = {
+      setDefault: async (e) => { e.stopPropagation(); await window.api.config.setDefault(config.name); this.renderConfigs(); },
+      overwrite: async (e) => {
+        e.stopPropagation();
+        if (!this.tabManager) return;
+        await window.api.config.save(config.name, this.tabManager.serialize());
+        this.renderConfigs();
+      },
+      delete: async (e) => { e.stopPropagation(); await window.api.config.delete(config.name); this.renderConfigs(); },
+    };
+
     const actions = _el('div', 'config-actions');
-
-    const descriptors = [
-      ...(!config.isDefault ? [{
-        label: 'Set Default', title: 'Charger au démarrage', cls: 'config-action-btn',
-        onClick: async (e) => { e.stopPropagation(); await window.api.config.setDefault(config.name); this.renderConfigs(); },
-      }] : []),
-      {
-        label: 'Overwrite', title: 'Écraser avec le workspace actuel', cls: 'config-action-btn',
-        onClick: async (e) => {
-          e.stopPropagation();
-          if (!this.tabManager) return;
-          await window.api.config.save(config.name, this.tabManager.serialize());
-          this.renderConfigs();
-        },
-      },
-      {
-        label: '✕', title: '', cls: 'config-action-btn config-delete-btn',
-        onClick: async (e) => { e.stopPropagation(); await window.api.config.delete(config.name); this.renderConfigs(); },
-      },
-    ];
-
-    for (const desc of descriptors) actions.appendChild(buildActionBtn(desc));
+    for (const desc of CONFIG_ACTIONS) {
+      if (desc.hideWhen && config[desc.hideWhen]) continue;
+      actions.appendChild(buildActionBtn({ ...desc, onClick: handlers[desc.action] }));
+    }
     return actions;
   }
 
-  _createConfigRow(config, currentName) {
-    const row = _el('div', 'config-row');
-    if (config.name === currentName) row.classList.add('config-active');
-
-    // Left: radio + info
+  _buildConfigRowLeft(config) {
     const left = _el('div', 'config-row-left');
 
     const radio = _el('span', 'config-radio');
@@ -337,16 +326,20 @@ export class SettingsModal {
     left.appendChild(radio);
 
     const info = _el('div', 'config-info');
-
     const nameEl = _el('span', 'config-name', config.name);
     if (config.isDefault) {
       nameEl.appendChild(_el('span', 'config-default-tag', 'default'));
     }
     info.appendChild(nameEl);
-
     info.appendChild(_el('span', 'config-meta', formatConfigMeta(config.tabCount || 0, config.updatedAt)));
-
     left.appendChild(info);
+
+    return left;
+  }
+
+  _createConfigRow(config, currentName) {
+    const row = _el('div', 'config-row');
+    if (config.name === currentName) row.classList.add('config-active');
 
     row.addEventListener('click', async () => {
       if (!this.tabManager) return;
@@ -354,7 +347,7 @@ export class SettingsModal {
       this.renderConfigs();
     });
 
-    row.appendChild(left);
+    row.appendChild(this._buildConfigRowLeft(config));
     row.appendChild(this._createConfigActions(config));
     return row;
   }

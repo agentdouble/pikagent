@@ -46,6 +46,13 @@ export const THEME_PREVIEW_LINES = [
 /** Theme color keys shown as dots under the preview. */
 export const COLOR_DOT_KEYS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan'];
 
+/** Declarative table for config row action buttons — drives the button group via table-driven loop. */
+export const CONFIG_ACTIONS = [
+  { label: 'Set Default', title: 'Charger au démarrage', cls: 'config-action-btn', action: 'setDefault', hideWhen: 'isDefault' },
+  { label: 'Overwrite', title: 'Écraser avec le workspace actuel', cls: 'config-action-btn', action: 'overwrite' },
+  { label: '✕', title: '', cls: 'config-action-btn config-delete-btn', action: 'delete' },
+];
+
 /**
  * Format a workspace-config metadata string ("3 tabs · 28/03/2026").
  * @param {number} tabCount
