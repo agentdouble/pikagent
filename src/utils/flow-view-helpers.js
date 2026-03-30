@@ -142,3 +142,10 @@ export function deleteCategoryData(catData, catId) {
   delete catData.order[catId];
   return true;
 }
+
+/**
+ * Return the last run from a flow's runs array, or null if none.
+ */
+export function getLastRun(flow) {
+  return flow.runs?.at(-1) ?? null;
+}

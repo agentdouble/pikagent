@@ -11,6 +11,7 @@ import {
   formatRunDateTime, buildDotTooltip,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
+  getLastRun,
 } from '../utils/flow-view-helpers.js';
 
 
@@ -283,6 +284,13 @@ export class FlowView {
     return -1; // append at end
   }
 
+  _cleanupAllDragState() {
+    for (const el of document.querySelectorAll('.flow-drop-indicator')) el.remove();
+    for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
+      el.classList.remove('flow-drop-zone-active');
+    }
+  }
+
   // --- Card rendering ---
 
   _createCard(flow, catId) {
@@ -297,40 +305,52 @@ export class FlowView {
     if (isRunning) card.classList.add('flow-card-running');
     if (isExpanded) card.classList.add('flow-card-expanded');
 
-    // Drag events
+    this._setupCardDrag(card, flow.id, catId);
+
+    const headerRow = this._createCardHeader(flow, isRunning);
+    card.appendChild(headerRow);
+
+    const body = this._buildCardBody(flow, isRunning, isExpanded);
+    if (body) card.appendChild(body);
+
+    this._setupCardHeaderClick(headerRow, flow, isRunning);
+
+    return card;
+  }
+
+  _setupCardDrag(card, flowId, catId) {
     card.addEventListener('dragstart', (e) => {
-      this._dragFlowId = flow.id;
+      this._dragFlowId = flowId;
       this._dragSourceCat = catId;
       card.classList.add('flow-dragging');
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', flow.id);
+      e.dataTransfer.setData('text/plain', flowId);
     });
 
     card.addEventListener('dragend', () => {
       card.classList.remove('flow-dragging');
       this._dragFlowId = null;
       this._dragSourceCat = null;
-      // Clean up all drop indicators
-      for (const el of document.querySelectorAll('.flow-drop-indicator')) el.remove();
-      for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
-        el.classList.remove('flow-drop-zone-active');
-      }
+      this._cleanupAllDragState();
     });
+  }
 
-    const headerRow = this._createCardHeader(flow, isRunning);
-    card.appendChild(headerRow);
-
+  _buildCardBody(flow, isRunning, isExpanded) {
     if (isRunning) {
-      card.appendChild(this._createLiveTerminal(flow.id, this._runningMap[flow.id]));
-    } else if (isExpanded) {
-      const lastRun = (flow.runs || []).slice(-1)[0];
+      return this._createLiveTerminal(flow.id, this._runningMap[flow.id]);
+    }
+    if (isExpanded) {
+      const lastRun = getLastRun(flow);
       if (lastRun) {
         const termArea = _el('div', 'flow-card-terminal');
-        card.appendChild(termArea);
         this._loadLogIntoContainer(flow.id, lastRun, termArea);
+        return termArea;
       }
     }
+    return null;
+  }
 
+  _setupCardHeaderClick(headerRow, flow, isRunning) {
     headerRow.addEventListener('click', () => {
       if (isRunning) return;
       if (!flow.runs?.length) {
@@ -345,8 +365,6 @@ export class FlowView {
       }
       this._renderList();
     });
-
-    return card;
   }
 
   _createCardHeader(flow, isRunning) {
