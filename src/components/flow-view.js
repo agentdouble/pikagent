@@ -307,7 +307,7 @@ export class FlowView {
 
     this._setupCardDrag(card, flow.id, catId);
 
-    const headerRow = this._createCardHeader(flow, isRunning);
+    const headerRow = this._createCardHeader(flow, isRunning, isExpanded);
     card.appendChild(headerRow);
 
     const body = this._buildCardBody(flow, isRunning, isExpanded);
@@ -337,7 +337,9 @@ export class FlowView {
 
   _buildCardBody(flow, isRunning, isExpanded) {
     if (isRunning) {
-      return this._createLiveTerminal(flow.id, this._runningMap[flow.id]);
+      const container = this._createLiveTerminal(flow.id, this._runningMap[flow.id]);
+      container.style.display = isExpanded ? '' : 'none';
+      return container;
     }
     if (isExpanded) {
       const lastRun = getLastRun(flow);
@@ -352,7 +354,12 @@ export class FlowView {
 
   _setupCardHeaderClick(headerRow, flow, isRunning) {
     headerRow.addEventListener('click', () => {
-      if (isRunning) return;
+      if (isRunning) {
+        if (this._expandedCards.has(flow.id)) this._expandedCards.delete(flow.id);
+        else this._expandedCards.add(flow.id);
+        this._renderList();
+        return;
+      }
       if (!flow.runs?.length) {
         this._openModal(flow);
         return;
@@ -367,13 +374,26 @@ export class FlowView {
     });
   }
 
-  _createCardHeader(flow, isRunning) {
+  _createCardHeader(flow, isRunning, isExpanded) {
     const headerRow = _el('div', 'flow-card-header');
 
     const info = _el('div', 'flow-card-info');
     const nameRow = _el('div', 'flow-card-name-row');
     nameRow.appendChild(_el('span', 'flow-card-name', flow.name));
     if (isRunning) nameRow.appendChild(_el('span', 'flow-running-badge', 'En cours...'));
+    if (isRunning) {
+      nameRow.appendChild(_el('button', {
+        className: 'flow-output-toggle',
+        textContent: isExpanded ? '▾ Sortie' : '▸ Sortie',
+        title: isExpanded ? 'Masquer la sortie' : 'Afficher la sortie',
+        onClick: (e) => {
+          e.stopPropagation();
+          if (this._expandedCards.has(flow.id)) this._expandedCards.delete(flow.id);
+          else this._expandedCards.add(flow.id);
+          this._renderList();
+        },
+      }));
+    }
     info.appendChild(nameRow);
     info.appendChild(_el('div', 'flow-card-schedule', formatSchedule(flow.schedule)));
     headerRow.appendChild(info);

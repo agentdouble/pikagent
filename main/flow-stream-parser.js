@@ -2,6 +2,10 @@ const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
 const DIM = '\x1b[2m';
 
+// Strip ANSI escape sequences injected by the PTY shell around JSON lines
+const ANSI_RE = /\x1b\[[\d;?]*[a-zA-Z~]|\x1b\][^\x07]*\x07|\x1b[()][B012]/g;
+function stripAnsi(str) { return str.replace(ANSI_RE, ''); }
+
 const TOOL_COLORS = {
   Read: '\x1b[36m',
   Edit: '\x1b[33m',
@@ -79,7 +83,7 @@ function createStreamParser() {
 
       let output = '';
       for (const line of lines) {
-        const trimmed = line.replace(/\r$/, '').trim();
+        const trimmed = stripAnsi(line.replace(/\r$/, '')).trim();
         if (!trimmed) continue;
         try {
           const event = JSON.parse(trimmed);
@@ -96,7 +100,7 @@ function createStreamParser() {
     },
 
     flush() {
-      const rest = buffer.trim();
+      const rest = stripAnsi(buffer).trim();
       buffer = '';
       if (!rest) return '';
       try {
