@@ -8,7 +8,7 @@ import {
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
   EMPTY_LIST_MESSAGE, MAX_VISIBLE_RUNS, UNCATEGORIZED,
   HEADER_BUTTONS, CATEGORY_ACTIONS,
-  formatRunDateTime, buildDotTooltip,
+  formatRunDateTime, buildDotTooltip, buildCardActionEntries,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
   getLastRun,
@@ -422,26 +422,24 @@ export class FlowView {
 
   _createCardActions(flow, isRunning) {
     const actions = _el('div', 'flow-card-actions');
-
-    const buttons = [
-      !isRunning && ['▶', 'Exécuter maintenant', () => window.api.flow.runNow(flow.id)],
-      [flow.enabled ? '⏸' : '⏵', flow.enabled ? 'Désactiver' : 'Activer',
-        async () => { await window.api.flow.toggle(flow.id); this.refresh(); }],
-      ['✎', 'Modifier', () => this._openModal(flow)],
-      ['✕', 'Supprimer', async () => {
-        this._disposeLiveTerminal(flow.id);
-        removeFlowFromOrder(this.catData.order, flow.id);
-        await this._persistCategories();
-        await window.api.flow.delete(flow.id);
-        this.refresh();
-      }, 'flow-card-btn-danger'],
-    ];
-
-    for (const entry of buttons) {
-      if (entry) actions.appendChild(this._createActionButton(...entry));
+    const handlers = {
+      run:    () => window.api.flow.runNow(flow.id),
+      toggle: async () => { await window.api.flow.toggle(flow.id); this.refresh(); },
+      edit:   () => this._openModal(flow),
+      delete: () => this._deleteFlow(flow.id),
+    };
+    for (const { icon, title, action, cls } of buildCardActionEntries(flow, isRunning)) {
+      actions.appendChild(this._createActionButton(icon, title, handlers[action], cls));
     }
-
     return actions;
+  }
+
+  async _deleteFlow(flowId) {
+    this._disposeLiveTerminal(flowId);
+    removeFlowFromOrder(this.catData.order, flowId);
+    await this._persistCategories();
+    await window.api.flow.delete(flowId);
+    this.refresh();
   }
 
   // --- Category management ---

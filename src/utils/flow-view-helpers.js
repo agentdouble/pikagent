@@ -149,3 +149,21 @@ export function deleteCategoryData(catData, catId) {
 export function getLastRun(flow) {
   return flow.runs?.at(-1) ?? null;
 }
+
+/**
+ * Build the list of card action descriptors for a given flow state.
+ * Each entry: { icon, title, action, cls? }
+ * Pure function — no DOM, no side effects.
+ */
+export function buildCardActionEntries(flow, isRunning) {
+  return [
+    !isRunning && { icon: '▶', title: 'Exécuter maintenant', action: 'run' },
+    {
+      icon: flow.enabled ? '⏸' : '⏵',
+      title: flow.enabled ? 'Désactiver' : 'Activer',
+      action: 'toggle',
+    },
+    { icon: '✎', title: 'Modifier', action: 'edit' },
+    { icon: '✕', title: 'Supprimer', action: 'delete', cls: 'flow-card-btn-danger' },
+  ].filter(Boolean);
+}
