@@ -1,6 +1,7 @@
 import { detectLanguage } from '../utils/file-icons.js';
 import { _el } from '../utils/dom.js';
 import { parseDiff, buildSideBySideRows, wordDiff, countDiffStats, UNIFIED_CHANGE_CONFIG, VIEW_MODES, HUNK_FLASH_DURATION_MS } from '../utils/diff-parser.js';
+import { NAV_BUTTONS, WORD_DIFF_CLASS, capitalize } from '../utils/diff-viewer-helpers.js';
 
 /**
  * DiffViewer component - renders a side-by-side diff with syntax highlighting,
@@ -59,11 +60,11 @@ export class DiffViewer {
   _buildViewToggle() {
     const toggleGroup = _el('div', 'diff-toggle-group');
     for (const mode of VIEW_MODES) {
-      const btn = _el('button',
-        `diff-toggle-btn${this.viewMode === mode ? ' active' : ''}`,
-        mode[0].toUpperCase() + mode.slice(1));
-      btn.addEventListener('click', () => { this.viewMode = mode; this.render(); });
-      toggleGroup.appendChild(btn);
+      toggleGroup.appendChild(_el('button', {
+        className: `diff-toggle-btn${this.viewMode === mode ? ' active' : ''}`,
+        textContent: capitalize(mode),
+        onClick: () => { this.viewMode = mode; this.render(); },
+      }));
     }
     return toggleGroup;
   }
@@ -71,13 +72,9 @@ export class DiffViewer {
   _buildNavigation() {
     const nav = _el('div', 'diff-nav');
 
-    const btnPrev = _el('button', 'diff-nav-btn', '\u25B2');
-    btnPrev.title = 'Previous change';
-    btnPrev.addEventListener('click', () => this._navigateHunk(-1));
-
-    const btnNext = _el('button', 'diff-nav-btn', '\u25BC');
-    btnNext.title = 'Next change';
-    btnNext.addEventListener('click', () => this._navigateHunk(1));
+    const [btnPrev, btnNext] = NAV_BUTTONS.map(({ text, title, direction }) =>
+      _el('button', { className: 'diff-nav-btn', textContent: text, title, onClick: () => this._navigateHunk(direction) }),
+    );
 
     nav.append(
       btnPrev,
@@ -103,36 +100,41 @@ export class DiffViewer {
     rowEl.append(leftCell, _el('div', 'diff-separator'), rightCell);
   }
 
+  _buildSplitHunkRow(row) {
+    const rowEl = _el('div', 'diff-row diff-row-hunk');
+    this.hunkElements.push(rowEl);
+    this._appendSplitCells(rowEl,
+      this._createCell('', row.left.content, 'hunk'),
+      this._createCell('', row.right.content, 'hunk'));
+    return rowEl;
+  }
+
+  _buildSplitChangeRow(row) {
+    const { type: lt } = row.left;
+    const { type: rt } = row.right;
+    const rowEl = _el('div', 'diff-row');
+
+    let leftSegments = null, rightSegments = null;
+    if (lt === 'remove' && rt === 'add') {
+      const wd = wordDiff(row.left.content, row.right.content);
+      if (wd.oldSegments) leftSegments = wd.oldSegments;
+      if (wd.newSegments) rightSegments = wd.newSegments;
+    }
+
+    this._appendSplitCells(rowEl,
+      this._createCell(lt !== 'empty' ? row.left.lineNo : '', row.left.content, lt, leftSegments),
+      this._createCell(rt !== 'empty' ? row.right.lineNo : '', row.right.content, rt, rightSegments));
+    return rowEl;
+  }
+
   _renderSplit() {
     this.hunkElements = [];
     const table = _el('div', 'diff-table diff-split');
 
     for (const row of this.rows) {
-      const rowEl = _el('div', 'diff-row');
-
-      if (row.type === 'hunk') {
-        rowEl.classList.add('diff-row-hunk');
-        this.hunkElements.push(rowEl);
-        this._appendSplitCells(rowEl,
-          this._createCell('', row.left.content, 'hunk'),
-          this._createCell('', row.right.content, 'hunk'));
-      } else {
-        const { type: lt } = row.left;
-        const { type: rt } = row.right;
-
-        let leftSegments = null, rightSegments = null;
-        if (lt === 'remove' && rt === 'add') {
-          const wd = wordDiff(row.left.content, row.right.content);
-          if (wd.oldSegments) leftSegments = wd.oldSegments;
-          if (wd.newSegments) rightSegments = wd.newSegments;
-        }
-
-        this._appendSplitCells(rowEl,
-          this._createCell(lt !== 'empty' ? row.left.lineNo : '', row.left.content, lt, leftSegments),
-          this._createCell(rt !== 'empty' ? row.right.lineNo : '', row.right.content, rt, rightSegments));
-      }
-
-      table.appendChild(rowEl);
+      table.appendChild(row.type === 'hunk'
+        ? this._buildSplitHunkRow(row)
+        : this._buildSplitChangeRow(row));
     }
 
     this.content.appendChild(table);
@@ -187,7 +189,7 @@ export class DiffViewer {
   }
 
   _renderWordSegments(codeEl, segments, type) {
-    const hlClass = type === 'remove' ? 'diff-word-del' : 'diff-word-add';
+    const hlClass = WORD_DIFF_CLASS[type];
     for (const seg of segments) {
       codeEl.appendChild(_el('span', seg.highlighted ? hlClass : null, seg.text));
     }
@@ -199,9 +201,7 @@ export class DiffViewer {
       return;
     }
     try {
-      const code = document.createElement('code');
-      code.className = `language-${this.lang}`;
-      code.textContent = text;
+      const code = _el('code', `language-${this.lang}`, { textContent: text });
       window.hljs.highlightElement(code);
       codeEl.appendChild(code);
     } catch {
