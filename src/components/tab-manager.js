@@ -453,113 +453,126 @@ export class TabManager {
     }
   }
 
-  renderTabBar() {
-    this.tabBar.replaceChildren();
-
-    // ── Color filter dots ──
+  _buildColorFilters() {
     const usedColors = new Set();
     for (const [, tab] of this.tabs) {
       if (tab.colorGroup) usedColors.add(tab.colorGroup);
     }
-    if (usedColors.size > 0) {
-      const filterWrap = _el('div', 'tab-color-filters');
-      // "All" button
-      const noFilter = this.activeColorFilter === null && this.excludedColors.size === 0;
-      const allBtn = _el('span', `tab-filter-dot tab-filter-all${noFilter ? ' active' : ''}`);
-      allBtn.textContent = '∗';
-      allBtn.addEventListener('click', () => {
-        this.activeColorFilter = null;
-        this.excludedColors.clear();
-        this.renderTabBar();
+    if (usedColors.size === 0) return null;
+
+    const filterWrap = _el('div', 'tab-color-filters');
+
+    const noFilter = this.activeColorFilter === null && this.excludedColors.size === 0;
+    const allBtn = _el('span', `tab-filter-dot tab-filter-all${noFilter ? ' active' : ''}`);
+    allBtn.textContent = '\u2217';
+    allBtn.addEventListener('click', () => {
+      this.activeColorFilter = null;
+      this.excludedColors.clear();
+      this.renderTabBar();
+    });
+    filterWrap.appendChild(allBtn);
+
+    for (const cg of COLOR_GROUPS) {
+      if (!usedColors.has(cg.id)) continue;
+      const isIncluded = this.activeColorFilter === cg.id;
+      const isExcluded = this.excludedColors.has(cg.id);
+      const cls = `tab-filter-dot${isIncluded ? ' active' : ''}${isExcluded ? ' excluded' : ''}`;
+      const dot = _el('span', cls);
+      dot.style.background = cg.color;
+      dot.title = `${cg.label}${isExcluded ? ' (excluded)' : ''}`;
+      dot.addEventListener('click', () => this.setColorFilter(cg.id));
+      dot.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.toggleExcludeColor(cg.id);
       });
-      filterWrap.appendChild(allBtn);
-      for (const cg of COLOR_GROUPS) {
-        if (!usedColors.has(cg.id)) continue;
-        const isIncluded = this.activeColorFilter === cg.id;
-        const isExcluded = this.excludedColors.has(cg.id);
-        const cls = `tab-filter-dot${isIncluded ? ' active' : ''}${isExcluded ? ' excluded' : ''}`;
-        const dot = _el('span', cls);
-        dot.style.background = cg.color;
-        dot.title = `${cg.label}${isExcluded ? ' (excluded)' : ''}`;
-        dot.addEventListener('click', () => this.setColorFilter(cg.id));
-        dot.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          this.toggleExcludeColor(cg.id);
-        });
-        filterWrap.appendChild(dot);
-      }
-      this.tabBar.appendChild(filterWrap);
+      filterWrap.appendChild(dot);
     }
 
-    this._tabElements = new Map(); // id -> DOM element (for drag targeting)
+    return filterWrap;
+  }
+
+  _isTabVisible(tab) {
+    if (this.activeColorFilter && tab.colorGroup !== this.activeColorFilter) return false;
+    if (this.excludedColors.has(tab.colorGroup)) return false;
+    return true;
+  }
+
+  _buildTabEl(id, tab) {
+    const tabEl = _el('div', 'tab');
+    tabEl.dataset.tabId = id;
+    if (id === this.activeTabId) tabEl.classList.add('active');
+    if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
+
+    if (tab.colorGroup) {
+      const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
+      if (cg) {
+        const dot = _el('span', 'tab-color-dot');
+        dot.style.background = cg.color;
+        tabEl.appendChild(dot);
+        tabEl.style.borderBottomColor = id === this.activeTabId ? cg.color : '';
+      }
+    }
+
+    const nameEl = _el('span', 'tab-name', tab.name);
+    nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
+    tabEl.appendChild(nameEl);
+
+    if (this.tabs.size > 1) {
+      const closeEl = _el('span', 'tab-close', '\u00d7');
+      closeEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closeTab(id);
+      });
+      tabEl.appendChild(closeEl);
+    }
+
+    tabEl.addEventListener('click', () => this.switchTo(id));
+    this.setupTabDrag(tabEl, id);
+    this._bindTabContextMenu(tabEl, id, tab, nameEl);
+
+    return tabEl;
+  }
+
+  _bindTabContextMenu(tabEl, id, tab, nameEl) {
+    tabEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const colorItems = COLOR_GROUPS.map((cg) => ({
+        label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,
+        colorDot: cg.color,
+        action: () => this.setTabColorGroup(id, tab.colorGroup === cg.id ? null : cg.id),
+      }));
+      if (tab.colorGroup) {
+        colorItems.push({ label: 'Remove color', action: () => this.setTabColorGroup(id, null) });
+      }
+      contextMenu.show(e.clientX, e.clientY, [
+        { label: 'Rename', action: () => this.renameTab(id, nameEl) },
+        {
+          label: tab.noShortcut ? '\u2713 NoShortcut' : 'NoShortcut',
+          action: () => this.toggleNoShortcut(id),
+        },
+        { separator: true },
+        { label: 'Color Group', children: colorItems },
+        { separator: true },
+        { label: 'Close', action: () => this.closeTab(id) },
+      ]);
+    });
+  }
+
+  renderTabBar() {
+    this.tabBar.replaceChildren();
+
+    const filters = this._buildColorFilters();
+    if (filters) this.tabBar.appendChild(filters);
+
+    this._tabElements = new Map();
 
     for (const [id, tab] of this.tabs) {
-      // Filter: hide tabs that don't match the active color filter or are excluded
-      if (this.activeColorFilter && tab.colorGroup !== this.activeColorFilter) continue;
-      if (this.excludedColors.has(tab.colorGroup)) continue;
-      const tabEl = _el('div', 'tab');
-      tabEl.dataset.tabId = id;
-      if (id === this.activeTabId) tabEl.classList.add('active');
-      if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
-
-      // Color group indicator
-      if (tab.colorGroup) {
-        const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
-        if (cg) {
-          const dot = _el('span', 'tab-color-dot');
-          dot.style.background = cg.color;
-          tabEl.appendChild(dot);
-          tabEl.style.borderBottomColor = id === this.activeTabId ? cg.color : '';
-        }
-      }
-
-      const nameEl = _el('span', 'tab-name', tab.name);
-      nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
-      tabEl.appendChild(nameEl);
-
-      // Show close button when there are more than 1 tab
-      if (this.tabs.size > 1) {
-        const closeEl = _el('span', 'tab-close', '\u00d7');
-        closeEl.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.closeTab(id);
-        });
-        tabEl.appendChild(closeEl);
-      }
-
-      tabEl.addEventListener('click', () => this.switchTo(id));
-
-      // Drag to reorder
-      this.setupTabDrag(tabEl, id);
-
-      tabEl.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const colorItems = COLOR_GROUPS.map((cg) => ({
-          label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,
-          colorDot: cg.color,
-          action: () => this.setTabColorGroup(id, tab.colorGroup === cg.id ? null : cg.id),
-        }));
-        if (tab.colorGroup) {
-          colorItems.push({ label: 'Remove color', action: () => this.setTabColorGroup(id, null) });
-        }
-        contextMenu.show(e.clientX, e.clientY, [
-          { label: 'Rename', action: () => this.renameTab(id, nameEl) },
-          {
-            label: tab.noShortcut ? '\u2713 NoShortcut' : 'NoShortcut',
-            action: () => this.toggleNoShortcut(id),
-          },
-          { separator: true },
-          { label: 'Color Group', children: colorItems },
-          { separator: true },
-          { label: 'Close', action: () => this.closeTab(id) },
-        ]);
-      });
-
+      if (!this._isTabVisible(tab)) continue;
+      const tabEl = this._buildTabEl(id, tab);
       this.tabBar.appendChild(tabEl);
       this._tabElements.set(id, tabEl);
     }
 
-    // Add tab button
     const addBtn = _el('div', 'tab tab-add', '+');
     addBtn.addEventListener('click', () => this.createTab());
     this.tabBar.appendChild(addBtn);
