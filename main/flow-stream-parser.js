@@ -6,31 +6,22 @@ const DIM = '\x1b[2m';
 const ANSI_RE = /\x1b\[[\d;?]*[a-zA-Z~]|\x1b\][^\x07]*\x07|\x1b[()][B012]/g;
 function stripAnsi(str) { return str.replace(ANSI_RE, ''); }
 
-const TOOL_COLORS = {
-  Read: '\x1b[36m',
-  Edit: '\x1b[33m',
-  Write: '\x1b[32m',
-  Bash: '\x1b[35m',
-  Grep: '\x1b[36m',
-  Glob: '\x1b[36m',
-  Agent: '\x1b[34m',
+const TOOL_CONFIG = {
+  Read:  { color: '\x1b[36m', detail: (i) => i.file_path || '' },
+  Edit:  { color: '\x1b[33m', detail: (i) => i.file_path || '' },
+  Write: { color: '\x1b[32m', detail: (i) => i.file_path || '' },
+  Bash:  { color: '\x1b[35m', detail: (i) => (i.command || '').split('\n')[0].slice(0, 120) },
+  Grep:  { color: '\x1b[36m', detail: (i) => `"${i.pattern || ''}"${i.path ? ` in ${i.path}` : ''}` },
+  Glob:  { color: '\x1b[36m', detail: (i) => i.pattern || '' },
+  Agent: { color: '\x1b[34m', detail: () => '' },
 };
 
-function toolDetail(name, input = {}) {
-  switch (name) {
-    case 'Read':  return input.file_path || '';
-    case 'Edit':  return input.file_path || '';
-    case 'Write': return input.file_path || '';
-    case 'Bash':  return (input.command || '').split('\n')[0].slice(0, 120);
-    case 'Grep':  return `"${input.pattern || ''}"${input.path ? ` in ${input.path}` : ''}`;
-    case 'Glob':  return input.pattern || '';
-    default:      return '';
-  }
-}
+const DEFAULT_TOOL_COLOR = '\x1b[36m';
 
 function formatToolUse(block) {
-  const color = TOOL_COLORS[block.name] || '\x1b[36m';
-  const detail = toolDetail(block.name, block.input);
+  const cfg = TOOL_CONFIG[block.name];
+  const color = cfg?.color || DEFAULT_TOOL_COLOR;
+  const detail = cfg?.detail(block.input || {}) ?? '';
   return `\r\n${color}${BOLD}[${block.name}]${RESET} ${DIM}${detail}${RESET}\r\n`;
 }
 
@@ -63,10 +54,13 @@ function formatResult(event) {
   return line;
 }
 
+const EVENT_FORMATTERS = {
+  assistant: (e) => formatAssistant(e.message),
+  result:    (e) => formatResult(e),
+};
+
 function formatEvent(event) {
-  if (event.type === 'assistant') return formatAssistant(event.message);
-  if (event.type === 'result')    return formatResult(event);
-  return '';
+  return EVENT_FORMATTERS[event.type]?.(event) || '';
 }
 
 function createStreamParser() {
