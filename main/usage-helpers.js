@@ -11,6 +11,25 @@ const CACHE_TTL = 30000;
 const TOP_FILES_LIMIT = 15;
 const GIT_TIMEOUT_MS = 5000;
 
+// ===== Collection helpers =====
+
+function _groupBy(items, keyFn) {
+  const groups = {};
+  for (const item of items) {
+    const key = keyFn(item);
+    (groups[key] ||= []).push(item);
+  }
+  return groups;
+}
+
+function _countBy(items, keyFn) {
+  const counts = {};
+  for (const item of items) {
+    counts[keyFn(item)] = (counts[keyFn(item)] || 0) + 1;
+  }
+  return counts;
+}
+
 // ===== Token helpers =====
 
 function newTokenTotals() {
@@ -109,19 +128,14 @@ function aggregateTokenData(labels, projectResults) {
 // ===== Flow helpers =====
 
 function getFlowRuns(flows) {
-  const runs = [];
-  for (const flow of flows) {
-    if (!flow.runs) continue;
-    for (const run of flow.runs) {
-      runs.push({
-        flowId: flow.id,
-        flowName: flow.name,
-        cwd: flow.cwd || os.homedir(),
-        ...run,
-      });
-    }
-  }
-  return runs;
+  return flows.flatMap(flow =>
+    (flow.runs || []).map(run => ({
+      flowId: flow.id,
+      flowName: flow.name,
+      cwd: flow.cwd || os.homedir(),
+      ...run,
+    }))
+  );
 }
 
 function getFlowRunDuration(run) {
@@ -159,19 +173,14 @@ function buildFlowMetrics(flows, flowRuns) {
 // ===== Agent helpers =====
 
 function getByAgent(sessions) {
-  const grouped = {};
-  for (const s of sessions) {
-    const name = s.agent || 'Unknown';
-    if (!grouped[name]) grouped[name] = [];
-    grouped[name].push(s);
-  }
-  return Object.entries(grouped).map(([agent, items]) => ({
-    agent,
-    totalSessions: items.length,
-    successRate: computeRate(items).rate,
-    avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
-    active: items.filter((s) => s.status === 'running').length,
-  }));
+  return Object.entries(_groupBy(sessions, s => s.agent || 'Unknown'))
+    .map(([agent, items]) => ({
+      agent,
+      totalSessions: items.length,
+      successRate: computeRate(items).rate,
+      avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
+      active: items.filter((s) => s.status === 'running').length,
+    }));
 }
 
 function buildAgentMetrics(sessions, activeSessions) {
@@ -198,14 +207,8 @@ function buildFileKey(cwd, filePath) {
 }
 
 function rankModifiedFiles(results, limit = TOP_FILES_LIMIT) {
-  const fileCount = {};
-  for (const { cwd, files } of results) {
-    for (const f of files) {
-      const key = buildFileKey(cwd, f);
-      fileCount[key] = (fileCount[key] || 0) + 1;
-    }
-  }
-  return Object.entries(fileCount)
+  const allFiles = results.flatMap(({ cwd, files }) => files.map(f => buildFileKey(cwd, f)));
+  return Object.entries(_countBy(allFiles, k => k))
     .map(([file, count]) => ({ file, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
