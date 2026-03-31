@@ -6,34 +6,34 @@ const INDICATOR_PAD = 2;
 const MIN_RESIZE_RATIO = 0.1;
 const MAX_RESIZE_RATIO = 0.9;
 
+/** Maps each side to an indicator-rect builder: (rect, pad) → {left, top, width, height}. */
+const SIDE_RECT_BUILDERS = {
+  center: (r, p) => ({ left: r.left + p, top: r.top + p, width: r.width - p * 2, height: r.height - p * 2 }),
+  left:   (r, p) => ({ left: r.left, top: r.top + p, width: r.width / 2, height: r.height - p * 2 }),
+  right:  (r, p) => ({ left: r.left + r.width / 2, top: r.top + p, width: r.width / 2, height: r.height - p * 2 }),
+  top:    (r, p) => ({ left: r.left + p, top: r.top, width: r.width - p * 2, height: r.height / 2 }),
+  bottom: (r, p) => ({ left: r.left + p, top: r.top + r.height / 2, width: r.width - p * 2, height: r.height / 2 }),
+};
+
+/** Maps each direction to a predicate: (candidate, activeCenter) → boolean. */
+const DIRECTION_PREDICATES = {
+  left:  (c, a) => c.cx < a.cx,
+  right: (c, a) => c.cx > a.cx,
+  up:    (c, a) => c.cy < a.cy,
+  down:  (c, a) => c.cy > a.cy,
+};
+
 /** Determine which side of a panel the cursor is closest to. */
 export function detectDropSide(relX, relY) {
-  const distLeft = relX;
-  const distRight = 1 - relX;
-  const distTop = relY;
-  const distBottom = 1 - relY;
-  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-
+  const distances = { left: relX, right: 1 - relX, top: relY, bottom: 1 - relY };
+  const minDist = Math.min(...Object.values(distances));
   if (minDist > EDGE_THRESHOLD) return 'center';
-  if (minDist === distLeft) return 'left';
-  if (minDist === distRight) return 'right';
-  if (minDist === distTop) return 'top';
-  return 'bottom';
+  return Object.keys(distances).find(side => distances[side] === minDist);
 }
 
 /** Compute indicator bounds {left, top, width, height} for a given side. */
 export function computeIndicatorRect(rect, side) {
-  const pad = INDICATOR_PAD;
-  const halfW = rect.width / 2;
-  const halfH = rect.height / 2;
-
-  if (side === 'center') {
-    return { left: rect.left + pad, top: rect.top + pad, width: rect.width - pad * 2, height: rect.height - pad * 2 };
-  }
-  if (side === 'left' || side === 'right') {
-    return { left: rect.left + (side === 'right' ? halfW : 0), top: rect.top + pad, width: halfW, height: rect.height - pad * 2 };
-  }
-  return { left: rect.left + pad, top: rect.top + (side === 'bottom' ? halfH : 0), width: rect.width - pad * 2, height: halfH };
+  return SIDE_RECT_BUILDERS[side](rect, INDICATOR_PAD);
 }
 
 /**
@@ -57,17 +57,12 @@ export function computeResizeRatio(mousePos, startPos, totalSize) {
  * @returns {string|null} id of the closest candidate, or null
  */
 export function findClosestInDirection(activeCenter, candidates, dir) {
+  const inDir = DIRECTION_PREDICATES[dir];
   let bestId = null;
   let bestDist = Infinity;
 
   for (const { id, cx, cy } of candidates) {
-    let inDirection = false;
-    if (dir === 'left' && cx < activeCenter.cx) inDirection = true;
-    if (dir === 'right' && cx > activeCenter.cx) inDirection = true;
-    if (dir === 'up' && cy < activeCenter.cy) inDirection = true;
-    if (dir === 'down' && cy > activeCenter.cy) inDirection = true;
-    if (!inDirection) continue;
-
+    if (!inDir({ cx, cy }, activeCenter)) continue;
     const dist = Math.hypot(cx - activeCenter.cx, cy - activeCenter.cy);
     if (dist < bestDist) {
       bestDist = dist;
