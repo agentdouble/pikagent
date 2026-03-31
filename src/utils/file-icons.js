@@ -1,28 +1,59 @@
 const DEFAULT_ICON = '📄';
 
-const EXT_ICONS = {
-  js: '📄', ts: '📄', jsx: '📄', tsx: '📄',
-  py: '🐍', rb: '💎', go: '🔵', rs: '🦀',
-  html: '🌐', css: '🎨', scss: '🎨', less: '🎨',
-  json: '📋', yaml: '📋', yml: '📋', toml: '📋',
-  md: '📝', txt: '📝',
-  sh: '⚡', zsh: '⚡', bash: '⚡',
-  env: '🔒', lock: '🔒',
-  png: '🖼️', jpg: '🖼️', svg: '🖼️', gif: '🖼️',
-  pdf: '📕',
+/** Unified file-type config: maps each extension to its icon and/or language.
+ *  Single source of truth — add new file types here. */
+const FILE_CONFIG = {
+  // JavaScript / TypeScript
+  js:   { icon: '📄', lang: 'javascript' },
+  ts:   { icon: '📄', lang: 'typescript' },
+  jsx:  { icon: '📄', lang: 'javascript' },
+  tsx:  { icon: '📄', lang: 'typescript' },
+  // Python / Ruby / Go / Rust
+  py:   { icon: '🐍', lang: 'python' },
+  rb:   { icon: '💎', lang: 'ruby' },
+  go:   { icon: '🔵', lang: 'go' },
+  rs:   { icon: '🦀', lang: 'rust' },
+  // Web
+  html: { icon: '🌐', lang: 'xml' },
+  css:  { icon: '🎨', lang: 'css' },
+  scss: { icon: '🎨', lang: 'scss' },
+  less: { icon: '🎨', lang: 'less' },
+  // Data / Config
+  json: { icon: '📋', lang: 'json' },
+  yaml: { icon: '📋', lang: 'yaml' },
+  yml:  { icon: '📋', lang: 'yaml' },
+  toml: { icon: '📋', lang: 'ini' },
+  // Docs
+  md:   { icon: '📝', lang: 'markdown' },
+  txt:  { icon: '📝' },
+  // Shell
+  sh:   { icon: '⚡', lang: 'bash' },
+  zsh:  { icon: '⚡', lang: 'bash' },
+  bash: { icon: '⚡' },
+  // Sensitive
+  env:  { icon: '🔒' },
+  lock: { icon: '🔒' },
+  // Media
+  png:  { icon: '🖼️' },
+  jpg:  { icon: '🖼️' },
+  svg:  { icon: '🖼️' },
+  gif:  { icon: '🖼️' },
+  // Other
+  pdf:  { icon: '📕' },
+  sql:    { lang: 'sql' },
+  java:   { lang: 'java' },
+  c:      { lang: 'c' },
+  cpp:    { lang: 'cpp' },
+  h:      { lang: 'c' },
+  swift:  { lang: 'swift' },
+  kt:     { lang: 'kotlin' },
+  dart:   { lang: 'dart' },
+  xml:    { lang: 'xml' },
+  vue:    { lang: 'xml' },
+  svelte: { lang: 'xml' },
 };
 
-const EXT_LANG = {
-  js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript',
-  py: 'python', rb: 'ruby', go: 'go', rs: 'rust',
-  html: 'xml', css: 'css', scss: 'scss', less: 'less',
-  json: 'json', yaml: 'yaml', yml: 'yaml', toml: 'ini',
-  md: 'markdown', sh: 'bash', zsh: 'bash',
-  sql: 'sql', java: 'java', c: 'c', cpp: 'cpp', h: 'c',
-  swift: 'swift', kt: 'kotlin', dart: 'dart',
-  xml: 'xml', vue: 'xml', svelte: 'xml',
-};
-
+/** Full-filename overrides for files without meaningful extensions. */
 const FILENAME_LANG = {
   dockerfile: 'dockerfile',
   makefile: 'makefile',
@@ -34,10 +65,14 @@ function _getExt(filename) {
 
 export function getFileIcon(name, isDirectory) {
   if (isDirectory) return '📁';
-  return EXT_ICONS[_getExt(name)] || DEFAULT_ICON;
+  const cfg = FILE_CONFIG[_getExt(name)];
+  return (cfg && cfg.icon) || DEFAULT_ICON;
 }
 
 export function detectLanguage(filename) {
   const lower = filename.toLowerCase();
-  return FILENAME_LANG[lower] || EXT_LANG[_getExt(lower)] || 'plaintext';
+  const byName = FILENAME_LANG[lower];
+  if (byName) return byName;
+  const cfg = FILE_CONFIG[_getExt(lower)];
+  return (cfg && cfg.lang) || 'plaintext';
 }
