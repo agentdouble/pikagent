@@ -17,6 +17,13 @@ export const UNIFIED_CHANGE_CONFIG = {
   remove:  { prefix: '-', cssClass: 'diff-row-remove',  showOld: true, showNew: false },
 };
 
+/** Reverse lookup: prefix char → change type, derived from UNIFIED_CHANGE_CONFIG. */
+const PREFIX_TO_TYPE = Object.fromEntries(
+  Object.entries(UNIFIED_CHANGE_CONFIG).map(([type, { prefix }]) => [prefix, type]),
+);
+
+const HEADER_PREFIXES = ['diff --git', '---', '+++', 'index '];
+
 /**
  * Parse a unified diff string into structured hunks.
  */
@@ -27,7 +34,7 @@ export function parseDiff(diffText) {
   const headerLines = [];
 
   for (const line of lines) {
-    if (line.startsWith('diff --git') || line.startsWith('---') || line.startsWith('+++') || line.startsWith('index ')) {
+    if (HEADER_PREFIXES.some(p => line.startsWith(p))) {
       headerLines.push(line);
       continue;
     }
@@ -48,13 +55,8 @@ export function parseDiff(diffText) {
 
     if (!currentHunk) continue;
 
-    if (line.startsWith('+')) {
-      currentHunk.changes.push({ type: 'add', content: line.slice(1) });
-    } else if (line.startsWith('-')) {
-      currentHunk.changes.push({ type: 'remove', content: line.slice(1) });
-    } else if (line.startsWith(' ') || line === '') {
-      currentHunk.changes.push({ type: 'context', content: line.slice(1) });
-    }
+    const type = PREFIX_TO_TYPE[line[0]] ?? (line === '' ? 'context' : null);
+    if (type) currentHunk.changes.push({ type, content: line.slice(1) });
   }
 
   return { headerLines, hunks };
@@ -150,14 +152,11 @@ export function buildSideBySideRows(hunks) {
  * @returns {{ additions: number, deletions: number }}
  */
 export function countDiffStats(hunks) {
-  let additions = 0, deletions = 0;
-  for (const hunk of hunks) {
-    for (const c of hunk.changes) {
-      if (c.type === 'add') additions++;
-      if (c.type === 'remove') deletions++;
-    }
-  }
-  return { additions, deletions };
+  const all = hunks.flatMap(h => h.changes);
+  return {
+    additions: all.filter(c => c.type === 'add').length,
+    deletions: all.filter(c => c.type === 'remove').length,
+  };
 }
 
 function tokenize(str) {
