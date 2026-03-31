@@ -61,6 +61,39 @@ export function parseDiff(diffText) {
 }
 
 /**
+ * Collect a run of consecutive changes of the same type starting at `start`.
+ */
+function _collectRun(changes, start, type) {
+  const items = [];
+  let i = start;
+  while (i < changes.length && changes[i].type === type) items.push(changes[i++]);
+  return { items, end: i };
+}
+
+/**
+ * Pair collected removes with adds into side-by-side change rows.
+ * Returns the built rows and the updated line counters.
+ */
+function _pairChanges(removes, adds, oldLine, newLine) {
+  const rows = [];
+  const maxLen = Math.max(removes.length, adds.length);
+  for (let j = 0; j < maxLen; j++) {
+    const rem = removes[j];
+    const add = adds[j];
+    rows.push({
+      type: 'change',
+      left: rem
+        ? { lineNo: oldLine++, content: rem.content, type: 'remove' }
+        : { content: '', type: 'empty' },
+      right: add
+        ? { lineNo: newLine++, content: add.content, type: 'add' }
+        : { content: '', type: 'empty' },
+    });
+  }
+  return { rows, oldLine, newLine };
+}
+
+/**
  * Build side-by-side rows from parsed hunks.
  * Each row: { left: { lineNo, content, type }, right: { lineNo, content, type } }
  */
@@ -90,31 +123,13 @@ export function buildSideBySideRows(hunks) {
         });
         i++;
       } else if (change.type === 'remove') {
-        const removes = [];
-        while (i < changes.length && changes[i].type === 'remove') {
-          removes.push(changes[i]);
-          i++;
-        }
-        const adds = [];
-        while (i < changes.length && changes[i].type === 'add') {
-          adds.push(changes[i]);
-          i++;
-        }
-
-        const maxLen = Math.max(removes.length, adds.length);
-        for (let j = 0; j < maxLen; j++) {
-          const rem = removes[j];
-          const add = adds[j];
-          rows.push({
-            type: 'change',
-            left: rem
-              ? { lineNo: oldLine++, content: rem.content, type: 'remove' }
-              : { content: '', type: 'empty' },
-            right: add
-              ? { lineNo: newLine++, content: add.content, type: 'add' }
-              : { content: '', type: 'empty' },
-          });
-        }
+        const { items: removes, end: afterRem } = _collectRun(changes, i, 'remove');
+        const { items: adds, end: afterAdd } = _collectRun(changes, afterRem, 'add');
+        i = afterAdd;
+        const paired = _pairChanges(removes, adds, oldLine, newLine);
+        rows.push(...paired.rows);
+        oldLine = paired.oldLine;
+        newLine = paired.newLine;
       } else if (change.type === 'add') {
         rows.push({
           type: 'change',
