@@ -1,5 +1,12 @@
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
 
+// Derive color-group shortcut metadata once from COLOR_GROUPS
+const COLOR_SHORTCUTS = COLOR_GROUPS.map((cg) => ({
+  id: `goToColor_${cg.id}`,
+  label: `Go to ${cg.label} group`,
+  colorId: cg.id,
+}));
+
 // Ordered list of modifier keys for combo string building
 export const MODIFIERS = [
   { key: 'shiftKey', name: 'shift' },
@@ -52,11 +59,7 @@ export const DEFAULT_BINDINGS = [
   { id: 'showWork', label: 'Show Work', keys: ['meta+e', 'control+e'] },
   { id: 'showFlow', label: 'Show Flow', keys: ['shift+meta+f', 'shift+control+f'] },
   // Color group shortcuts (no default keys — user binds them in settings)
-  ...COLOR_GROUPS.map((cg) => ({
-    id: `goToColor_${cg.id}`,
-    label: `Go to ${cg.label} group`,
-    keys: [],
-  })),
+  ...COLOR_SHORTCUTS.map(({ id, label }) => ({ id, label, keys: [] })),
 ];
 
 // Action handlers keyed by id — each receives the tabManager instance
@@ -76,14 +79,14 @@ export const ACTION_HANDLERS = {
   showFlow: (tm) => tm.setSidebarMode('flow'),
   // Color group navigation
   ...Object.fromEntries(
-    COLOR_GROUPS.map((cg) => [`goToColor_${cg.id}`, (tm) => tm.goToColorGroup(cg.id)]),
+    COLOR_SHORTCUTS.map(({ id, colorId }) => [id, (tm) => tm.goToColorGroup(colorId)]),
   ),
 };
 
 export const ALWAYS_ALLOWED_IDS = new Set([
   'nextTab', 'prevTab', 'showBoard', 'showWork', 'showFlow',
   'splitVertical', 'splitHorizontal',
-  ...COLOR_GROUPS.map((cg) => `goToColor_${cg.id}`),
+  ...COLOR_SHORTCUTS.map(({ id }) => id),
 ]);
 
 // ── Pure helpers ──
