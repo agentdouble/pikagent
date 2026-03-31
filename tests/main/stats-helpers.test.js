@@ -11,11 +11,11 @@ describe('stats-helpers', () => {
         { status: 'exited' },
         { status: 'running' },
       ];
-      expect(countByStatus(items)).toEqual({ success: 2, error: 2 });
+      expect(countByStatus(items)).toEqual({ success: 2, error: 2, running: 1 });
     });
 
     it('returns zeros for empty array', () => {
-      expect(countByStatus([])).toEqual({ success: 0, error: 0 });
+      expect(countByStatus([])).toEqual({ success: 0, error: 0, running: 0 });
     });
   });
 

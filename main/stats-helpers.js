@@ -1,16 +1,22 @@
 const DEFAULT_DAYS = 30;
 
-const SUCCESS_STATUSES = new Set(['success', 'completed']);
-const ERROR_STATUSES = new Set(['error', 'exited']);
+const STATUS_CATEGORIES = {
+  success: new Set(['success', 'completed']),
+  error: new Set(['error', 'exited']),
+  running: new Set(['running']),
+};
+
+const STATUS_KEYS = Object.keys(STATUS_CATEGORIES);
 
 function countByStatus(items, field = 'status') {
-  let success = 0;
-  let error = 0;
+  const counts = Object.fromEntries(STATUS_KEYS.map((k) => [k, 0]));
   for (const item of items) {
-    if (SUCCESS_STATUSES.has(item[field])) success++;
-    else if (ERROR_STATUSES.has(item[field])) error++;
+    const val = item[field];
+    for (const key of STATUS_KEYS) {
+      if (STATUS_CATEGORIES[key].has(val)) { counts[key]++; break; }
+    }
   }
-  return { success, error };
+  return counts;
 }
 
 function computeRate(items, statusField = 'status') {
@@ -41,31 +47,22 @@ function dateStr(iso) {
 }
 
 function dayLabels(days = DEFAULT_DAYS) {
-  const result = [];
   const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
+  return Array.from({ length: days }, (_, i) => {
     const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    result.push({
+    d.setDate(d.getDate() - (days - 1 - i));
+    return {
       date: d.toISOString().slice(0, 10),
       label: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-    });
-  }
-  return result;
+    };
+  });
 }
 
 function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
   const labels = dayLabels(days);
   return labels.map((day) => {
     const dayItems = items.filter((r) => dateExtractor(r) === day.date);
-    const { success, error } = countByStatus(dayItems);
-    return {
-      ...day,
-      total: dayItems.length,
-      success,
-      error,
-      running: dayItems.filter((r) => r.status === 'running').length,
-    };
+    return { ...day, total: dayItems.length, ...countByStatus(dayItems) };
   });
 }
 
