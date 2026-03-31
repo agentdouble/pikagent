@@ -1,9 +1,16 @@
 // ── Layout constants ──
 export const DRAG_THRESHOLD = 5;
 export const PANEL_MIN_WIDTH = 150;
-export const LEFT_MAX_WIDTH = 500;
-export const RIGHT_MAX_WIDTH = 1400;
 export const FIT_DELAY_MS = 200;
+
+// ── Side panel configuration (single source of truth for side-specific limits & arrows) ──
+export const SIDE_CONFIG = {
+  left:  { maxWidth: 500,  arrows: { collapsed: '\u2192', expanded: '\u2190' } },
+  right: { maxWidth: 1400, arrows: { collapsed: '\u2190', expanded: '\u2192' } },
+};
+
+export const LEFT_MAX_WIDTH = SIDE_CONFIG.left.maxWidth;
+export const RIGHT_MAX_WIDTH = SIDE_CONFIG.right.maxWidth;
 
 // ── Activity bar buttons ──
 export const ACTIVITY_BUTTONS = [
@@ -45,22 +52,15 @@ export class WorkspaceTab {
 
 /** Clamp a panel width between min and side-specific max. */
 export function clampPanelWidth(newWidth, side) {
-  const max = side === 'right' ? RIGHT_MAX_WIDTH : LEFT_MAX_WIDTH;
-  return Math.max(PANEL_MIN_WIDTH, Math.min(max, newWidth));
+  return Math.max(PANEL_MIN_WIDTH, Math.min(SIDE_CONFIG[side].maxWidth, newWidth));
 }
 
 /** Return arrow text and title for a collapsible panel. */
 export function panelArrowState(side, isCollapsed) {
-  if (side === 'left') {
-    return {
-      text: isCollapsed ? '\u2192' : '\u2190',
-      title: isCollapsed ? 'Expand left panel' : 'Collapse left panel',
-    };
-  }
-  return {
-    text: isCollapsed ? '\u2190' : '\u2192',
-    title: isCollapsed ? 'Expand right panel' : 'Collapse right panel',
-  };
+  const { arrows } = SIDE_CONFIG[side];
+  const state = isCollapsed ? 'collapsed' : 'expanded';
+  const action = isCollapsed ? 'Expand' : 'Collapse';
+  return { text: arrows[state], title: `${action} ${side} panel` };
 }
 
 /** Reorder map entries: move `fromId` next to `toId` (before or after). Returns new entries array. */
