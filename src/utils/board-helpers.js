@@ -17,6 +17,9 @@ export const STATUS_CONFIG = {
   waiting: { label: 'Waiting', cardClass: 'board-card-waiting', badgeClass: 'board-card-status board-status-waiting' },
 };
 
+/** All card-level CSS classes derived from STATUS_CONFIG — single source of truth for class removal. */
+export const ALL_CARD_CLASSES = Object.values(STATUS_CONFIG).map(c => c.cardClass);
+
 export const EVT_CREATED = 'terminal:created';
 export const EVT_REMOVED = 'terminal:removed';
 export const EVT_EXITED = 'terminal:exited';
@@ -79,6 +82,9 @@ export function getTabNameForTerminal(tabs, termId) {
   return findTabForTerminal(tabs, termId)?.tab.name ?? null;
 }
 
+/** Direction → step delta for focus navigation. */
+const DIRECTION_DELTAS = { left: -1, up: -1, right: 1, down: 1 };
+
 /**
  * Compute the next focus index given direction and card count, with wrap-around.
  * @param {number} currentIndex - current focused index (-1 if none)
@@ -88,8 +94,6 @@ export function getTabNameForTerminal(tabs, termId) {
  */
 export function computeFocusIndex(currentIndex, direction, count) {
   if (currentIndex === -1) return 0;
-  if (direction === 'left' || direction === 'up') {
-    return (currentIndex - 1 + count) % count;
-  }
-  return (currentIndex + 1) % count;
+  const delta = DIRECTION_DELTAS[direction] ?? 1;
+  return (currentIndex + delta + count) % count;
 }

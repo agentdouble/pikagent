@@ -5,7 +5,7 @@ import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
-  STATUS_CONFIG, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
+  STATUS_CONFIG, ALL_CARD_CLASSES, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
   BOARD_TERMINAL_OPTS, HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
   formatCardLabel,
@@ -79,7 +79,7 @@ export class BoardView {
     const { element } = data;
     const badge = element.querySelector('.board-card-status');
 
-    element.classList.remove(STATUS_CONFIG.running.cardClass, STATUS_CONFIG.waiting.cardClass);
+    element.classList.remove(...ALL_CARD_CLASSES);
     element.classList.add(cfg.cardClass);
 
     if (badge) {
