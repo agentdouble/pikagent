@@ -2,9 +2,24 @@ const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, dateStr, DEFAULT_DAYS } = require('./stats-helpers');
 
+// ===== Declarative configs =====
+
+/** Single source of truth for token field mapping: internal key ↔ API field name. */
+const TOKEN_FIELD_MAP = [
+  { key: 'input',       apiField: 'input_tokens',                perDay: true },
+  { key: 'output',      apiField: 'output_tokens',               perDay: true },
+  { key: 'cacheRead',   apiField: 'cache_read_input_tokens'                   },
+  { key: 'cacheCreate', apiField: 'cache_creation_input_tokens'               },
+];
+
+/** All token keys, derived from TOKEN_FIELD_MAP. */
+const TOKEN_KEYS = TOKEN_FIELD_MAP.map(f => f.key);
+
+/** Token keys tracked per-day, derived from TOKEN_FIELD_MAP. */
+const PERDAY_KEYS = TOKEN_FIELD_MAP.filter(f => f.perDay).map(f => f.key);
+
 // ===== Constants =====
 
-const TOKEN_KEYS = ['input', 'output', 'cacheRead', 'cacheCreate'];
 const MAX_RUN_DURATION_MS = 24 * 60 * 60 * 1000;
 const TOP_PROJECTS_LIMIT = 10;
 const CACHE_TTL = 30000;
@@ -33,7 +48,11 @@ function _countBy(items, keyFn) {
 // ===== Token helpers =====
 
 function newTokenTotals() {
-  return { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
+  return Object.fromEntries(TOKEN_FIELD_MAP.map(f => [f.key, 0]));
+}
+
+function newPerDayTotals() {
+  return Object.fromEntries(PERDAY_KEYS.map(k => [k, 0]));
 }
 
 function addTokens(target, source) {
@@ -65,10 +84,7 @@ function parseTokenUsage(line, cutoffMs) {
   }
 
   return {
-    input: u.input_tokens || 0,
-    output: u.output_tokens || 0,
-    cacheRead: u.cache_read_input_tokens || 0,
-    cacheCreate: u.cache_creation_input_tokens || 0,
+    ...Object.fromEntries(TOKEN_FIELD_MAP.map(f => [f.key, u[f.apiField] || 0])),
     dateKey,
   };
 }
@@ -80,7 +96,7 @@ function projectShortName(proj) {
 
 function aggregateTokenData(labels, projectResults) {
   const globalPerDay = {};
-  for (const day of labels) globalPerDay[day.date] = { input: 0, output: 0 };
+  for (const day of labels) globalPerDay[day.date] = newPerDayTotals();
 
   const totals = newTokenTotals();
   const perProjectMap = {};
@@ -90,23 +106,23 @@ function aggregateTokenData(labels, projectResults) {
 
     for (const [dateKey, dayData] of Object.entries(perDayMap)) {
       if (globalPerDay[dateKey]) {
-        globalPerDay[dateKey].input += dayData.input;
-        globalPerDay[dateKey].output += dayData.output;
+        for (const k of PERDAY_KEYS) globalPerDay[dateKey][k] += dayData[k];
       }
     }
 
-    if (pt.input + pt.output > 0) {
+    const perDayTotal = PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
+    if (perDayTotal > 0) {
       perProjectMap[projectShortName(proj)] = {
-        input: pt.input,
-        output: pt.output,
-        total: pt.input + pt.output,
+        ...Object.fromEntries(PERDAY_KEYS.map(k => [k, pt[k]])),
+        total: perDayTotal,
       };
     }
   }
 
   const tokenPerDay = labels.map((day) => {
     const g = globalPerDay[day.date];
-    return { ...day, input: g.input, output: g.output, total: g.input + g.output };
+    const total = PERDAY_KEYS.reduce((sum, k) => sum + g[k], 0);
+    return { ...day, ...g, total };
   });
 
   const perProject = Object.entries(perProjectMap)
@@ -197,9 +213,8 @@ function buildAgentMetrics(sessions, activeSessions) {
 
 function accumulatePerDay(perDayMap, usage) {
   if (!usage.dateKey) return;
-  if (!perDayMap[usage.dateKey]) perDayMap[usage.dateKey] = { input: 0, output: 0 };
-  perDayMap[usage.dateKey].input += usage.input;
-  perDayMap[usage.dateKey].output += usage.output;
+  if (!perDayMap[usage.dateKey]) perDayMap[usage.dateKey] = newPerDayTotals();
+  for (const k of PERDAY_KEYS) perDayMap[usage.dateKey][k] += usage[k];
 }
 
 function buildFileKey(cwd, filePath) {
@@ -222,7 +237,9 @@ function collectUniqueCwds(flowRuns, sessions) {
 }
 
 module.exports = {
+  TOKEN_FIELD_MAP,
   TOKEN_KEYS,
+  PERDAY_KEYS,
   MAX_RUN_DURATION_MS,
   TOP_PROJECTS_LIMIT,
   CACHE_TTL,
