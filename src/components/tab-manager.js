@@ -11,10 +11,38 @@ import { ConfigManager } from './config-manager.js';
 import { _el } from '../utils/dom.js';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
-  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, WorkspaceTab,
+  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, TAB_DISPOSABLES, WorkspaceTab,
   clampPanelWidth, panelArrowState, reorderEntries,
   findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
+
+/**
+ * Declarative map for sidebar view rendering — single source of truth for
+ * ViewClass, constructor args, and post-reattach behavior per sidebar mode.
+ * Lives here (not in helpers) because it references DOM component classes.
+ */
+const SIDE_VIEW_RENDERERS = {
+  board: {
+    ViewClass: BoardView,
+    ctorArgs: (self) => [self],
+    onReattach: (self) => {
+      for (const [, card] of self.boardView.cards) {
+        try { card.fitAddon.fit(); } catch {}
+      }
+      self.boardView.resume();
+    },
+  },
+  flow: {
+    ViewClass: FlowView,
+    ctorArgs: (self) => [self],
+    onReattach: (self) => self.flowView.refresh(),
+  },
+  usage: {
+    ViewClass: UsageView,
+    ctorArgs: () => [],
+    onReattach: (self) => self.usageView.refresh(),
+  },
+};
 
 export { COLOR_GROUPS };
 
@@ -221,19 +249,12 @@ export class TabManager {
     this._detachSidebarView(this.sidebarMode);
     this.sidebarMode = mode;
 
-    if (mode === 'board') {
-      this.renderBoard();
-    } else if (mode === 'flow') {
-      this.renderFlow();
-    } else if (mode === 'usage') {
-      this.renderUsage();
+    if (SIDE_VIEWS[mode]) {
+      this._activateSideView(mode);
     } else {
       const tab = this._activeTab();
-      if (tab?.layoutElement) {
-        this._reattachLayout(tab);
-      } else if (tab) {
-        this.renderWorkspace(tab);
-      }
+      if (tab?.layoutElement) this._reattachLayout(tab);
+      else if (tab) this.renderWorkspace(tab);
     }
 
     this.renderActivityBar();
@@ -262,29 +283,16 @@ export class TabManager {
     for (const mode of Object.keys(SIDE_VIEWS)) this._disposeSideView(mode);
   }
 
-  renderBoard() {
-    if (this._renderSideView('boardView', '_boardContainerEl', BoardView, this)) {
-      for (const [, card] of this.boardView.cards) {
-        try { card.fitAddon.fit(); } catch {}
-      }
-      this.boardView.resume();
-    }
-  }
-
-  // ===== Flow =====
-
-  renderFlow() {
-    if (this._renderSideView('flowView', '_flowContainerEl', FlowView, this)) {
-      this.flowView.refresh();
-    }
-  }
-
-  // ===== Usage =====
-
-  renderUsage() {
-    if (this._renderSideView('usageView', '_usageContainerEl', UsageView)) {
-      this.usageView.refresh();
-    }
+  /** Activate a side view by mode using SIDE_VIEW_RENDERERS config. */
+  _activateSideView(mode) {
+    const sideView = SIDE_VIEWS[mode];
+    const renderer = SIDE_VIEW_RENDERERS[mode];
+    if (!sideView || !renderer) return;
+    const reattached = this._renderSideView(
+      sideView.viewKey, sideView.containerKey,
+      renderer.ViewClass, ...renderer.ctorArgs(this),
+    );
+    if (reattached) renderer.onReattach(this);
   }
 
   // ===== Auto Save (delegated to ConfigManager) =====
@@ -330,11 +338,7 @@ export class TabManager {
     });
     if (!ok) return;
 
-    // Dispose terminal panel (kills PTY processes)
-    if (tab.terminalPanel) tab.terminalPanel.dispose();
-    if (tab.fileViewer) tab.fileViewer.dispose();
-    if (tab.fileTree) tab.fileTree.dispose();
-    if (tab.layoutElement) tab.layoutElement.remove();
+    this._disposeTab(tab);
     this.tabs.delete(id);
 
     if (this.tabs.size === 0) {
@@ -966,12 +970,14 @@ export class TabManager {
     return { tabs, activeTabIndex };
   }
 
+  _disposeTab(tab) {
+    for (const key of TAB_DISPOSABLES) if (tab[key]) tab[key].dispose();
+    if (tab.layoutElement) tab.layoutElement.remove();
+  }
+
   _disposeAllTabs() {
     for (const [id, tab] of [...this.tabs]) {
-      if (tab.terminalPanel) tab.terminalPanel.dispose();
-      if (tab.fileViewer) tab.fileViewer.dispose();
-      if (tab.fileTree) tab.fileTree.dispose();
-      if (tab.layoutElement) tab.layoutElement.remove();
+      this._disposeTab(tab);
       this.tabs.delete(id);
     }
     this.activeTabId = null;

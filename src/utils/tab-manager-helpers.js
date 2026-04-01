@@ -30,6 +30,10 @@ export const COLOR_GROUPS = [
   { id: 'orange', label: 'Orange', color: '#ffa94d' },
 ];
 
+// ── Tab disposal ──
+/** Disposable component keys on a WorkspaceTab — drives generic _disposeTab. */
+export const TAB_DISPOSABLES = ['terminalPanel', 'fileViewer', 'fileTree'];
+
 // ── Pure data model ──
 export class WorkspaceTab {
   constructor(id, name, cwd) {
