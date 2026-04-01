@@ -92,51 +92,30 @@ export class TabManager {
       this.createTab('Workspace 1');
     }
 
-    // Listen for cwd changes from any terminal (find owning tab)
-    this._busListeners = [];
-
-    const onCwdChanged = ({ id, cwd }) => {
-      this._onTerminalCwdChanged(id, cwd);
-      this.configManager.scheduleAutoSave();
-    };
-
-    const onCreated = ({ id, cwd }) => {
-      const tab = this._findTabForTerminal(id) || this.tabs.get(this.activeTabId);
-      if (tab && tab.fileTree) {
-        tab.fileTree.setTerminalRoot(id, cwd);
-      }
-      this.configManager.scheduleAutoSave();
-    };
-
-    const onRemoved = ({ id }) => {
-      for (const [, tab] of this.tabs) {
-        if (tab.fileTree) tab.fileTree.removeTerminal(id);
-      }
-      this.configManager.scheduleAutoSave();
-    };
-
-    const onLayoutChanged = () => {
-      this.configManager.scheduleAutoSave();
-    };
-
-    const onOpenFromFolder = ({ cwd }) => {
-      const folderName = cwd.split('/').filter(Boolean).pop() || '/';
-      this.createTab(folderName, cwd);
-    };
-
-    bus.on('terminal:cwdChanged', onCwdChanged);
-    bus.on('terminal:created', onCreated);
-    bus.on('terminal:removed', onRemoved);
-    bus.on('layout:changed', onLayoutChanged);
-    bus.on('workspace:openFromFolder', onOpenFromFolder);
-
-    this._busListeners.push(
-      ['terminal:cwdChanged', onCwdChanged],
-      ['terminal:created', onCreated],
-      ['terminal:removed', onRemoved],
-      ['layout:changed', onLayoutChanged],
-      ['workspace:openFromFolder', onOpenFromFolder],
-    );
+    // Bus event listeners — single declaration drives both registration and cleanup
+    this._busListeners = [
+      ['terminal:cwdChanged', ({ id, cwd }) => {
+        this._onTerminalCwdChanged(id, cwd);
+        this.configManager.scheduleAutoSave();
+      }],
+      ['terminal:created', ({ id, cwd }) => {
+        const tab = this._findTabForTerminal(id) || this.tabs.get(this.activeTabId);
+        if (tab?.fileTree) tab.fileTree.setTerminalRoot(id, cwd);
+        this.configManager.scheduleAutoSave();
+      }],
+      ['terminal:removed', ({ id }) => {
+        for (const [, tab] of this.tabs) {
+          if (tab.fileTree) tab.fileTree.removeTerminal(id);
+        }
+        this.configManager.scheduleAutoSave();
+      }],
+      ['layout:changed', () => this.configManager.scheduleAutoSave()],
+      ['workspace:openFromFolder', ({ cwd }) => {
+        const folderName = cwd.split('/').filter(Boolean).pop() || '/';
+        this.createTab(folderName, cwd);
+      }],
+    ];
+    for (const [event, handler] of this._busListeners) bus.on(event, handler);
   }
 
   // Find which tab owns a terminal
@@ -420,38 +399,15 @@ export class TabManager {
     this.excludedColors.clear();
     this.activeColorFilter = this.activeColorFilter === colorGroupId ? null : colorGroupId;
     this.renderTabBar();
-    // If active tab is hidden by filter, switch to first visible tab
-    if (this.activeColorFilter) {
-      const active = this._activeTab();
-      if (!active || active.colorGroup !== this.activeColorFilter) {
-        for (const [id, tab] of this.tabs) {
-          if (tab.colorGroup === this.activeColorFilter) {
-            this.switchTo(id);
-            return;
-          }
-        }
-      }
-    }
+    this._ensureVisibleTabActive();
   }
 
   toggleExcludeColor(colorGroupId) {
     this.activeColorFilter = null;
-    if (this.excludedColors.has(colorGroupId)) {
-      this.excludedColors.delete(colorGroupId);
-    } else {
-      this.excludedColors.add(colorGroupId);
-    }
+    if (this.excludedColors.has(colorGroupId)) this.excludedColors.delete(colorGroupId);
+    else this.excludedColors.add(colorGroupId);
     this.renderTabBar();
-    // If active tab is now excluded, switch to first visible
-    const active = this._activeTab();
-    if (active && this.excludedColors.has(active.colorGroup)) {
-      for (const [id, tab] of this.tabs) {
-        if (!this.excludedColors.has(tab.colorGroup)) {
-          this.switchTo(id);
-          return;
-        }
-      }
-    }
+    this._ensureVisibleTabActive();
   }
 
   _buildColorFilters() {
@@ -496,6 +452,15 @@ export class TabManager {
     if (this.activeColorFilter && tab.colorGroup !== this.activeColorFilter) return false;
     if (this.excludedColors.has(tab.colorGroup)) return false;
     return true;
+  }
+
+  /** If the active tab is hidden by current filters, switch to the first visible tab. */
+  _ensureVisibleTabActive() {
+    const active = this._activeTab();
+    if (active && this._isTabVisible(active)) return;
+    for (const [id, tab] of this.tabs) {
+      if (this._isTabVisible(tab)) { this.switchTo(id); return; }
+    }
   }
 
   _buildTabEl(id, tab) {
