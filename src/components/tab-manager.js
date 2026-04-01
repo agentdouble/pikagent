@@ -11,7 +11,7 @@ import { ConfigManager } from './config-manager.js';
 import { _el } from '../utils/dom.js';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
-  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, TAB_DISPOSABLES, WorkspaceTab,
+  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, TAB_DISPOSABLES, WORKSPACE_PANELS, WorkspaceTab,
   clampPanelWidth, panelArrowState, reorderEntries,
   findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
@@ -404,16 +404,12 @@ export class TabManager {
 
   _capturePanelWidths(tab) {
     if (!tab.layoutElement) return;
-    const left = tab.layoutElement.querySelector('.panel-left');
-    const right = tab.layoutElement.querySelector('.panel-right');
     tab._panelWidths = {};
-    if (left) {
-      tab._panelWidths.leftWidth = left.getBoundingClientRect().width;
-      tab._panelWidths.leftCollapsed = left.classList.contains('collapsed');
-    }
-    if (right) {
-      tab._panelWidths.rightWidth = right.getBoundingClientRect().width;
-      tab._panelWidths.rightCollapsed = right.classList.contains('collapsed');
+    for (const { side, widthKey, collapsedKey } of WORKSPACE_PANELS) {
+      const el = tab.layoutElement.querySelector(`.panel-${side}`);
+      if (!el) continue;
+      tab._panelWidths[widthKey] = el.getBoundingClientRect().width;
+      tab._panelWidths[collapsedKey] = el.classList.contains('collapsed');
     }
   }
 
@@ -741,25 +737,18 @@ export class TabManager {
 
   // ===== Workspace Rendering (called only once per tab) =====
 
-  _buildLeftPanel() {
-    const panel = _el('div', 'panel panel-left');
-    const header = _el('div', 'panel-header');
-    header.appendChild(_el('span', 'panel-title', 'Explorer'));
-    panel.appendChild(header);
-    const treeContainer = _el('div', 'file-tree');
-    panel.appendChild(treeContainer);
+  _buildSidePanel({ side, contentCls, title }) {
+    const panel = _el('div', `panel panel-${side}`);
+    if (title) {
+      const header = _el('div', 'panel-header');
+      header.appendChild(_el('span', 'panel-title', title));
+      panel.appendChild(header);
+    }
+    const content = _el('div', contentCls);
+    panel.appendChild(content);
     const handle = _el('div', 'panel-resize-handle');
-    this.setupPanelResize(handle, panel, 'left');
-    return { panel, handle, treeContainer };
-  }
-
-  _buildRightPanel() {
-    const panel = _el('div', 'panel panel-right');
-    const viewerContainer = _el('div', 'file-viewer');
-    panel.appendChild(viewerContainer);
-    const handle = _el('div', 'panel-resize-handle');
-    this.setupPanelResize(handle, panel, 'right');
-    return { panel, handle, viewerContainer };
+    this.setupPanelResize(handle, panel, side);
+    return { panel, handle, content };
   }
 
   _buildCenterPanel(tab, leftPanel, rightPanel) {
@@ -793,18 +782,17 @@ export class TabManager {
     return { panel, termContainer };
   }
 
-  _restorePanelSizes(panels, leftPanel, rightPanel) {
+  _restorePanelSizes(panels, panelEls) {
     if (!panels) return;
-    if (panels.leftWidth && !panels.leftCollapsed) {
-      leftPanel.style.width = `${panels.leftWidth}px`;
-      leftPanel.style.flex = 'none';
+    for (const { widthKey, collapsedKey, side } of WORKSPACE_PANELS) {
+      const el = panelEls[side];
+      if (!el) continue;
+      if (panels[widthKey] && !panels[collapsedKey]) {
+        el.style.width = `${panels[widthKey]}px`;
+        el.style.flex = 'none';
+      }
+      if (panels[collapsedKey]) el.classList.add('collapsed');
     }
-    if (panels.leftCollapsed) leftPanel.classList.add('collapsed');
-    if (panels.rightWidth && !panels.rightCollapsed) {
-      rightPanel.style.width = `${panels.rightWidth}px`;
-      rightPanel.style.flex = 'none';
-    }
-    if (panels.rightCollapsed) rightPanel.classList.add('collapsed');
   }
 
   async renderWorkspace(tab) {
@@ -812,21 +800,29 @@ export class TabManager {
 
     const layout = _el('div', 'workspace-layout');
 
-    const { panel: leftPanel, handle: leftHandle, treeContainer } = this._buildLeftPanel();
-    const { panel: rightPanel, handle: rightHandle, viewerContainer } = this._buildRightPanel();
-    const { panel: centerPanel, termContainer } = this._buildCenterPanel(tab, leftPanel, rightPanel);
+    // Build side panels from declarative config
+    const sides = {};
+    for (const def of WORKSPACE_PANELS) {
+      sides[def.side] = this._buildSidePanel(def);
+    }
 
-    layout.append(leftPanel, leftHandle, centerPanel, rightHandle, rightPanel);
+    const { panel: centerPanel, termContainer } = this._buildCenterPanel(tab, sides.left.panel, sides.right.panel);
+
+    layout.append(
+      sides.left.panel, sides.left.handle,
+      centerPanel,
+      sides.right.handle, sides.right.panel,
+    );
     this.workspaceContainer.appendChild(layout);
 
     tab.layoutElement = layout;
-    tab.fileTree = new FileTree(treeContainer);
-    tab.fileViewer = new FileViewer(viewerContainer, () => tab.id === this.activeTabId);
+    tab.fileTree = new FileTree(sides.left.content);
+    tab.fileViewer = new FileViewer(sides.right.content, () => tab.id === this.activeTabId);
 
     if (tab._restoreData?.splitTree) {
       tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
       tab.terminalPanel.restoreFromTree(tab._restoreData.splitTree);
-      this._restorePanelSizes(tab._restoreData.panels, leftPanel, rightPanel);
+      this._restorePanelSizes(tab._restoreData.panels, { left: sides.left.panel, right: sides.right.panel });
       this._syncFileTree(tab);
       if (tab._restoreData.webviewTabs && tab.fileViewer) {
         tab.fileViewer.setWebviewTabs(tab._restoreData.webviewTabs);

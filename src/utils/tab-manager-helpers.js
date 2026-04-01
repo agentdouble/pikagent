@@ -9,6 +9,16 @@ export const SIDE_CONFIG = {
   right: { maxWidth: 1400, arrows: { collapsed: '\u2190', expanded: '\u2192' } },
 };
 
+/**
+ * Workspace side-panel definitions — single source of truth for panel structure,
+ * content class, optional header title, and serialization keys.
+ * Drives _buildSidePanel, _capturePanelWidths, and _restorePanelSizes in tab-manager.
+ */
+export const WORKSPACE_PANELS = [
+  { side: 'left',  contentCls: 'file-tree',   title: 'Explorer', widthKey: 'leftWidth',  collapsedKey: 'leftCollapsed' },
+  { side: 'right', contentCls: 'file-viewer',                    widthKey: 'rightWidth', collapsedKey: 'rightCollapsed' },
+];
+
 export const LEFT_MAX_WIDTH = SIDE_CONFIG.left.maxWidth;
 export const RIGHT_MAX_WIDTH = SIDE_CONFIG.right.maxWidth;
 
