@@ -1,5 +1,6 @@
 import { bus } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
+import { trackMouse } from '../utils/drag-helpers.js';
 import { TerminalInstance } from '../utils/terminal-instance.js';
 import { DRAG_GRIP, SplitNode, RESIZE_CURSOR, DIRECTION_PROPS } from '../utils/terminal-panel-helpers.js';
 import {
@@ -93,30 +94,6 @@ export class TerminalPanel {
     return topBar;
   }
 
-  /**
-   * Start a mouse-drag session: set cursor, throttle moves via RAF, clean up on mouseup.
-   */
-  _trackMouse(cursor, onMove, onDone) {
-    let rafPending = false;
-    const move = (e) => {
-      if (rafPending) return;
-      rafPending = true;
-      requestAnimationFrame(() => { rafPending = false; onMove(e); });
-    };
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.body.classList.remove('resizing');
-      onDone();
-    };
-    document.body.style.cursor = cursor;
-    document.body.style.userSelect = 'none';
-    document.body.classList.add('resizing');
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-  }
 
   /** Return the two panels adjacent to a split-handle: [before, after]. */
   _adjacentPanels(handle, splitEl) {
@@ -217,7 +194,7 @@ export class TerminalPanel {
       sourceNode.element.classList.add('dragging');
       this._createDropIndicator();
 
-      this._trackMouse('grabbing',
+      trackMouse('grabbing',
         (ev) => this._updateDropTarget(ev.clientX, ev.clientY),
         () => {
           sourceNode.element.classList.remove('dragging');
@@ -467,7 +444,7 @@ export class TerminalPanel {
   setupResizeHandle(handle, splitEl, direction) {
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      this._trackMouse(RESIZE_CURSOR[direction],
+      trackMouse(RESIZE_CURSOR[direction],
         (ev) => this._doResize(ev, handle, splitEl, direction),
         () => bus.emit('layout:changed'),
       );

@@ -1,4 +1,5 @@
 import { _el } from '../utils/dom.js';
+import { trackMouse } from '../utils/drag-helpers.js';
 import {
   MAX_LOGS,
   WEBVIEW_NAV_ACTIONS,
@@ -178,27 +179,14 @@ export class WebviewInstance {
     let startY = 0;
     let startHeight = 0;
 
-    const onMove = (e) => {
-      this._consolePanel.style.height = `${clampConsoleHeight(startHeight, startY - e.clientY)}px`;
-    };
-
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.body.classList.remove('resizing');
-    };
-
     this._consoleHandle.addEventListener('mousedown', (e) => {
       e.preventDefault();
       startY = e.clientY;
       startHeight = this._consolePanel.getBoundingClientRect().height;
-      document.body.style.cursor = 'row-resize';
-      document.body.style.userSelect = 'none';
-      document.body.classList.add('resizing');
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
+      trackMouse('row-resize',
+        (ev) => { this._consolePanel.style.height = `${clampConsoleHeight(startHeight, startY - ev.clientY)}px`; },
+        () => {},
+      );
     });
   }
 

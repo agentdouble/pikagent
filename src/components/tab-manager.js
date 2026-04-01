@@ -9,6 +9,7 @@ import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
 import { _el } from '../utils/dom.js';
+import { trackMouse } from '../utils/drag-helpers.js';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
   ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, TAB_DISPOSABLES, WORKSPACE_PANELS, WorkspaceTab,
@@ -861,39 +862,21 @@ export class TabManager {
   setupPanelResize(handle, panel, side) {
     let startX = 0;
     let startWidth = 0;
-    let rafPending = false;
-
-    const onMouseMove = (e) => {
-      if (rafPending) return;
-      rafPending = true;
-      requestAnimationFrame(() => {
-        rafPending = false;
-        const dx = e.clientX - startX;
-        const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-        panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
-        panel.style.flex = 'none';
-        this._activeTab()?.terminalPanel?.fitAll();
-      });
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.body.classList.remove('resizing');
-      this.configManager.scheduleAutoSave();
-    };
 
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
       startX = e.clientX;
       startWidth = panel.getBoundingClientRect().width;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      document.body.classList.add('resizing');
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      trackMouse('col-resize',
+        (ev) => {
+          const dx = ev.clientX - startX;
+          const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
+          panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
+          panel.style.flex = 'none';
+          this._activeTab()?.terminalPanel?.fitAll();
+        },
+        () => this.configManager.scheduleAutoSave(),
+      );
     });
   }
 
