@@ -1,6 +1,6 @@
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
-import { _el } from '../utils/dom.js';
+import { _el, setupInlineInput } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, INPUT_BLUR_DELAY, WATCH_PREFIX,
@@ -221,31 +221,6 @@ export class FileTree {
     ]);
   }
 
-  // --- Inline input helper ---
-
-  _setupInlineInput(input, { onCommit, onCancel }) {
-    let committed = false;
-    const commit = () => {
-      if (committed) return;
-      committed = true;
-      onCommit(input.value.trim());
-    };
-    const cancel = () => {
-      committed = true;
-      if (onCancel) onCancel();
-      else input.remove();
-    };
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); }
-      if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
-    });
-    input.addEventListener('blur', () => {
-      setTimeout(() => { if (!committed) commit(); }, INPUT_BLUR_DELAY);
-    });
-    input.addEventListener('click', (e) => e.stopPropagation());
-  }
-
   // --- Rename inline input ---
 
   promptRename(entryPath, nameEl) {
@@ -258,7 +233,8 @@ export class FileTree {
     const dotIndex = oldName.lastIndexOf('.');
     input.setSelectionRange(0, dotIndex > 0 ? dotIndex : oldName.length);
 
-    this._setupInlineInput(input, {
+    setupInlineInput(input, {
+      blurDelay: INPUT_BLUR_DELAY,
       onCommit: async (newName) => {
         input.remove();
         nameEl.style.display = '';
@@ -285,7 +261,8 @@ export class FileTree {
     parentContentEl.prepend(input);
     input.focus();
 
-    this._setupInlineInput(input, {
+    setupInlineInput(input, {
+      blurDelay: INPUT_BLUR_DELAY,
       onCommit: async (name) => {
         input.remove();
         if (!name) return;

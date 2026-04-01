@@ -1,6 +1,6 @@
 import { openFlowModal } from './flow-modal.js';
 import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedule-helpers.js';
-import { _el, _safeFit, showPromptDialog } from '../utils/dom.js';
+import { _el, _safeFit, showPromptDialog, setupInlineInput } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 import { generateId } from '../utils/id.js';
 import {
@@ -468,22 +468,19 @@ export class FlowView {
       value: cat.name,
     });
 
-    const parent = nameEl.parentNode;
-    parent.replaceChild(input, nameEl);
+    nameEl.parentNode.replaceChild(input, nameEl);
     input.focus();
     input.select();
 
-    const commit = async () => {
-      const newName = input.value.trim();
-      if (newName) cat.name = newName;
+    const finish = async (newName) => {
+      if (newName && newName !== cat.name) cat.name = newName;
       await this._persistCategories();
       this._renderList();
     };
 
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-      if (e.key === 'Escape') { input.value = cat.name; input.blur(); }
+    setupInlineInput(input, {
+      onCommit: finish,
+      onCancel: () => finish(null),
     });
   }
 

@@ -30,6 +30,36 @@ export function _el(tag, attrsOrClass, ...children) {
   return el;
 }
 
+/**
+ * Wire up Enter / Escape / blur / click on an inline <input>.
+ * Guarantees onCommit fires at most once.
+ * @param {HTMLInputElement} input
+ * @param {{ onCommit: (value: string) => void, onCancel?: () => void, blurDelay?: number }} opts
+ */
+export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    onCommit(input.value.trim());
+  };
+  const cancel = () => {
+    committed = true;
+    if (onCancel) onCancel();
+    else input.remove();
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); }
+    if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
+  });
+  input.addEventListener('blur', () => {
+    if (blurDelay > 0) setTimeout(() => { if (!committed) commit(); }, blurDelay);
+    else if (!committed) commit();
+  });
+  input.addEventListener('click', (e) => e.stopPropagation());
+}
+
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
   try { fitAddon.fit(); } catch {}
