@@ -5,7 +5,13 @@ import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
 import { generateId } from '../utils/id.js';
 import { _el } from '../utils/dom.js';
-import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, pinnedFiles } from '../utils/editor-helpers.js';
+import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, pinnedFiles } from '../utils/editor-helpers.js';
+
+/** Declarative map for mode activation — drives switchMode behavior per static mode. */
+const MODE_ACTIVATE = {
+  files: (viewer) => { if (viewer.activeFile) viewer.renderEditor(); },
+  git: (viewer) => viewer.gitChanges.loadChanges(),
+};
 
 export class FileViewer {
   constructor(container, isActive) {
@@ -98,16 +104,12 @@ export class FileViewer {
   }
 
   _setModeVisibility(mode) {
-    const show = (el, visible) => { el.style.display = visible ? '' : 'none'; };
-    const isFiles = mode === 'files';
-    const isGit = mode === 'git';
-    show(this.tabsBar, isFiles);
-    show(this.breadcrumb, isFiles);
-    show(this.editorWrapper, isFiles);
-    show(this.statusBar, isFiles);
-    show(this.gitViewEl, isGit);
+    const visible = new Set(MODE_CONFIG[mode]?.elements || []);
+    for (const key of ALL_STATIC_ELEMENTS) {
+      this[key].style.display = visible.has(key) ? '' : 'none';
+    }
     for (const [id, wvData] of this._webviewEls) {
-      show(wvData.container, mode === id);
+      wvData.container.style.display = mode === id ? '' : 'none';
     }
   }
 
@@ -115,12 +117,7 @@ export class FileViewer {
     this.mode = mode;
     this._setModeVisibility(mode);
     this._renderModeBar();
-
-    if (mode === 'files') {
-      if (this.activeFile) this.renderEditor();
-    } else if (mode === 'git') {
-      this.gitChanges.loadChanges();
-    }
+    MODE_ACTIVATE[mode]?.(this);
   }
 
   // ===== Files Mode =====

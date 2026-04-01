@@ -10,11 +10,17 @@ export const TAB_SIZE = 2;
 export const TAB_SPACES = ' '.repeat(TAB_SIZE);
 export const EMPTY_MESSAGE = 'Click a file to view its content';
 
-/** Static mode buttons displayed in the file-viewer mode bar. */
-export const STATIC_MODES = [
-  { key: 'files', label: 'Files' },
-  { key: 'git', label: 'Git Changes' },
-];
+/** Declarative map: single source of truth for file viewer mode element visibility. */
+export const MODE_CONFIG = {
+  files: { label: 'Files', elements: ['tabsBar', 'breadcrumb', 'editorWrapper', 'statusBar'] },
+  git:   { label: 'Git Changes', elements: ['gitViewEl'] },
+};
+
+/** Static mode buttons derived from MODE_CONFIG. */
+export const STATIC_MODES = Object.entries(MODE_CONFIG).map(([key, { label }]) => ({ key, label }));
+
+/** All element keys managed by mode visibility, derived from MODE_CONFIG. */
+export const ALL_STATIC_ELEMENTS = [...new Set(Object.values(MODE_CONFIG).flatMap(c => c.elements))];
 
 /** Global pinned files: path → { name } */
 export const pinnedFiles = new Map();
