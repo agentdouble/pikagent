@@ -25,27 +25,37 @@ function formatToolUse(block) {
   return `\r\n${color}${BOLD}[${block.name}]${RESET} ${DIM}${detail}${RESET}\r\n`;
 }
 
+/** Declarative map: message content block type → formatter function. */
+const BLOCK_FORMATTERS = {
+  text:     (block) => block.text ? `\r\n${block.text.replace(/\n/g, '\r\n')}\r\n` : '',
+  tool_use: formatToolUse,
+};
+
 function formatAssistant(message) {
   if (!message?.content) return '';
-  let out = '';
-  for (const block of message.content) {
-    if (block.type === 'text' && block.text) {
-      out += `\r\n${block.text.replace(/\n/g, '\r\n')}\r\n`;
-    } else if (block.type === 'tool_use') {
-      out += formatToolUse(block);
-    }
-  }
-  return out;
+  return message.content.reduce((out, block) => out + (BLOCK_FORMATTERS[block.type]?.(block) || ''), '');
 }
 
+/** Declarative map: result subtype → ANSI color and display label. */
+const RESULT_SUBTYPE_CONFIG = {
+  success: { color: '\x1b[32m', label: 'Terminé' },
+};
+const RESULT_SUBTYPE_DEFAULT = { color: '\x1b[31m', label: 'Erreur' };
+
+/** Declarative array: optional result statistics appended to the status line. */
+const RESULT_STATS = [
+  { key: 'cost_usd',    format: (v) => `$${v.toFixed(4)}` },
+  { key: 'duration_ms', format: (v) => `${(v / 1000).toFixed(1)}s` },
+];
+
 function formatResult(event) {
-  const ok = event.subtype === 'success';
-  const color = ok ? '\x1b[32m' : '\x1b[31m';
-  const label = ok ? 'Terminé' : 'Erreur';
+  const { color, label } = RESULT_SUBTYPE_CONFIG[event.subtype] || RESULT_SUBTYPE_DEFAULT;
+  const stats = RESULT_STATS
+    .filter(({ key }) => event[key] != null)
+    .map(({ key, format }) => format(event[key]));
 
   let line = `\r\n${BOLD}${color}── ${label}`;
-  if (event.cost_usd != null) line += ` | $${event.cost_usd.toFixed(4)}`;
-  if (event.duration_ms != null) line += ` | ${(event.duration_ms / 1000).toFixed(1)}s`;
+  if (stats.length) line += ` | ${stats.join(' | ')}`;
   line += ` ──${RESET}\r\n`;
 
   if (event.result) {
