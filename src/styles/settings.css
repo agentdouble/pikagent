@@ -1,5 +1,5 @@
-/* ===== Config Prompt Overlay ===== */
-.config-prompt-overlay {
+/* ===== Prompt Dialog Overlay ===== */
+.prompt-dialog-overlay {
   position: fixed;
   inset: 0;
   background: var(--shadow-overlay);
@@ -9,7 +9,7 @@
   justify-content: center;
 }
 
-.config-prompt-box {
+.prompt-dialog-box {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 10px;
@@ -22,13 +22,13 @@
   gap: 12px;
 }
 
-.config-prompt-label {
+.prompt-dialog-label {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.config-prompt-input {
+.prompt-dialog-input {
   padding: 8px 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -40,18 +40,18 @@
   transition: border-color 0.15s;
 }
 
-.config-prompt-input:focus {
+.prompt-dialog-input:focus {
   border-color: var(--accent);
 }
 
-.config-prompt-btns {
+.prompt-dialog-btns {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.config-prompt-cancel,
-.config-prompt-confirm {
+.prompt-dialog-cancel,
+.prompt-dialog-confirm {
   padding: 6px 14px;
   border-radius: 6px;
   font-size: 12px;
@@ -62,23 +62,23 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.config-prompt-cancel {
+.prompt-dialog-cancel {
   background: transparent;
   color: var(--text-secondary);
 }
 
-.config-prompt-cancel:hover {
+.prompt-dialog-cancel:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-.config-prompt-confirm {
+.prompt-dialog-confirm {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--text-on-accent);
 }
 
-.config-prompt-confirm:hover {
+.prompt-dialog-confirm:hover {
   opacity: 0.85;
 }
 

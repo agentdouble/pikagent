@@ -1,5 +1,5 @@
 import { contextMenu } from './context-menu.js';
-import { _el } from '../utils/dom.js';
+import { showPromptDialog } from '../utils/dom.js';
 import {
   AUTO_SAVE_DELAY,
   MENU_OFFSET,
@@ -119,41 +119,8 @@ export class ConfigManager {
     contextMenu.show(rect.left, rect.top - MENU_OFFSET, items);
   }
 
-  promptConfigName(defaultValue, callback) {
-    const overlay = _el('div', 'config-prompt-overlay');
-    const close = () => overlay.remove();
-    const confirm = () => {
-      const name = input.value.trim();
-      close();
-      if (name) callback(name);
-    };
-
-    const input = _el('input', 'config-prompt-input');
-    input.type = 'text';
-    input.value = defaultValue;
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') confirm();
-      if (e.key === 'Escape') close();
-    });
-
-    const cancelBtn = _el('button', 'config-prompt-cancel', 'Cancel');
-    cancelBtn.addEventListener('click', close);
-
-    const confirmBtn = _el('button', 'config-prompt-confirm', 'Create');
-    confirmBtn.addEventListener('click', confirm);
-
-    const btns = _el('div', 'config-prompt-btns');
-    btns.append(cancelBtn, confirmBtn);
-
-    const box = _el('div', 'config-prompt-box');
-    box.append(_el('label', 'config-prompt-label', 'Config name'), input, btns);
-
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-    input.focus();
-    input.select();
+  async promptConfigName(defaultValue, callback) {
+    const name = await showPromptDialog({ title: 'Config name', defaultValue });
+    if (name) callback(name);
   }
 }

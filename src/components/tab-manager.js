@@ -8,7 +8,7 @@ import { UsageView } from './usage-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
-import { _el } from '../utils/dom.js';
+import { _el, showConfirmDialog } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
@@ -299,23 +299,10 @@ export class TabManager {
     const tab = this.tabs.get(id);
     if (!tab) return;
 
-    const ok = await new Promise((resolve) => {
-      const overlay = _el('div', 'confirm-overlay');
-      const box = _el('div', 'confirm-box');
-      box.innerHTML = `<p>Close workspace <strong>${tab.name}</strong>?</p>`;
-      const btnRow = _el('div', 'confirm-buttons');
-      const cancelBtn = _el('button', 'confirm-cancel', 'Cancel');
-      const confirmBtn = _el('button', 'confirm-ok', 'Close');
-      btnRow.append(cancelBtn, confirmBtn);
-      box.appendChild(btnRow);
-      overlay.appendChild(box);
-      document.body.appendChild(overlay);
-      const cleanup = (result) => { overlay.remove(); resolve(result); };
-      cancelBtn.addEventListener('click', () => cleanup(false));
-      confirmBtn.addEventListener('click', () => cleanup(true));
-      overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(false); });
-      confirmBtn.focus();
-    });
+    const ok = await showConfirmDialog(
+      _el('p', null, 'Close workspace ', _el('strong', null, tab.name), '?'),
+      { confirmLabel: 'Close' },
+    );
     if (!ok) return;
 
     this._disposeTab(tab);
