@@ -17,20 +17,59 @@ function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
 }
 
-const AGENT_COMMANDS = {
-  claude: (prompt, opts = {}) =>
-    opts.dangerouslySkipPermissions
-      ? `claude --dangerously-skip-permissions --output-format stream-json -p '${prompt}'`
-      : `claude --permission-mode auto --output-format stream-json -p '${prompt}'`,
-  codex: (prompt, opts = {}) =>
-    opts.dangerouslySkipPermissions
-      ? `codex --approval-mode full-auto --quiet '${prompt}'`
-      : `codex --approval-mode auto-edit --quiet '${prompt}'`,
-  opencode: (prompt) => `opencode -p '${prompt}'`,
+/* ── Agent command config (single source of truth) ─────────────── */
+
+const AGENT_CONFIG = {
+  claude: {
+    permModes: ['--permission-mode auto', '--dangerously-skip-permissions'],
+    flags: '--output-format stream-json',
+    promptPrefix: '-p',
+  },
+  codex: {
+    permModes: ['--approval-mode auto-edit', '--approval-mode full-auto'],
+    flags: '--quiet',
+  },
+  opencode: {
+    promptPrefix: '-p',
+  },
 };
+
+function _buildAgentCmd(agent, prompt, opts = {}) {
+  const cfg = AGENT_CONFIG[agent] || AGENT_CONFIG.claude;
+  const parts = [agent];
+  if (cfg.permModes) parts.push(cfg.permModes[opts.dangerouslySkipPermissions ? 1 : 0]);
+  if (cfg.flags) parts.push(cfg.flags);
+  if (cfg.promptPrefix) parts.push(cfg.promptPrefix);
+  parts.push(`'${prompt}'`);
+  return parts.join(' ');
+}
+
+const AGENT_COMMANDS = Object.fromEntries(
+  Object.keys(AGENT_CONFIG).map(agent => [
+    agent,
+    (prompt, opts) => _buildAgentCmd(agent, prompt, opts),
+  ]),
+);
 
 function getLastRun(flow) {
   return flow.runs?.at(-1) ?? null;
+}
+
+/* ── Schedule day filters (single source of truth) ─────────────── */
+
+const SCHEDULE_DAY_FILTER = {
+  weekdays: (day) => day !== 0 && day !== 6,
+  custom:   (day, schedule) => !schedule.days || schedule.days.includes(day),
+};
+
+function _isTimeMatch(schedule, now) {
+  if (!schedule.time) return false;
+  const [h, m] = schedule.time.split(':').map(Number);
+  return now.getHours() === h && now.getMinutes() === m;
+}
+
+function _notRunToday(lastRun, now) {
+  return !lastRun || lastRun.date !== now.toISOString().slice(0, 10);
 }
 
 function shouldRun(flow, now) {
@@ -41,28 +80,18 @@ function shouldRun(flow, now) {
 
   if (schedule.type === 'interval') {
     const intervalMs = (schedule.intervalHours || 1) * MS_PER_HOUR;
-    if (!lastRun) return true;
-    return now.getTime() - new Date(lastRun.timestamp).getTime() >= intervalMs;
+    return !lastRun || now.getTime() - new Date(lastRun.timestamp).getTime() >= intervalMs;
   }
 
-  if (!schedule.time) return false;
-
-  const [hours, minutes] = schedule.time.split(':').map(Number);
-  if (now.getHours() !== hours || now.getMinutes() !== minutes) return false;
-
-  const day = now.getDay();
-  if (schedule.type === 'weekdays' && (day === 0 || day === 6)) return false;
-  if (schedule.type === 'custom' && schedule.days && !schedule.days.includes(day)) return false;
-
-  const todayStr = now.toISOString().slice(0, 10);
-  return !lastRun || lastRun.date !== todayStr;
+  if (!_isTimeMatch(schedule, now)) return false;
+  const dayFilter = SCHEDULE_DAY_FILTER[schedule.type] ?? (() => true);
+  return dayFilter(now.getDay(), schedule) && _notRunToday(lastRun, now);
 }
 
 function buildFlowCommand(flow) {
   const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
   const agent = flow.agent || 'claude';
-  const buildCmd = AGENT_COMMANDS[agent] || AGENT_COMMANDS.claude;
-  return `${buildCmd(escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
+  return `${_buildAgentCmd(agent, escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
 }
 
 /**
