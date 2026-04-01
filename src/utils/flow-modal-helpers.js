@@ -1,4 +1,5 @@
 import { _el } from './dom.js';
+import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
 
 // --- Constants ---
 
@@ -38,8 +39,8 @@ export function _createChip(icon, content, extra = {}) {
 }
 
 export function _updateScheduleVis(type, chips) {
-  const isInterval = type === 'interval';
-  _vis(chips.timeChip, !isInterval);
-  _vis(chips.intervalChip, isInterval);
-  _vis(chips.daysChip, type === 'custom');
+  const { time, interval, days } = SCHEDULE_TYPE_CONFIG[type].chips;
+  _vis(chips.timeChip, time);
+  _vis(chips.intervalChip, interval);
+  _vis(chips.daysChip, days);
 }
