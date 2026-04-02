@@ -8,12 +8,13 @@ export class ContextMenu {
     this.el = _el('div', { className: 'context-menu' });
     document.body.appendChild(this.el);
 
-    document.addEventListener('mousedown', (e) => {
+    /** Named handlers so they can be added/removed with the menu lifecycle. */
+    this._onMouseDown = (e) => {
       if (!this.el.contains(e.target)) this.close();
-    });
-    document.addEventListener('keydown', (e) => {
+    };
+    this._onKeyDown = (e) => {
       if (e.key === 'Escape') this.close();
-    });
+    };
   }
 
   _buildItem(item) {
@@ -59,10 +60,18 @@ export class ContextMenu {
     const { width, height } = this.el.getBoundingClientRect();
     this.el.style.left = `${Math.min(x, window.innerWidth - width - VIEWPORT_PADDING)}px`;
     this.el.style.top = `${Math.min(y, window.innerHeight - height - VIEWPORT_PADDING)}px`;
+
+    // Register dismiss listeners only while visible (idempotent remove-then-add)
+    document.removeEventListener('mousedown', this._onMouseDown);
+    document.removeEventListener('keydown', this._onKeyDown);
+    document.addEventListener('mousedown', this._onMouseDown);
+    document.addEventListener('keydown', this._onKeyDown);
   }
 
   close() {
     this.el.style.display = 'none';
+    document.removeEventListener('mousedown', this._onMouseDown);
+    document.removeEventListener('keydown', this._onKeyDown);
   }
 }
 
