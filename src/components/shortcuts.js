@@ -64,17 +64,23 @@ export class ShortcutManager {
     this.loadBindings();
   }
 
+  _onKeyDown = (e) => {
+    const actionId = this.bindings.get(eventToCombo(e));
+    if (!actionId) return;
+    if (this.tabManager.isActiveNoShortcut() && !ALWAYS_ALLOWED_IDS.has(actionId)) return;
+    const handler = this.actions.get(actionId);
+    if (!handler) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handler();
+  };
+
   _listen() {
-    window.addEventListener('keydown', (e) => {
-      const actionId = this.bindings.get(eventToCombo(e));
-      if (!actionId) return;
-      if (this.tabManager.isActiveNoShortcut() && !ALWAYS_ALLOWED_IDS.has(actionId)) return;
-      const handler = this.actions.get(actionId);
-      if (!handler) return;
-      e.preventDefault();
-      e.stopPropagation();
-      handler();
-    });
+    window.addEventListener('keydown', this._onKeyDown);
+  }
+
+  dispose() {
+    window.removeEventListener('keydown', this._onKeyDown);
   }
 
   static formatCombo = formatCombo;

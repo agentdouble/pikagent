@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Save on close as a safety net
   window.addEventListener('beforeunload', () => {
+    shortcuts.dispose();
     tabManager.autoSave();
   });
 });
