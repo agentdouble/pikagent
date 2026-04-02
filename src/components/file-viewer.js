@@ -4,7 +4,7 @@ import { GitChangesView } from './git-changes-view.js';
 import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
 import { generateId } from '../utils/id.js';
-import { _el } from '../utils/dom.js';
+import { _el, setupInlineInput } from '../utils/dom.js';
 import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, pinnedFiles } from '../utils/editor-helpers.js';
 
 /** Declarative map for mode activation — drives switchMode behavior per static mode. */
@@ -400,24 +400,17 @@ export class FileViewer {
     this.modeBar.replaceChild(input, addBtn);
     input.focus();
 
-    let committed = false;
-    const commit = () => {
-      if (committed) return;
-      committed = true;
-      const val = input.value.trim();
-      if (val) {
-        const { url, label } = parseWebviewUrl(val);
-        this.addWebview(label, url);
-      } else {
-        this._renderModeBar();
-      }
-    };
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') commit();
-      if (e.key === 'Escape') this._renderModeBar();
+    setupInlineInput(input, {
+      onCommit: (val) => {
+        if (val) {
+          const { url, label } = parseWebviewUrl(val);
+          this.addWebview(label, url);
+        } else {
+          this._renderModeBar();
+        }
+      },
+      onCancel: () => this._renderModeBar(),
     });
-    input.addEventListener('blur', () => commit());
   }
 
   // ===== Webview Management =====
