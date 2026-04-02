@@ -27,7 +27,7 @@ export class FileViewer {
     this.webviewTabs = []; // [{ id, label, url }]
     this._webviewEls = new Map(); // id -> { container, instance }
     this.render();
-    this.listen();
+    this._setupListeners();
   }
 
   static get pinnedFiles() { return pinnedFiles; }
@@ -61,23 +61,25 @@ export class FileViewer {
     this.showEmpty();
   }
 
-  listen() {
-    bus.on('file:open', ({ path, name }) => {
-      if (!this.isActive()) return;
-      this.switchMode('files');
-      this.openFile(path, name);
-    });
-
-    bus.on('terminal:cwdChanged', ({ cwd }) => {
-      if (!this.isActive()) return;
-      this.gitChanges.setCwd(cwd);
-      if (this.mode === 'git') this.gitChanges.loadChanges();
-    });
-
-    bus.on('workspace:activated', () => {
-      if (!this.isActive()) return;
-      this.loadPinnedFiles();
-    });
+  _setupListeners() {
+    // Bus event listeners — single declaration drives both subscription and cleanup
+    this._busListeners = [
+      ['file:open', ({ path, name }) => {
+        if (!this.isActive()) return;
+        this.switchMode('files');
+        this.openFile(path, name);
+      }],
+      ['terminal:cwdChanged', ({ cwd }) => {
+        if (!this.isActive()) return;
+        this.gitChanges.setCwd(cwd);
+        if (this.mode === 'git') this.gitChanges.loadChanges();
+      }],
+      ['workspace:activated', () => {
+        if (!this.isActive()) return;
+        this.loadPinnedFiles();
+      }],
+    ];
+    for (const [event, handler] of this._busListeners) bus.on(event, handler);
   }
 
   async loadPinnedFiles() {
@@ -463,6 +465,9 @@ export class FileViewer {
   }
 
   dispose() {
+    for (const [event, handler] of this._busListeners) bus.off(event, handler);
+    this._busListeners = [];
+
     for (const [, wvData] of this._webviewEls) {
       if (wvData.instance) wvData.instance.dispose();
     }
