@@ -210,17 +210,15 @@ export class BoardView {
   }
 
   _setupListeners() {
-    this._onCreated = () => {
-      if (!this.disposed) this.scanAgents();
-    };
-    this._onTerminalGone = ({ id }) => {
-      this.removeCard(id);
-      this._updateEmptyState();
-    };
+    const onTerminalGone = ({ id }) => { this.removeCard(id); this._updateEmptyState(); };
 
-    bus.on(EVT_CREATED, this._onCreated);
-    bus.on(EVT_REMOVED, this._onTerminalGone);
-    bus.on(EVT_EXITED, this._onTerminalGone);
+    // Bus event listeners — single declaration drives both subscription and cleanup
+    this._busListeners = [
+      [EVT_CREATED, () => { if (!this.disposed) this.scanAgents(); }],
+      [EVT_REMOVED, onTerminalGone],
+      [EVT_EXITED, onTerminalGone],
+    ];
+    for (const [event, handler] of this._busListeners) bus.on(event, handler);
   }
 
   focusDirection(dir) {
@@ -261,9 +259,7 @@ export class BoardView {
     this.disposed = true;
     this.pause();
 
-    bus.off(EVT_CREATED, this._onCreated);
-    bus.off(EVT_REMOVED, this._onTerminalGone);
-    bus.off(EVT_EXITED, this._onTerminalGone);
+    for (const [event, handler] of this._busListeners) bus.off(event, handler);
 
     for (const [, data] of this.cards) {
       disposeTerminal(data);
