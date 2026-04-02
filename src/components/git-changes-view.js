@@ -14,6 +14,10 @@ export class GitChangesView {
     this.gitCwd = cwd;
   }
 
+  dispose() {
+    this.container.replaceChildren();
+  }
+
   _setContent(parent, ...children) {
     parent.replaceChildren(...children);
   }
@@ -40,16 +44,10 @@ export class GitChangesView {
   }
 
   _createHeader(total) {
-    const refreshBtn = _el('span', 'git-refresh-btn', '↻');
-    refreshBtn.title = 'Refresh';
-    refreshBtn.addEventListener('click', () => this.loadChanges());
-
-    const header = _el('div', 'git-header');
-    header.append(
-      _el('span', null, `Local Changes (${total})`),
-      refreshBtn,
+    return _el('div', { className: 'git-header' },
+      _el('span', { textContent: `Local Changes (${total})` }),
+      _el('span', { className: 'git-refresh-btn', textContent: '↻', title: 'Refresh', onClick: () => this.loadChanges() }),
     );
-    return header;
   }
 
   _renderChanges(changes) {
@@ -73,36 +71,25 @@ export class GitChangesView {
     const key = buildFileKey(file.path, isStaged);
     const isExpanded = this.expandedFile === key;
 
-    const item = _el('div', 'git-file-row');
-
-    const row = _el('div', 'git-file-item');
-    row.addEventListener('click', () => {
+    const row = _el('div', { className: 'git-file-item', onClick: () => {
       this.expandedFile = this.expandedFile === key ? null : key;
       this.loadChanges();
-    });
-
-    const fileName = _el('span', 'git-file-name-label', file.path);
-    fileName.title = file.path;
-
-    const openBtn = _el('span', 'git-open-btn', '→');
-    openBtn.title = 'Open file';
-    openBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      bus.emit('file:open', { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
-    });
-
-    row.append(
+    }},
       _el('span', 'git-chevron', isExpanded ? CHEVRON.expanded : CHEVRON.collapsed),
       _el('span', `git-file-status git-status-${file.status}`, STATUS_LABELS[file.status] || file.status),
-      fileName,
-      openBtn,
+      _el('span', { className: 'git-file-name-label', textContent: file.path, title: file.path }),
+      _el('span', { className: 'git-open-btn', textContent: '→', title: 'Open file', onClick: (e) => {
+        e.stopPropagation();
+        bus.emit('file:open', { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
+      }}),
     );
 
-    item.appendChild(row);
+    const item = _el('div', 'git-file-row', row);
 
     if (isExpanded && file.status !== '?') {
-      const diffContainer = _el('div', 'git-diff-container');
-      diffContainer.appendChild(_el('div', 'git-loading', 'Loading diff...'));
+      const diffContainer = _el('div', 'git-diff-container',
+        _el('div', 'git-loading', 'Loading diff...'),
+      );
       item.appendChild(diffContainer);
       this._loadFileDiff(file.path, isStaged, diffContainer);
     }
@@ -125,10 +112,7 @@ export class GitChangesView {
     const diff = await window.api.git.fileDiff(this.gitCwd, filePath, isStaged);
 
     if (!diff) {
-      const msg = _el('div', 'git-empty', 'No diff available');
-      msg.style.height = 'auto';
-      msg.style.padding = '8px';
-      this._setContent(container, msg);
+      this._setContent(container, _el('div', { className: 'git-empty', textContent: 'No diff available', style: { height: 'auto', padding: '8px' } }));
       return;
     }
 
