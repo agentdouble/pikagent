@@ -8,7 +8,7 @@ import { UsageView } from './usage-view.js';
 import { bus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
-import { _el, showConfirmDialog } from '../utils/dom.js';
+import { _el, showConfirmDialog, setupInlineInput } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
@@ -668,23 +668,18 @@ export class TabManager {
 
   renameTab(id, nameEl) {
     const tab = this.tabs.get(id);
-    const input = document.createElement('input');
-    input.className = 'tab-rename-input';
-    input.value = tab.name;
+    const input = _el('input', { className: 'tab-rename-input', value: tab.name });
     nameEl.replaceWith(input);
     input.focus();
     input.select();
 
-    const commit = () => {
-      tab.name = input.value || tab.name;
-      this.renderTabBar();
-      this.configManager.scheduleAutoSave();
-    };
-
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') commit();
-      if (e.key === 'Escape') this.renderTabBar();
+    setupInlineInput(input, {
+      onCommit: (newName) => {
+        tab.name = newName || tab.name;
+        this.renderTabBar();
+        this.configManager.scheduleAutoSave();
+      },
+      onCancel: () => this.renderTabBar(),
     });
   }
 
