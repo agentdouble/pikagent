@@ -1,7 +1,7 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
-const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
 
 const ensureDir = ensureDirOnce(CONFIG_DIR);
@@ -20,14 +20,14 @@ async function readMeta() {
 async function writeMeta(meta) {
   await ensureDir();
   _metaCache = meta;
-  await fsp.writeFile(META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
+  await writeJson(META_FILE, meta);
 }
 
 async function save(name, data) {
   await ensureDir();
   const existing = await readJson(configPath(name));
   const config = buildConfigRecord(name, data, existing, new Date().toISOString());
-  await fsp.writeFile(configPath(name), JSON.stringify(config, null, 2), 'utf-8');
+  await writeJson(configPath(name), config);
   return config;
 }
 

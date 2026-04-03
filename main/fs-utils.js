@@ -29,4 +29,8 @@ async function readDirJson(dirPath) {
   }
 }
 
-module.exports = { readJson, ensureDirOnce, readDirJson };
+async function writeJson(filePath, data) {
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+module.exports = { readJson, writeJson, ensureDirOnce, readDirJson };

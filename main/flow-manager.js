@@ -2,13 +2,14 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { FLOWS_DIR, LOGS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
-const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
   flowPath, logPath,
   shouldRun, buildFlowCommand, createOutputProcessor,
 } = require('./flow-helpers');
+const { safeSend } = require('./ipc-helpers');
 
 const ensureDir = ensureDirOnce(LOGS_DIR);
 
@@ -37,10 +38,7 @@ class FlowManager {
   // --- Window IPC helper ---
 
   _sendToWindow(channel, payload) {
-    const win = this._getWindow?.();
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(channel, payload);
-    }
+    if (this._getWindow) safeSend(this._getWindow, channel, payload);
   }
 
   // --- CRUD ---
@@ -55,7 +53,7 @@ class FlowManager {
     };
     if (!data.runs) data.runs = [];
     if (data.enabled === undefined) data.enabled = true;
-    await fsp.writeFile(flowPath(flow.id), JSON.stringify(data, null, 2), 'utf-8');
+    await writeJson(flowPath(flow.id), data);
     return data;
   }
 
@@ -109,7 +107,7 @@ class FlowManager {
 
   async saveCategories(data) {
     await ensureDir();
-    await fsp.writeFile(FLOW_CATEGORIES_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    await writeJson(FLOW_CATEGORIES_FILE, data);
     return data;
   }
 

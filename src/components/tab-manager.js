@@ -10,6 +10,7 @@ import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
 import { _el, showConfirmDialog, setupInlineInput } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
+import { extractFolderName } from '../utils/file-tree-helpers.js';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
   ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, TAB_DISPOSABLES, WORKSPACE_PANELS, WorkspaceTab,
@@ -111,7 +112,7 @@ export class TabManager {
       }],
       ['layout:changed', () => this.configManager.scheduleAutoSave()],
       ['workspace:openFromFolder', ({ cwd }) => {
-        const folderName = cwd.split('/').filter(Boolean).pop() || '/';
+        const folderName = extractFolderName(cwd);
         this.createTab(folderName, cwd);
       }],
     ];

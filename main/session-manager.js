@@ -1,7 +1,6 @@
-const fsp = require('fs/promises');
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
-const { readJson, ensureDirOnce } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
 
 const POLL_INTERVAL_MS = 5000;
@@ -100,7 +99,7 @@ class SessionManager {
 
     this._sessionsCache = trimSessions([...(this._sessionsCache || []), record]);
 
-    fsp.writeFile(SESSIONS_FILE, JSON.stringify(this._sessionsCache, null, 2), 'utf-8')
+    writeJson(SESSIONS_FILE, this._sessionsCache)
       .catch((err) => console.warn('session-manager: write failed:', err.message));
   }
 
