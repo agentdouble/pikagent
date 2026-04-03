@@ -5,13 +5,7 @@ import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
 import { generateId } from '../utils/id.js';
 import { _el, setupInlineInput } from '../utils/dom.js';
-import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, pinnedFiles } from '../utils/editor-helpers.js';
-
-/** Declarative map for mode activation — drives switchMode behavior per static mode. */
-const MODE_ACTIVATE = {
-  files: (viewer) => { if (viewer.activeFile) viewer.renderEditor(); },
-  git: (viewer) => viewer.gitChanges.loadChanges(),
-};
+import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 
 export class FileViewer {
   constructor(container, isActive) {
