@@ -11,8 +11,9 @@ import { ConfigManager } from './config-manager.js';
 import { _el, showConfirmDialog, setupInlineInput } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import { extractFolderName } from '../utils/file-tree-helpers.js';
+import { setupTabDrag } from '../utils/tab-drag.js';
 import {
-  DRAG_THRESHOLD, PANEL_MIN_WIDTH, FIT_DELAY_MS,
+  PANEL_MIN_WIDTH, FIT_DELAY_MS,
   ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, TAB_DISPOSABLES, WORKSPACE_PANELS, WorkspaceTab,
   clampPanelWidth, panelArrowState, reorderEntries,
   findCycleTarget, findColorGroupTarget,
@@ -481,7 +482,7 @@ export class TabManager {
     }
 
     tabEl.addEventListener('click', () => this.switchTo(id));
-    this.setupTabDrag(tabEl, id);
+    setupTabDrag(this, tabEl, id);
     this._bindTabContextMenu(tabEl, id, tab, nameEl);
 
     return tabEl;
@@ -530,134 +531,6 @@ export class TabManager {
     const addBtn = _el('div', 'tab tab-add', '+');
     addBtn.addEventListener('click', () => this.createTab());
     this.tabBar.appendChild(addBtn);
-  }
-
-  // ===== Tab Drag & Drop Reorder =====
-
-  setupTabDrag(tabEl, tabId) {
-    let startX = 0;
-    let dragging = false;
-    let ghost = null;
-    let offsetX = 0;
-
-    tabEl.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
-      startX = e.clientX;
-      const rect = tabEl.getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      dragging = false;
-
-      const onMouseMove = (ev) => {
-        if (!dragging && Math.abs(ev.clientX - startX) > DRAG_THRESHOLD) {
-          dragging = true;
-          tabEl.classList.add('tab-dragging');
-          document.body.style.cursor = 'grabbing';
-          document.body.style.userSelect = 'none';
-
-          // Create floating ghost clone
-          ghost = tabEl.cloneNode(true);
-          ghost.className = 'tab tab-ghost';
-          if (tabEl.classList.contains('active')) ghost.classList.add('active');
-          const r = tabEl.getBoundingClientRect();
-          ghost.style.width = `${r.width}px`;
-          ghost.style.height = `${r.height}px`;
-          ghost.style.top = `${r.top}px`;
-          document.body.appendChild(ghost);
-        }
-        if (dragging && ghost) {
-          ghost.style.left = `${ev.clientX - offsetX}px`;
-          this._updateTabDropTarget(ev.clientX, tabId);
-        }
-      };
-
-      const onMouseUp = () => {
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-
-        if (dragging) {
-          tabEl.classList.remove('tab-dragging');
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
-          if (ghost) { ghost.remove(); ghost = null; }
-          this._clearTabShifts();
-
-          if (this._tabDropTargetId && this._tabDropTargetId !== tabId) {
-            this.reorderTab(tabId, this._tabDropTargetId, this._tabDropBefore);
-          }
-          this._tabDropTargetId = null;
-          this._tabDropBefore = null;
-        }
-      };
-
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
-  }
-
-  _clearTabShifts() {
-    for (const [, el] of this._tabElements) {
-      el.style.transform = '';
-      el.style.transition = '';
-    }
-  }
-
-  _updateTabDropTarget(mx, dragId) {
-    this._tabDropTargetId = null;
-    this._tabDropBefore = true;
-
-    // Get ordered tab IDs
-    const orderedIds = Array.from(this._tabElements.keys());
-
-    // Find the dragged tab's width for shift amount
-    const dragEl = this._tabElements.get(dragId);
-    const shiftAmount = dragEl ? dragEl.getBoundingClientRect().width : 0;
-
-    // Determine insertion index based on mouse position
-    let insertIdx = -1;
-    const dragIdx = orderedIds.indexOf(dragId);
-
-    for (let i = 0; i < orderedIds.length; i++) {
-      const id = orderedIds[i];
-      if (id === dragId) continue;
-      const el = this._tabElements.get(id);
-      const rect = el.getBoundingClientRect();
-      const midX = rect.left + rect.width / 2;
-
-      if (mx < midX) {
-        this._tabDropTargetId = id;
-        this._tabDropBefore = true;
-        insertIdx = i;
-        break;
-      }
-    }
-
-    // If no target found, insert after last
-    if (insertIdx === -1) {
-      const lastId = orderedIds.filter((id) => id !== dragId).pop();
-      if (lastId) {
-        this._tabDropTargetId = lastId;
-        this._tabDropBefore = false;
-        insertIdx = orderedIds.length;
-      }
-    }
-
-    // Shift tabs to make visual gap
-    for (let i = 0; i < orderedIds.length; i++) {
-      const id = orderedIds[i];
-      if (id === dragId) continue;
-      const el = this._tabElements.get(id);
-      el.style.transition = 'transform 0.2s ease';
-
-      if (dragIdx < insertIdx) {
-        // Dragging right: shift left the tabs between old and new position
-        el.style.transform = (i > dragIdx && i < insertIdx) ? `translateX(${-shiftAmount}px)` : '';
-      } else if (dragIdx > insertIdx) {
-        // Dragging left: shift right the tabs between new and old position
-        el.style.transform = (i >= insertIdx && i < dragIdx) ? `translateX(${shiftAmount}px)` : '';
-      } else {
-        el.style.transform = '';
-      }
-    }
   }
 
   reorderTab(fromId, toId, before) {
