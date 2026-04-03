@@ -58,4 +58,4 @@ function dirFirstCompare(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-module.exports = { MAX_FILE_SIZE, safeAsync, pathExists, findUniqueCopyPath, doCopy, dirFirstCompare };
+module.exports = { MAX_FILE_SIZE, safeAsync, doCopy, dirFirstCompare };

@@ -138,6 +138,6 @@ module.exports = {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
   flowPath, logPath,
-  AGENT_COMMANDS, getLastRun, shouldRun, buildFlowCommand,
+  getLastRun, shouldRun, buildFlowCommand,
   createOutputProcessor,
 };

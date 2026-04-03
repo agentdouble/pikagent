@@ -32,7 +32,6 @@ function parseCwdFromLsof(lsofOutput) {
 }
 
 module.exports = {
-  KNOWN_AGENTS,
   EXEC_TIMEOUT_MS,
   CWD_TIMEOUT_MS,
   DEFAULT_COLS,
