@@ -4,6 +4,14 @@ import { ShortcutManager } from './components/shortcuts.js';
 import { SettingsModal } from './components/settings-modal.js';
 import { applyAppTheme } from './utils/app-theme.js';
 
+// Side-effect imports: register tab components in the component registry
+import './components/terminal-panel.js';
+import './components/file-tree.js';
+import './components/file-viewer.js';
+import './components/board-view.js';
+import './components/flow-view.js';
+import './components/usage-view.js';
+
 // Expose hljs globally for file-viewer
 window.hljs = hljs;
 

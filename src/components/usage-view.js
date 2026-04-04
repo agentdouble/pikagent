@@ -1,5 +1,6 @@
 import { _el } from '../utils/dom.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 // --- Component ---
 
@@ -140,5 +141,6 @@ export class UsageView {
     ));
     parent.appendChild(section);
   }
-
 }
+
+registerComponent('UsageView', UsageView);

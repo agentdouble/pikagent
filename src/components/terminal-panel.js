@@ -11,6 +11,7 @@ import {
   directionFromSide,
   isInsertBefore,
 } from '../utils/split-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {
@@ -552,3 +553,5 @@ export class TerminalPanel {
     this.terminals.clear();
   }
 }
+
+registerComponent('TerminalPanel', TerminalPanel);
