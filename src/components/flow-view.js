@@ -1,19 +1,18 @@
 import { openFlowModal } from './flow-modal.js';
-import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedule-helpers.js';
-import { _el, _safeFit, showPromptDialog, setupInlineInput } from '../utils/dom.js';
-import { createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
+import { formatSchedule } from '../utils/flow-schedule-helpers.js';
+import { _el, showPromptDialog, setupInlineInput } from '../utils/dom.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent } from '../utils/component-registry.js';
 import {
-  FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
-  STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
   EMPTY_LIST_MESSAGE, MAX_VISIBLE_RUNS, UNCATEGORIZED,
-  HEADER_BUTTONS, CATEGORY_ACTIONS,
-  formatRunDateTime, buildDotTooltip, buildCardActionEntries,
+  HEADER_BUTTONS,
+  buildDotTooltip, buildCardActionEntries,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
   getLastRun,
 } from '../utils/flow-view-helpers.js';
+import { FlowCardTerminalManager } from './flow-card-terminal.js';
+import { createCategoryGroup, cleanupAllDragState } from './flow-category-renderer.js';
 
 
 export class FlowView {
@@ -23,8 +22,7 @@ export class FlowView {
     this.flows = [];
     this.catData = { categories: [], order: {} };
     this.disposed = false;
-    this._liveTerminals = new Map();
-    this._logTerminals = new Map();
+    this._termManager = new FlowCardTerminalManager();
     this._expandedCards = new Set();
     this._collapsedCategories = new Set();
     this._runningMap = {};
@@ -40,7 +38,7 @@ export class FlowView {
     });
 
     this._unsubComplete = window.api.flow.onRunComplete(({ flowId }) => {
-      this._disposeLiveTerminal(flowId);
+      this._termManager.disposeLiveTerminal(flowId);
       delete this._runningMap[flowId];
       this.refresh();
     });
@@ -105,10 +103,8 @@ export class FlowView {
   _renderList() {
     if (!this.listEl) return;
 
-    for (const [flowId] of this._liveTerminals) {
-      if (!this._runningMap[flowId]) this._disposeLiveTerminal(flowId);
-    }
-    disposeTerminalMap(this._logTerminals);
+    this._termManager.cleanupStaleLiveTerminals(this._runningMap);
+    this._termManager.disposeAllLogTerminals();
 
     this.listEl.replaceChildren();
 
@@ -121,22 +117,38 @@ export class FlowView {
       return;
     }
 
+    const groupParams = (cat, flows, isUncat = false) => ({
+      cat,
+      flows,
+      isUncategorized: isUncat,
+      collapsedCategories: this._collapsedCategories,
+      createCard: (flow, catId) => this._createCard(flow, catId),
+      onToggleCollapse: (catId) => this._toggleCollapse(catId),
+      onRenameCategory: (catId, nameEl) => this._renameCategoryInline(catId, nameEl),
+      onDeleteCategory: (catId) => this._deleteCategory(catId),
+      onDropFlow: (flowId, catId, insertIndex) => {
+        this._moveFlowToCategory(flowId, catId, insertIndex);
+        this._renderList();
+      },
+      dragState: {
+        getDragFlowId: () => this._dragFlowId,
+        clearDrag: () => { this._dragFlowId = null; this._dragSourceCat = null; },
+      },
+    });
+
     // Render categorized groups
     for (const cat of this.catData.categories) {
       const flows = getFlowsForCategory(this.flows, this.catData.order, cat.id);
-      this.listEl.appendChild(this._createCategoryGroup(cat, flows));
+      this.listEl.appendChild(createCategoryGroup(groupParams(cat, flows)));
     }
 
     // Render uncategorized
     if (uncatFlows.length > 0 || hasCats) {
       if (hasCats) {
-        this.listEl.appendChild(this._createCategoryGroup(
-          { id: UNCATEGORIZED, name: 'Sans catégorie' },
-          uncatFlows,
-          true
+        this.listEl.appendChild(createCategoryGroup(
+          groupParams({ id: UNCATEGORIZED, name: 'Sans catégorie' }, uncatFlows, true)
         ));
       } else {
-        // No categories exist, just render flat list
         for (const flow of uncatFlows) {
           this.listEl.appendChild(this._createCard(flow, UNCATEGORIZED));
         }
@@ -144,146 +156,13 @@ export class FlowView {
     }
   }
 
-  _createCategoryGroup(cat, flows, isUncategorized = false) {
-    const isCollapsed = this._collapsedCategories.has(cat.id);
-    const group = _el('div', `flow-category-group${isCollapsed ? ' flow-category-collapsed' : ''}`);
-    group.dataset.catId = cat.id;
-
-    group.appendChild(this._buildCategoryHeader(cat, flows, isUncategorized));
-
-    const items = _el('div', 'flow-category-items');
-    items.dataset.catId = cat.id;
-    this._setupCategoryDropZone(items, cat.id);
-
-    if (!isCollapsed) {
-      for (const flow of flows) {
-        items.appendChild(this._createCard(flow, cat.id));
-      }
-      if (flows.length === 0) {
-        items.appendChild(_el('div', {
-          className: 'flow-empty',
-          style: { padding: '12px 0', fontSize: '12px' },
-          textContent: 'Glissez un flow ici',
-        }));
-      }
-    }
-
-    group.appendChild(items);
-    return group;
-  }
-
-  _buildCategoryHeader(cat, flows, isUncategorized) {
-    const header = _el('div', 'flow-category-header');
-
-    const chevron = _el('span', 'flow-category-chevron', '▼');
-    const name = _el('span', 'flow-category-name', cat.name);
-    const count = _el('span', 'flow-category-count', `${flows.length}`);
-    header.append(chevron, name, count);
-
-    if (!isUncategorized) {
-      const actions = _el('div', 'flow-category-actions');
-      const catHandlers = {
-        rename: () => this._renameCategoryInline(cat.id, name),
-        delete: () => this._deleteCategory(cat.id),
-      };
-      for (const { icon, title, cls, action } of CATEGORY_ACTIONS) {
-        const btn = _el('button', cls ? `flow-category-btn ${cls}` : 'flow-category-btn', icon);
-        btn.title = title;
-        btn.addEventListener('click', (e) => { e.stopPropagation(); catHandlers[action](); });
-        actions.appendChild(btn);
-      }
-      header.appendChild(actions);
-    }
-
-    header.addEventListener('click', () => {
-      if (this._collapsedCategories.has(cat.id)) {
-        this._collapsedCategories.delete(cat.id);
-      } else {
-        this._collapsedCategories.add(cat.id);
-      }
-      this._renderList();
-    });
-
-    return header;
-  }
-
-  _setupCategoryDropZone(items, catId) {
-    items.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      items.classList.add('flow-drop-zone-active');
-      this._updateDropIndicator(items, e.clientY);
-    });
-
-    items.addEventListener('dragleave', (e) => {
-      if (!items.contains(e.relatedTarget)) {
-        items.classList.remove('flow-drop-zone-active');
-        this._clearDropIndicators(items);
-      }
-    });
-
-    items.addEventListener('drop', (e) => {
-      e.preventDefault();
-      items.classList.remove('flow-drop-zone-active');
-      this._clearDropIndicators(items);
-
-      if (!this._dragFlowId) return;
-
-      const insertIndex = this._getDropIndex(items, e.clientY);
-      this._moveFlowToCategory(this._dragFlowId, catId, insertIndex);
-      this._dragFlowId = null;
-      this._dragSourceCat = null;
-      this._renderList();
-    });
-  }
-
-  // --- Drag & Drop helpers ---
-
-  _updateDropIndicator(container, clientY) {
-    this._clearDropIndicators(container);
-
-    const cards = [...container.querySelectorAll(':scope > .flow-card')];
-    if (cards.length === 0) return;
-
-    let insertBefore = null;
-    for (const card of cards) {
-      const rect = card.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      if (clientY < midY) {
-        insertBefore = card;
-        break;
-      }
-    }
-
-    const indicator = _el('div', 'flow-drop-indicator flow-drop-active');
-    if (insertBefore) {
-      container.insertBefore(indicator, insertBefore);
+  _toggleCollapse(catId) {
+    if (this._collapsedCategories.has(catId)) {
+      this._collapsedCategories.delete(catId);
     } else {
-      container.appendChild(indicator);
+      this._collapsedCategories.add(catId);
     }
-  }
-
-  _clearDropIndicators(container) {
-    for (const el of container.querySelectorAll('.flow-drop-indicator')) {
-      el.remove();
-    }
-  }
-
-  _getDropIndex(container, clientY) {
-    const cards = [...container.querySelectorAll(':scope > .flow-card')];
-    for (let i = 0; i < cards.length; i++) {
-      const rect = cards[i].getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      if (clientY < midY) return i;
-    }
-    return -1; // append at end
-  }
-
-  _cleanupAllDragState() {
-    for (const el of document.querySelectorAll('.flow-drop-indicator')) el.remove();
-    for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
-      el.classList.remove('flow-drop-zone-active');
-    }
+    this._renderList();
   }
 
   // --- Card rendering ---
@@ -326,13 +205,13 @@ export class FlowView {
       card.classList.remove('flow-dragging');
       this._dragFlowId = null;
       this._dragSourceCat = null;
-      this._cleanupAllDragState();
+      cleanupAllDragState();
     });
   }
 
   _buildCardBody(flow, isRunning, isExpanded) {
     if (isRunning) {
-      const container = this._createLiveTerminal(flow.id, this._runningMap[flow.id]);
+      const container = this._termManager.createLiveTerminal(flow.id, this._runningMap[flow.id]);
       container.style.display = isExpanded ? '' : 'none';
       return container;
     }
@@ -340,7 +219,7 @@ export class FlowView {
       const lastRun = getLastRun(flow);
       if (lastRun) {
         const termArea = _el('div', 'flow-card-terminal');
-        this._loadLogIntoContainer(flow.id, lastRun, termArea);
+        this._termManager.loadLogIntoContainer(flow.id, lastRun, termArea);
         return termArea;
       }
     }
@@ -361,7 +240,7 @@ export class FlowView {
       }
       if (this._expandedCards.has(flow.id)) {
         this._expandedCards.delete(flow.id);
-        this._disposeLogTerminal(flow.id);
+        this._termManager.disposeLogTerminal(flow.id);
       } else {
         this._expandedCards.add(flow.id);
       }
@@ -408,7 +287,7 @@ export class FlowView {
       dot.title = buildDotTooltip(run);
       dot.addEventListener('click', (e) => {
         e.stopPropagation();
-        this._showRunLog(flow, run);
+        this._termManager.showRunLog(flow, run);
       });
       dots.appendChild(dot);
     }
@@ -430,7 +309,7 @@ export class FlowView {
   }
 
   async _deleteFlow(flowId) {
-    this._disposeLiveTerminal(flowId);
+    this._termManager.disposeLiveTerminal(flowId);
     removeFlowFromOrder(this.catData.order, flowId);
     await this._persistCategories();
     await window.api.flow.delete(flowId);
@@ -485,7 +364,7 @@ export class FlowView {
     this._renderList();
   }
 
-  // === Live Terminal (for running flows) ===
+  // === Action button helper ===
 
   _createActionButton(icon, title, onClick, extraClass = '') {
     const btn = _el('button', extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn', icon);
@@ -494,116 +373,20 @@ export class FlowView {
     return btn;
   }
 
-  _createReadonlyTerminal(containerEl, termOpts = {}) {
-    return createReadonlyTerminal(containerEl, {
-      scrollback: LIVE_SCROLLBACK,
-      fitDelay: FIT_DELAY_MS,
-      ...termOpts,
-    });
-  }
-
-  _createLiveTerminal(flowId, ptyId) {
-    const existing = this._liveTerminals.get(flowId);
-    if (existing) {
-      setTimeout(() => _safeFit(existing.fitAddon), FIT_DELAY_MS);
-      return existing.containerEl;
-    }
-
-    const containerEl = _el('div', 'flow-card-terminal');
-
-    const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
-      scrollback: LIVE_SCROLLBACK,
-      cursorStyle: 'bar',
-    });
-
-    const unsubData = window.api.pty.onData(ptyId, (data) => {
-      term.write(data);
-    });
-
-    this._liveTerminals.set(flowId, { term, fitAddon, unsubData, resizeObs, containerEl, ptyId });
-
-    return containerEl;
-  }
-
-  _disposeTerminalEntry(map, flowId) {
-    const data = map.get(flowId);
-    if (!data) return;
-    disposeTerminal(data);
-    map.delete(flowId);
-  }
-
-  _disposeLiveTerminal(flowId) {
-    this._disposeTerminalEntry(this._liveTerminals, flowId);
-  }
-
-  // === Inline Log Terminal (expanded card) ===
-
-  async _loadLogIntoContainer(flowId, run, containerEl) {
-    const log = run.logTimestamp
-      ? await window.api.flow.getRunLog(flowId, run.logTimestamp)
-      : null;
-
-    const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
-      scrollback: LOG_SCROLLBACK,
-    });
-
-    term.write(log || NO_LOG_MESSAGE);
-    this._logTerminals.set(flowId, { term, fitAddon, resizeObs });
-  }
-
-  _disposeLogTerminal(flowId) {
-    this._disposeTerminalEntry(this._logTerminals, flowId);
-  }
-
-  // === Past Run Log Viewer (modal) ===
-
-  _buildLogModalHeader(flow, run) {
-    const header = _el('div', 'flow-log-header');
-    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${formatRunDateTime(run.date, run.timestamp)}`));
-    header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
-    header.appendChild(_el('button', 'flow-log-close', '✕'));
-    return header;
-  }
-
-  async _showRunLog(flow, run) {
-    const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
-
-    const overlay = _el('div', 'flow-modal-overlay');
-    const modal = _el('div', 'flow-log-modal');
-    const termContainer = _el('div', 'flow-log-terminal');
-    modal.append(this._buildLogModalHeader(flow, run), termContainer);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    const { term, resizeObs } = this._createReadonlyTerminal(termContainer, {
-      scrollback: LOG_SCROLLBACK,
-    });
-
-    term.write(log || NO_LOG_MODAL_MESSAGE);
-
-    const close = () => { resizeObs.disconnect(); term.dispose(); overlay.remove(); };
-    modal.querySelector('.flow-log-close').addEventListener('click', close);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-  }
-
   // ===== Creation / Edit Modal =====
 
   async _openModal(existing = null) {
     const flow = await openFlowModal(existing, this.catData.categories);
     if (flow) {
-      // Handle category assignment from modal
       const catId = flow._category;
       delete flow._category;
 
       await window.api.flow.save(flow);
 
-      // Update category ordering
       if (catId) {
         this._moveFlowToCategory(flow.id, catId);
       } else if (!existing) {
-        // New flow, add to uncategorized order
         if (!this.catData.order[UNCATEGORIZED]) this.catData.order[UNCATEGORIZED] = [];
-        // Only add if not already in any category
         const allOrdered = new Set(Object.values(this.catData.order).flat());
         if (!allOrdered.has(flow.id)) {
           this.catData.order[UNCATEGORIZED].push(flow.id);
@@ -619,8 +402,7 @@ export class FlowView {
     this.disposed = true;
     if (this._unsubStarted) this._unsubStarted();
     if (this._unsubComplete) this._unsubComplete();
-    disposeTerminalMap(this._liveTerminals);
-    disposeTerminalMap(this._logTerminals);
+    this._termManager.disposeAll();
   }
 }
 

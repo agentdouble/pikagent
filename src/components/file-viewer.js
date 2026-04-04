@@ -1,12 +1,11 @@
 import { detectLanguage } from '../utils/file-icons.js';
 import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { GitChangesView } from './git-changes-view.js';
-import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
-import { generateId } from '../utils/id.js';
-import { _el, setupInlineInput } from '../utils/dom.js';
-import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
+import { _el } from '../utils/dom.js';
+import { getCursorPosition, insertTab, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { WebviewManager } from './file-viewer-webview.js';
 
 export class FileViewer {
   constructor(container, isActive) {
@@ -19,9 +18,12 @@ export class FileViewer {
     this.highlightLayer = null;
     this.mode = 'files'; // 'files' | 'git' | webview id
     this.gitChanges = null;
-    this.webviewTabs = []; // [{ id, label, url }]
-    this._webviewEls = new Map(); // id -> { container, instance }
     this.render();
+    this._webviewMgr = new WebviewManager(
+      this.container, this.statusBar,
+      (mode) => this.switchMode(mode),
+      () => this._renderModeBar(),
+    );
     this._setupListeners();
   }
 
@@ -104,9 +106,7 @@ export class FileViewer {
     for (const key of ALL_STATIC_ELEMENTS) {
       this[key].style.display = visible.has(key) ? '' : 'none';
     }
-    for (const [id, wvData] of this._webviewEls) {
-      wvData.container.style.display = mode === id ? '' : 'none';
-    }
+    this._webviewMgr.setModeVisibility(mode);
   }
 
   switchMode(mode) {
@@ -358,114 +358,43 @@ export class FileViewer {
     return btn;
   }
 
-  _buildWebviewModeBtn(wt) {
-    const btn = _el('button', `mode-btn mode-btn-webview${this.mode === wt.id ? ' active' : ''}`);
-    btn.appendChild(_el('span', null, wt.label));
-    const closeBtn = _el('span', 'mode-btn-close', { textContent: '\u00d7' });
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.removeWebview(wt.id);
-    });
-    btn.appendChild(closeBtn);
-    btn.addEventListener('click', () => this.switchMode(wt.id));
-    return btn;
-  }
-
-  _buildAddWebviewBtn() {
-    const btn = _el('button', 'mode-btn mode-btn-add', { textContent: '+', title: 'Add browser preview' });
-    btn.addEventListener('click', () => this._showAddWebviewInput(btn));
-    return btn;
-  }
-
   _renderModeBar() {
     this.modeBar.replaceChildren();
 
     for (const mode of STATIC_MODES) {
       this.modeBar.appendChild(this._buildStaticModeBtn(mode));
     }
-    for (const wt of this.webviewTabs) {
-      this.modeBar.appendChild(this._buildWebviewModeBtn(wt));
+    for (const wt of this._webviewMgr.webviewTabs) {
+      this.modeBar.appendChild(this._webviewMgr.buildWebviewModeBtn(wt, this.mode));
     }
-    this.modeBar.appendChild(this._buildAddWebviewBtn());
+    this.modeBar.appendChild(this._webviewMgr.buildAddWebviewBtn(this.modeBar));
   }
 
-  _showAddWebviewInput(addBtn) {
-    const input = _el('input', 'mode-bar-url-input');
-    input.type = 'text';
-    input.placeholder = 'localhost:3000';
-    this.modeBar.replaceChild(input, addBtn);
-    input.focus();
-
-    setupInlineInput(input, {
-      onCommit: (val) => {
-        if (val) {
-          const { url, label } = parseWebviewUrl(val);
-          this.addWebview(label, url);
-        } else {
-          this._renderModeBar();
-        }
-      },
-      onCancel: () => this._renderModeBar(),
-    });
-  }
-
-  // ===== Webview Management =====
+  // ===== Webview Management (delegated) =====
 
   addWebview(label, url) {
-    const wt = { id: generateId('wv'), label, url };
-    this.webviewTabs.push(wt);
-    this._createWebviewContainer(wt);
-    this.switchMode(wt.id);
-    bus.emit('layout:changed');
+    this._webviewMgr.addWebview(label, url);
   }
 
   removeWebview(webviewId) {
-    const idx = this.webviewTabs.findIndex(wt => wt.id === webviewId);
-    if (idx < 0) return;
-    this.webviewTabs.splice(idx, 1);
-
-    const wvData = this._webviewEls.get(webviewId);
-    if (wvData) {
-      if (wvData.instance) wvData.instance.dispose();
-      wvData.container.remove();
-      this._webviewEls.delete(webviewId);
-    }
-
-    if (this.mode === webviewId) this.switchMode('files');
+    const removedId = this._webviewMgr.removeWebview(webviewId);
+    if (this.mode === removedId) this.switchMode('files');
     else this._renderModeBar();
     bus.emit('layout:changed');
   }
 
-  _createWebviewContainer(wt) {
-    const container = _el('div', 'webview-area');
-    container.style.display = 'none';
-    this.container.insertBefore(container, this.statusBar);
-    const instance = new WebviewInstance(container, wt.url);
-    this._webviewEls.set(wt.id, { container, instance });
-  }
-
   getWebviewTabs() {
-    return this.webviewTabs.map(wt => ({ label: wt.label, url: wt.url }));
+    return this._webviewMgr.getWebviewTabs();
   }
 
   setWebviewTabs(tabs) {
-    if (!tabs || !tabs.length) return;
-    for (const t of tabs) {
-      const wt = { id: generateId('wv'), label: t.label, url: t.url };
-      this.webviewTabs.push(wt);
-      this._createWebviewContainer(wt);
-    }
-    this._renderModeBar();
+    this._webviewMgr.setWebviewTabs(tabs);
   }
 
   dispose() {
     unsubscribeBus(this._busListeners);
     this._busListeners = [];
-
-    for (const [, wvData] of this._webviewEls) {
-      if (wvData.instance) wvData.instance.dispose();
-    }
-    this._webviewEls.clear();
+    this._webviewMgr.dispose();
   }
 }
 
