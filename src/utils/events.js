@@ -25,3 +25,19 @@ export class EventBus {
 }
 
 export const bus = new EventBus();
+
+/**
+ * Register an array of [event, handler] pairs on the bus.
+ * Returns the array for later cleanup with unsubscribeBus().
+ */
+export function subscribeBus(listeners) {
+  for (const [event, handler] of listeners) bus.on(event, handler);
+  return listeners;
+}
+
+/**
+ * Unregister an array of [event, handler] pairs from the bus.
+ */
+export function unsubscribeBus(listeners) {
+  for (const [event, handler] of listeners) bus.off(event, handler);
+}

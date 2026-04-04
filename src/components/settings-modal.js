@@ -1,7 +1,7 @@
 import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
-import { _el } from '../utils/dom.js';
+import { _el, createModalOverlay } from '../utils/dom.js';
 import {
   MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS,
   MODE_BUTTONS, BOTTOM_CONFIG_BUTTONS, THEME_PREVIEW_LINES,
@@ -34,15 +34,12 @@ export class SettingsModal {
   // ===== Build =====
 
   build() {
-    this.overlay = _el('div', 'settings-overlay');
-    this.overlay.addEventListener('click', (e) => {
-      if (e.target === this.overlay) this.close();
-    });
+    const { overlay, modal } = createModalOverlay('settings-overlay', 'settings-modal', () => this.close());
+    this.overlay = overlay;
+    this.modal = modal;
 
-    this.modal = _el('div', 'settings-modal');
     this.modal.appendChild(this._buildHeader());
     this.modal.appendChild(this._buildBody());
-    this.overlay.appendChild(this.modal);
 
     this.keyHandler = (e) => {
       if (!this.recording) return;

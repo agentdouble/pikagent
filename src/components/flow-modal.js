@@ -1,5 +1,5 @@
 import { generateId } from '../utils/id.js';
-import { _el } from '../utils/dom.js';
+import { _el, createModalOverlay } from '../utils/dom.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,
@@ -231,12 +231,8 @@ export function openFlowModal(existing = null, categories = []) {
     if (catPicker) modalChildren.push(_el('div', { className: 'flow-modal-group', style: { paddingBottom: '8px' } }, catPicker.chip));
     modalChildren.push(bottom.bar, actionBar);
 
-    const modal = _el('div', { className: 'flow-modal' }, ...modalChildren);
-
-    const overlay = _el('div', { className: 'flow-modal-overlay' },
-      modal,
-    );
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const { overlay, modal } = createModalOverlay('flow-modal-overlay', 'flow-modal', close);
+    modal.append(...modalChildren);
 
     document.body.appendChild(overlay);
     fields.nameInput.focus();

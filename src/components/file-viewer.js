@@ -1,5 +1,5 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus } from '../utils/events.js';
+import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { GitChangesView } from './git-changes-view.js';
 import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
@@ -57,7 +57,7 @@ export class FileViewer {
 
   _setupListeners() {
     // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = [
+    this._busListeners = subscribeBus([
       ['file:open', ({ path, name }) => {
         if (!this.isActive()) return;
         this.switchMode('files');
@@ -72,8 +72,7 @@ export class FileViewer {
         if (!this.isActive()) return;
         this.loadPinnedFiles();
       }],
-    ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
+    ]);
   }
 
   async loadPinnedFiles() {
@@ -459,7 +458,7 @@ export class FileViewer {
   }
 
   dispose() {
-    for (const [event, handler] of this._busListeners) bus.off(event, handler);
+    unsubscribeBus(this._busListeners);
     this._busListeners = [];
 
     for (const [, wvData] of this._webviewEls) {
