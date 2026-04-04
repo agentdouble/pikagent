@@ -79,4 +79,21 @@ async function loadDefault() {
   return load(name);
 }
 
-module.exports = { save, load, list, remove, setDefault, getDefault, loadDefault };
+function registerHandlers(ipcMain) {
+  const { registerForward, registerSpread } = require('./ipc-helpers');
+
+  registerForward(ipcMain, { load, list, remove, setDefault, getDefault, loadDefault }, [
+    ['config:load',        'load'],
+    ['config:list',        'list'],
+    ['config:delete',      'remove'],
+    ['config:setDefault',  'setDefault'],
+    ['config:getDefault',  'getDefault'],
+    ['config:loadDefault', 'loadDefault'],
+  ]);
+
+  registerSpread(ipcMain, { save }, [
+    ['config:save', 'save', ['name', 'data']],
+  ]);
+}
+
+module.exports = { save, load, list, remove, setDefault, getDefault, loadDefault, registerHandlers };

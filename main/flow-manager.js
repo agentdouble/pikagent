@@ -225,6 +225,28 @@ class FlowManager {
     flow.runs = runs.length > MAX_RUN_HISTORY ? runs.slice(-MAX_RUN_HISTORY) : runs;
     await this.save(flow);
   }
+
+  registerHandlers(ipcMain, { getWindow, ptyManager }) {
+    const { registerForward, registerSpread } = require('./ipc-helpers');
+
+    registerForward(ipcMain, this, [
+      ['flow:save',       'save'],
+      ['flow:get',        'get'],
+      ['flow:list',       'list'],
+      ['flow:delete',     'remove'],
+      ['flow:toggle',     'toggleEnabled'],
+      ['flow:runNow',     'runNow'],
+      ['flow:getRunning',    'getRunning'],
+      ['flow:getCategories', 'getCategories'],
+      ['flow:saveCategories', 'saveCategories'],
+    ]);
+
+    registerSpread(ipcMain, this, [
+      ['flow:getRunLog', 'getRunLog', ['flowId', 'logTimestamp']],
+    ]);
+
+    this.start(getWindow, ptyManager);
+  }
 }
 
 module.exports = new FlowManager();

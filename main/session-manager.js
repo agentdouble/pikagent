@@ -114,6 +114,10 @@ class SessionManager {
   getActiveSessions() {
     return Object.values(this._activeSessions).map(buildActiveRecord);
   }
+
+  registerHandlers(_ipcMain, { ptyManager }) {
+    this.start(ptyManager);
+  }
 }
 
 module.exports = new SessionManager();

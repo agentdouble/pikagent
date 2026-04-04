@@ -57,4 +57,18 @@ async function getFileDiff(cwd, filePath, isStaged) {
   return result;
 }
 
-module.exports = { getBranch, getRemoteUrl, getLocalChanges, getFileDiff };
+function registerHandlers(ipcMain) {
+  const { registerForward, registerSpread } = require('./ipc-helpers');
+
+  registerForward(ipcMain, { getBranch, getRemoteUrl, getLocalChanges }, [
+    ['git:branch',       'getBranch'],
+    ['git:remote',       'getRemoteUrl'],
+    ['git:localChanges', 'getLocalChanges'],
+  ]);
+
+  registerSpread(ipcMain, { getFileDiff }, [
+    ['git:fileDiff', 'getFileDiff', ['cwd', 'filePath', 'isStaged']],
+  ]);
+}
+
+module.exports = { getBranch, getRemoteUrl, getLocalChanges, getFileDiff, registerHandlers };
