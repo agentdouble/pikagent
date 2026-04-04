@@ -1,13 +1,13 @@
 import { bus } from '../utils/events.js';
-import { contextMenu } from './context-menu.js';
 import { _el, setupInlineInput } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, INPUT_BLUR_DELAY, WATCH_PREFIX,
   SVG_ICONS, HEADER_ACTIONS,
-  computeIndent, getRelativePath, extractFolderName, resolveWatchCwd,
+  computeIndent, extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { showFileContextMenu, showDirContextMenu } from '../utils/file-tree-context-menu.js';
 
 function _parseSvg(svgStr) {
   const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
@@ -165,7 +165,9 @@ export class FileTree {
       onContextmenu: (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, expandedDirs);
+        showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, expandedDirs, null,
+          (path, nameEl) => this.promptRename(path, nameEl),
+          (dirPath, cEl, depth, eDirs, type) => this.promptNewEntry(dirPath, cEl, depth, eDirs, type));
       },
     },
       chevron,
@@ -174,52 +176,13 @@ export class FileTree {
     );
   }
 
-  // --- Context menus ---
+  // --- Context menu helpers ---
 
   findRootCwd(entryPath) {
     for (const [cwd] of this.sections) {
       if (entryPath.startsWith(cwd)) return cwd;
     }
     return '';
-  }
-
-  _commonContextItems(entryPath, nameEl, deleteLabel) {
-    const rootCwd = this.findRootCwd(entryPath);
-    const displayName = entryPath.split('/').pop();
-    return [
-      { label: 'Rename', action: () => this.promptRename(entryPath, nameEl) },
-      { separator: true },
-      { label: 'Copy Path', action: () => window.api.clipboard.write(entryPath) },
-      { label: 'Copy Relative Path', action: () => window.api.clipboard.write(getRelativePath(entryPath, rootCwd)) },
-      { separator: true },
-      { label: 'Duplicate', action: () => window.api.fs.copy(entryPath) },
-      { label: 'Reveal in Finder', action: () => window.api.shell.showInFolder(entryPath) },
-      { separator: true },
-      {
-        label: 'Delete',
-        action: () => {
-          if (confirm(deleteLabel || `Delete "${displayName}"?`)) {
-            window.api.fs.trash(entryPath);
-          }
-        },
-      },
-    ];
-  }
-
-  showFileContextMenu(x, y, entryPath, nameEl) {
-    contextMenu.show(x, y, this._commonContextItems(entryPath, nameEl));
-  }
-
-  showDirContextMenu(x, y, dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl) {
-    const dirName = dirPath.split('/').pop();
-    contextMenu.show(x, y, [
-      { label: 'New File', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'file') },
-      { label: 'New Folder', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'folder') },
-      { separator: true },
-      { label: 'Open as Workspace', action: () => bus.emit('workspace:openFromFolder', { cwd: dirPath }) },
-      { separator: true },
-      ...this._commonContextItems(dirPath, nameEl, `Delete folder "${dirName}" and all its contents?`),
-    ]);
   }
 
   // --- Rename inline input ---
@@ -369,7 +332,9 @@ export class FileTree {
       if (!expandedDirs.has(entry.path)) {
         await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
       }
-      this.showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name);
+      showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name,
+        (path, nameEl) => this.promptRename(path, nameEl),
+        (dirPath, cEl, d, eDirs, type) => this.promptNewEntry(dirPath, cEl, d, eDirs, type));
     });
   }
 
@@ -387,7 +352,8 @@ export class FileTree {
     row.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.showFileContextMenu(e.clientX, e.clientY, entry.path, name);
+      showFileContextMenu(e.clientX, e.clientY, entry.path, name, this.findRootCwd(entry.path),
+        (path, nameEl) => this.promptRename(path, nameEl));
     });
   }
 

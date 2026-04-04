@@ -12,6 +12,14 @@ import {
   isInsertBefore,
 } from '../utils/split-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { serializeLayout, serializeElement } from '../utils/terminal-serializer.js';
+import {
+  getPanels,
+  detachElement,
+  moveToCenter,
+  insertIntoSplit,
+  wrapInNewSplit,
+} from '../utils/split-layout-ops.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {
@@ -32,33 +40,22 @@ export class TerminalPanel {
 
   // ===== DOM Helpers =====
 
-  /** Return non-handle child panels of a split container. */
-  _getPanels(splitEl) {
-    return Array.from(splitEl.children).filter(
-      (c) => !c.classList.contains('split-handle'),
-    );
-  }
-
-  /** Create a split-handle element wired for resizing. */
   _createSplitHandle(direction, splitEl) {
     const handle = _el('div', `split-handle split-handle-${direction}`);
     this.setupResizeHandle(handle, splitEl, direction);
     return handle;
   }
 
-  /** Create a split-container div with direction and flex. */
   _createSplitContainer(direction, flex = '1') {
     const el = _el('div', `split-container split-${direction}`);
     el.style.flex = String(flex);
     return el;
   }
 
-  /** Check if an element is a split container with the given direction. */
   _isSameDirectionSplit(el, direction) {
     return el?.classList.contains('split-container') && el.classList.contains(`split-${direction}`);
   }
 
-  /** Find the cwd of the terminal whose element matches el. */
   _findTerminalCwd(el) {
     for (const [, node] of this.terminals) {
       if (node.element === el) return node.terminal.cwd;
@@ -66,13 +63,11 @@ export class TerminalPanel {
     return this.cwd;
   }
 
-  /** Reset container to blank terminal-panel state. */
   _resetContainer() {
     this.container.replaceChildren();
     this.container.className = 'terminal-panel';
   }
 
-  /** Build the top bar (drag handle + close button) for a terminal node. */
   _buildTopBar(node) {
     const topBar = _el('div', 'terminal-top-bar');
 
@@ -95,8 +90,6 @@ export class TerminalPanel {
     return topBar;
   }
 
-
-  /** Return the two panels adjacent to a split-handle: [before, after]. */
   _adjacentPanels(handle, splitEl) {
     const children = Array.from(splitEl.children);
     const idx = children.indexOf(handle);
@@ -270,95 +263,29 @@ export class TerminalPanel {
     const sourceEl = sourceNode.element;
     const targetEl = targetNode.element;
 
-    this._detachElement(sourceEl);
+    detachElement(sourceEl);
 
     if (side === 'center') {
-      this._moveToCenter(sourceEl, targetEl);
+      moveToCenter(sourceEl, targetEl);
     } else {
       const direction = directionFromSide(side);
       const before = isInsertBefore(side);
       const parentEl = targetEl.parentElement;
 
       if (this._isSameDirectionSplit(parentEl, direction)) {
-        this._insertIntoSplit(sourceEl, targetEl, direction, before, parentEl);
+        insertIntoSplit(sourceEl, targetEl, direction, before, parentEl,
+          (d, s) => this._createSplitHandle(d, s),
+          (s) => this.equalizeChildren(s));
       } else {
-        this._wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl);
+        wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl,
+          (d, f) => this._createSplitContainer(d, f),
+          (d, s) => this._createSplitHandle(d, s));
       }
     }
 
     this.fitAll();
     this.setActive(sourceNode);
     bus.emit('layout:changed');
-  }
-
-  _moveToCenter(sourceEl, targetEl) {
-    targetEl.parentElement.insertBefore(sourceEl, targetEl);
-    sourceEl.style.flex = targetEl.style.flex;
-  }
-
-  _insertIntoSplit(sourceEl, targetEl, direction, before, parentEl) {
-    const handle = this._createSplitHandle(direction, parentEl);
-    if (before) {
-      targetEl.insertAdjacentElement('beforebegin', sourceEl);
-      sourceEl.insertAdjacentElement('afterend', handle);
-    } else {
-      targetEl.insertAdjacentElement('afterend', handle);
-      handle.insertAdjacentElement('afterend', sourceEl);
-    }
-    this.equalizeChildren(parentEl);
-  }
-
-  _wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl) {
-    const splitEl = this._createSplitContainer(direction, targetEl.style.flex || '1');
-    parentEl.replaceChild(splitEl, targetEl);
-    targetEl.style.flex = '1';
-    sourceEl.style.flex = '1';
-
-    const [first, second] = before ? [sourceEl, targetEl] : [targetEl, sourceEl];
-    splitEl.appendChild(first);
-    splitEl.appendChild(this._createSplitHandle(direction, splitEl));
-    splitEl.appendChild(second);
-  }
-
-  _detachElement(el) {
-    const parentEl = el.parentElement;
-    if (!parentEl) return;
-
-    el.remove();
-
-    if (parentEl.classList.contains('split-container')) {
-      const handles = Array.from(parentEl.querySelectorAll(':scope > .split-handle'));
-      if (handles.length > 0) {
-        handles[handles.length - 1].remove();
-      }
-
-      const remainingPanels = this._getPanels(parentEl);
-
-      if (remainingPanels.length === 1) {
-        const survivor = remainingPanels[0];
-        const grandParent = parentEl.parentElement;
-        if (grandParent) {
-          survivor.style.flex = parentEl.style.flex || '1';
-          grandParent.replaceChild(survivor, parentEl);
-          this._unwrapIfSingle(grandParent);
-        }
-      } else if (remainingPanels.length === 0) {
-        parentEl.remove();
-      }
-    }
-  }
-
-  _unwrapIfSingle(el) {
-    if (!el || !el.classList.contains('split-container')) return;
-    const panels = this._getPanels(el);
-    if (panels.length === 1) {
-      const survivor = panels[0];
-      const parent = el.parentElement;
-      if (parent) {
-        survivor.style.flex = el.style.flex || '1';
-        parent.replaceChild(survivor, el);
-      }
-    }
   }
 
   setActive(node) {
@@ -436,7 +363,7 @@ export class TerminalPanel {
   }
 
   equalizeChildren(splitEl) {
-    const panels = this._getPanels(splitEl);
+    const panels = getPanels(splitEl);
     for (const panel of panels) {
       panel.style.flex = '1';
     }
@@ -493,7 +420,7 @@ export class TerminalPanel {
       return;
     }
 
-    this._detachElement(node.element);
+    detachElement(node.element);
 
     const first = this.terminals.values().next().value;
     if (first) this.setActive(first);
@@ -506,38 +433,11 @@ export class TerminalPanel {
   }
 
   serialize() {
-    const rootEl = this.container.firstElementChild;
-    if (!rootEl) return { type: 'terminal', cwd: this.cwd, flex: 1 };
-    return this.serializeElement(rootEl);
+    return serializeLayout(this.container, (el) => this._findTerminalCwd(el), this.cwd);
   }
 
   serializeElement(el) {
-    if (el.classList.contains('split-container')) {
-      const direction = el.classList.contains('split-horizontal') ? 'horizontal' : 'vertical';
-      const children = [];
-
-      for (const child of el.children) {
-        if (child.classList.contains('split-handle')) continue;
-        children.push(this.serializeElement(child));
-      }
-
-      return {
-        type: 'split',
-        direction,
-        flex: parseFloat(el.style.flex) || 1,
-        children,
-      };
-    }
-
-    if (el.classList.contains('terminal-wrapper')) {
-      return {
-        type: 'terminal',
-        cwd: this._findTerminalCwd(el),
-        flex: parseFloat(el.style.flex) || 1,
-      };
-    }
-
-    return { type: 'terminal', cwd: this.cwd, flex: 1 };
+    return serializeElement(el, (e) => this._findTerminalCwd(e), this.cwd);
   }
 
   applyTheme(theme) {
