@@ -1,14 +1,16 @@
 import { openFlowModal } from './flow-modal.js';
-import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedule-helpers.js';
+import { showRunLogModal } from './flow-log-viewer.js';
+import { formatSchedule } from '../utils/flow-schedule-helpers.js';
 import { _el, _safeFit, showPromptDialog, setupInlineInput } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 import { generateId } from '../utils/id.js';
 import {
-  FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
-  STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
+  FIT_DELAY_MS, LOG_SCROLLBACK,
+  NO_LOG_MESSAGE,
   EMPTY_LIST_MESSAGE, MAX_VISIBLE_RUNS, UNCATEGORIZED,
   HEADER_BUTTONS, CATEGORY_ACTIONS,
-  formatRunDateTime, buildDotTooltip, buildCardActionEntries,
+  FLOW_TERMINAL_DEFAULTS,
+  buildDotTooltip, buildCardActionEntries,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
   getLastRun,
@@ -413,7 +415,7 @@ export class FlowView {
       dot.title = buildDotTooltip(run);
       dot.addEventListener('click', (e) => {
         e.stopPropagation();
-        this._showRunLog(flow, run);
+        showRunLogModal(flow, run);
       });
       dots.appendChild(dot);
     }
@@ -500,16 +502,7 @@ export class FlowView {
   }
 
   _createReadonlyTerminal(containerEl, termOpts = {}) {
-    return createTerminal(containerEl, {
-      fontSize: 12,
-      lineHeight: 1.3,
-      cursorBlink: false,
-      disableStdin: true,
-      scrollback: LIVE_SCROLLBACK,
-      autoResize: true,
-      fitDelay: FIT_DELAY_MS,
-      ...termOpts,
-    });
+    return createTerminal(containerEl, { ...FLOW_TERMINAL_DEFAULTS, ...termOpts });
   }
 
   _createLiveTerminal(flowId, ptyId) {
@@ -565,36 +558,7 @@ export class FlowView {
     this._disposeTerminalEntry(this._logTerminals, flowId);
   }
 
-  // === Past Run Log Viewer (modal) ===
-
-  _buildLogModalHeader(flow, run) {
-    const header = _el('div', 'flow-log-header');
-    header.appendChild(_el('span', 'flow-log-title', `${flow.name} — ${formatRunDateTime(run.date, run.timestamp)}`));
-    header.appendChild(_el('span', `flow-log-status flow-log-status-${run.status}`, STATUS_LABELS[run.status] || run.status));
-    header.appendChild(_el('button', 'flow-log-close', '✕'));
-    return header;
-  }
-
-  async _showRunLog(flow, run) {
-    const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
-
-    const overlay = _el('div', 'flow-modal-overlay');
-    const modal = _el('div', 'flow-log-modal');
-    const termContainer = _el('div', 'flow-log-terminal');
-    modal.append(this._buildLogModalHeader(flow, run), termContainer);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    const { term, resizeObs } = this._createReadonlyTerminal(termContainer, {
-      scrollback: LOG_SCROLLBACK,
-    });
-
-    term.write(log || NO_LOG_MODAL_MESSAGE);
-
-    const close = () => { resizeObs.disconnect(); term.dispose(); overlay.remove(); };
-    modal.querySelector('.flow-log-close').addEventListener('click', close);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-  }
+  // === Past Run Log Viewer (modal — delegated to flow-log-viewer.js) ===
 
   // ===== Creation / Edit Modal =====
 

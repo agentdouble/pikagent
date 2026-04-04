@@ -7,6 +7,17 @@ export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 50000;
 export const LIVE_SCROLLBACK = 10000;
 
+/** Default terminal options shared by all flow terminals (live, log, modal). */
+export const FLOW_TERMINAL_DEFAULTS = {
+  fontSize: 12,
+  lineHeight: 1.3,
+  cursorBlink: false,
+  disableStdin: true,
+  scrollback: LIVE_SCROLLBACK,
+  autoResize: true,
+  fitDelay: FIT_DELAY_MS,
+};
+
 export const STATUS_LABELS = { success: 'Succès', error: 'Erreur' };
 export const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';
 export const NO_LOG_MODAL_MESSAGE = '\r\n  Log non disponible.\r\n';
