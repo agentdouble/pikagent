@@ -44,13 +44,6 @@ function _buildAgentCmd(agent, prompt, opts = {}) {
   return parts.join(' ');
 }
 
-const AGENT_COMMANDS = Object.fromEntries(
-  Object.keys(AGENT_CONFIG).map(agent => [
-    agent,
-    (prompt, opts) => _buildAgentCmd(agent, prompt, opts),
-  ]),
-);
-
 function getLastRun(flow) {
   return flow.runs?.at(-1) ?? null;
 }
