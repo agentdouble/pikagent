@@ -515,7 +515,6 @@ export class FlowView {
     const containerEl = _el('div', 'flow-card-terminal');
 
     const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
-      scrollback: LIVE_SCROLLBACK,
       cursorStyle: 'bar',
     });
 
