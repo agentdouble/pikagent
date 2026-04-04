@@ -5,7 +5,7 @@ import { FileViewer } from './file-viewer.js';
 import { BoardView } from './board-view.js';
 import { FlowView } from './flow-view.js';
 import { UsageView } from './usage-view.js';
-import { bus } from '../utils/events.js';
+import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
 import { _el, showConfirmDialog, setupInlineInput } from '../utils/dom.js';
@@ -95,7 +95,7 @@ export class TabManager {
     }
 
     // Bus event listeners — single declaration drives both registration and cleanup
-    this._busListeners = [
+    this._busListeners = subscribeBus([
       ['terminal:cwdChanged', ({ id, cwd }) => {
         this._onTerminalCwdChanged(id, cwd);
         this.configManager.scheduleAutoSave();
@@ -116,8 +116,7 @@ export class TabManager {
         const folderName = extractFolderName(cwd);
         this.createTab(folderName, cwd);
       }],
-    ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
+    ]);
   }
 
   // Find which tab owns a terminal
@@ -784,9 +783,7 @@ export class TabManager {
   }
 
   dispose() {
-    for (const [event, handler] of this._busListeners) {
-      bus.off(event, handler);
-    }
+    unsubscribeBus(this._busListeners);
     this._busListeners = [];
     this._disposeAllSideViews();
     this._disposeAllTabs();

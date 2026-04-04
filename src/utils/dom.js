@@ -66,6 +66,18 @@ export function _safeFit(fitAddon) {
 }
 
 /**
+ * Create a modal overlay with click-outside-to-close behavior.
+ * Returns { overlay, modal } DOM elements. Caller appends children to modal.
+ */
+export function createModalOverlay(overlayClass, modalClass, onClose) {
+  const overlay = _el('div', overlayClass);
+  const modal = _el('div', modalClass);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) onClose(); });
+  return { overlay, modal };
+}
+
+/**
  * Show a prompt dialog for a single text value.
  * @returns {Promise<string|null>} trimmed value or null if cancelled
  */

@@ -1,7 +1,7 @@
 import { openFlowModal } from './flow-modal.js';
 import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedule-helpers.js';
 import { _el, _safeFit, showPromptDialog, setupInlineInput } from '../utils/dom.js';
-import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
+import { createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import { generateId } from '../utils/id.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
@@ -76,12 +76,6 @@ export class FlowView {
 
   // --- Rendering ---
 
-  _disposeAllFromMap(map) {
-    for (const [flowId] of map) {
-      this._disposeTerminalEntry(map, flowId);
-    }
-  }
-
   render() {
     this.container.replaceChildren();
 
@@ -113,7 +107,7 @@ export class FlowView {
     for (const [flowId] of this._liveTerminals) {
       if (!this._runningMap[flowId]) this._disposeLiveTerminal(flowId);
     }
-    this._disposeAllFromMap(this._logTerminals);
+    disposeTerminalMap(this._logTerminals);
 
     this.listEl.replaceChildren();
 
@@ -500,13 +494,8 @@ export class FlowView {
   }
 
   _createReadonlyTerminal(containerEl, termOpts = {}) {
-    return createTerminal(containerEl, {
-      fontSize: 12,
-      lineHeight: 1.3,
-      cursorBlink: false,
-      disableStdin: true,
+    return createReadonlyTerminal(containerEl, {
       scrollback: LIVE_SCROLLBACK,
-      autoResize: true,
       fitDelay: FIT_DELAY_MS,
       ...termOpts,
     });
@@ -629,7 +618,7 @@ export class FlowView {
     this.disposed = true;
     if (this._unsubStarted) this._unsubStarted();
     if (this._unsubComplete) this._unsubComplete();
-    this._disposeAllFromMap(this._liveTerminals);
-    this._disposeAllFromMap(this._logTerminals);
+    disposeTerminalMap(this._liveTerminals);
+    disposeTerminalMap(this._logTerminals);
   }
 }

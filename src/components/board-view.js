@@ -1,8 +1,8 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { bus } from '../utils/events.js';
+import { subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el, _safeFit } from '../utils/dom.js';
-import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
+import { createTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
   STATUS_CONFIG, ALL_CARD_CLASSES, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
@@ -213,12 +213,11 @@ export class BoardView {
     const onTerminalGone = ({ id }) => { this.removeCard(id); this._updateEmptyState(); };
 
     // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = [
+    this._busListeners = subscribeBus([
       [EVT_CREATED, () => { if (!this.disposed) this.scanAgents(); }],
       [EVT_REMOVED, onTerminalGone],
       [EVT_EXITED, onTerminalGone],
-    ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
+    ]);
   }
 
   focusDirection(dir) {
@@ -259,11 +258,7 @@ export class BoardView {
     this.disposed = true;
     this.pause();
 
-    for (const [event, handler] of this._busListeners) bus.off(event, handler);
-
-    for (const [, data] of this.cards) {
-      disposeTerminal(data);
-    }
-    this.cards.clear();
+    unsubscribeBus(this._busListeners);
+    disposeTerminalMap(this.cards);
   }
 }

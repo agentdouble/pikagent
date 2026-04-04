@@ -42,3 +42,27 @@ export function disposeTerminal(data) {
   if (data.resizeObs) data.resizeObs.disconnect();
   data.term.dispose();
 }
+
+/**
+ * Create a readonly terminal (disableStdin, no cursor blink, auto-resize).
+ * Merges caller overrides on top of shared readonly defaults.
+ */
+export function createReadonlyTerminal(container, opts = {}) {
+  return createTerminal(container, {
+    fontSize: 12,
+    lineHeight: 1.3,
+    cursorBlink: false,
+    disableStdin: true,
+    autoResize: true,
+    ...opts,
+  });
+}
+
+/**
+ * Dispose every terminal entry in a Map, then optionally clear it.
+ * Each value must follow the { term, fitAddon, resizeObs?, unsubData? } shape.
+ */
+export function disposeTerminalMap(map) {
+  for (const [, data] of map) disposeTerminal(data);
+  map.clear();
+}
