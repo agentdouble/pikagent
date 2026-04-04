@@ -200,6 +200,12 @@ export class WebviewInstance {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this._logs = [];
     this.container.replaceChildren();
+    this.webview = null;
+    this._consoleList = null;
+    this._consoleBadge = null;
+    this._consolePanel = null;
+    this._consoleHandle = null;
   }
 }

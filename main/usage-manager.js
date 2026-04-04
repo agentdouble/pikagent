@@ -1,5 +1,7 @@
+const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const readline = require('readline');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const sessionManager = require('./session-manager');
@@ -33,22 +35,39 @@ async function getAllFlows() {
   return readDirJson(FLOWS_DIR);
 }
 
+function _readLines(filePath, cutoffMs) {
+  return new Promise((resolve) => {
+    const totals = newTokenTotals();
+    const perDayMap = {};
+    const stream = fs.createReadStream(filePath, { encoding: 'utf-8' });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+    rl.on('line', (line) => {
+      const usage = parseTokenUsage(line, cutoffMs);
+      if (!usage) return;
+      addTokens(totals, usage);
+      accumulatePerDay(perDayMap, usage);
+    });
+    rl.on('close', () => resolve({ totals, perDayMap }));
+    rl.on('error', () => resolve({ totals, perDayMap }));
+    stream.on('error', () => { rl.close(); resolve({ totals, perDayMap }); });
+  });
+}
+
 async function readProjectTokens(projDir, cutoffMs) {
   const totals = newTokenTotals();
   const perDayMap = {};
 
   const files = (await fsp.readdir(projDir)).filter((f) => f.endsWith('.jsonl'));
   for (const file of files) {
-    let content;
-    try { content = await fsp.readFile(path.join(projDir, file), 'utf-8'); } catch { continue; }
-
-    for (const line of content.split('\n')) {
-      const usage = parseTokenUsage(line, cutoffMs);
-      if (!usage) continue;
-
-      addTokens(totals, usage);
-      accumulatePerDay(perDayMap, usage);
-    }
+    try {
+      const result = await _readLines(path.join(projDir, file), cutoffMs);
+      addTokens(totals, result.totals);
+      for (const [k, v] of Object.entries(result.perDayMap)) {
+        if (!perDayMap[k]) perDayMap[k] = { input: 0, output: 0 };
+        perDayMap[k].input += v.input;
+        perDayMap[k].output += v.output;
+      }
+    } catch { continue; }
   }
 
   return { totals, perDayMap };

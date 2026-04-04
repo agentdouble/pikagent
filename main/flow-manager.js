@@ -5,7 +5,7 @@ const { FLOWS_DIR, LOGS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
 const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
-  DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
+  DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS, MAX_FLOW_RUNTIME_MS,
   flowPath, logPath,
   shouldRun, buildFlowCommand, createOutputProcessor,
 } = require('./flow-helpers');
@@ -32,6 +32,12 @@ class FlowManager {
       clearInterval(this._timer);
       this._timer = null;
     }
+    // Kill all running flow PTY processes
+    for (const [flowId, { ptyId, timeout }] of this._runningFlows) {
+      if (timeout) clearTimeout(timeout);
+      this._ptyManager?.kill(ptyId);
+    }
+    this._runningFlows.clear();
   }
 
   // --- Window IPC helper ---
@@ -165,6 +171,8 @@ class FlowManager {
   }
 
   _cleanupFlowProcess(flowId, ptyId, exitCode) {
+    const entry = this._runningFlows.get(flowId);
+    if (entry?.timeout) clearTimeout(entry.timeout);
     this._ptyManager.processes.delete(ptyId);
     this._runningFlows.delete(flowId);
     this._sendToWindow('pty:exit', { id: ptyId, exitCode });
@@ -187,7 +195,14 @@ class FlowManager {
       });
 
       this._setupPtyListeners(proc, flow, ptyId, runTimestamp);
-      this._runningFlows.set(flow.id, { ptyId, proc });
+
+      // Auto-kill flows that exceed the max runtime
+      const timeout = setTimeout(() => {
+        console.warn(`Flow ${flow.id} exceeded max runtime (${MAX_FLOW_RUNTIME_MS / 60000}min), killing`);
+        this._ptyManager.kill(ptyId);
+      }, MAX_FLOW_RUNTIME_MS);
+
+      this._runningFlows.set(flow.id, { ptyId, proc, timeout });
 
       this._sendToWindow('flow:runStarted', {
         flowId: flow.id,

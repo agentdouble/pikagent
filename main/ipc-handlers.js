@@ -6,6 +6,7 @@ const configManager = require('./config-manager');
 const flowManager = require('./flow-manager');
 const sessionManager = require('./session-manager');
 const usageManager = require('./usage-manager');
+const updateManager = require('./update-manager');
 const { safeSend, FORWARD_TABLE, SPREAD_TABLE } = require('./ipc-helpers');
 
 const ptyManager = new PtyManager();
@@ -17,6 +18,7 @@ const TARGETS = {
   config: configManager,
   flow: flowManager,
   usage: usageManager,
+  update: updateManager,
   shell,
   clipboard,
 };
@@ -67,6 +69,15 @@ function register(getWindow) {
     return result.filePaths[0];
   });
 
+  ipcMain.handle('update:run', async () => {
+    return updateManager.performUpdate((progress) => {
+      safeSend(getWindow, 'update:progress', progress);
+    });
+  });
+
+  ipcMain.handle('update:relaunch', () => updateManager.relaunch());
+
+  updateManager.init();
   flowManager.start(getWindow, ptyManager);
   sessionManager.start(ptyManager);
 }

@@ -23,6 +23,7 @@ export const NAV_SECTIONS = [
   { key: 'keybindings', label: 'Keyboard Shortcuts' },
   { key: 'appearance', label: 'Appearance' },
   { key: 'configs', label: 'Workspace Configs' },
+  { key: 'update', label: 'Update' },
 ];
 
 /** Day/Night mode toggle buttons. */

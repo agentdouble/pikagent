@@ -4,8 +4,8 @@
  */
 
 export const FIT_DELAY_MS = 50;
-export const LOG_SCROLLBACK = 50000;
-export const LIVE_SCROLLBACK = 10000;
+export const LOG_SCROLLBACK = 5000;
+export const LIVE_SCROLLBACK = 3000;
 
 export const STATUS_LABELS = { success: 'Succès', error: 'Erreur' };
 export const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';

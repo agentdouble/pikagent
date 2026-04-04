@@ -76,4 +76,12 @@ contextBridge.exposeInMainWorld('api', {
     getDefault:  _fwd('config:getDefault'),
     loadDefault: _fwd('config:loadDefault'),
   },
+
+  update: {
+    check:      _fwd('update:check'),
+    run:        _fwd('update:run'),
+    relaunch:   _fwd('update:relaunch'),
+    version:    _fwd('update:version'),
+    onProgress: _onIpc('update:progress'),
+  },
 });

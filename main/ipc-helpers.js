@@ -53,6 +53,9 @@ const FORWARD_TABLE = [
   ['flow:saveCategories', 'flow', 'saveCategories'],
   // Usage
   ['usage:getMetrics', 'usage', 'getMetrics'],
+  // Update
+  ['update:check',   'update', 'checkForUpdates'],
+  ['update:version', 'update', 'getVersion'],
 ];
 
 /**

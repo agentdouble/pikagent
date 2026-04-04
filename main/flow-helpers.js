@@ -94,24 +94,48 @@ function buildFlowCommand(flow) {
   return `${_buildAgentCmd(agent, escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
 }
 
+const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB cap per flow
+
 /**
  * Creates an output processor that encapsulates parser selection,
  * buffering, and raw-fallback logic for a flow's PTY output.
+ * Caps buffer size at MAX_OUTPUT_BYTES to prevent unbounded memory growth.
  */
 function createOutputProcessor(agent) {
   const parser = (agent || 'claude') === 'claude' ? createStreamParser() : null;
   let outputBuffer = '';
   let rawBuffer = '';
+  let truncated = false;
+
+  function _appendOutput(str) {
+    if (truncated) return;
+    if (outputBuffer.length + str.length > MAX_OUTPUT_BYTES) {
+      outputBuffer = outputBuffer.slice(0, MAX_OUTPUT_BYTES);
+      truncated = true;
+      return;
+    }
+    outputBuffer += str;
+  }
+
+  function _appendRaw(str) {
+    if (truncated) return;
+    if (rawBuffer.length + str.length > MAX_OUTPUT_BYTES) {
+      rawBuffer = rawBuffer.slice(0, MAX_OUTPUT_BYTES);
+      truncated = true;
+      return;
+    }
+    rawBuffer += str;
+  }
 
   return {
     processData(data) {
       if (!parser) {
-        outputBuffer += data;
+        _appendOutput(data);
         return data;
       }
-      rawBuffer += data;
+      _appendRaw(data);
       const formatted = parser.push(data);
-      if (formatted) outputBuffer += formatted;
+      if (formatted) _appendOutput(formatted);
       return formatted || '';
     },
 
@@ -119,7 +143,7 @@ function createOutputProcessor(agent) {
       if (!parser) return '';
       const remaining = parser.flush();
       if (remaining) {
-        outputBuffer += remaining;
+        _appendOutput(remaining);
         return remaining;
       }
       // If no JSON events were parsed, fall back to raw output (claude not found, etc.)
@@ -130,13 +154,18 @@ function createOutputProcessor(agent) {
       return '';
     },
 
-    getOutput() { return outputBuffer; },
+    getOutput() {
+      if (truncated) return outputBuffer + '\n[output truncated at 10 MB]';
+      return outputBuffer;
+    },
   };
 }
 
+const MAX_FLOW_RUNTIME_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 module.exports = {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
-  DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
+  DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS, MAX_FLOW_RUNTIME_MS,
   flowPath, logPath,
   AGENT_COMMANDS, getLastRun, shouldRun, buildFlowCommand,
   createOutputProcessor,

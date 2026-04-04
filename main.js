@@ -17,3 +17,7 @@ app.on('window-all-closed', () => {
   ipcHandlers.cleanup();
   if (process.platform !== 'darwin') app.quit();
 });
+
+app.on('before-quit', () => {
+  ipcHandlers.cleanup();
+});

@@ -15,10 +15,12 @@ export class SettingsModal {
     this.overlay = null;
     this.recording = null; // { actionId, index, el }
     this.activeSection = 'keybindings';
+    this._updateUnsub = null;
     this.sectionRenderers = {
       keybindings: () => this.renderKeybindings(),
       appearance: () => this.renderAppearance(),
       configs: () => this.renderConfigs(),
+      update: () => this.renderUpdate(),
     };
     this.build();
   }
@@ -82,6 +84,7 @@ export class SettingsModal {
   }
 
   showSection(section) {
+    if (this._updateUnsub) { this._updateUnsub(); this._updateUnsub = null; }
     this.activeSection = section;
     for (const [key, el] of Object.entries(this.navItems)) {
       el.classList.toggle('active', key === section);
@@ -400,6 +403,111 @@ export class SettingsModal {
       await this.tabManager.configManager.duplicateConfig(name);
       this.renderConfigs();
     });
+  }
+
+  // ===== Update Section =====
+
+  async renderUpdate() {
+    this._createSectionHeading('Update');
+
+    const version = await window.api.update.version();
+    const bar = _el('div', 'update-version-bar');
+    bar.appendChild(_el('span', 'update-version-label', 'Version'));
+    bar.appendChild(_el('span', 'update-version-value', `v${version}`));
+    this.content.appendChild(bar);
+
+    this.updateArea = _el('div', 'update-area');
+    this.content.appendChild(this.updateArea);
+    this._showUpdateCheck();
+  }
+
+  _showUpdateCheck() {
+    this.updateArea.replaceChildren();
+    const btn = _el('button', 'update-btn', 'Check for updates');
+    btn.addEventListener('click', () => this._doUpdateCheck(btn));
+    this.updateArea.appendChild(btn);
+  }
+
+  async _doUpdateCheck(btn) {
+    btn.textContent = 'Checking...';
+    btn.disabled = true;
+    btn.classList.add('disabled');
+
+    try {
+      const result = await window.api.update.check();
+      if (result.error) {
+        this._showUpdateMessage('error', result.error);
+      } else if (!result.available) {
+        this._showUpdateMessage('ok', 'Your application is up to date');
+      } else {
+        this._showUpdateAvailable(result);
+      }
+    } catch (err) {
+      this._showUpdateMessage('error', err.message);
+    }
+  }
+
+  _showUpdateMessage(type, text) {
+    this.updateArea.replaceChildren();
+    const msg = _el('div', `update-message update-${type}`);
+    msg.textContent = (type === 'ok' ? '\u2713 ' : '') + text;
+    this.updateArea.appendChild(msg);
+
+    const btn = _el('button', 'update-btn', type === 'ok' ? 'Check again' : 'Retry');
+    btn.addEventListener('click', () => this._doUpdateCheck(btn));
+    this.updateArea.appendChild(btn);
+  }
+
+  _showUpdateAvailable(result) {
+    this.updateArea.replaceChildren();
+    this.updateArea.appendChild(
+      _el('div', 'update-available-badge', `${result.count} update${result.count > 1 ? 's' : ''} available`)
+    );
+
+    const list = _el('div', 'update-commits');
+    for (const commit of result.commits.slice(0, 10)) {
+      list.appendChild(_el('div', 'update-commit', commit));
+    }
+    if (result.commits.length > 10) {
+      list.appendChild(_el('div', 'update-commit update-commit-more', `+ ${result.commits.length - 10} more...`));
+    }
+    this.updateArea.appendChild(list);
+
+    const btn = _el('button', 'update-btn update-btn-primary', 'Install & restart');
+    btn.addEventListener('click', () => this._doUpdate());
+    this.updateArea.appendChild(btn);
+  }
+
+  async _doUpdate() {
+    this.updateArea.replaceChildren();
+
+    const progress = _el('div', 'update-progress');
+    const barTrack = _el('div', 'update-progress-track');
+    const barFill = _el('div', 'update-progress-fill');
+    barTrack.appendChild(barFill);
+    const label = _el('div', 'update-progress-label', 'Starting...');
+    progress.appendChild(barTrack);
+    progress.appendChild(label);
+    this.updateArea.appendChild(progress);
+
+    this._updateUnsub = window.api.update.onProgress((p) => {
+      barFill.style.width = `${(p.step / p.total) * 100}%`;
+      label.textContent = p.label;
+    });
+
+    try {
+      await window.api.update.run();
+      if (this._updateUnsub) { this._updateUnsub(); this._updateUnsub = null; }
+
+      this.updateArea.replaceChildren();
+      this.updateArea.appendChild(_el('div', 'update-message update-ok', '\u2713 Update installed successfully!'));
+      const btn = _el('button', 'update-btn update-btn-primary', 'Restart now');
+      btn.addEventListener('click', () => window.api.update.relaunch());
+      this.updateArea.appendChild(btn);
+    } catch (err) {
+      if (this._updateUnsub) { this._updateUnsub(); this._updateUnsub = null; }
+      this._showUpdateMessage('error', err.message);
+    }
   }
 
 }
