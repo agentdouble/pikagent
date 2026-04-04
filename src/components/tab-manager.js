@@ -1,51 +1,25 @@
 import { generateId } from '../utils/id.js';
-import { TerminalPanel } from './terminal-panel.js';
-import { FileTree } from './file-tree.js';
-import { FileViewer } from './file-viewer.js';
-import { BoardView } from './board-view.js';
-import { FlowView } from './flow-view.js';
-import { UsageView } from './usage-view.js';
 import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
 import { _el, showConfirmDialog, setupInlineInput } from '../utils/dom.js';
-import { trackMouse } from '../utils/drag-helpers.js';
 import { extractFolderName } from '../utils/file-tree-helpers.js';
 import { setupTabDrag } from '../utils/tab-drag.js';
 import {
-  PANEL_MIN_WIDTH, FIT_DELAY_MS,
-  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, TAB_DISPOSABLES, WORKSPACE_PANELS, WorkspaceTab,
-  clampPanelWidth, panelArrowState, reorderEntries,
-  findCycleTarget, findColorGroupTarget,
+  COLOR_GROUPS, WorkspaceTab,
+  reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
 
-/**
- * Declarative map for sidebar view rendering — single source of truth for
- * ViewClass, constructor args, and post-reattach behavior per sidebar mode.
- * Lives here (not in helpers) because it references DOM component classes.
- */
-const SIDE_VIEW_RENDERERS = {
-  board: {
-    ViewClass: BoardView,
-    ctorArgs: (self) => [self],
-    onReattach: (self) => {
-      for (const [, card] of self.boardView.cards) {
-        try { card.fitAddon.fit(); } catch {}
-      }
-      self.boardView.resume();
-    },
-  },
-  flow: {
-    ViewClass: FlowView,
-    ctorArgs: (self) => [self],
-    onReattach: (self) => self.flowView.refresh(),
-  },
-  usage: {
-    ViewClass: UsageView,
-    ctorArgs: () => [],
-    onReattach: (self) => self.usageView.refresh(),
-  },
-};
+// Extracted modules
+import {
+  renderActivityBar, detachSidebarView, activateSideView,
+  disposeSideView, disposeAllSideViews,
+} from '../utils/sidebar-manager.js';
+import {
+  renderWorkspace as doRenderWorkspace, reattachLayout, syncFileTree,
+  serialize as doSerialize, restoreConfig as doRestoreConfig,
+  capturePanelWidths, disposeTab, disposeAllTabs,
+} from '../utils/workspace-layout.js';
 
 export { COLOR_GROUPS };
 
@@ -131,158 +105,36 @@ export class TabManager {
     return this.tabs.get(this.activeTabId);
   }
 
-  _reattachLayout(tab) {
-    this.workspaceContainer.replaceChildren();
-    this.workspaceContainer.appendChild(tab.layoutElement);
-    if (tab.terminalPanel) {
-      tab.terminalPanel.fitAll();
-      if (tab.terminalPanel.activeTerminal) {
-        tab.terminalPanel.activeTerminal.terminal.focus();
-      }
-    }
-  }
-
-  _syncFileTree(tab) {
-    if (tab.fileTree && tab.terminalPanel) {
-      // Remove stale entries (e.g. ghost terminal from TerminalPanel.init() before restoreFromTree)
-      const activeTermIds = new Set(tab.terminalPanel.terminals.keys());
-      for (const termId of [...tab.fileTree.termCwds.keys()]) {
-        if (!activeTermIds.has(termId)) {
-          tab.fileTree.removeTerminal(termId);
-        }
-      }
-      for (const [termId, node] of tab.terminalPanel.terminals) {
-        tab.fileTree.setTerminalRoot(termId, node.terminal.cwd);
-      }
-    }
-  }
-
-  /** Reattach or create a side-panel view (board, flow, usage). Returns true if reattached. */
-  _renderSideView(viewKey, containerKey, ViewClass, ...ctorArgs) {
-    this.workspaceContainer.replaceChildren();
-
-    if (this[viewKey] && this[containerKey]) {
-      this.workspaceContainer.appendChild(this[containerKey]);
-      return true;
-    }
-
-    const container = _el('div');
-    container.style.height = '100%';
-    this.workspaceContainer.appendChild(container);
-    this[containerKey] = container;
-    this[viewKey] = new ViewClass(container, ...ctorArgs);
-    return false;
-  }
-
-  // ===== Activity Bar =====
-
-  renderActivityBar() {
-    const activityBar = document.getElementById('activity-bar');
-    if (!activityBar) return;
-    activityBar.replaceChildren();
-
-    const topSection = _el('div', 'activity-bar-top');
-
-    for (const { label, mode } of ACTIVITY_BUTTONS) {
-      const btn = _el('button', 'activity-btn', label);
-      if (this.sidebarMode === mode) btn.classList.add('active');
-      btn.addEventListener('click', () => this.setSidebarMode(mode));
-      topSection.appendChild(btn);
-    }
-
-    topSection.appendChild(_el('button', 'activity-btn', '\u2026'));
-    activityBar.appendChild(topSection);
-
-    // Bottom section with settings
-    const bottomSection = _el('div', 'activity-bar-bottom');
-    const settingsBtn = _el('button', 'activity-btn activity-btn-settings');
-    settingsBtn.append(_el('span', 'activity-btn-icon', '\u2699'), 'Settings');
-    settingsBtn.addEventListener('click', () => {
-      if (this.onOpenSettings) this.onOpenSettings();
-    });
-    bottomSection.appendChild(settingsBtn);
-
-    activityBar.appendChild(bottomSection);
-  }
-
-  _detachSidebarView(mode) {
-    if (mode === 'work') {
-      const prev = this._activeTab();
-      if (prev?.layoutElement) {
-        this._capturePanelWidths(prev);
-        prev.layoutElement.remove();
-      }
-      return;
-    }
-    const cfg = SIDE_VIEWS[mode];
-    if (!cfg) return;
-    if (cfg.pauseOnDetach) {
-      this[cfg.viewKey]?.pause();
-      this[cfg.containerKey]?.remove();
-    } else {
-      this._disposeSideView(mode);
-    }
-  }
+  renderActivityBar() { renderActivityBar(this); }
 
   setSidebarMode(mode) {
     if (mode === this.sidebarMode) return;
 
-    this._detachSidebarView(this.sidebarMode);
+    detachSidebarView(this, this.sidebarMode);
     this.sidebarMode = mode;
 
-    if (SIDE_VIEWS[mode]) {
-      this._activateSideView(mode);
+    if (mode !== 'work') {
+      activateSideView(this, mode);
     } else {
       const tab = this._activeTab();
-      if (tab?.layoutElement) this._reattachLayout(tab);
+      if (tab?.layoutElement) reattachLayout(this, tab);
       else if (tab) this.renderWorkspace(tab);
     }
 
     this.renderActivityBar();
   }
 
-  switchToBoard() {
-    this.setSidebarMode('board');
-  }
+  switchToBoard() { this.setSidebarMode('board'); }
 
-  // ===== Side view disposal (table-driven) =====
+  _capturePanelWidths(tab) { capturePanelWidths(tab); }
 
-  _disposeSideView(mode) {
-    const cfg = SIDE_VIEWS[mode];
-    if (!cfg) return;
-    if (this[cfg.viewKey]) {
-      this[cfg.viewKey].dispose();
-      this[cfg.viewKey] = null;
-    }
-    if (this[cfg.containerKey]) {
-      this[cfg.containerKey].remove();
-      this[cfg.containerKey] = null;
-    }
-  }
+  async renderWorkspace(tab) { return doRenderWorkspace(this, tab); }
 
-  _disposeAllSideViews() {
-    for (const mode of Object.keys(SIDE_VIEWS)) this._disposeSideView(mode);
-  }
+  serialize() { return doSerialize(this); }
 
-  /** Activate a side view by mode using SIDE_VIEW_RENDERERS config. */
-  _activateSideView(mode) {
-    const sideView = SIDE_VIEWS[mode];
-    const renderer = SIDE_VIEW_RENDERERS[mode];
-    if (!sideView || !renderer) return;
-    const reattached = this._renderSideView(
-      sideView.viewKey, sideView.containerKey,
-      renderer.ViewClass, ...renderer.ctorArgs(this),
-    );
-    if (reattached) renderer.onReattach(this);
-  }
+  async restoreConfig(config) { return doRestoreConfig(this, config); }
 
-  // ===== Auto Save (delegated to ConfigManager) =====
-
-  autoSave() {
-    return this.configManager.autoSave();
-  }
-
-  // ===== Tab Management =====
+  autoSave() { return this.configManager.autoSave(); }
 
   createTab(name = null, cwd = null) {
     const id = generateId('tab');
@@ -306,7 +158,7 @@ export class TabManager {
     );
     if (!ok) return;
 
-    this._disposeTab(tab);
+    disposeTab(tab);
     this.tabs.delete(id);
 
     if (this.tabs.size === 0) {
@@ -329,15 +181,15 @@ export class TabManager {
 
     // If in a non-work mode, switch back to work mode
     if (this.sidebarMode !== 'work') {
-      this._detachSidebarView(this.sidebarMode);
+      detachSidebarView(this, this.sidebarMode);
       this.sidebarMode = 'work';
       this.renderActivityBar();
 
       // If this tab is already active, just re-show its layout
       if (id === this.activeTabId) {
         if (tab.layoutElement) {
-          this._reattachLayout(tab);
-          this._syncFileTree(tab);
+          reattachLayout(this, tab);
+          syncFileTree(tab);
           bus.emit('workspace:activated');
         }
         this.renderTabBar();
@@ -352,7 +204,7 @@ export class TabManager {
       const prev = this.tabs.get(this.activeTabId);
       if (prev && prev.layoutElement) {
         // Capture panel widths before detaching (needs attached DOM)
-        this._capturePanelWidths(prev);
+        capturePanelWidths(prev);
         prev.layoutElement.remove();
       }
     }
@@ -361,27 +213,14 @@ export class TabManager {
     this.renderTabBar();
 
     if (tab.layoutElement) {
-      this._reattachLayout(tab);
-      this._syncFileTree(tab);
+      reattachLayout(this, tab);
+      syncFileTree(tab);
       bus.emit('workspace:activated');
     } else {
       // First time rendering this tab
       this.renderWorkspace(tab);
     }
   }
-
-  _capturePanelWidths(tab) {
-    if (!tab.layoutElement) return;
-    tab._panelWidths = {};
-    for (const { side, widthKey, collapsedKey } of WORKSPACE_PANELS) {
-      const el = tab.layoutElement.querySelector(`.panel-${side}`);
-      if (!el) continue;
-      tab._panelWidths[widthKey] = el.getBoundingClientRect().width;
-      tab._panelWidths[collapsedKey] = el.classList.contains('collapsed');
-    }
-  }
-
-  // ===== Tab Bar Rendering =====
 
   setColorFilter(colorGroupId) {
     this.excludedColors.clear();
@@ -556,152 +395,6 @@ export class TabManager {
     });
   }
 
-  // ===== Workspace Rendering (called only once per tab) =====
-
-  _buildSidePanel({ side, contentCls, title }) {
-    const panel = _el('div', `panel panel-${side}`);
-    if (title) {
-      const header = _el('div', 'panel-header');
-      header.appendChild(_el('span', 'panel-title', title));
-      panel.appendChild(header);
-    }
-    const content = _el('div', contentCls);
-    panel.appendChild(content);
-    const handle = _el('div', 'panel-resize-handle');
-    this.setupPanelResize(handle, panel, side);
-    return { panel, handle, content };
-  }
-
-  _buildCenterPanel(tab, leftPanel, rightPanel) {
-    const panel = _el('div', 'panel panel-center');
-    const header = _el('div', 'panel-header');
-
-    const pathInfo = _el('div', 'path-info');
-
-    const pathArrowLeft = _el('span', 'path-arrow', '\u2190');
-    pathArrowLeft.title = 'Collapse left panel';
-    pathArrowLeft.addEventListener('click', () => this.togglePanel(leftPanel, 'left', pathArrowLeft));
-
-    const pathText = _el('span', 'path-text', tab.cwd);
-    const branchBadge = _el('span', 'branch-badge', '');
-
-    const pathArrowRight = _el('span', 'path-arrow', '\u2192');
-    pathArrowRight.title = 'Collapse right panel';
-    pathArrowRight.addEventListener('click', () => this.togglePanel(rightPanel, 'right', pathArrowRight));
-
-    pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
-    header.appendChild(pathInfo);
-    header.appendChild(_el('div', 'term-label', 'Terminal'));
-    panel.appendChild(header);
-
-    const termContainer = _el('div', 'terminal-area');
-    panel.appendChild(termContainer);
-
-    tab.pathTextEl = pathText;
-    tab.branchBadgeEl = branchBadge;
-
-    return { panel, termContainer };
-  }
-
-  _restorePanelSizes(panels, panelEls) {
-    if (!panels) return;
-    for (const { widthKey, collapsedKey, side } of WORKSPACE_PANELS) {
-      const el = panelEls[side];
-      if (!el) continue;
-      if (panels[widthKey] && !panels[collapsedKey]) {
-        el.style.width = `${panels[widthKey]}px`;
-        el.style.flex = 'none';
-      }
-      if (panels[collapsedKey]) el.classList.add('collapsed');
-    }
-  }
-
-  async renderWorkspace(tab) {
-    this.workspaceContainer.replaceChildren();
-
-    const layout = _el('div', 'workspace-layout');
-
-    // Build side panels from declarative config
-    const sides = {};
-    for (const def of WORKSPACE_PANELS) {
-      sides[def.side] = this._buildSidePanel(def);
-    }
-
-    const { panel: centerPanel, termContainer } = this._buildCenterPanel(tab, sides.left.panel, sides.right.panel);
-
-    layout.append(
-      sides.left.panel, sides.left.handle,
-      centerPanel,
-      sides.right.handle, sides.right.panel,
-    );
-    this.workspaceContainer.appendChild(layout);
-
-    tab.layoutElement = layout;
-    tab.fileTree = new FileTree(sides.left.content);
-    tab.fileViewer = new FileViewer(sides.right.content, () => tab.id === this.activeTabId);
-
-    if (tab._restoreData?.splitTree) {
-      tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
-      tab.terminalPanel.restoreFromTree(tab._restoreData.splitTree);
-      this._restorePanelSizes(tab._restoreData.panels, { left: sides.left.panel, right: sides.right.panel });
-      this._syncFileTree(tab);
-      if (tab._restoreData.webviewTabs && tab.fileViewer) {
-        tab.fileViewer.setWebviewTabs(tab._restoreData.webviewTabs);
-      }
-      delete tab._restoreData;
-    } else {
-      tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
-      const firstTermId = tab.terminalPanel.activeTerminal?.terminal?.id;
-      if (firstTermId) tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
-    }
-
-    const branch = await window.api.git.branch(tab.cwd);
-    if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
-
-    bus.emit('workspace:activated');
-  }
-
-  togglePanel(panel, side, arrowEl) {
-    panel.classList.add('animating');
-    panel.classList.toggle('collapsed');
-    const isCollapsed = panel.classList.contains('collapsed');
-
-    if (arrowEl) {
-      const arrow = panelArrowState(side, isCollapsed);
-      arrowEl.textContent = arrow.text;
-      arrowEl.title = arrow.title;
-    }
-
-    setTimeout(() => {
-      panel.classList.remove('animating');
-      this._activeTab()?.terminalPanel?.fitAll();
-    }, FIT_DELAY_MS);
-    this.configManager.scheduleAutoSave();
-  }
-
-  setupPanelResize(handle, panel, side) {
-    let startX = 0;
-    let startWidth = 0;
-
-    handle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      startX = e.clientX;
-      startWidth = panel.getBoundingClientRect().width;
-      trackMouse('col-resize',
-        (ev) => {
-          const dx = ev.clientX - startX;
-          const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-          panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
-          panel.style.flex = 'none';
-          this._activeTab()?.terminalPanel?.fitAll();
-        },
-        () => this.configManager.scheduleAutoSave(),
-      );
-    });
-  }
-
-  // ===== Terminal CWD tracking =====
-
   _onTerminalCwdChanged(termId, cwd) {
     // Find the tab that owns this terminal
     const tab = this._findTabForTerminal(termId);
@@ -729,96 +422,18 @@ export class TabManager {
     }
   }
 
-  // ===== Serialization =====
+  _disposeSideView(mode) { disposeSideView(this, mode); }
 
-  serialize() {
-    const tabs = [];
-    let activeTabIndex = 0;
-    let i = 0;
+  _disposeAllSideViews() { disposeAllSideViews(this); }
 
-    for (const [id, tab] of this.tabs) {
-      if (id === this.activeTabId) activeTabIndex = i;
-
-      const tabData = {
-        name: tab.name,
-        cwd: tab.cwd,
-        noShortcut: tab.noShortcut || false,
-        colorGroup: tab.colorGroup || null,
-        splitTree: null,
-        panels: {},
-      };
-
-      // Serialize terminal tree (works for both active and detached layouts)
-      if (tab.terminalPanel) {
-        tabData.splitTree = tab.terminalPanel.serialize();
-      }
-
-      // Serialize webview tabs
-      if (tab.fileViewer) {
-        tabData.webviewTabs = tab.fileViewer.getWebviewTabs();
-      }
-
-      // Panel widths — active tab: snapshot from live DOM; inactive: use cached
-      if (id === this.activeTabId) this._capturePanelWidths(tab);
-      if (tab._panelWidths) tabData.panels = { ...tab._panelWidths };
-
-      tabs.push(tabData);
-      i++;
-    }
-
-    return { tabs, activeTabIndex };
-  }
-
-  _disposeTab(tab) {
-    for (const key of TAB_DISPOSABLES) if (tab[key]) tab[key].dispose();
-    if (tab.layoutElement) tab.layoutElement.remove();
-  }
-
-  _disposeAllTabs() {
-    for (const [id, tab] of [...this.tabs]) {
-      this._disposeTab(tab);
-      this.tabs.delete(id);
-    }
-    this.activeTabId = null;
-  }
+  _disposeAllTabs() { disposeAllTabs(this); }
 
   dispose() {
     unsubscribeBus(this._busListeners);
     this._busListeners = [];
-    this._disposeAllSideViews();
-    this._disposeAllTabs();
+    disposeAllSideViews(this);
+    disposeAllTabs(this);
   }
-
-  async restoreConfig(config) {
-    if (!config || !config.tabs || config.tabs.length === 0) return;
-
-    this.configManager.isRestoring = true;
-
-    // Reset side views (old terminal IDs will be invalid)
-    this._disposeAllSideViews();
-    this._disposeAllTabs();
-
-    // Create tabs from config
-    for (const tabData of config.tabs) {
-      const id = generateId('tab');
-      const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || this.defaultCwd || '/');
-      tab.noShortcut = tabData.noShortcut || false;
-      tab.colorGroup = tabData.colorGroup || null;
-      tab._restoreData = tabData;
-      this.tabs.set(id, tab);
-    }
-
-    this.renderTabBar();
-
-    // Switch to the active tab
-    const tabIds = Array.from(this.tabs.keys());
-    const activeIdx = Math.min(config.activeTabIndex || 0, tabIds.length - 1);
-    this.switchTo(tabIds[activeIdx]);
-
-    this.configManager.isRestoring = false;
-  }
-
-  // ===== Color Groups =====
 
   setTabColorGroup(id, colorGroupId) {
     const tab = this.tabs.get(id);
@@ -833,8 +448,6 @@ export class TabManager {
     if (target) this.switchTo(target);
   }
 
-  // ===== NoShortcut =====
-
   toggleNoShortcut(id) {
     const tab = this.tabs.get(id);
     if (!tab) return;
@@ -846,8 +459,6 @@ export class TabManager {
   isActiveNoShortcut() {
     return this._activeTab()?.noShortcut ?? false;
   }
-
-  // ===== Shortcut helpers =====
 
   splitHorizontal() {
     this._activeTab()?.terminalPanel?.splitActive('horizontal');

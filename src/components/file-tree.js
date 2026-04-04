@@ -7,6 +7,7 @@ import {
   SVG_ICONS, HEADER_ACTIONS,
   computeIndent, getRelativePath, extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 function _parseSvg(svgStr) {
   const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
@@ -410,3 +411,5 @@ export class FileTree {
     this.termCwds.clear();
   }
 }
+
+registerComponent('FileTree', FileTree);

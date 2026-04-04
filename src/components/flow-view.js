@@ -3,6 +3,7 @@ import { SCHEDULE_LABELS, DAY_NAMES, formatSchedule } from '../utils/flow-schedu
 import { _el, _safeFit, showPromptDialog, setupInlineInput } from '../utils/dom.js';
 import { createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import { generateId } from '../utils/id.js';
+import { registerComponent } from '../utils/component-registry.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
@@ -622,3 +623,5 @@ export class FlowView {
     disposeTerminalMap(this._logTerminals);
   }
 }
+
+registerComponent('FlowView', FlowView);

@@ -3,6 +3,7 @@ import { subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
+import { registerComponent } from '../utils/component-registry.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
   STATUS_CONFIG, ALL_CARD_CLASSES, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
@@ -262,3 +263,5 @@ export class BoardView {
     disposeTerminalMap(this.cards);
   }
 }
+
+registerComponent('BoardView', BoardView);
