@@ -2,7 +2,6 @@ const fsp = require('fs/promises');
 const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
-const sessionManager = require('./session-manager');
 const { FLOWS_DIR, CLAUDE_PROJECTS_DIR } = require('./paths');
 const { readDirJson } = require('./fs-utils');
 const { DEFAULT_DAYS, dayLabels } = require('./stats-helpers');
@@ -24,8 +23,13 @@ const {
 
 const execFileAsync = promisify(execFile);
 
+let _sessionManager = null;
 let _metricsCache = null;
 let _metricsCacheTime = 0;
+
+function init(sessionMgr) {
+  _sessionManager = sessionMgr;
+}
 
 // ===== I/O =====
 
@@ -110,8 +114,8 @@ async function getMetrics() {
   const flows = await getAllFlows();
   const flowRuns = getFlowRuns(flows);
 
-  const sessions = sessionManager.getSessions();
-  const activeSessions = sessionManager.getActiveSessions();
+  const sessions = _sessionManager.getSessions();
+  const activeSessions = _sessionManager.getActiveSessions();
   const allSessions = [...sessions, ...activeSessions];
 
   const agentMetrics = buildAgentMetrics(sessions, activeSessions);
@@ -135,4 +139,14 @@ async function getMetrics() {
   return result;
 }
 
-module.exports = { getMetrics };
+function registerHandlers(ipcMain, { sessionManager }) {
+  const { registerForward } = require('./ipc-helpers');
+
+  init(sessionManager);
+
+  registerForward(ipcMain, { getMetrics }, [
+    ['usage:getMetrics', 'getMetrics'],
+  ]);
+}
+
+module.exports = { init, getMetrics, registerHandlers };

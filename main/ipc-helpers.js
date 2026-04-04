@@ -79,4 +79,28 @@ const SPREAD_TABLE = [
   ['flow:getRunLog', 'flow', 'getRunLog', ['flowId', 'logTimestamp']],
 ];
 
-module.exports = { safeSend, FORWARD_TABLE, SPREAD_TABLE };
+/**
+ * Register forward-style handlers on ipcMain for a given target.
+ * @param {object} ipc - Electron ipcMain
+ * @param {object} target - The object whose methods will be called
+ * @param {Array} entries - Array of [channel, method] tuples
+ */
+function registerForward(ipc, target, entries) {
+  for (const [channel, method] of entries) {
+    ipc.handle(channel, (_, arg) => target[method](arg));
+  }
+}
+
+/**
+ * Register spread-style handlers on ipcMain for a given target.
+ * @param {object} ipc - Electron ipcMain
+ * @param {object} target - The object whose methods will be called
+ * @param {Array} entries - Array of [channel, method, keys] tuples
+ */
+function registerSpread(ipc, target, entries) {
+  for (const [channel, method, keys] of entries) {
+    ipc.handle(channel, (_, arg) => target[method](...keys.map(k => arg[k])));
+  }
+}
+
+module.exports = { safeSend, FORWARD_TABLE, SPREAD_TABLE, registerForward, registerSpread };

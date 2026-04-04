@@ -111,6 +111,32 @@ class PtyManager {
     }
     this.processes.clear();
   }
+
+  registerHandlers(ipcMain, { getWindow, sessionManager }) {
+    const { safeSend, registerForward, registerSpread } = require('./ipc-helpers');
+
+    registerForward(ipcMain, this, [
+      ['pty:checkAgents', 'checkAgents'],
+    ]);
+
+    registerSpread(ipcMain, this, [
+      ['pty:write',  'write',  ['id', 'data']],
+      ['pty:resize', 'resize', ['id', 'cols', 'rows']],
+      ['pty:kill',   'kill',   ['id']],
+      ['pty:getcwd', 'getCwd', ['id']],
+    ]);
+
+    ipcMain.handle('pty:create', (_, { id, cwd, cols, rows }) => {
+      const proc = this.create({ id, cwd, cols, rows });
+      proc.onData((data) => safeSend(getWindow, 'pty:data', { id, data }));
+      proc.onExit(({ exitCode }) => {
+        this.processes.delete(id);
+        sessionManager.onTerminalExit(id);
+        safeSend(getWindow, 'pty:exit', { id, exitCode });
+      });
+      return { pid: proc.pid };
+    });
+  }
 }
 
 module.exports = PtyManager;
