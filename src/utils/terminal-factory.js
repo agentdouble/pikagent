@@ -3,7 +3,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from './terminal-themes.js';
 import { _safeFit } from './dom.js';
 
-export const BASE_FONT_FAMILY =
+const BASE_FONT_FAMILY =
   '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace';
 
 /**

@@ -35,7 +35,7 @@ const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' };
  * Format a run timestamp into a short time string (e.g. "14:32").
  * Returns '' if timestamp is falsy.
  */
-export function formatRunTime(timestamp) {
+function formatRunTime(timestamp) {
   return timestamp
     ? new Date(timestamp).toLocaleTimeString(TIME_LOCALE, TIME_FORMAT)
     : '';

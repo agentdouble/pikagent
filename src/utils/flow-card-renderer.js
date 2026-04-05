@@ -9,7 +9,7 @@ import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flo
 /**
  * Create a single action button for a flow card.
  */
-export function createFlowActionButton(icon, title, onClick, extraClass = '') {
+function createFlowActionButton(icon, title, onClick, extraClass = '') {
   const btn = _el('button', extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn', icon);
   btn.title = title;
   btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
@@ -21,7 +21,7 @@ export function createFlowActionButton(icon, title, onClick, extraClass = '') {
  * @param {Object} flow
  * @param {function} onShowLog - (flow, run) => void
  */
-export function createRunDots(flow, onShowLog) {
+function createRunDots(flow, onShowLog) {
   const dots = _el('div', 'flow-card-dots');
   for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
     const dot = _el('button', `flow-dot flow-dot-${run.status}`);
@@ -41,7 +41,7 @@ export function createRunDots(flow, onShowLog) {
  * @param {boolean} isRunning
  * @param {Object} handlers - { run, toggle, edit, delete }
  */
-export function createCardActions(flow, isRunning, handlers) {
+function createCardActions(flow, isRunning, handlers) {
   const actions = _el('div', 'flow-card-actions');
   for (const { icon, title, action, cls } of buildCardActionEntries(flow, isRunning)) {
     actions.appendChild(createFlowActionButton(icon, title, handlers[action], cls));

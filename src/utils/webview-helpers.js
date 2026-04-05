@@ -1,9 +1,9 @@
 /** Pure helpers and constants for WebviewInstance – no DOM dependency. */
 
-export const LOG_LEVELS = ['verbose', 'info', 'warn', 'error'];
+const LOG_LEVELS = ['verbose', 'info', 'warn', 'error'];
 export const MAX_LOGS = 5000;
-export const CONSOLE_MIN_HEIGHT = 60;
-export const CONSOLE_MAX_HEIGHT = 500;
+const CONSOLE_MIN_HEIGHT = 60;
+const CONSOLE_MAX_HEIGHT = 500;
 
 /** Navigation buttons that proxy a webview method (try/catch wrapper). */
 export const WEBVIEW_NAV_ACTIONS = [

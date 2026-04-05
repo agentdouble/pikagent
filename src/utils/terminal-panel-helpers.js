@@ -13,7 +13,7 @@ export const DRAG_GRIP = '\u28FF';
 export const RESIZE_CURSOR = { horizontal: 'col-resize', vertical: 'row-resize' };
 
 /** Map split direction to rect/mouse property names for resize calculations. */
-export const DIRECTION_PROPS = {
+const DIRECTION_PROPS = {
   horizontal: { size: 'width', start: 'left', mouse: 'clientX' },
   vertical: { size: 'height', start: 'top', mouse: 'clientY' },
 };

@@ -20,7 +20,7 @@ export function getPanels(splitEl) {
  * Unwrap a split container if it has only one child panel.
  * @param {HTMLElement} el
  */
-export function unwrapIfSingle(el) {
+function unwrapIfSingle(el) {
   if (!el || !el.classList.contains('split-container')) return;
   const panels = getPanels(el);
   if (panels.length === 1) {
