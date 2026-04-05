@@ -2,6 +2,7 @@ const { ipcMain } = require('electron');
 const PtyManager = require('./pty-manager');
 
 const ptyManager = new PtyManager();
+const sessionManager = require('./session-manager');
 
 /**
  * Handler modules registry.
@@ -9,7 +10,7 @@ const ptyManager = new PtyManager();
  * To add a new manager, simply append it to this array.
  */
 const HANDLER_MODULES = [
-  require('./session-manager'),
+  sessionManager,
   ptyManager,
   require('./fs-manager'),
   require('./git-manager'),
@@ -20,8 +21,6 @@ const HANDLER_MODULES = [
 ];
 
 function register(getWindow) {
-  const sessionManager = require('./session-manager');
-
   const context = {
     getWindow,
     ptyManager,
