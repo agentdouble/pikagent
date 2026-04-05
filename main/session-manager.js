@@ -2,6 +2,7 @@ const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
 const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
+const { PollingTimer } = require('./polling-timer');
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -9,7 +10,7 @@ const ensureDir = ensureDirOnce(BASE_DIR);
 
 class SessionManager {
   constructor() {
-    this._timer = null;
+    this._poller = new PollingTimer(POLL_INTERVAL_MS, () => this._poll());
     this._ptyManager = null;
     this._previousAgents = {};
     this._activeSessions = {};
@@ -20,15 +21,11 @@ class SessionManager {
   async start(ptyManager) {
     this._ptyManager = ptyManager;
     await this._loadAll();
-    this._timer = setInterval(() => this._poll(), POLL_INTERVAL_MS);
-    this._poll();
+    this._poller.start();
   }
 
   stop() {
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = null;
-    }
+    this._poller.stop();
     for (const termId of Object.keys(this._activeSessions)) {
       this._endSession(termId, 'interrupted');
     }
