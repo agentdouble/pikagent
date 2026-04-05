@@ -13,6 +13,17 @@ async function safeAsync(fn) {
   }
 }
 
+/**
+ * Factory that wraps an async function with safeAsync error handling.
+ * @param {Function} fn - async function to wrap
+ * @returns {Function} wrapped function with same signature
+ */
+function createSafeHandler(fn) {
+  return function (...args) {
+    return safeAsync(() => fn(...args));
+  };
+}
+
 async function pathExists(filePath) {
   try {
     await fsp.access(filePath);
@@ -58,4 +69,4 @@ function dirFirstCompare(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-module.exports = { MAX_FILE_SIZE, safeAsync, doCopy, dirFirstCompare };
+module.exports = { MAX_FILE_SIZE, safeAsync, createSafeHandler, doCopy, dirFirstCompare };
