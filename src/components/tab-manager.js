@@ -1,14 +1,14 @@
 import { generateId } from '../utils/id.js';
 import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
-import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
-import { _el, showConfirmDialog, setupInlineInput } from '../utils/dom.js';
+import { _el, showConfirmDialog } from '../utils/dom.js';
 import { extractFolderName } from '../utils/file-tree-helpers.js';
-import { setupTabDrag } from '../utils/tab-drag.js';
 import {
   COLOR_GROUPS, WorkspaceTab,
   reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
+import { isTabVisible, buildColorFilters } from '../utils/tab-color-filter.js';
+import { buildTabElement, inlineRenameTab } from '../utils/tab-renderer.js';
 
 // Extracted modules
 import {
@@ -237,51 +237,10 @@ export class TabManager {
     this._ensureVisibleTabActive();
   }
 
-  _buildColorFilters() {
-    const usedColors = new Set();
-    for (const [, tab] of this.tabs) {
-      if (tab.colorGroup) usedColors.add(tab.colorGroup);
-    }
-    if (usedColors.size === 0) return null;
-
-    const filterWrap = _el('div', 'tab-color-filters');
-
-    const noFilter = this.activeColorFilter === null && this.excludedColors.size === 0;
-    const allBtn = _el('span', `tab-filter-dot tab-filter-all${noFilter ? ' active' : ''}`);
-    allBtn.textContent = '\u2217';
-    allBtn.addEventListener('click', () => {
-      this.activeColorFilter = null;
-      this.excludedColors.clear();
-      this.renderTabBar();
-    });
-    filterWrap.appendChild(allBtn);
-
-    for (const cg of COLOR_GROUPS) {
-      if (!usedColors.has(cg.id)) continue;
-      const isIncluded = this.activeColorFilter === cg.id;
-      const isExcluded = this.excludedColors.has(cg.id);
-      const cls = `tab-filter-dot${isIncluded ? ' active' : ''}${isExcluded ? ' excluded' : ''}`;
-      const dot = _el('span', cls);
-      dot.style.background = cg.color;
-      dot.title = `${cg.label}${isExcluded ? ' (excluded)' : ''}`;
-      dot.addEventListener('click', () => this.setColorFilter(cg.id));
-      dot.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        this.toggleExcludeColor(cg.id);
-      });
-      filterWrap.appendChild(dot);
-    }
-
-    return filterWrap;
-  }
-
   _isTabVisible(tab) {
-    if (this.activeColorFilter && tab.colorGroup !== this.activeColorFilter) return false;
-    if (this.excludedColors.has(tab.colorGroup)) return false;
-    return true;
+    return isTabVisible(tab, this.activeColorFilter, this.excludedColors);
   }
 
-  /** If the active tab is hidden by current filters, switch to the first visible tab. */
   _ensureVisibleTabActive() {
     const active = this._activeTab();
     if (active && this._isTabVisible(active)) return;
@@ -290,78 +249,21 @@ export class TabManager {
     }
   }
 
-  _buildTabEl(id, tab) {
-    const tabEl = _el('div', 'tab');
-    tabEl.dataset.tabId = id;
-    if (id === this.activeTabId) tabEl.classList.add('active');
-    if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
-
-    if (tab.colorGroup) {
-      const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
-      if (cg) {
-        const dot = _el('span', 'tab-color-dot');
-        dot.style.background = cg.color;
-        tabEl.appendChild(dot);
-        tabEl.style.borderBottomColor = id === this.activeTabId ? cg.color : '';
-      }
-    }
-
-    const nameEl = _el('span', 'tab-name', tab.name);
-    nameEl.addEventListener('dblclick', () => this.renameTab(id, nameEl));
-    tabEl.appendChild(nameEl);
-
-    if (this.tabs.size > 1) {
-      const closeEl = _el('span', 'tab-close', '\u00d7');
-      closeEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.closeTab(id);
-      });
-      tabEl.appendChild(closeEl);
-    }
-
-    tabEl.addEventListener('click', () => this.switchTo(id));
-    setupTabDrag(this, tabEl, id);
-    this._bindTabContextMenu(tabEl, id, tab, nameEl);
-
-    return tabEl;
-  }
-
-  _bindTabContextMenu(tabEl, id, tab, nameEl) {
-    tabEl.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      const colorItems = COLOR_GROUPS.map((cg) => ({
-        label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,
-        colorDot: cg.color,
-        action: () => this.setTabColorGroup(id, tab.colorGroup === cg.id ? null : cg.id),
-      }));
-      if (tab.colorGroup) {
-        colorItems.push({ label: 'Remove color', action: () => this.setTabColorGroup(id, null) });
-      }
-      contextMenu.show(e.clientX, e.clientY, [
-        { label: 'Rename', action: () => this.renameTab(id, nameEl) },
-        {
-          label: tab.noShortcut ? '\u2713 NoShortcut' : 'NoShortcut',
-          action: () => this.toggleNoShortcut(id),
-        },
-        { separator: true },
-        { label: 'Color Group', children: colorItems },
-        { separator: true },
-        { label: 'Close', action: () => this.closeTab(id) },
-      ]);
-    });
-  }
-
   renderTabBar() {
     this.tabBar.replaceChildren();
 
-    const filters = this._buildColorFilters();
+    const filters = buildColorFilters(this.tabs, this.activeColorFilter, this.excludedColors, {
+      onClearFilter: () => { this.activeColorFilter = null; this.excludedColors.clear(); this.renderTabBar(); },
+      onSetFilter: (id) => this.setColorFilter(id),
+      onToggleExclude: (id) => this.toggleExcludeColor(id),
+    });
     if (filters) this.tabBar.appendChild(filters);
 
     this._tabElements = new Map();
 
     for (const [id, tab] of this.tabs) {
       if (!this._isTabVisible(tab)) continue;
-      const tabEl = this._buildTabEl(id, tab);
+      const tabEl = buildTabElement(this, id, tab);
       this.tabBar.appendChild(tabEl);
       this._tabElements.set(id, tabEl);
     }
@@ -380,18 +282,9 @@ export class TabManager {
 
   renameTab(id, nameEl) {
     const tab = this.tabs.get(id);
-    const input = _el('input', { className: 'tab-rename-input', value: tab.name });
-    nameEl.replaceWith(input);
-    input.focus();
-    input.select();
-
-    setupInlineInput(input, {
-      onCommit: (newName) => {
-        tab.name = newName || tab.name;
-        this.renderTabBar();
-        this.configManager.scheduleAutoSave();
-      },
-      onCancel: () => this.renderTabBar(),
+    inlineRenameTab(tab, nameEl, () => {
+      this.renderTabBar();
+      this.configManager.scheduleAutoSave();
     });
   }
 
