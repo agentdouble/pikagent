@@ -6,11 +6,11 @@ import {
   EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
-  getLastRun,
 } from '../utils/flow-view-helpers.js';
 import { createCardHeader } from '../utils/flow-card-renderer.js';
 import { FlowCardTerminalManager } from './flow-card-terminal.js';
-import { createCategoryGroup, cleanupAllDragState } from './flow-category-renderer.js';
+import { createCategoryGroup } from './flow-category-renderer.js';
+import { setupCardDrag, buildCardBody, setupCardHeaderClick } from '../utils/flow-card-setup.js';
 
 
 export class FlowView {
@@ -25,9 +25,8 @@ export class FlowView {
     this._collapsedCategories = new Set();
     this._runningMap = {};
 
-    // Drag state
-    this._dragFlowId = null;
-    this._dragSourceCat = null;
+    // Drag state (shared mutable object for use with setupCardDrag)
+    this._drag = { flowId: null, catId: null };
 
     this._unsubStarted = window.api.flow.onRunStarted(({ flowId, ptyId }) => {
       this._runningMap[flowId] = ptyId;
@@ -129,8 +128,8 @@ export class FlowView {
         this._renderList();
       },
       dragState: {
-        getDragFlowId: () => this._dragFlowId,
-        clearDrag: () => { this._dragFlowId = null; this._dragSourceCat = null; },
+        getDragFlowId: () => this._drag.flowId,
+        clearDrag: () => { this._drag.flowId = null; this._drag.catId = null; },
       },
     });
 
@@ -177,7 +176,7 @@ export class FlowView {
     if (isRunning) card.classList.add('flow-card-running');
     if (isExpanded) card.classList.add('flow-card-expanded');
 
-    this._setupCardDrag(card, flow.id, catId);
+    setupCardDrag(card, flow.id, catId, this._drag);
 
     const headerRow = createCardHeader(flow, isRunning, isExpanded, {
       onToggleOutput: (flowId) => {
@@ -195,68 +194,17 @@ export class FlowView {
     });
     card.appendChild(headerRow);
 
-    const body = this._buildCardBody(flow, isRunning, isExpanded);
+    const body = buildCardBody(flow, isRunning, isExpanded, this._termManager, this._runningMap);
     if (body) card.appendChild(body);
 
-    this._setupCardHeaderClick(headerRow, flow, isRunning);
+    setupCardHeaderClick(headerRow, flow, isRunning, {
+      expandedCards: this._expandedCards,
+      onRenderList: () => this._renderList(),
+      onOpenModal: (f) => this._openModal(f),
+      termManager: this._termManager,
+    });
 
     return card;
-  }
-
-  _setupCardDrag(card, flowId, catId) {
-    card.addEventListener('dragstart', (e) => {
-      this._dragFlowId = flowId;
-      this._dragSourceCat = catId;
-      card.classList.add('flow-dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', flowId);
-    });
-
-    card.addEventListener('dragend', () => {
-      card.classList.remove('flow-dragging');
-      this._dragFlowId = null;
-      this._dragSourceCat = null;
-      cleanupAllDragState();
-    });
-  }
-
-  _buildCardBody(flow, isRunning, isExpanded) {
-    if (isRunning) {
-      const container = this._termManager.createLiveTerminal(flow.id, this._runningMap[flow.id]);
-      container.style.display = isExpanded ? '' : 'none';
-      return container;
-    }
-    if (isExpanded) {
-      const lastRun = getLastRun(flow);
-      if (lastRun) {
-        const termArea = _el('div', 'flow-card-terminal');
-        this._termManager.loadLogIntoContainer(flow.id, lastRun, termArea);
-        return termArea;
-      }
-    }
-    return null;
-  }
-
-  _setupCardHeaderClick(headerRow, flow, isRunning) {
-    headerRow.addEventListener('click', () => {
-      if (isRunning) {
-        if (this._expandedCards.has(flow.id)) this._expandedCards.delete(flow.id);
-        else this._expandedCards.add(flow.id);
-        this._renderList();
-        return;
-      }
-      if (!flow.runs?.length) {
-        this._openModal(flow);
-        return;
-      }
-      if (this._expandedCards.has(flow.id)) {
-        this._expandedCards.delete(flow.id);
-        this._termManager.disposeLogTerminal(flow.id);
-      } else {
-        this._expandedCards.add(flow.id);
-      }
-      this._renderList();
-    });
   }
 
 

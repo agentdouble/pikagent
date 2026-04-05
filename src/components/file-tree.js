@@ -1,13 +1,18 @@
-import { bus } from '../utils/events.js';
-import { _el, setupInlineInput, setupDropZone } from '../utils/dom.js';
+import { _el } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
-  DEBOUNCE_DELAY, INPUT_BLUR_DELAY, WATCH_PREFIX,
+  DEBOUNCE_DELAY, WATCH_PREFIX,
   SVG_ICONS, HEADER_ACTIONS,
-  computeIndent, extractFolderName, resolveWatchCwd,
+  extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { showFileContextMenu, showDirContextMenu } from '../utils/file-tree-context-menu.js';
+import { showDirContextMenu } from '../utils/file-tree-context-menu.js';
+import { renderDirEntry, renderFileEntry } from '../utils/file-tree-renderer.js';
+import {
+  setupDropZone, handleFileDrop,
+  promptRename as doPromptRename,
+  promptNewEntry as doPromptNewEntry,
+} from '../utils/file-tree-drop.js';
 
 function _parseSvg(svgStr) {
   const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
@@ -188,77 +193,19 @@ export class FileTree {
   // --- Rename inline input ---
 
   promptRename(entryPath, nameEl) {
-    const oldName = entryPath.split('/').pop();
-    const input = _el('input', { className: 'file-tree-rename-input', type: 'text', value: oldName });
-
-    nameEl.style.display = 'none';
-    nameEl.parentElement.appendChild(input);
-    input.focus();
-    const dotIndex = oldName.lastIndexOf('.');
-    input.setSelectionRange(0, dotIndex > 0 ? dotIndex : oldName.length);
-
-    setupInlineInput(input, {
-      blurDelay: INPUT_BLUR_DELAY,
-      onCommit: async (newName) => {
-        input.remove();
-        nameEl.style.display = '';
-        if (!newName || newName === oldName) return;
-        await window.api.fs.rename(entryPath, newName);
-      },
-      onCancel: () => {
-        input.remove();
-        nameEl.style.display = '';
-      },
-    });
+    doPromptRename(entryPath, nameEl);
   }
 
   // --- New File / Folder inline input ---
 
   promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type) {
-    const input = _el('input', {
-      className: 'file-tree-new-input',
-      type: 'text',
-      placeholder: type === 'folder' ? 'folder name' : 'filename',
-      style: { marginLeft: `${computeIndent(depth + 1)}px` },
-    });
-
-    parentContentEl.prepend(input);
-    input.focus();
-
-    setupInlineInput(input, {
-      blurDelay: INPUT_BLUR_DELAY,
-      onCommit: async (name) => {
-        input.remove();
-        if (!name) return;
-        const newPath = dirPath + '/' + name;
-        if (type === 'folder') {
-          await window.api.fs.mkdir(newPath);
-        } else {
-          await window.api.fs.writefile(newPath, '');
-          bus.emit('file:open', { path: newPath, name });
-        }
-      },
-    });
+    doPromptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type);
   }
 
   // --- Drag & Drop ---
 
   _setupDropZone(el, getTargetDir) {
-    setupDropZone(el, {
-      onDrop: async (files) => {
-        const targetDir = typeof getTargetDir === 'function' ? getTargetDir() : getTargetDir;
-        if (!targetDir) return;
-        await this._handleFileDrop(files, targetDir);
-      },
-    });
-  }
-
-  async _handleFileDrop(files, destDir) {
-    for (const file of files) {
-      if (file.path) {
-        await window.api.fs.copyTo(file.path, destDir);
-      }
-    }
+    setupDropZone(el, getTargetDir, handleFileDrop);
   }
 
   // --- Directory expand/collapse ---
@@ -279,67 +226,36 @@ export class FileTree {
 
   // --- Render directory entries ---
 
-  _buildRow(entry, depth) {
-    const chevron = _el('span', { className: 'file-tree-chevron' });
-    const name = _el('span', { className: 'file-tree-name', textContent: entry.name });
-    const row = _el('div', {
-      className: 'file-tree-item',
-      style: { paddingLeft: `${computeIndent(depth)}px` },
-    }, chevron, name);
-    return { row, chevron, name };
+  _getDirEntryCallbacks(expandedDirs) {
+    return {
+      setupDropZone: (el, targetDir) => this._setupDropZone(el, targetDir),
+      expandDir: (dirPath, childContainer, chevron, depth, eDirs) =>
+        this._expandDir(dirPath, childContainer, chevron, depth, eDirs),
+      collapseDir: (dirPath, childContainer, chevron, eDirs) =>
+        this._collapseDir(dirPath, childContainer, chevron, eDirs),
+      renderDir: (dirPath, parentEl, depth, eDirs) =>
+        this.renderDir(dirPath, parentEl, depth, eDirs),
+      findRootCwd: (entryPath) => this.findRootCwd(entryPath),
+      promptRename: (path, nameEl) => this.promptRename(path, nameEl),
+      promptNewEntry: (dirPath, cEl, depth, eDirs, type) =>
+        this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
+    };
   }
 
   async _renderDirEntry(entry, parentEl, depth, expandedDirs) {
-    const { row, chevron, name } = this._buildRow(entry, depth);
-    const isExpanded = expandedDirs.has(entry.path);
-    chevron.textContent = isExpanded ? CHEVRON_EXPANDED : CHEVRON_COLLAPSED;
-    chevron.classList.toggle('expanded', isExpanded);
-
-    const childContainer = _el('div', { className: 'file-tree-children' });
-    parentEl.append(row, childContainer);
-
-    if (isExpanded) {
-      await this.renderDir(entry.path, childContainer, depth + 1, expandedDirs);
-    }
-
-    this._setupDropZone(row, entry.path);
-
-    row.addEventListener('click', async () => {
-      if (expandedDirs.has(entry.path)) {
-        this._collapseDir(entry.path, childContainer, chevron, expandedDirs);
-      } else {
-        await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
-      }
-    });
-
-    row.addEventListener('contextmenu', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!expandedDirs.has(entry.path)) {
-        await this._expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
-      }
-      showDirContextMenu(e.clientX, e.clientY, entry.path, this.findRootCwd(entry.path), childContainer, depth + 1, expandedDirs, name,
-        (path, nameEl) => this.promptRename(path, nameEl),
-        (dirPath, cEl, d, eDirs, type) => this.promptNewEntry(dirPath, cEl, d, eDirs, type));
-    });
+    await renderDirEntry(entry, parentEl, depth, expandedDirs, this._getDirEntryCallbacks(expandedDirs));
   }
 
   _renderFileEntry(entry, parentEl, depth) {
-    const { row, name } = this._buildRow(entry, depth);
-    parentEl.appendChild(row);
-
-    row.addEventListener('click', () => {
-      if (this._activeRow) this._activeRow.classList.remove('active');
-      row.classList.add('active');
-      this._activeRow = row;
-      bus.emit('file:open', { path: entry.path, name: entry.name });
-    });
-
-    row.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      showFileContextMenu(e.clientX, e.clientY, entry.path, name, this.findRootCwd(entry.path),
-        (path, nameEl) => this.promptRename(path, nameEl));
+    const self = this;
+    const activeRowRef = {
+      get current() { return self._activeRow; },
+      set current(v) { self._activeRow = v; },
+    };
+    renderFileEntry(entry, parentEl, depth, {
+      activeRowRef,
+      findRootCwd: (entryPath) => this.findRootCwd(entryPath),
+      promptRename: (path, nameEl) => this.promptRename(path, nameEl),
     });
   }
 

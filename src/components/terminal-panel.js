@@ -1,25 +1,20 @@
 import { bus } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
-import { TerminalInstance } from '../utils/terminal-instance.js';
 import {
-  DRAG_GRIP, SplitNode, RESIZE_CURSOR,
-  isSameDirectionSplit, createSplitContainer, adjacentPanels, equalizeChildren, doResize,
+  SplitNode, RESIZE_CURSOR,
+  isSameDirectionSplit, createSplitContainer, equalizeChildren, doResize,
 } from '../utils/terminal-panel-helpers.js';
-import {
-  findClosestInDirection,
-  directionFromSide,
-  isInsertBefore,
-} from '../utils/split-helpers.js';
 import { DropIndicatorManager } from '../utils/terminal-drop-indicator.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { serializeLayout, serializeElement } from '../utils/terminal-serializer.js';
+import { detachElement } from '../utils/split-layout-ops.js';
 import {
-  detachElement,
-  moveToCenter,
-  insertIntoSplit,
-  wrapInNewSplit,
-} from '../utils/split-layout-ops.js';
+  buildTopBar,
+  createTerminalNode as createTerminalNodeHelper,
+  buildFromTree as buildFromTreeHelper,
+} from '../utils/terminal-node-builder.js';
+import { moveTerminal as moveTerminalHelper, splitTerminal, focusDirection as focusDirectionHelper } from '../utils/terminal-split-ops.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {
@@ -57,25 +52,10 @@ export class TerminalPanel {
   }
 
   _buildTopBar(node) {
-    const topBar = _el('div', 'terminal-top-bar');
-
-    const dragHandle = _el('div', 'terminal-drag-handle', { title: 'Drag to move' });
-    dragHandle.appendChild(_el('span', 'drag-grip', { textContent: DRAG_GRIP }));
-
-    const closeBtn = _el('button', 'terminal-close-btn', {
-      textContent: '×',
-      title: 'Close terminal',
+    return buildTopBar(node, {
+      onClose: () => this.removeTerminal(node.terminal.id),
+      setupDrag: (handle, n) => this.setupDrag(handle, n),
     });
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.removeTerminal(node.terminal.id);
-    });
-
-    topBar.appendChild(dragHandle);
-    topBar.appendChild(closeBtn);
-
-    this.setupDrag(dragHandle, node);
-    return topBar;
   }
 
   init() {
@@ -105,50 +85,17 @@ export class TerminalPanel {
   }
 
   buildFromTree(tree) {
-    if (tree.type === 'terminal') {
-      const node = this.createTerminalNode(tree.cwd);
-      node.element.style.flex = String(tree.flex || 1);
-      return node;
-    }
-
-    const splitEl = createSplitContainer(tree.direction, tree.flex || 1);
-
-    const splitNode = new SplitNode('split');
-    splitNode.direction = tree.direction;
-    splitNode.element = splitEl;
-
-    for (let i = 0; i < tree.children.length; i++) {
-      if (i > 0) splitEl.appendChild(this._createSplitHandle(tree.direction, splitEl));
-      const childNode = this.buildFromTree(tree.children[i]);
-      splitEl.appendChild(childNode.element);
-      splitNode.children.push(childNode);
-      childNode.parent = splitNode;
-    }
-
-    return splitNode;
+    return buildFromTreeHelper(tree, {
+      createTerminalNode: (cwd) => this.createTerminalNode(cwd),
+      createSplitHandle: (d, s) => this._createSplitHandle(d, s),
+    });
   }
 
   createTerminalNode(cwd = null) {
-    const spawnCwd = cwd || this.cwd;
-    const node = new SplitNode('terminal');
-
-    const wrapper = _el('div', 'terminal-wrapper');
-    const termContainer = _el('div', 'terminal-container');
-
-    wrapper.appendChild(this._buildTopBar(node));
-    wrapper.appendChild(termContainer);
-
-    node.element = wrapper;
-    node.terminal = new TerminalInstance(termContainer, spawnCwd);
-    this.terminals.set(node.terminal.id, node);
-
-    bus.emit('terminal:created', { id: node.terminal.id, cwd: spawnCwd });
-
-    wrapper.addEventListener('mousedown', () => {
-      this.setActive(node);
+    return createTerminalNodeHelper(cwd, this.cwd, this.terminals, {
+      buildTopBar: (node) => this._buildTopBar(node),
+      onMousedown: (node) => this.setActive(node),
     });
-
-    return node;
   }
 
   // ===== Drag & Drop =====
@@ -179,37 +126,11 @@ export class TerminalPanel {
   }
 
   moveTerminal(sourceId, targetId, side) {
-    const sourceNode = this.terminals.get(sourceId);
-    const targetNode = this.terminals.get(targetId);
-    if (!sourceNode || !targetNode) return;
-    if (sourceNode === targetNode) return;
-
-    const sourceEl = sourceNode.element;
-    const targetEl = targetNode.element;
-
-    detachElement(sourceEl);
-
-    if (side === 'center') {
-      moveToCenter(sourceEl, targetEl);
-    } else {
-      const direction = directionFromSide(side);
-      const before = isInsertBefore(side);
-      const parentEl = targetEl.parentElement;
-
-      if (isSameDirectionSplit(parentEl, direction)) {
-        insertIntoSplit(sourceEl, targetEl, direction, before, parentEl,
-          (d, s) => this._createSplitHandle(d, s),
-          (s) => equalizeChildren(s));
-      } else {
-        wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl,
-          (d, f) => createSplitContainer(d, f),
-          (d, s) => this._createSplitHandle(d, s));
-      }
-    }
-
-    this.fitAll();
-    this.setActive(sourceNode);
-    bus.emit('layout:changed');
+    moveTerminalHelper(sourceId, targetId, side, this.terminals, {
+      createSplitHandle: (d, s) => this._createSplitHandle(d, s),
+      fitAll: () => this.fitAll(),
+      setActive: (node) => this.setActive(node),
+    });
   }
 
   setActive(node) {
@@ -235,55 +156,17 @@ export class TerminalPanel {
   }
 
   focusDirection(dir) {
-    if (!this.activeTerminal || this.terminals.size < 2) return;
-
-    const activeRect = this.activeTerminal.element.getBoundingClientRect();
-    const activeCenter = {
-      cx: activeRect.left + activeRect.width / 2,
-      cy: activeRect.top + activeRect.height / 2,
-    };
-
-    const candidates = [];
-    for (const [id, node] of this.terminals) {
-      if (node === this.activeTerminal) continue;
-      const rect = node.element.getBoundingClientRect();
-      candidates.push({ id, cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 });
-    }
-
-    const bestId = findClosestInDirection(activeCenter, candidates, dir);
-    if (bestId) this.setActive(this.terminals.get(bestId));
+    focusDirectionHelper(this.activeTerminal, this.terminals, dir, (node) => this.setActive(node));
   }
 
   split(targetNode, direction) {
-    const parentEl = targetNode.element.parentElement;
-
-    const sourceCwd = targetNode.terminal ? targetNode.terminal.cwd : this.cwd;
-    const newTermNode = this.createTerminalNode(sourceCwd);
-
-    if (isSameDirectionSplit(parentEl, direction)) {
-      const handle = this._createSplitHandle(direction, parentEl);
-      targetNode.element.insertAdjacentElement('afterend', handle);
-      handle.insertAdjacentElement('afterend', newTermNode.element);
-      equalizeChildren(parentEl);
-    } else {
-      const splitEl = createSplitContainer(direction, targetNode.element.style.flex || '1');
-      parentEl.replaceChild(splitEl, targetNode.element);
-
-      splitEl.appendChild(targetNode.element);
-      splitEl.appendChild(this._createSplitHandle(direction, splitEl));
-      splitEl.appendChild(newTermNode.element);
-      equalizeChildren(splitEl);
-
-      if (this.root === targetNode) {
-        const newSplitNode = new SplitNode('split');
-        newSplitNode.direction = direction;
-        newSplitNode.element = splitEl;
-        this.root = newSplitNode;
-      }
-    }
-
-    this.fitAll();
-    this.setActive(newTermNode);
+    splitTerminal(targetNode, direction, { cwd: this.cwd, root: this.root }, {
+      createTerminalNode: (cwd) => this.createTerminalNode(cwd),
+      createSplitHandle: (d, s) => this._createSplitHandle(d, s),
+      fitAll: () => this.fitAll(),
+      setActive: (node) => this.setActive(node),
+      setRoot: (node) => { this.root = node; },
+    });
   }
 
   setupResizeHandle(handle, splitEl, direction) {
