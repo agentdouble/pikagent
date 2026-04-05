@@ -4,6 +4,7 @@
  */
 import { _el } from '../utils/dom.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta, buildActionBtn } from '../utils/settings-helpers.js';
+import { createSettingsSection } from '../utils/settings-section-builder.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
   const handlers = {
@@ -86,20 +87,16 @@ function _createBottomActions(currentName, tabManager, renderConfigsFn) {
 /**
  * Render the Workspace Configs section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
- * @param {function} createSectionHeading - (title, ...extras) => heading element
  * @param {Object|null} tabManager
  * @param {function} renderConfigsFn - callback to re-render this section
  */
-export async function renderConfigs(contentEl, createSectionHeading, tabManager, renderConfigsFn) {
-  createSectionHeading('Workspace Configs');
-
+export async function renderConfigs(contentEl, tabManager, renderConfigsFn) {
   const currentName = tabManager?.configManager?.currentConfigName || 'Default';
 
   // Current loaded config indicator
   const currentBar = _el('div', 'config-current-bar');
   currentBar.appendChild(_el('span', 'config-current-label', 'Config chargée :'));
   currentBar.appendChild(_el('span', 'config-current-value', currentName));
-  contentEl.appendChild(currentBar);
 
   // Config list
   const configs = await window.api.config.list();
@@ -107,7 +104,9 @@ export async function renderConfigs(contentEl, createSectionHeading, tabManager,
   for (const config of configs) {
     list.appendChild(_createConfigRow(config, currentName, tabManager, renderConfigsFn));
   }
-  contentEl.appendChild(list);
 
-  contentEl.appendChild(_createBottomActions(currentName, tabManager, renderConfigsFn));
+  createSettingsSection(contentEl, {
+    heading: 'Workspace Configs',
+    content: [currentBar, list, _createBottomActions(currentName, tabManager, renderConfigsFn)],
+  });
 }

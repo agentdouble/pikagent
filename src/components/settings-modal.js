@@ -91,21 +91,11 @@ export class SettingsModal {
     }, MODAL_CLOSE_TRANSITION_MS);
   }
 
-  _createSectionHeading(title, ...extras) {
-    this.content.replaceChildren();
-    const heading = _el('div', 'settings-section-header');
-    heading.appendChild(_el('h3', null, title));
-    for (const el of extras) heading.appendChild(el);
-    this.content.appendChild(heading);
-    return heading;
-  }
-
   // ===== Delegated section renderers =====
 
   _renderAppearance() {
     renderAppearance(
       this.content,
-      (title, ...extras) => this._createSectionHeading(title, ...extras),
       this.tabManager,
       () => this._renderAppearance(),
     );
@@ -114,7 +104,6 @@ export class SettingsModal {
   _renderKeybindings() {
     renderKeybindings(
       this.content,
-      (title, ...extras) => this._createSectionHeading(title, ...extras),
       this.shortcutManager,
       (actionId, index, badgeEl) => this.startRecording(actionId, index, badgeEl),
       () => this._renderKeybindings(),
@@ -124,7 +113,6 @@ export class SettingsModal {
   _renderConfigs() {
     renderConfigs(
       this.content,
-      (title, ...extras) => this._createSectionHeading(title, ...extras),
       this.tabManager,
       () => this._renderConfigs(),
     );

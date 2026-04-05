@@ -6,6 +6,7 @@ import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalThe
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 import { _el } from '../utils/dom.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
+import { createSettingsSection } from '../utils/settings-section-builder.js';
 
 /**
  * Apply the current terminal theme to all terminal panels across tabs.
@@ -65,13 +66,10 @@ function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn)
 /**
  * Render the Appearance section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
- * @param {function} createSectionHeading - (title, ...extras) => heading element
  * @param {Object|null} tabManager
  * @param {function} renderAppearanceFn - callback to re-render this section
  */
-export function renderAppearance(contentEl, createSectionHeading, tabManager, renderAppearanceFn) {
-  createSectionHeading('Appearance');
-
+export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
   // Day/Night mode toggle
   const modeRow = _el('div', 'theme-mode-row');
   modeRow.appendChild(_el('span', 'theme-mode-label', 'Mode'));
@@ -91,15 +89,18 @@ export function renderAppearance(contentEl, createSectionHeading, tabManager, re
   }
 
   modeRow.appendChild(modeToggle);
-  contentEl.appendChild(modeRow);
 
   // Terminal theme grid
-  contentEl.appendChild(_el('h4', 'theme-sub-heading', 'Terminal Theme'));
+  const subHeading = _el('h4', 'theme-sub-heading', 'Terminal Theme');
 
   const currentThemeName = getTerminalThemeName();
   const grid = _el('div', 'theme-grid');
   for (const [name, theme] of Object.entries(TERMINAL_THEMES)) {
     grid.appendChild(_createThemeCard(name, theme, name === currentThemeName, tabManager, renderAppearanceFn));
   }
-  contentEl.appendChild(grid);
+
+  createSettingsSection(contentEl, {
+    heading: 'Appearance',
+    content: [modeRow, subHeading, grid],
+  });
 }
