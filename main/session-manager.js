@@ -112,6 +112,10 @@ class SessionManager {
     return Object.values(this._activeSessions).map(buildActiveRecord);
   }
 
+  cleanup() {
+    this.stop();
+  }
+
   registerHandlers(_ipcMain, { ptyManager }) {
     this.start(ptyManager);
   }

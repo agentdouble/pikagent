@@ -112,6 +112,10 @@ class PtyManager {
     this.processes.clear();
   }
 
+  cleanup() {
+    this.killAll();
+  }
+
   registerHandlers(ipcMain, { getWindow, sessionManager }) {
     const { safeSend, registerForward, registerSpread } = require('./ipc-helpers');
 

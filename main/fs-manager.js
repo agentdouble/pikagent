@@ -135,4 +135,8 @@ function registerHandlers(ipcMain, { getWindow }) {
   });
 }
 
-module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo, renameEntry, getHomedir, watchDir, unwatchDir, unwatchAll, registerHandlers };
+function cleanup() {
+  unwatchAll();
+}
+
+module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo, renameEntry, getHomedir, watchDir, unwatchDir, unwatchAll, cleanup, registerHandlers };
