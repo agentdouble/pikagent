@@ -1,5 +1,7 @@
-/* Pure helpers and constants for terminal-panel.
- * No DOM access — only data logic. */
+/* Pure helpers and constants for terminal-panel. */
+import { _el } from './dom.js';
+import { computeResizeRatio } from './split-helpers.js';
+import { getPanels } from './split-layout-ops.js';
 
 /** Polling interval (ms) for detecting terminal cwd changes. */
 export const CWD_POLL_MS = 1500;
@@ -32,10 +34,6 @@ export class SplitNode {
 }
 
 // ===== Pure DOM helpers =====
-
-import { _el } from './dom.js';
-import { computeResizeRatio } from './split-helpers.js';
-import { getPanels } from './split-layout-ops.js';
 
 /** Check if an element is a split container with the given direction. */
 export function isSameDirectionSplit(el, direction) {
