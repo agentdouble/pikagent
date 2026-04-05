@@ -1,7 +1,4 @@
-import { _el } from '../utils/dom.js';
-
-/** Viewport edge padding (px) when clamping menu position. */
-const VIEWPORT_PADDING = 8;
+import { _el, positionInViewport } from '../utils/dom.js';
 
 export class ContextMenu {
   constructor() {
@@ -58,8 +55,9 @@ export class ContextMenu {
 
     this.el.style.display = 'block';
     const { width, height } = this.el.getBoundingClientRect();
-    this.el.style.left = `${Math.min(x, window.innerWidth - width - VIEWPORT_PADDING)}px`;
-    this.el.style.top = `${Math.min(y, window.innerHeight - height - VIEWPORT_PADDING)}px`;
+    const { left, top } = positionInViewport(x, y, width, height);
+    this.el.style.left = `${left}px`;
+    this.el.style.top = `${top}px`;
 
     // Register dismiss listeners only while visible (idempotent remove-then-add)
     document.removeEventListener('mousedown', this._onMouseDown);

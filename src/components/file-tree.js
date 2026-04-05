@@ -1,5 +1,5 @@
 import { bus } from '../utils/events.js';
-import { _el, setupInlineInput } from '../utils/dom.js';
+import { _el, setupInlineInput, setupDropZone } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, INPUT_BLUR_DELAY, WATCH_PREFIX,
@@ -244,26 +244,12 @@ export class FileTree {
   // --- Drag & Drop ---
 
   _setupDropZone(el, getTargetDir) {
-    el.addEventListener('dragover', (e) => {
-      if (!e.dataTransfer.types.includes('Files')) return;
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = 'copy';
-      el.classList.add('drop-target');
-    });
-
-    el.addEventListener('dragleave', (e) => {
-      e.stopPropagation();
-      el.classList.remove('drop-target');
-    });
-
-    el.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      el.classList.remove('drop-target');
-      const targetDir = typeof getTargetDir === 'function' ? getTargetDir() : getTargetDir;
-      if (!targetDir) return;
-      await this._handleFileDrop(e.dataTransfer.files, targetDir);
+    setupDropZone(el, {
+      onDrop: async (files) => {
+        const targetDir = typeof getTargetDir === 'function' ? getTargetDir() : getTargetDir;
+        if (!targetDir) return;
+        await this._handleFileDrop(files, targetDir);
+      },
     });
   }
 

@@ -111,6 +111,52 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
 }
 
 /**
+ * Attach file-drop drag-and-drop listeners to an element.
+ * Adds/removes `className` on dragover/dragleave, then calls `onDrop` with the
+ * dropped FileList on drop.
+ *
+ * @param {HTMLElement} el - target element
+ * @param {{ onDrop: (files: FileList) => void, className?: string }} opts
+ */
+export function setupDropZone(el, { onDrop, className = 'drop-target' }) {
+  el.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+    el.classList.add(className);
+  });
+
+  el.addEventListener('dragleave', (e) => {
+    e.stopPropagation();
+    el.classList.remove(className);
+  });
+
+  el.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    el.classList.remove(className);
+    onDrop(e.dataTransfer.files);
+  });
+}
+
+/**
+ * Clamp (x, y) so a box of (width, height) stays within the viewport.
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {number} [padding=8]
+ * @returns {{ left: number, top: number }}
+ */
+export function positionInViewport(x, y, width, height, padding = 8) {
+  return {
+    left: Math.min(x, window.innerWidth  - width  - padding),
+    top:  Math.min(y, window.innerHeight - height - padding),
+  };
+}
+
+/**
  * Show a confirm dialog.
  * @param {Node|string} message - text string or DOM node
  * @returns {Promise<boolean>}
