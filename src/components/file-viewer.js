@@ -1,9 +1,10 @@
 import { detectLanguage } from '../utils/file-icons.js';
 import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { GitChangesView } from './git-changes-view.js';
-import { contextMenu } from './context-menu.js';
 import { _el } from '../utils/dom.js';
-import { getCursorPosition, insertTab, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
+import { EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
+import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
+import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { WebviewManager } from './file-viewer-webview.js';
 
@@ -147,86 +148,16 @@ export class FileViewer {
     return file.content !== file.savedContent;
   }
 
-  _createTabEl(filePath, file) {
-    const tab = _el('div', 'file-tab');
-    if (filePath === this.activeFile) tab.classList.add('active');
-
-    const pinned = this.isPinned(filePath);
-    const modified = this.isModified(filePath);
-
-    if (pinned) tab.appendChild(_el('span', 'file-tab-pin', '\u{1F4CC}'));
-    tab.appendChild(_el('span', 'file-tab-modified', modified ? '\u25CF' : ''));
-    tab.appendChild(_el('span', null, file.name));
-
-    const close = _el('span', 'file-tab-close', '\u00D7');
-    close.addEventListener('click', (e) => { e.stopPropagation(); this.closeFile(filePath); });
-    tab.appendChild(close);
-
-    tab.addEventListener('click', () => this.setActiveTab(filePath));
-    tab.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      contextMenu.show(e.clientX, e.clientY, [
-        { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => this.togglePin(filePath) },
-        { separator: true },
-        { label: 'Close', action: () => this.closeFile(filePath) },
-      ]);
-    });
-
-    return tab;
-  }
-
   renderTabs() {
-    this.tabsBar.replaceChildren();
-    for (const [filePath, file] of this.openFiles) {
-      this.tabsBar.appendChild(this._createTabEl(filePath, file));
-    }
-  }
-
-  _createEditorDOM(file) {
-    this.lineNumbers = _el('div', 'editor-line-numbers');
-    this.highlightLayer = _el('pre', 'editor-highlight-layer');
-
-    this.editorEl = _el('textarea', 'editor-textarea');
-    this.editorEl.value = file.content;
-    this.editorEl.spellcheck = false;
-    this.editorEl.setAttribute('autocorrect', 'off');
-    this.editorEl.setAttribute('autocapitalize', 'off');
-
-    const editArea = _el('div', 'editor-edit-area');
-    editArea.append(this.highlightLayer, this.editorEl);
-    this.editorWrapper.append(this.lineNumbers, editArea);
-  }
-
-  _bindEditorEvents(file) {
-    this.editorEl.addEventListener('input', () => {
-      file.content = this.editorEl.value;
-      this.updateLineNumbers();
-      this.updateHighlight();
-      this.renderTabs();
-      this.updateStatusBar();
-    });
-
-    this.editorEl.addEventListener('scroll', () => {
-      this.lineNumbers.scrollTop = this.editorEl.scrollTop;
-      this.highlightLayer.scrollTop = this.editorEl.scrollTop;
-      this.highlightLayer.scrollLeft = this.editorEl.scrollLeft;
-    });
-
-    this.editorEl.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        e.stopPropagation();
-        this.saveActive();
-        return;
-      }
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const result = insertTab(this.editorEl.value, this.editorEl.selectionStart, this.editorEl.selectionEnd, TAB_SPACES);
-        this.editorEl.value = result.text;
-        this.editorEl.selectionStart = this.editorEl.selectionEnd = result.cursorPos;
-        this.editorEl.dispatchEvent(new Event('input'));
-      }
-    });
+    renderTabsHelper(this.tabsBar, this.openFiles, this.activeFile,
+      (p) => this.isPinned(p),
+      (p) => this.isModified(p),
+      {
+        onClose: (p) => this.closeFile(p),
+        onActivate: (p) => this.setActiveTab(p),
+        onTogglePin: (p) => this.togglePin(p),
+      },
+    );
   }
 
   renderEditor() {
@@ -243,8 +174,15 @@ export class FileViewer {
       return;
     }
 
-    this._createEditorDOM(file);
-    this._bindEditorEvents(file);
+    const { lineNumbers, highlightLayer, editorEl } = createEditorDOM(this.editorWrapper, file);
+    this.lineNumbers = lineNumbers;
+    this.highlightLayer = highlightLayer;
+    this.editorEl = editorEl;
+
+    bindEditorEvents(this.editorEl, this.lineNumbers, this.highlightLayer, file, {
+      onUpdate: () => { this.updateLineNumbers(); this.updateHighlight(); this.renderTabs(); this.updateStatusBar(); },
+      onSave: () => this.saveActive(),
+    });
     this.updateLineNumbers();
     this.updateHighlight();
     this.updateStatusBar();
@@ -252,71 +190,30 @@ export class FileViewer {
   }
 
   updateLineNumbers() {
-    if (!this.lineNumbers || !this.editorEl) return;
-    const count = this.editorEl.value.split('\n').length;
-    const frag = document.createDocumentFragment();
-    for (let i = 1; i <= count; i++) {
-      if (i > 1) frag.appendChild(document.createTextNode('\n'));
-      frag.appendChild(_el('span', null, String(i)));
-    }
-    this.lineNumbers.replaceChildren(frag);
+    updateLineNumbers(this.lineNumbers, this.editorEl);
   }
 
   updateHighlight() {
-    if (!this.highlightLayer || !this.editorEl) return;
     const file = this.openFiles.get(this.activeFile);
     if (!file) return;
-
-    const code = document.createElement('code');
-    code.className = `language-${file.lang}`;
-    // Need trailing newline so the pre sizing matches the textarea
-    code.textContent = this.editorEl.value + '\n';
-
-    this.highlightLayer.replaceChildren(code);
-
-    if (window.hljs) {
-      window.hljs.highlightElement(code);
-    }
-  }
-
-  _getCursorPosition() {
-    return getCursorPosition(this.editorEl.value, this.editorEl.selectionStart);
+    updateHighlight(this.highlightLayer, this.editorEl, file.lang);
   }
 
   updateStatusBar() {
     if (!this.statusBar || !this.editorEl) return;
     const file = this.openFiles.get(this.activeFile);
     if (!file) { this.statusBar.replaceChildren(); return; }
-
-    const { line, col, totalLines } = this._getCursorPosition();
-    const modified = this.isModified(this.activeFile);
-
-    this.statusBar.replaceChildren(
-      _el('span', 'status-item', file.lang),
-      _el('span', 'status-item', `Ln ${line}, Col ${col}`),
-      _el('span', 'status-item', `${totalLines} lines`),
-      _el('span', modified ? 'status-item status-modified' : 'status-item status-saved', modified ? 'Modified' : 'Saved'),
-      _el('span', 'status-save-hint', modified ? '\u2318S to save' : ''),
-    );
+    updateStatusBar(this.statusBar, this.editorEl, file);
   }
 
   async saveActive() {
     const file = this.openFiles.get(this.activeFile);
-    if (!file || file.error) return;
-
-    const result = await window.api.fs.writefile(this.activeFile, file.content);
-    if (result.error) {
-      this.statusBar.replaceChildren(_el('span', 'status-item status-error', `Save failed: ${result.error}`));
-      return;
-    }
-
-    file.savedContent = file.content;
-    this.renderTabs();
-    this.updateStatusBar();
-
-    // Flash save indicator
-    this.statusBar.classList.add('save-flash');
-    setTimeout(() => this.statusBar.classList.remove('save-flash'), SAVE_FLASH_MS);
+    await saveFile(this.activeFile, file, this.statusBar, {
+      onSuccess: () => {
+        this.renderTabs();
+        this.updateStatusBar();
+      },
+    });
   }
 
   closeFile(filePath) {
@@ -352,17 +249,12 @@ export class FileViewer {
 
   // ===== Mode Bar =====
 
-  _buildStaticModeBtn({ key, label }) {
-    const btn = _el('button', `mode-btn${this.mode === key ? ' active' : ''}`, label);
-    btn.addEventListener('click', () => this.switchMode(key));
-    return btn;
-  }
-
   _renderModeBar() {
     this.modeBar.replaceChildren();
-
-    for (const mode of STATIC_MODES) {
-      this.modeBar.appendChild(this._buildStaticModeBtn(mode));
+    for (const { key, label } of STATIC_MODES) {
+      const btn = _el('button', `mode-btn${this.mode === key ? ' active' : ''}`, label);
+      btn.addEventListener('click', () => this.switchMode(key));
+      this.modeBar.appendChild(btn);
     }
     for (const wt of this._webviewMgr.webviewTabs) {
       this.modeBar.appendChild(this._webviewMgr.buildWebviewModeBtn(wt, this.mode));
