@@ -16,30 +16,30 @@ export const TABS = [
 
 // --- Chart segment definitions ---
 
-export const RUN_CHART_SEGMENTS = [
+const RUN_CHART_SEGMENTS = [
   { key: 'success', cls: 'usage-chart-bar-success' },
   { key: 'error', cls: 'usage-chart-bar-error' },
   { key: 'running', cls: 'usage-chart-bar-running' },
 ];
 
-export const TOKEN_CHART_SEGMENTS = [
+const TOKEN_CHART_SEGMENTS = [
   { key: 'input', cls: 'usage-chart-bar-running' },
   { key: 'output', cls: 'usage-chart-bar-success' },
 ];
 
 // --- Helpers ---
 
-export function _td(text, attrs = {}) {
+function _td(text, attrs = {}) {
   return _el('td', { ...attrs, textContent: text });
 }
 
-export function tokenTooltip(day) {
+function tokenTooltip(day) {
   return `${day.label}: ${formatTokens(day.total)} (in: ${formatTokens(day.input)}, out: ${formatTokens(day.output)})`;
 }
 
 // --- Pure DOM builders ---
 
-export function createBarCell(pct) {
+function createBarCell(pct) {
   return _el('td', { className: 'usage-file-bar-cell' },
     _el('div', { className: 'usage-file-bar' },
       _el('div', { className: 'usage-file-bar-fill', style: { width: `${pct}%` } }),

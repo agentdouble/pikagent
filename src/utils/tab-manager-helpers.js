@@ -4,7 +4,7 @@ export const PANEL_MIN_WIDTH = 150;
 export const FIT_DELAY_MS = 200;
 
 // ── Side panel configuration (single source of truth for side-specific limits & arrows) ──
-export const SIDE_CONFIG = {
+const SIDE_CONFIG = {
   left:  { maxWidth: 500,  arrows: { collapsed: '\u2192', expanded: '\u2190' } },
   right: { maxWidth: 1400, arrows: { collapsed: '\u2190', expanded: '\u2192' } },
 };

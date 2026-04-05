@@ -6,7 +6,7 @@
 // ===== Constants =====
 
 export const SAVE_FLASH_MS = 600;
-export const TAB_SIZE = 2;
+const TAB_SIZE = 2;
 export const TAB_SPACES = ' '.repeat(TAB_SIZE);
 export const EMPTY_MESSAGE = 'Click a file to view its content';
 

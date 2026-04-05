@@ -3,8 +3,8 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
-export const INDENT_BASE = 12;
-export const INDENT_STEP = 16;
+const INDENT_BASE = 12;
+const INDENT_STEP = 16;
 export const CHEVRON_EXPANDED = '▾';
 export const CHEVRON_COLLAPSED = '▸';
 export const DEBOUNCE_DELAY = 400;

@@ -8,21 +8,21 @@ const COLOR_SHORTCUTS = COLOR_GROUPS.map((cg) => ({
 }));
 
 // Ordered list of modifier keys for combo string building
-export const MODIFIERS = [
+const MODIFIERS = [
   { key: 'shiftKey', name: 'shift' },
   { key: 'ctrlKey', name: 'control' },
   { key: 'altKey', name: 'alt' },
   { key: 'metaKey', name: 'meta' },
 ];
 
-export const IS_MAC =
+const IS_MAC =
   typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
 
-export const MODIFIER_LABELS = IS_MAC
+const MODIFIER_LABELS = IS_MAC
   ? { meta: '\u2318', control: '\u2303', shift: '\u21E7', alt: '\u2325' }
   : { meta: 'Win', control: 'Ctrl', shift: 'Shift', alt: 'Alt' };
 
-export function capitalizeKey(key) {
+function capitalizeKey(key) {
   return key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1);
 }
 
