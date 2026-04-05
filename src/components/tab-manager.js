@@ -282,10 +282,10 @@ export class TabManager {
 
   renameTab(id, nameEl) {
     const tab = this.tabs.get(id);
-    inlineRenameTab(tab, nameEl, () => {
-      this.renderTabBar();
-      this.configManager.scheduleAutoSave();
-    });
+    inlineRenameTab(tab, nameEl,
+      () => { this.renderTabBar(); this.configManager.scheduleAutoSave(); },
+      () => this.renderTabBar(),
+    );
   }
 
   _onTerminalCwdChanged(termId, cwd) {

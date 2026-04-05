@@ -81,9 +81,10 @@ export function bindTabContextMenu(ctx, tabEl, id, tab, nameEl) {
  * Inline rename a tab.
  * @param {Object} tab
  * @param {HTMLElement} nameEl
- * @param {function} onDone - callback to re-render and save
+ * @param {function} onCommit - callback after successful rename (re-render + save)
+ * @param {function} onCancel - callback on cancel (re-render only, no save)
  */
-export function inlineRenameTab(tab, nameEl, onDone) {
+export function inlineRenameTab(tab, nameEl, onCommit, onCancel) {
   const input = _el('input', { className: 'tab-rename-input', value: tab.name });
   nameEl.replaceWith(input);
   input.focus();
@@ -92,8 +93,8 @@ export function inlineRenameTab(tab, nameEl, onDone) {
   setupInlineInput(input, {
     onCommit: (newName) => {
       tab.name = newName || tab.name;
-      onDone();
+      onCommit();
     },
-    onCancel: onDone,
+    onCancel,
   });
 }
