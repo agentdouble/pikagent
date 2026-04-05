@@ -1,6 +1,7 @@
 const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, dateStr, DEFAULT_DAYS } = require('./stats-helpers');
+const { groupBy, countBy } = require('./collection-helpers');
 
 // ===== Declarative configs =====
 
@@ -25,25 +26,6 @@ const TOP_PROJECTS_LIMIT = 10;
 const CACHE_TTL = 30000;
 const TOP_FILES_LIMIT = 15;
 const GIT_TIMEOUT_MS = 5000;
-
-// ===== Collection helpers =====
-
-function _groupBy(items, keyFn) {
-  const groups = {};
-  for (const item of items) {
-    const key = keyFn(item);
-    (groups[key] ||= []).push(item);
-  }
-  return groups;
-}
-
-function _countBy(items, keyFn) {
-  const counts = {};
-  for (const item of items) {
-    counts[keyFn(item)] = (counts[keyFn(item)] || 0) + 1;
-  }
-  return counts;
-}
 
 // ===== Token helpers =====
 
@@ -189,7 +171,7 @@ function buildFlowMetrics(flows, flowRuns) {
 // ===== Agent helpers =====
 
 function getByAgent(sessions) {
-  return Object.entries(_groupBy(sessions, s => s.agent || 'Unknown'))
+  return Object.entries(groupBy(sessions, s => s.agent || 'Unknown'))
     .map(([agent, items]) => ({
       agent,
       totalSessions: items.length,
@@ -223,7 +205,7 @@ function buildFileKey(cwd, filePath) {
 
 function rankModifiedFiles(results, limit = TOP_FILES_LIMIT) {
   const allFiles = results.flatMap(({ cwd, files }) => files.map(f => buildFileKey(cwd, f)));
-  return Object.entries(_countBy(allFiles, k => k))
+  return Object.entries(countBy(allFiles, k => k))
     .map(([file, count]) => ({ file, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);

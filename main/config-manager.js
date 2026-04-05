@@ -26,7 +26,7 @@ async function writeMeta(meta) {
 async function save(name, data) {
   await ensureDir();
   const existing = await readJson(configPath(name));
-  const config = buildConfigRecord(name, data, existing, new Date().toISOString());
+  const config = buildConfigRecord(name, data, existing);
   await writeJson(configPath(name), config);
   return config;
 }
