@@ -34,14 +34,9 @@ function register(getWindow) {
 }
 
 function cleanup() {
-  const sessionManager = require('./session-manager');
-  const flowManager = require('./flow-manager');
-  const fsManager = require('./fs-manager');
-
-  sessionManager.stop();
-  flowManager.stop();
-  ptyManager.killAll();
-  fsManager.unwatchAll();
+  for (const mod of HANDLER_MODULES) {
+    if (typeof mod.cleanup === 'function') mod.cleanup();
+  }
 }
 
 module.exports = { register, cleanup };

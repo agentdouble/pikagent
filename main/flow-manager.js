@@ -226,6 +226,10 @@ class FlowManager {
     await this.save(flow);
   }
 
+  cleanup() {
+    this.stop();
+  }
+
   registerHandlers(ipcMain, { getWindow, ptyManager }) {
     const { registerForward, registerSpread } = require('./ipc-helpers');
 

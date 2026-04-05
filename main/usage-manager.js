@@ -149,4 +149,4 @@ function registerHandlers(ipcMain, { sessionManager }) {
   ]);
 }
 
-module.exports = { init, getMetrics, registerHandlers };
+module.exports = { getMetrics, registerHandlers };
