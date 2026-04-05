@@ -59,6 +59,25 @@ export function buildDotTooltip(run) {
 }
 
 /**
+ * Build a Map keyed by flow.id for fast lookup.
+ * @param {Array} flows
+ * @returns {Map<string, Object>}
+ */
+function buildFlowMap(flows) {
+  return new Map(flows.map(f => [f.id, f]));
+}
+
+/**
+ * Resolve an array of flow IDs to flow objects using a flow map.
+ * @param {string[]} ids
+ * @param {Map<string, Object>} flowMap
+ * @returns {Array}
+ */
+function resolveIds(ids, flowMap) {
+  return ids.map(id => flowMap.get(id)).filter(Boolean);
+}
+
+/**
  * Return flows belonging to a given category, ordered by catData.order.
  * @param {Array} flows - all flow objects
  * @param {Object} order - catData.order mapping catId → [flowId, …]
@@ -66,9 +85,7 @@ export function buildDotTooltip(run) {
  * @returns {Array} ordered flows for this category
  */
 export function getFlowsForCategory(flows, order, catId) {
-  const orderedIds = order[catId] || [];
-  const flowMap = new Map(flows.map(f => [f.id, f]));
-  return orderedIds.map(id => flowMap.get(id)).filter(Boolean);
+  return resolveIds(order[catId] || [], buildFlowMap(flows));
 }
 
 /**
@@ -83,13 +100,14 @@ export function getUncategorizedFlows(flows, order) {
   for (const ids of Object.values(order)) {
     for (const id of ids) assigned.add(id);
   }
-  const unordered = flows.filter(f => !assigned.has(f.id));
+
+  const flowMap = buildFlowMap(flows);
   const orderedIds = order[UNCATEGORIZED] || [];
-  const flowMap = new Map(flows.map(f => [f.id, f]));
-  const ordered = orderedIds.map(id => flowMap.get(id)).filter(Boolean);
+  const ordered = resolveIds(orderedIds, flowMap);
   const inOrder = new Set(orderedIds);
-  for (const f of unordered) {
-    if (!inOrder.has(f.id)) ordered.push(f);
+
+  for (const f of flows) {
+    if (!assigned.has(f.id) && !inOrder.has(f.id)) ordered.push(f);
   }
   return ordered;
 }
