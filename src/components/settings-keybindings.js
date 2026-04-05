@@ -4,6 +4,7 @@
  */
 import { formatCombo } from '../utils/shortcut-helpers.js';
 import { _el } from '../utils/dom.js';
+import { createSettingsSection } from '../utils/settings-section-builder.js';
 
 /**
  * Create a key badge element for a binding at a given index.
@@ -44,18 +45,16 @@ export function createKeyBadge(binding, index, shortcutManager, startRecordingFn
 /**
  * Render the Keybindings section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
- * @param {function} createSectionHeading - (title, ...extras) => heading element
  * @param {Object} shortcutManager
  * @param {function} startRecordingFn
  * @param {function} renderKeybindingsFn - callback to re-render
  */
-export function renderKeybindings(contentEl, createSectionHeading, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const resetBtn = _el('button', 'settings-reset-btn', 'Reset to defaults');
   resetBtn.addEventListener('click', () => {
     shortcutManager.resetToDefaults();
     renderKeybindingsFn();
   });
-  createSectionHeading('Keyboard Shortcuts', resetBtn);
 
   const list = _el('div', 'keybinding-list');
 
@@ -81,5 +80,9 @@ export function renderKeybindings(contentEl, createSectionHeading, shortcutManag
     list.appendChild(row);
   }
 
-  contentEl.appendChild(list);
+  createSettingsSection(contentEl, {
+    heading: 'Keyboard Shortcuts',
+    actions: [resetBtn],
+    content: [list],
+  });
 }
