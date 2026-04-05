@@ -1,16 +1,14 @@
 import { openFlowModal } from './flow-modal.js';
-import { formatSchedule } from '../utils/flow-schedule-helpers.js';
 import { _el, showPromptDialog, setupInlineInput } from '../utils/dom.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent } from '../utils/component-registry.js';
 import {
-  EMPTY_LIST_MESSAGE, MAX_VISIBLE_RUNS, UNCATEGORIZED,
-  HEADER_BUTTONS,
-  buildDotTooltip, buildCardActionEntries,
+  EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
   getLastRun,
 } from '../utils/flow-view-helpers.js';
+import { createCardHeader } from '../utils/flow-card-renderer.js';
 import { FlowCardTerminalManager } from './flow-card-terminal.js';
 import { createCategoryGroup, cleanupAllDragState } from './flow-category-renderer.js';
 
@@ -181,7 +179,20 @@ export class FlowView {
 
     this._setupCardDrag(card, flow.id, catId);
 
-    const headerRow = this._createCardHeader(flow, isRunning, isExpanded);
+    const headerRow = createCardHeader(flow, isRunning, isExpanded, {
+      onToggleOutput: (flowId) => {
+        if (this._expandedCards.has(flowId)) this._expandedCards.delete(flowId);
+        else this._expandedCards.add(flowId);
+        this._renderList();
+      },
+      onShowLog: (f, run) => this._termManager.showRunLog(f, run),
+      actionHandlers: {
+        run:    () => window.api.flow.runNow(flow.id),
+        toggle: async () => { await window.api.flow.toggle(flow.id); this.refresh(); },
+        edit:   () => this._openModal(flow),
+        delete: () => this._deleteFlow(flow.id),
+      },
+    });
     card.appendChild(headerRow);
 
     const body = this._buildCardBody(flow, isRunning, isExpanded);
@@ -248,65 +259,6 @@ export class FlowView {
     });
   }
 
-  _createCardHeader(flow, isRunning, isExpanded) {
-    const headerRow = _el('div', 'flow-card-header');
-
-    const info = _el('div', 'flow-card-info');
-    const nameRow = _el('div', 'flow-card-name-row');
-    nameRow.appendChild(_el('span', 'flow-card-name', flow.name));
-    if (isRunning) nameRow.appendChild(_el('span', 'flow-running-badge', 'En cours...'));
-    if (isRunning) {
-      nameRow.appendChild(_el('button', {
-        className: 'flow-output-toggle',
-        textContent: isExpanded ? '▾ Sortie' : '▸ Sortie',
-        title: isExpanded ? 'Masquer la sortie' : 'Afficher la sortie',
-        onClick: (e) => {
-          e.stopPropagation();
-          if (this._expandedCards.has(flow.id)) this._expandedCards.delete(flow.id);
-          else this._expandedCards.add(flow.id);
-          this._renderList();
-        },
-      }));
-    }
-    info.appendChild(nameRow);
-    info.appendChild(_el('div', 'flow-card-schedule', formatSchedule(flow.schedule)));
-    headerRow.appendChild(info);
-
-    const right = _el('div', 'flow-card-right');
-    right.appendChild(this._createRunDots(flow));
-    right.appendChild(this._createCardActions(flow, isRunning));
-    headerRow.appendChild(right);
-
-    return headerRow;
-  }
-
-  _createRunDots(flow) {
-    const dots = _el('div', 'flow-card-dots');
-    for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
-      const dot = _el('button', `flow-dot flow-dot-${run.status}`);
-      dot.title = buildDotTooltip(run);
-      dot.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._termManager.showRunLog(flow, run);
-      });
-      dots.appendChild(dot);
-    }
-    return dots;
-  }
-
-  _createCardActions(flow, isRunning) {
-    const actions = _el('div', 'flow-card-actions');
-    const handlers = {
-      run:    () => window.api.flow.runNow(flow.id),
-      toggle: async () => { await window.api.flow.toggle(flow.id); this.refresh(); },
-      edit:   () => this._openModal(flow),
-      delete: () => this._deleteFlow(flow.id),
-    };
-    for (const { icon, title, action, cls } of buildCardActionEntries(flow, isRunning)) {
-      actions.appendChild(this._createActionButton(icon, title, handlers[action], cls));
-    }
-    return actions;
-  }
 
   async _deleteFlow(flowId) {
     this._termManager.disposeLiveTerminal(flowId);
@@ -362,15 +314,6 @@ export class FlowView {
     if (!deleteCategoryData(this.catData, catId)) return;
     await this._persistCategories();
     this._renderList();
-  }
-
-  // === Action button helper ===
-
-  _createActionButton(icon, title, onClick, extraClass = '') {
-    const btn = _el('button', extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn', icon);
-    btn.title = title;
-    btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
-    return btn;
   }
 
   // ===== Creation / Edit Modal =====

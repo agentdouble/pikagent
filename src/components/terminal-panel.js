@@ -2,19 +2,19 @@ import { bus } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import { TerminalInstance } from '../utils/terminal-instance.js';
-import { DRAG_GRIP, SplitNode, RESIZE_CURSOR, DIRECTION_PROPS } from '../utils/terminal-panel-helpers.js';
 import {
-  detectDropSide,
-  computeIndicatorRect,
-  computeResizeRatio,
+  DRAG_GRIP, SplitNode, RESIZE_CURSOR,
+  isSameDirectionSplit, createSplitContainer, adjacentPanels, equalizeChildren, doResize,
+} from '../utils/terminal-panel-helpers.js';
+import {
   findClosestInDirection,
   directionFromSide,
   isInsertBefore,
 } from '../utils/split-helpers.js';
+import { DropIndicatorManager } from '../utils/terminal-drop-indicator.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { serializeLayout, serializeElement } from '../utils/terminal-serializer.js';
 import {
-  getPanels,
   detachElement,
   moveToCenter,
   insertIntoSplit,
@@ -31,9 +31,7 @@ export class TerminalPanel {
 
     // Drag and drop state
     this._dragSourceId = null;
-    this._dropIndicator = null;
-    this._dropTarget = null;
-    this._dropSide = null;
+    this._drop = new DropIndicatorManager(container);
 
     this.init();
   }
@@ -44,16 +42,6 @@ export class TerminalPanel {
     const handle = _el('div', `split-handle split-handle-${direction}`);
     this.setupResizeHandle(handle, splitEl, direction);
     return handle;
-  }
-
-  _createSplitContainer(direction, flex = '1') {
-    const el = _el('div', `split-container split-${direction}`);
-    el.style.flex = String(flex);
-    return el;
-  }
-
-  _isSameDirectionSplit(el, direction) {
-    return el?.classList.contains('split-container') && el.classList.contains(`split-${direction}`);
   }
 
   _findTerminalCwd(el) {
@@ -90,19 +78,6 @@ export class TerminalPanel {
     return topBar;
   }
 
-  _adjacentPanels(handle, splitEl) {
-    const children = Array.from(splitEl.children);
-    const idx = children.indexOf(handle);
-    let before = null, after = null;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (!children[i].classList.contains('split-handle')) { before = children[i]; break; }
-    }
-    for (let i = idx + 1; i < children.length; i++) {
-      if (!children[i].classList.contains('split-handle')) { after = children[i]; break; }
-    }
-    return [before, after];
-  }
-
   init() {
     this._resetContainer();
 
@@ -136,7 +111,7 @@ export class TerminalPanel {
       return node;
     }
 
-    const splitEl = this._createSplitContainer(tree.direction, tree.flex || 1);
+    const splitEl = createSplitContainer(tree.direction, tree.flex || 1);
 
     const splitNode = new SplitNode('split');
     splitNode.direction = tree.direction;
@@ -186,72 +161,21 @@ export class TerminalPanel {
 
       this._dragSourceId = sourceNode.terminal.id;
       sourceNode.element.classList.add('dragging');
-      this._createDropIndicator();
+      this._drop.create();
 
       trackMouse('grabbing',
-        (ev) => this._updateDropTarget(ev.clientX, ev.clientY),
+        (ev) => this._drop.update(ev.clientX, ev.clientY, this.terminals, this._dragSourceId),
         () => {
           sourceNode.element.classList.remove('dragging');
-          this._removeDropIndicator();
-          if (this._dropTarget && this._dropSide && this._dropTarget !== this._dragSourceId) {
-            this.moveTerminal(this._dragSourceId, this._dropTarget, this._dropSide);
+          const { targetId, side } = this._drop;
+          this._drop.remove();
+          if (targetId && side && targetId !== this._dragSourceId) {
+            this.moveTerminal(this._dragSourceId, targetId, side);
           }
           this._dragSourceId = null;
-          this._dropTarget = null;
-          this._dropSide = null;
         },
       );
     });
-  }
-
-  _createDropIndicator() {
-    this._dropIndicator = _el('div', 'drop-indicator');
-    this.container.appendChild(this._dropIndicator);
-  }
-
-  _removeDropIndicator() {
-    if (this._dropIndicator) {
-      this._dropIndicator.remove();
-      this._dropIndicator = null;
-    }
-    this.container.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
-  }
-
-  _updateDropTarget(mx, my) {
-    this._dropTarget = null;
-    this._dropSide = null;
-    if (this._dropIndicator) this._dropIndicator.style.display = 'none';
-
-    this.container.querySelectorAll('.drop-hover').forEach((el) => el.classList.remove('drop-hover'));
-
-    for (const [termId, node] of this.terminals) {
-      if (termId === this._dragSourceId) continue;
-
-      const rect = node.element.getBoundingClientRect();
-      if (mx < rect.left || mx > rect.right || my < rect.top || my > rect.bottom) continue;
-
-      const relX = (mx - rect.left) / rect.width;
-      const relY = (my - rect.top) / rect.height;
-      const side = detectDropSide(relX, relY);
-
-      this._dropTarget = termId;
-      this._dropSide = side;
-      node.element.classList.add('drop-hover');
-
-      this._positionIndicator(rect, side);
-      return;
-    }
-  }
-
-  _positionIndicator(rect, side) {
-    if (!this._dropIndicator) return;
-    const s = this._dropIndicator.style;
-    const r = computeIndicatorRect(rect, side);
-    s.display = 'block';
-    s.left = `${r.left}px`;
-    s.top = `${r.top}px`;
-    s.width = `${r.width}px`;
-    s.height = `${r.height}px`;
   }
 
   moveTerminal(sourceId, targetId, side) {
@@ -272,13 +196,13 @@ export class TerminalPanel {
       const before = isInsertBefore(side);
       const parentEl = targetEl.parentElement;
 
-      if (this._isSameDirectionSplit(parentEl, direction)) {
+      if (isSameDirectionSplit(parentEl, direction)) {
         insertIntoSplit(sourceEl, targetEl, direction, before, parentEl,
           (d, s) => this._createSplitHandle(d, s),
-          (s) => this.equalizeChildren(s));
+          (s) => equalizeChildren(s));
       } else {
         wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl,
-          (d, f) => this._createSplitContainer(d, f),
+          (d, f) => createSplitContainer(d, f),
           (d, s) => this._createSplitHandle(d, s));
       }
     }
@@ -336,19 +260,19 @@ export class TerminalPanel {
     const sourceCwd = targetNode.terminal ? targetNode.terminal.cwd : this.cwd;
     const newTermNode = this.createTerminalNode(sourceCwd);
 
-    if (this._isSameDirectionSplit(parentEl, direction)) {
+    if (isSameDirectionSplit(parentEl, direction)) {
       const handle = this._createSplitHandle(direction, parentEl);
       targetNode.element.insertAdjacentElement('afterend', handle);
       handle.insertAdjacentElement('afterend', newTermNode.element);
-      this.equalizeChildren(parentEl);
+      equalizeChildren(parentEl);
     } else {
-      const splitEl = this._createSplitContainer(direction, targetNode.element.style.flex || '1');
+      const splitEl = createSplitContainer(direction, targetNode.element.style.flex || '1');
       parentEl.replaceChild(splitEl, targetNode.element);
 
       splitEl.appendChild(targetNode.element);
       splitEl.appendChild(this._createSplitHandle(direction, splitEl));
       splitEl.appendChild(newTermNode.element);
-      this.equalizeChildren(splitEl);
+      equalizeChildren(splitEl);
 
       if (this.root === targetNode) {
         const newSplitNode = new SplitNode('split');
@@ -362,39 +286,14 @@ export class TerminalPanel {
     this.setActive(newTermNode);
   }
 
-  equalizeChildren(splitEl) {
-    const panels = getPanels(splitEl);
-    for (const panel of panels) {
-      panel.style.flex = '1';
-    }
-  }
-
   setupResizeHandle(handle, splitEl, direction) {
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
       trackMouse(RESIZE_CURSOR[direction],
-        (ev) => this._doResize(ev, handle, splitEl, direction),
+        (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
         () => bus.emit('layout:changed'),
       );
     });
-  }
-
-  _doResize(e, handle, splitEl, direction) {
-    const [panelBefore, panelAfter] = this._adjacentPanels(handle, splitEl);
-    if (!panelBefore || !panelAfter) return;
-
-    const { size, start, mouse } = DIRECTION_PROPS[direction];
-    const rectBefore = panelBefore.getBoundingClientRect();
-    const rectAfter = panelAfter.getBoundingClientRect();
-
-    const totalSize = rectBefore[size] + rectAfter[size];
-    const ratio = computeResizeRatio(e[mouse], rectBefore[start], totalSize);
-
-    const totalFlex = (parseFloat(panelBefore.style.flex) || 1) + (parseFloat(panelAfter.style.flex) || 1);
-    panelBefore.style.flex = `${totalFlex * ratio}`;
-    panelAfter.style.flex = `${totalFlex * (1 - ratio)}`;
-
-    this.fitAll();
   }
 
   fitAll() {
