@@ -1,10 +1,8 @@
-import { generateId } from '../utils/id.js';
 import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { ConfigManager } from './config-manager.js';
-import { _el, showConfirmDialog } from '../utils/dom.js';
 import { extractFolderName } from '../utils/file-tree-helpers.js';
 import {
-  COLOR_GROUPS, WorkspaceTab,
+  COLOR_GROUPS,
   reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
 import { isTabVisible, buildColorFilters } from '../utils/tab-color-filter.js';
@@ -16,10 +14,16 @@ import {
   disposeSideView, disposeAllSideViews,
 } from '../utils/sidebar-manager.js';
 import {
-  renderWorkspace as doRenderWorkspace, reattachLayout, syncFileTree,
+  renderWorkspace as doRenderWorkspace, reattachLayout,
   serialize as doSerialize, restoreConfig as doRestoreConfig,
-  capturePanelWidths, disposeTab, disposeAllTabs,
+  capturePanelWidths, disposeAllTabs,
 } from '../utils/workspace-layout.js';
+import {
+  createTab as doCreateTab, closeTab as doCloseTab,
+  switchTo as doSwitchTo, findTabForTerminal,
+  onTerminalCwdChanged,
+} from '../utils/tab-lifecycle.js';
+import { _el } from '../utils/dom.js';
 
 export { COLOR_GROUPS };
 
@@ -94,12 +98,7 @@ export class TabManager {
   }
 
   // Find which tab owns a terminal
-  _findTabForTerminal(termId) {
-    for (const [, tab] of this.tabs) {
-      if (tab.terminalPanel?.terminals?.has(termId)) return tab;
-    }
-    return null;
-  }
+  _findTabForTerminal(termId) { return findTabForTerminal(this, termId); }
 
   _activeTab() {
     return this.tabs.get(this.activeTabId);
@@ -136,91 +135,11 @@ export class TabManager {
 
   autoSave() { return this.configManager.autoSave(); }
 
-  createTab(name = null, cwd = null) {
-    const id = generateId('tab');
-    const tabName = name || `Workspace ${this.tabs.size + 1}`;
-    const tab = new WorkspaceTab(id, tabName, cwd || this.defaultCwd || '/');
-    if (this.activeColorFilter) tab.colorGroup = this.activeColorFilter;
-    this.tabs.set(id, tab);
-    this.renderTabBar();
-    this.switchTo(id);
-    this.configManager.scheduleAutoSave();
-    return tab;
-  }
+  createTab(name = null, cwd = null) { return doCreateTab(this, name, cwd); }
 
-  async closeTab(id) {
-    const tab = this.tabs.get(id);
-    if (!tab) return;
+  closeTab(id) { return doCloseTab(this, id); }
 
-    const ok = await showConfirmDialog(
-      _el('p', null, 'Close workspace ', _el('strong', null, tab.name), '?'),
-      { confirmLabel: 'Close' },
-    );
-    if (!ok) return;
-
-    disposeTab(tab);
-    this.tabs.delete(id);
-
-    if (this.tabs.size === 0) {
-      this.createTab();
-      return;
-    }
-
-    if (this.activeTabId === id) {
-      const remaining = Array.from(this.tabs.values());
-      this.switchTo(remaining[0].id);
-    }
-
-    this.renderTabBar();
-    this.configManager.scheduleAutoSave();
-  }
-
-  switchTo(id) {
-    const tab = this.tabs.get(id);
-    if (!tab) return;
-
-    // If in a non-work mode, switch back to work mode
-    if (this.sidebarMode !== 'work') {
-      detachSidebarView(this, this.sidebarMode);
-      this.sidebarMode = 'work';
-      this.renderActivityBar();
-
-      // If this tab is already active, just re-show its layout
-      if (id === this.activeTabId) {
-        if (tab.layoutElement) {
-          reattachLayout(this, tab);
-          syncFileTree(tab);
-          bus.emit('workspace:activated');
-        }
-        this.renderTabBar();
-        return;
-      }
-    }
-
-    if (id === this.activeTabId) return;
-
-    // Detach outgoing tab (keep terminals alive!)
-    if (this.activeTabId) {
-      const prev = this.tabs.get(this.activeTabId);
-      if (prev && prev.layoutElement) {
-        // Capture panel widths before detaching (needs attached DOM)
-        capturePanelWidths(prev);
-        prev.layoutElement.remove();
-      }
-    }
-
-    this.activeTabId = id;
-    this.renderTabBar();
-
-    if (tab.layoutElement) {
-      reattachLayout(this, tab);
-      syncFileTree(tab);
-      bus.emit('workspace:activated');
-    } else {
-      // First time rendering this tab
-      this.renderWorkspace(tab);
-    }
-  }
+  switchTo(id) { return doSwitchTo(this, id); }
 
   setColorFilter(colorGroupId) {
     this.excludedColors.clear();
@@ -288,32 +207,7 @@ export class TabManager {
     );
   }
 
-  _onTerminalCwdChanged(termId, cwd) {
-    // Find the tab that owns this terminal
-    const tab = this._findTabForTerminal(termId);
-    if (!tab) return;
-
-    // Update file tree (works even for inactive tabs)
-    if (tab.fileTree) {
-      tab.fileTree.setTerminalRoot(termId, cwd);
-    }
-
-    // Update header path/branch only for the active tab's active terminal
-    if (
-      tab.id === this.activeTabId &&
-      tab.terminalPanel?.activeTerminal?.terminal?.id === termId
-    ) {
-      tab.cwd = cwd;
-      if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
-      if (tab.branchBadgeEl) {
-        window.api.git.branch(cwd).then((branch) => {
-          if (tab.branchBadgeEl) {
-            tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
-          }
-        });
-      }
-    }
-  }
+  _onTerminalCwdChanged(termId, cwd) { onTerminalCwdChanged(this, termId, cwd); }
 
   _disposeSideView(mode) { disposeSideView(this, mode); }
 
