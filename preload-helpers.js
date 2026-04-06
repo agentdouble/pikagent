@@ -44,4 +44,28 @@ function _createTargetedChannel(channel, extract) {
   };
 }
 
-module.exports = { _onIpc, _fwd, _pack, _createTargetedChannel };
+/**
+ * Build a flat API object from a schema, merging custom overrides.
+ *
+ * @param {Object} schema - domain → method → { type, channel?, keys? }
+ * @param {Object} [overrides] - domain → method → handler (for 'custom' entries)
+ * @returns {Object} flat API: { domain: { method: handler } }
+ */
+function buildApiFromSchema(schema, overrides = {}) {
+  const api = {};
+  for (const [domain, methods] of Object.entries(schema)) {
+    const domainApi = {};
+    for (const [method, def] of Object.entries(methods)) {
+      const ch = def.channel || `${domain}:${method}`;
+      if (def.type === 'fwd')       domainApi[method] = _fwd(ch);
+      else if (def.type === 'pack') domainApi[method] = _pack(ch, def.keys);
+      else if (def.type === 'on')   domainApi[method] = _onIpc(ch);
+    }
+    // Merge custom overrides for this domain
+    if (overrides[domain]) Object.assign(domainApi, overrides[domain]);
+    api[domain] = domainApi;
+  }
+  return api;
+}
+
+module.exports = { _onIpc, _fwd, _pack, _createTargetedChannel, buildApiFromSchema };
