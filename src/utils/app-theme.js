@@ -17,10 +17,3 @@ export function applyAppTheme(theme) {
     document.documentElement.removeAttribute('data-theme');
   }
 }
-
-export function toggleAppTheme() {
-  const current = getAppTheme();
-  const next = current === 'dark' ? 'light' : 'dark';
-  setAppTheme(next);
-  return next;
-}
