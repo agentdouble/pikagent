@@ -4,7 +4,7 @@
  */
 
 import { _el } from './dom.js';
-import { contextMenu } from './context-menu.js';
+import { attachContextMenu } from './context-menu.js';
 
 /**
  * Build a single tab element for the given file path.
@@ -36,14 +36,11 @@ export function createTabEl(filePath, file, activeFile, isPinned, isModified, { 
   tab.appendChild(close);
 
   tab.addEventListener('click', () => onActivate(filePath));
-  tab.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    contextMenu.show(e.clientX, e.clientY, [
-      { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => onTogglePin(filePath) },
-      { separator: true },
-      { label: 'Close', action: () => onClose(filePath) },
-    ]);
-  });
+  attachContextMenu(tab, () => [
+    { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => onTogglePin(filePath) },
+    { separator: true },
+    { label: 'Close', action: () => onClose(filePath) },
+  ]);
 
   return tab;
 }

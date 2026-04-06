@@ -6,7 +6,8 @@ import {
   extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { showDirContextMenu } from '../utils/file-tree-context-menu.js';
+import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
+import { attachContextMenu } from './context-menu.js';
 import { renderDirEntry, renderFileEntry } from '../utils/file-tree-renderer.js';
 import {
   setupDropZone, handleFileDrop,
@@ -161,24 +162,25 @@ export class FileTree {
       return _createActionBtn(title, PARSED_ICONS[key], action);
     });
 
-    return _el('div', {
+    const header = _el('div', {
       className: 'file-tree-section-header',
       onClick: () => {
         const collapsed = contentEl.classList.toggle('collapsed');
         chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
-      },
-      onContextmenu: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showDirContextMenu(e.clientX, e.clientY, cwd, cwd, contentEl, 0, expandedDirs, null,
-          (path, nameEl) => this.promptRename(path, nameEl),
-          (dirPath, cEl, depth, eDirs, type) => this.promptNewEntry(dirPath, cEl, depth, eDirs, type));
       },
     },
       chevron,
       _el('span', { className: 'file-tree-section-label', textContent: extractFolderName(cwd), title: cwd }),
       _el('div', { className: 'file-tree-section-actions' }, ...actionBtns),
     );
+
+    attachContextMenu(header, () => buildDirContextItems(
+      cwd, cwd, contentEl, 0, expandedDirs, null,
+      (path, nameEl) => this.promptRename(path, nameEl),
+      (dirPath, cEl, depth, eDirs, type) => this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
+    ));
+
+    return header;
   }
 
   // --- Context menu helpers ---

@@ -75,3 +75,27 @@ export class ContextMenu {
 
 // Singleton
 export const contextMenu = new ContextMenu();
+
+/**
+ * Attach a contextmenu listener to `el` that prevents the default behaviour,
+ * stops propagation, and – when `buildItems` returns an array of menu items –
+ * shows the context menu at the pointer position.
+ *
+ * If `buildItems` returns a falsy value the menu is not shown, which is useful
+ * when the callback only needs the event for side-effects (e.g. toggling a
+ * colour filter).
+ *
+ * @param {HTMLElement} el - element to listen on
+ * @param {(e: MouseEvent) => Array|void} buildItems - receives the raw event,
+ *   should return an items array (or nothing).
+ */
+export function attachContextMenu(el, buildItems) {
+  el.addEventListener('contextmenu', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const items = await buildItems(e);
+    if (items) {
+      contextMenu.show(e.clientX, e.clientY, items);
+    }
+  });
+}

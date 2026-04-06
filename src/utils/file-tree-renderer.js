@@ -6,7 +6,8 @@
 import { bus } from './events.js';
 import { _el } from './dom.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED } from './file-tree-helpers.js';
-import { showFileContextMenu, showDirContextMenu } from './file-tree-context-menu.js';
+import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
+import { attachContextMenu } from '../components/context-menu.js';
 
 /**
  * Build a generic row element with a chevron and name span.
@@ -66,14 +67,12 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
     }
   });
 
-  row.addEventListener('contextmenu', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  attachContextMenu(row, async () => {
     if (!expandedDirs.has(entry.path)) {
       await expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
     }
-    showDirContextMenu(
-      e.clientX, e.clientY, entry.path, findRootCwd(entry.path),
+    return buildDirContextItems(
+      entry.path, findRootCwd(entry.path),
       childContainer, depth + 1, expandedDirs, name,
       (path, nameEl) => promptRename(path, nameEl),
       (dirPath, cEl, d, eDirs, type) => promptNewEntry(dirPath, cEl, d, eDirs, type),
@@ -102,12 +101,8 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
     bus.emit('file:open', { path: entry.path, name: entry.name });
   });
 
-  row.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    showFileContextMenu(
-      e.clientX, e.clientY, entry.path, name, findRootCwd(entry.path),
-      (path, nameEl) => promptRename(path, nameEl),
-    );
-  });
+  attachContextMenu(row, () => buildFileContextItems(
+    entry.path, name, findRootCwd(entry.path),
+    (path, nameEl) => promptRename(path, nameEl),
+  ));
 }

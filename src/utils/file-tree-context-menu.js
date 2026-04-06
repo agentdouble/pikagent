@@ -3,7 +3,6 @@
  * Extracted from FileTree to reduce component size.
  */
 import { bus } from './events.js';
-import { contextMenu } from './context-menu.js';
 import { getRelativePath } from './file-tree-helpers.js';
 
 /**
@@ -38,23 +37,37 @@ export function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRename
 }
 
 /**
- * Show a file context menu.
+ * Build file context menu items.
+ * @param {string} entryPath
+ * @param {HTMLElement} nameEl
+ * @param {string} rootCwd
+ * @param {function} promptRenameFn
+ * @returns {Array} menu items
  */
-export function showFileContextMenu(x, y, entryPath, nameEl, rootCwd, promptRenameFn) {
-  contextMenu.show(x, y, buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn));
+export function buildFileContextItems(entryPath, nameEl, rootCwd, promptRenameFn) {
+  return buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn);
 }
 
 /**
- * Show a directory context menu with additional directory-specific items.
+ * Build directory context menu items.
+ * @param {string} dirPath
+ * @param {string} rootCwd
+ * @param {HTMLElement} contentEl
+ * @param {number} depth
+ * @param {Set<string>} expandedDirs
+ * @param {HTMLElement} nameEl
+ * @param {function} promptRenameFn
+ * @param {function} promptNewEntryFn
+ * @returns {Array} menu items
  */
-export function showDirContextMenu(x, y, dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl, promptRenameFn, promptNewEntryFn) {
+export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl, promptRenameFn, promptNewEntryFn) {
   const dirName = dirPath.split('/').pop();
-  contextMenu.show(x, y, [
+  return [
     { label: 'New File', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'file') },
     { label: 'New Folder', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'folder') },
     { separator: true },
     { label: 'Open as Workspace', action: () => bus.emit('workspace:openFromFolder', { cwd: dirPath }) },
     { separator: true },
     ...buildCommonContextItems(dirPath, nameEl, rootCwd, promptRenameFn, `Delete folder "${dirName}" and all its contents?`),
-  ]);
+  ];
 }
