@@ -9,7 +9,7 @@ import {
 } from '../utils/flow-view-helpers.js';
 import { createCardHeader } from '../utils/flow-card-renderer.js';
 import { FlowCardTerminalManager } from './flow-card-terminal.js';
-import { createCategoryGroup } from './flow-category-renderer.js';
+import { createCategoryGroup } from '../utils/flow-category-renderer.js';
 import { setupCardDrag, buildCardBody, setupCardHeaderClick } from '../utils/flow-card-setup.js';
 
 

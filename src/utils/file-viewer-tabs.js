@@ -4,7 +4,7 @@
  */
 
 import { _el } from './dom.js';
-import { contextMenu } from '../components/context-menu.js';
+import { contextMenu } from './context-menu.js';
 
 /**
  * Build a single tab element for the given file path.

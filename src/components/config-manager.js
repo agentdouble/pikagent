@@ -1,4 +1,4 @@
-import { contextMenu } from './context-menu.js';
+import { contextMenu } from '../utils/context-menu.js';
 import { showPromptDialog } from '../utils/dom.js';
 import {
   AUTO_SAVE_DELAY,
