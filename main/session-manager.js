@@ -3,7 +3,9 @@ const { BASE_DIR, SESSIONS_FILE } = require('./paths');
 const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
 const { PollingTimer } = require('./polling-timer');
+const { createLogger } = require('./logger');
 
+const log = createLogger('session-manager');
 const POLL_INTERVAL_MS = 5000;
 
 const ensureDir = ensureDirOnce(BASE_DIR);
@@ -51,7 +53,7 @@ class SessionManager {
 
       this._previousAgents = { ...currentAgents };
     } catch (err) {
-      console.warn('session-manager: poll failed:', err.message);
+      log.warn('poll failed', err);
     } finally {
       this._polling = false;
     }
@@ -64,7 +66,7 @@ class SessionManager {
     try {
       cwd = await this._ptyManager.getCwd(termId);
     } catch (err) {
-      console.warn('session-manager: getCwd failed:', err.message);
+      log.warn('getCwd failed', err);
     }
 
     this._activeSessions[termId] = {
@@ -97,7 +99,7 @@ class SessionManager {
     this._sessionsCache = trimSessions([...(this._sessionsCache || []), record]);
 
     writeJson(SESSIONS_FILE, this._sessionsCache)
-      .catch((err) => console.warn('session-manager: write failed:', err.message));
+      .catch((err) => log.warn('write failed', err));
   }
 
   async _loadAll() {
