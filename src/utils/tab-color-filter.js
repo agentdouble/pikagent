@@ -4,6 +4,7 @@
  */
 import { _el } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
+import { attachContextMenu } from '../components/context-menu.js';
 
 /**
  * Check if a tab is visible given the current filter state.
@@ -46,10 +47,7 @@ export function buildColorFilters(tabs, activeColorFilter, excludedColors, handl
     dot.style.background = cg.color;
     dot.title = `${cg.label}${isExcluded ? ' (excluded)' : ''}`;
     dot.addEventListener('click', () => handlers.onSetFilter(cg.id));
-    dot.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      handlers.onToggleExclude(cg.id);
-    });
+    attachContextMenu(dot, () => { handlers.onToggleExclude(cg.id); });
     filterWrap.appendChild(dot);
   }
 

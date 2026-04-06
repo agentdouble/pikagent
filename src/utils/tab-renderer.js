@@ -5,7 +5,7 @@
 import { _el, setupInlineInput } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
 import { setupTabDrag } from './tab-drag.js';
-import { contextMenu } from './context-menu.js';
+import { attachContextMenu } from './context-menu.js';
 
 /**
  * Build a single tab DOM element.
@@ -53,8 +53,7 @@ export function buildTabElement(ctx, id, tab) {
  * Bind context menu to a tab element.
  */
 export function bindTabContextMenu(ctx, tabEl, id, tab, nameEl) {
-  tabEl.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
+  attachContextMenu(tabEl, () => {
     const colorItems = COLOR_GROUPS.map((cg) => ({
       label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,
       colorDot: cg.color,
@@ -63,7 +62,7 @@ export function bindTabContextMenu(ctx, tabEl, id, tab, nameEl) {
     if (tab.colorGroup) {
       colorItems.push({ label: 'Remove color', action: () => ctx.setTabColorGroup(id, null) });
     }
-    contextMenu.show(e.clientX, e.clientY, [
+    return [
       { label: 'Rename', action: () => ctx.renameTab(id, nameEl) },
       {
         label: tab.noShortcut ? '\u2713 NoShortcut' : 'NoShortcut',
@@ -73,7 +72,7 @@ export function bindTabContextMenu(ctx, tabEl, id, tab, nameEl) {
       { label: 'Color Group', children: colorItems },
       { separator: true },
       { label: 'Close', action: () => ctx.closeTab(id) },
-    ]);
+    ];
   });
 }
 
