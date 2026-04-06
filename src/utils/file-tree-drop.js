@@ -14,25 +14,26 @@ import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
  * @param {HTMLElement} el - element to receive drop events
  * @param {string|Function} getTargetDir - target dir path or a function returning it
  * @param {Function} handleFileDrop - async (files, destDir) => void
+ * @param {string} [className='drop-target'] - CSS class toggled during drag
  */
-export function setupDropZone(el, getTargetDir, handleFileDrop) {
+export function setupDropZone(el, getTargetDir, handleFileDrop, className = 'drop-target') {
   el.addEventListener('dragover', (e) => {
     if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
-    el.classList.add('drop-target');
+    el.classList.add(className);
   });
 
   el.addEventListener('dragleave', (e) => {
     e.stopPropagation();
-    el.classList.remove('drop-target');
+    el.classList.remove(className);
   });
 
   el.addEventListener('drop', async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    el.classList.remove('drop-target');
+    el.classList.remove(className);
     const targetDir = typeof getTargetDir === 'function' ? getTargetDir() : getTargetDir;
     if (!targetDir) return;
     await handleFileDrop(e.dataTransfer.files, targetDir);
