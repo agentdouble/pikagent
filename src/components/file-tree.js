@@ -7,7 +7,7 @@ import {
 } from '../utils/file-tree-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
-import { attachContextMenu } from './context-menu.js';
+import { attachContextMenu } from '../utils/context-menu.js';
 import { renderDirEntry, renderFileEntry } from '../utils/file-tree-renderer.js';
 import {
   setupDropZone, handleFileDrop,
