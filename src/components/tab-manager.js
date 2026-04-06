@@ -98,7 +98,7 @@ export class TabManager {
   }
 
   // Find which tab owns a terminal
-  _findTabForTerminal(termId) { return findTabForTerminal(this, termId); }
+  _findTabForTerminal(termId) { return findTabForTerminal(this.tabs, termId); }
 
   _activeTab() {
     return this.tabs.get(this.activeTabId);
@@ -207,7 +207,7 @@ export class TabManager {
     );
   }
 
-  _onTerminalCwdChanged(termId, cwd) { onTerminalCwdChanged(this, termId, cwd); }
+  _onTerminalCwdChanged(termId, cwd) { onTerminalCwdChanged(this.tabs, this.activeTabId, termId, cwd); }
 
   _disposeSideView(mode) { disposeSideView(this, mode); }
 

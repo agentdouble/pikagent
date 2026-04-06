@@ -2,7 +2,22 @@
  * Tab Lifecycle — extracted from tab-manager.js.
  *
  * Handles tab creation, removal, and activation (switchTo) logic.
- * All functions receive a `ctx` (TabManager instance) as their first argument.
+ *
+ * Functions that mutate state receive a narrow context object instead of
+ * the full TabManager — see TabLifecycleCtx typedef below.
+ * Pure lookup functions (findTabForTerminal, onTerminalCwdChanged) accept
+ * only the data they need.
+ *
+ * @typedef {Object} TabLifecycleCtx
+ * @property {Map<string, WorkspaceTab>} tabs
+ * @property {string|null} activeTabId
+ * @property {string} defaultCwd
+ * @property {string|null} activeColorFilter
+ * @property {string} sidebarMode
+ * @property {Function} renderTabBar
+ * @property {Function} renderActivityBar
+ * @property {Function} renderWorkspace
+ * @property {{ scheduleAutoSave: Function }} configManager
  */
 
 import { generateId } from './id.js';
@@ -18,7 +33,7 @@ import { detachSidebarView } from './sidebar-manager.js';
 
 /**
  * Create a new tab and switch to it.
- * @param {object} ctx    - TabManager instance
+ * @param {TabLifecycleCtx} ctx
  * @param {string|null} name - Optional tab name
  * @param {string|null} cwd  - Optional working directory
  * @returns {WorkspaceTab}
@@ -39,7 +54,7 @@ export function createTab(ctx, name = null, cwd = null) {
 
 /**
  * Close a tab by id, prompting the user for confirmation.
- * @param {object} ctx - TabManager instance
+ * @param {TabLifecycleCtx} ctx
  * @param {string} id  - Tab id to close
  */
 export async function closeTab(ctx, id) {
@@ -73,7 +88,7 @@ export async function closeTab(ctx, id) {
 
 /**
  * Activate a tab by id, handling sidebar mode transitions and DOM attachment.
- * @param {object} ctx - TabManager instance
+ * @param {TabLifecycleCtx} ctx
  * @param {string} id  - Tab id to activate
  */
 export function switchTo(ctx, id) {
@@ -123,16 +138,16 @@ export function switchTo(ctx, id) {
   }
 }
 
-// ── Terminal CWD tracking ──
+// ── Terminal CWD tracking (decoupled — no ctx dependency) ──
 
 /**
  * Find which tab owns a given terminal id.
- * @param {object} ctx     - TabManager instance
+ * @param {Map<string, WorkspaceTab>} tabs
  * @param {string} termId  - Terminal id to look up
  * @returns {WorkspaceTab|null}
  */
-export function findTabForTerminal(ctx, termId) {
-  for (const [, tab] of ctx.tabs) {
+export function findTabForTerminal(tabs, termId) {
+  for (const [, tab] of tabs) {
     if (tab.terminalPanel?.terminals?.has(termId)) return tab;
   }
   return null;
@@ -140,12 +155,13 @@ export function findTabForTerminal(ctx, termId) {
 
 /**
  * Handle terminal cwd changes — update file tree and active-tab header.
- * @param {object} ctx     - TabManager instance
+ * @param {Map<string, WorkspaceTab>} tabs
+ * @param {string|null} activeTabId
  * @param {string} termId  - Terminal id that changed
  * @param {string} cwd     - New working directory
  */
-export function onTerminalCwdChanged(ctx, termId, cwd) {
-  const tab = findTabForTerminal(ctx, termId);
+export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd) {
+  const tab = findTabForTerminal(tabs, termId);
   if (!tab) return;
 
   // Update file tree (works even for inactive tabs)
@@ -155,7 +171,7 @@ export function onTerminalCwdChanged(ctx, termId, cwd) {
 
   // Update header path/branch only for the active tab's active terminal
   if (
-    tab.id === ctx.activeTabId &&
+    tab.id === activeTabId &&
     tab.terminalPanel?.activeTerminal?.terminal?.id === termId
   ) {
     tab.cwd = cwd;
