@@ -1,4 +1,4 @@
-import { _el, positionInViewport } from '../utils/dom.js';
+import { _el, positionInViewport } from './dom.js';
 
 export class ContextMenu {
   constructor() {

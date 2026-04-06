@@ -3,8 +3,8 @@
  * Handles category headers, collapse state, and drag-drop zone setup.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el } from '../utils/dom.js';
-import { CATEGORY_ACTIONS, UNCATEGORIZED } from '../utils/flow-view-helpers.js';
+import { _el } from './dom.js';
+import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
 
 /**
  * Create a category group DOM element with header and flow items.

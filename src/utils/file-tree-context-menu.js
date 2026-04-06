@@ -3,7 +3,7 @@
  * Extracted from FileTree to reduce component size.
  */
 import { bus } from './events.js';
-import { contextMenu } from '../components/context-menu.js';
+import { contextMenu } from './context-menu.js';
 import { getRelativePath } from './file-tree-helpers.js';
 
 /**

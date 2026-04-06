@@ -5,7 +5,7 @@
 
 import { _el } from './dom.js';
 import { getLastRun } from './flow-view-helpers.js';
-import { cleanupAllDragState } from '../components/flow-category-renderer.js';
+import { cleanupAllDragState } from './flow-category-renderer.js';
 
 /**
  * Attach dragstart / dragend handlers to a flow card element.

@@ -5,7 +5,7 @@
 import { _el, setupInlineInput } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
 import { setupTabDrag } from './tab-drag.js';
-import { contextMenu } from '../components/context-menu.js';
+import { contextMenu } from './context-menu.js';
 
 /**
  * Build a single tab DOM element.
