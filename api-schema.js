@@ -35,7 +35,7 @@ const API_SCHEMA = {
     copyTo:    { type: 'pack', keys: ['srcPath', 'destDir'] },
     watch:     { type: 'pack', keys: ['id', 'dirPath'] },
     unwatch:   { type: 'pack', keys: ['id'] },
-    onChanged: { type: 'on' },
+    onChanged: { type: 'on', channel: 'fs:changed' },
   },
   shell: {
     showInFolder: { type: 'fwd' },
@@ -65,8 +65,8 @@ const API_SCHEMA = {
     getRunLog:      { type: 'pack', keys: ['flowId', 'logTimestamp'] },
     getCategories:  { type: 'fwd' },
     saveCategories: { type: 'fwd' },
-    onRunStarted:   { type: 'on' },
-    onRunComplete:  { type: 'on' },
+    onRunStarted:   { type: 'on', channel: 'flow:runStarted' },
+    onRunComplete:  { type: 'on', channel: 'flow:runComplete' },
   },
   usage: {
     getMetrics: { type: 'fwd' },
