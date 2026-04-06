@@ -7,7 +7,7 @@ import { bus } from './events.js';
 import { _el } from './dom.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
-import { attachContextMenu } from '../components/context-menu.js';
+import { attachContextMenu } from './context-menu.js';
 
 /**
  * Build a generic row element with a chevron and name span.

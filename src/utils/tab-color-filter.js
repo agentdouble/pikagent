@@ -4,7 +4,7 @@
  */
 import { _el } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
-import { attachContextMenu } from '../components/context-menu.js';
+import { attachContextMenu } from './context-menu.js';
 
 /**
  * Check if a tab is visible given the current filter state.
