@@ -1,7 +1,9 @@
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked } = require('./git-helpers');
+const { createLogger } = require('./logger');
 
+const log = createLogger('git-manager');
 const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
@@ -15,7 +17,7 @@ async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
     const { stdout } = await execFileAsync('git', args, opts);
     return stdout.trim();
   } catch (err) {
-    console.error(`[git-manager] git ${args[0]} failed in ${cwd}:`, err.message);
+    log.warn(`git ${args[0]} failed in ${cwd}`, err);
     return fallback;
   }
 }
@@ -46,7 +48,7 @@ async function getLocalChanges(cwd) {
 
     return { staged, unstaged, untracked };
   } catch (err) {
-    console.error('[git-manager] getLocalChanges failed:', err.message);
+    log.warn('getLocalChanges failed', err);
     return { staged: [], unstaged: [], untracked: [] };
   }
 }

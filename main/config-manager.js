@@ -3,7 +3,9 @@ const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
 const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
+const { createLogger } = require('./logger');
 
+const log = createLogger('config-manager');
 const ensureDir = ensureDirOnce(CONFIG_DIR);
 let _metaCache = null;
 
@@ -42,7 +44,7 @@ async function list() {
     const configs = await readDirJson(CONFIG_DIR);
     return formatConfigList(configs, meta.defaultConfig);
   } catch (err) {
-    console.warn('config-manager: list failed:', err.message);
+    log.warn('list failed', err);
     return [];
   }
 }
@@ -57,7 +59,7 @@ async function remove(name) {
     }
     return true;
   } catch (err) {
-    console.warn('config-manager: remove failed:', err.message);
+    log.warn('remove failed', err);
     return false;
   }
 }

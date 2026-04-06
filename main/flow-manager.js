@@ -12,7 +12,9 @@ const {
 const { safeSend } = require('./ipc-helpers');
 const { PollingTimer } = require('./polling-timer');
 const { buildRecord } = require('./record-helpers');
+const { createLogger } = require('./logger');
 
+const log = createLogger('flow-manager');
 const ensureDir = ensureDirOnce(LOGS_DIR);
 
 class FlowManager {
@@ -135,7 +137,7 @@ class FlowManager {
     try {
       await fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8');
     } catch (e) {
-      console.warn('Failed to save flow log:', e);
+      log.warn('save log failed', e);
     }
   }
 
@@ -193,7 +195,7 @@ class FlowManager {
         this._ptyManager.write(ptyId, cmd);
       }, SHELL_INIT_DELAY_MS);
     } catch (err) {
-      console.error('Flow execution failed:', err);
+      log.error('execution failed', err);
       this._recordRun(flow.id, 'error', runTimestamp);
     }
   }
