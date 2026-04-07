@@ -49,6 +49,18 @@ export class TabManager {
     this.init();
   }
 
+  // ── View store accessor — maps dynamic viewKey/containerKey to instance properties ──
+
+  /** @returns {import('../utils/sidebar-manager.js').SideViewStore} */
+  _viewStore() {
+    return {
+      getView: (key) => this[key],
+      setView: (key, val) => { this[key] = val; },
+      getContainer: (key) => this[key],
+      setContainer: (key, val) => { this[key] = val; },
+    };
+  }
+
   async init() {
     this.defaultCwd = await window.api.fs.homedir();
 
@@ -104,19 +116,35 @@ export class TabManager {
     return this.tabs.get(this.activeTabId);
   }
 
-  renderActivityBar() { renderActivityBar(this); }
+  renderActivityBar() {
+    renderActivityBar({
+      sidebarMode: this.sidebarMode,
+      setSidebarMode: (mode) => this.setSidebarMode(mode),
+      onOpenSettings: this.onOpenSettings,
+    });
+  }
 
   setSidebarMode(mode) {
     if (mode === this.sidebarMode) return;
 
-    detachSidebarView(this, this.sidebarMode);
+    detachSidebarView({
+      getActiveTab: () => this._activeTab(),
+      capturePanelWidths,
+      viewStore: this._viewStore(),
+    }, this.sidebarMode);
     this.sidebarMode = mode;
 
     if (mode !== 'work') {
-      activateSideView(this, mode);
+      activateSideView({
+        workspaceContainer: this.workspaceContainer,
+        viewStore: this._viewStore(),
+      }, mode, {
+        boardCtorArgs: [this],
+        flowCtorArgs: [this],
+      });
     } else {
       const tab = this._activeTab();
-      if (tab?.layoutElement) reattachLayout(this, tab);
+      if (tab?.layoutElement) reattachLayout({ workspaceContainer: this.workspaceContainer }, tab);
       else if (tab) this.renderWorkspace(tab);
     }
 
@@ -127,19 +155,73 @@ export class TabManager {
 
   _capturePanelWidths(tab) { capturePanelWidths(tab); }
 
-  async renderWorkspace(tab) { return doRenderWorkspace(this, tab); }
+  async renderWorkspace(tab) {
+    return doRenderWorkspace({
+      workspaceContainer: this.workspaceContainer,
+      activeTabId: this.activeTabId,
+      getActiveTab: () => this._activeTab(),
+      configManager: this.configManager,
+    }, tab);
+  }
 
-  serialize() { return doSerialize(this); }
+  serialize() {
+    return doSerialize({
+      tabs: this.tabs,
+      activeTabId: this.activeTabId,
+    });
+  }
 
-  async restoreConfig(config) { return doRestoreConfig(this, config); }
+  async restoreConfig(config) {
+    return doRestoreConfig({
+      tabs: this.tabs,
+      setActiveTabId: (id) => { this.activeTabId = id; },
+      defaultCwd: this.defaultCwd,
+      renderTabBar: () => this.renderTabBar(),
+      switchTo: (id) => this.switchTo(id),
+      configManager: this.configManager,
+      viewStore: this._viewStore(),
+    }, config);
+  }
 
   autoSave() { return this.configManager.autoSave(); }
 
-  createTab(name = null, cwd = null) { return doCreateTab(this, name, cwd); }
+  createTab(name = null, cwd = null) {
+    return doCreateTab({
+      tabs: this.tabs,
+      defaultCwd: this.defaultCwd,
+      activeColorFilter: this.activeColorFilter,
+      renderTabBar: () => this.renderTabBar(),
+      configManager: this.configManager,
+    }, (id) => this.switchTo(id), name, cwd);
+  }
 
-  closeTab(id) { return doCloseTab(this, id); }
+  closeTab(id) {
+    return doCloseTab({
+      tabs: this.tabs,
+      activeTabId: this.activeTabId,
+      renderTabBar: () => this.renderTabBar(),
+      configManager: this.configManager,
+    }, () => this.createTab(), (tabId) => this.switchTo(tabId), id);
+  }
 
-  switchTo(id) { return doSwitchTo(this, id); }
+  switchTo(id) {
+    return doSwitchTo({
+      tabs: this.tabs,
+      getActiveTabId: () => this.activeTabId,
+      setActiveTabId: (newId) => { this.activeTabId = newId; },
+      getSidebarMode: () => this.sidebarMode,
+      setSidebarMode: (mode) => { this.sidebarMode = mode; },
+      workspaceContainer: this.workspaceContainer,
+      renderTabBar: () => this.renderTabBar(),
+      renderActivityBar: () => this.renderActivityBar(),
+      renderWorkspace: (tab) => this.renderWorkspace(tab),
+      detachSidebarView: (mode) => detachSidebarView({
+        getActiveTab: () => this._activeTab(),
+        capturePanelWidths,
+        viewStore: this._viewStore(),
+      }, mode),
+    }, id);
+  }
 
   setColorFilter(colorGroupId) {
     this.excludedColors.clear();
@@ -209,17 +291,19 @@ export class TabManager {
 
   _onTerminalCwdChanged(termId, cwd) { onTerminalCwdChanged(this.tabs, this.activeTabId, termId, cwd); }
 
-  _disposeSideView(mode) { disposeSideView(this, mode); }
+  _disposeSideView(mode) { disposeSideView(this._viewStore(), mode); }
 
-  _disposeAllSideViews() { disposeAllSideViews(this); }
+  _disposeAllSideViews() { disposeAllSideViews(this._viewStore()); }
 
-  _disposeAllTabs() { disposeAllTabs(this); }
+  _disposeAllTabs() {
+    disposeAllTabs({ tabs: this.tabs, setActiveTabId: (id) => { this.activeTabId = id; } });
+  }
 
   dispose() {
     unsubscribeBus(this._busListeners);
     this._busListeners = [];
-    disposeAllSideViews(this);
-    disposeAllTabs(this);
+    disposeAllSideViews(this._viewStore());
+    disposeAllTabs({ tabs: this.tabs, setActiveTabId: (id) => { this.activeTabId = id; } });
   }
 
   setTabColorGroup(id, colorGroupId) {
