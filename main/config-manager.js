@@ -4,7 +4,7 @@ const { CONFIG_DIR, META_FILE } = require('./paths');
 const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
 const { Cache } = require('./cache');
-const { createLogger } = require('./logger');
+const { createLogger, trySafe } = require('./logger');
 
 const log = createLogger('config-manager');
 const ensureDir = ensureDirOnce(CONFIG_DIR);
@@ -43,28 +43,27 @@ async function load(name) {
 async function list() {
   await ensureDir();
   const meta = await readMeta();
-  try {
-    const configs = await readDirJson(CONFIG_DIR);
-    return formatConfigList(configs, meta.defaultConfig);
-  } catch (err) {
-    log.warn('list failed', err);
-    return [];
-  }
+  return trySafe(
+    async () => formatConfigList(await readDirJson(CONFIG_DIR), meta.defaultConfig),
+    [],
+    { log, label: 'list' },
+  );
 }
 
 async function remove(name) {
-  try {
-    await fsp.unlink(configPath(name));
-    const meta = await readMeta();
-    if (meta.defaultConfig === name) {
-      meta.defaultConfig = null;
-      await writeMeta(meta);
-    }
-    return true;
-  } catch (err) {
-    log.warn('remove failed', err);
-    return false;
-  }
+  return trySafe(
+    async () => {
+      await fsp.unlink(configPath(name));
+      const meta = await readMeta();
+      if (meta.defaultConfig === name) {
+        meta.defaultConfig = null;
+        await writeMeta(meta);
+      }
+      return true;
+    },
+    false,
+    { log, label: 'remove' },
+  );
 }
 
 async function setDefault(name) {

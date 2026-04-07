@@ -4,7 +4,7 @@ const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
 const { PollingTimer } = require('./polling-timer');
 const { Cache } = require('./cache');
-const { createLogger } = require('./logger');
+const { createLogger, trySafe } = require('./logger');
 
 const log = createLogger('session-manager');
 const POLL_INTERVAL_MS = 5000;
@@ -38,23 +38,23 @@ class SessionManager {
     if (!this._ptyManager || this._polling) return;
     this._polling = true;
     try {
-      const currentAgents = await this._ptyManager.checkAgents();
+      await trySafe(async () => {
+        const currentAgents = await this._ptyManager.checkAgents();
 
-      for (const [termId, agentName] of Object.entries(currentAgents)) {
-        if (!this._previousAgents[termId]) {
-          await this._startSession(termId, agentName);
+        for (const [termId, agentName] of Object.entries(currentAgents)) {
+          if (!this._previousAgents[termId]) {
+            await this._startSession(termId, agentName);
+          }
         }
-      }
 
-      for (const termId of Object.keys(this._previousAgents)) {
-        if (!currentAgents[termId]) {
-          this._endSession(termId, 'completed');
+        for (const termId of Object.keys(this._previousAgents)) {
+          if (!currentAgents[termId]) {
+            this._endSession(termId, 'completed');
+          }
         }
-      }
 
-      this._previousAgents = { ...currentAgents };
-    } catch (err) {
-      log.warn('poll failed', err);
+        this._previousAgents = { ...currentAgents };
+      }, undefined, { log, label: 'poll' });
     } finally {
       this._polling = false;
     }
@@ -63,12 +63,11 @@ class SessionManager {
   async _startSession(termId, agentName) {
     if (isFlowTerminal(termId)) return;
 
-    let cwd = null;
-    try {
-      cwd = await this._ptyManager.getCwd(termId);
-    } catch (err) {
-      log.warn('getCwd failed', err);
-    }
+    const cwd = await trySafe(
+      () => this._ptyManager.getCwd(termId),
+      null,
+      { log, label: 'getCwd' },
+    );
 
     this._activeSessions[termId] = {
       id: generateSessionId(),
@@ -100,8 +99,11 @@ class SessionManager {
     const sessions = trimSessions([...(this._sessionsCache.get() || []), record]);
     this._sessionsCache.set(sessions);
 
-    writeJson(SESSIONS_FILE, sessions)
-      .catch((err) => log.warn('write failed', err));
+    trySafe(
+      () => writeJson(SESSIONS_FILE, sessions),
+      undefined,
+      { log, label: 'write' },
+    );
   }
 
   async _loadAll() {
