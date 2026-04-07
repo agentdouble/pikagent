@@ -1,25 +1,5 @@
-const { shell, clipboard, dialog } = require('electron');
-const { registerForward } = require('./ipc-helpers');
+// Shell and clipboard handlers are now registered centrally via FORWARD_TABLE
+// in ipc-helpers.js. Dialog handler is registered in ipc-handlers.js.
+// This module is kept as a placeholder for future Electron-specific handlers.
 
-function registerHandlers(ipcMain, { getWindow }) {
-  registerForward(ipcMain, shell, [
-    ['shell:showInFolder', 'showItemInFolder'],
-    ['shell:openExternal', 'openExternal'],
-    ['shell:openPath',     'openPath'],
-  ]);
-
-  registerForward(ipcMain, clipboard, [
-    ['clipboard:write', 'writeText'],
-  ]);
-
-  ipcMain.handle('dialog:openFolder', async () => {
-    const win = getWindow();
-    const result = await dialog.showOpenDialog(win, {
-      properties: ['openDirectory'],
-    });
-    if (result.canceled || !result.filePaths.length) return null;
-    return result.filePaths[0];
-  });
-}
-
-module.exports = { registerHandlers };
+module.exports = {};

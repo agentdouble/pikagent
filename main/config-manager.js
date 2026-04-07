@@ -3,25 +3,28 @@ const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
 const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
+const { Cache } = require('./cache');
 const { createLogger } = require('./logger');
 
 const log = createLogger('config-manager');
 const ensureDir = ensureDirOnce(CONFIG_DIR);
-let _metaCache = null;
+const _metaCache = new Cache();
 
 function configPath(name) {
   return path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
 }
 
 async function readMeta() {
-  if (_metaCache) return _metaCache;
-  _metaCache = (await readJson(META_FILE)) || { ...DEFAULT_META };
-  return _metaCache;
+  const cached = _metaCache.get();
+  if (cached) return cached;
+  const meta = (await readJson(META_FILE)) || { ...DEFAULT_META };
+  _metaCache.set(meta);
+  return meta;
 }
 
 async function writeMeta(meta) {
   await ensureDir();
-  _metaCache = meta;
+  _metaCache.set(meta);
   await writeJson(META_FILE, meta);
 }
 
@@ -81,21 +84,4 @@ async function loadDefault() {
   return load(name);
 }
 
-function registerHandlers(ipcMain) {
-  const { registerForward, registerSpread } = require('./ipc-helpers');
-
-  registerForward(ipcMain, { load, list, remove, setDefault, getDefault, loadDefault }, [
-    ['config:load',        'load'],
-    ['config:list',        'list'],
-    ['config:delete',      'remove'],
-    ['config:setDefault',  'setDefault'],
-    ['config:getDefault',  'getDefault'],
-    ['config:loadDefault', 'loadDefault'],
-  ]);
-
-  registerSpread(ipcMain, { save }, [
-    ['config:save', 'save', ['name', 'data']],
-  ]);
-}
-
-module.exports = { save, load, list, remove, setDefault, getDefault, loadDefault, registerHandlers };
+module.exports = { save, load, list, remove, setDefault, getDefault, loadDefault };

@@ -226,28 +226,6 @@ class FlowManager {
   cleanup() {
     this.stop();
   }
-
-  registerHandlers(ipcMain, { getWindow, ptyManager }) {
-    const { registerForward, registerSpread } = require('./ipc-helpers');
-
-    registerForward(ipcMain, this, [
-      ['flow:save',       'save'],
-      ['flow:get',        'get'],
-      ['flow:list',       'list'],
-      ['flow:delete',     'remove'],
-      ['flow:toggle',     'toggleEnabled'],
-      ['flow:runNow',     'runNow'],
-      ['flow:getRunning',    'getRunning'],
-      ['flow:getCategories', 'getCategories'],
-      ['flow:saveCategories', 'saveCategories'],
-    ]);
-
-    registerSpread(ipcMain, this, [
-      ['flow:getRunLog', 'getRunLog', ['flowId', 'logTimestamp']],
-    ]);
-
-    this.start(getWindow, ptyManager);
-  }
 }
 
 module.exports = new FlowManager();

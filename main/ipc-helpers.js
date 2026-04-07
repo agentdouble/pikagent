@@ -103,4 +103,25 @@ function registerSpread(ipc, target, entries) {
   }
 }
 
-module.exports = { safeSend, FORWARD_TABLE, SPREAD_TABLE, registerForward, registerSpread };
+/**
+ * Register all handlers from FORWARD_TABLE and SPREAD_TABLE in one call.
+ * Resolves each targetKey from the provided targets map.
+ *
+ * @param {object} ipc - Electron ipcMain
+ * @param {Object<string, object>} targets - Map of targetKey -> target object
+ */
+function registerManagerHandlers(ipc, targets) {
+  for (const [channel, targetKey, method] of FORWARD_TABLE) {
+    const target = targets[targetKey];
+    if (!target) continue;
+    ipc.handle(channel, (_, arg) => target[method](arg));
+  }
+
+  for (const [channel, targetKey, method, keys] of SPREAD_TABLE) {
+    const target = targets[targetKey];
+    if (!target) continue;
+    ipc.handle(channel, (_, arg) => target[method](...keys.map(k => arg[k])));
+  }
+}
+
+module.exports = { safeSend, FORWARD_TABLE, SPREAD_TABLE, registerForward, registerSpread, registerManagerHandlers };
