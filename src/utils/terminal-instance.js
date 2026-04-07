@@ -49,6 +49,7 @@ export class TerminalInstance {
     });
 
     this.unsubExit = window.api.pty.onExit(this.id, () => {
+      /** @emits terminal:exited {{ id: string }} */
       bus.emit('terminal:exited', { id: this.id });
     });
 
@@ -71,6 +72,7 @@ export class TerminalInstance {
       const cwd = await window.api.pty.getCwd({ id: this.id });
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
+        /** @emits terminal:cwdChanged {{ id: string, cwd: string }} */
         bus.emit('terminal:cwdChanged', { id: this.id, cwd });
       }
     }, CWD_POLL_MS);

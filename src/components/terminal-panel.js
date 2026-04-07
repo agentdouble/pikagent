@@ -174,6 +174,7 @@ export class TerminalPanel {
       e.preventDefault();
       trackMouse(RESIZE_CURSOR[direction],
         (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
+        /** @emits layout:changed {undefined} — resize complete */
         () => bus.emit('layout:changed'),
       );
     });
@@ -195,6 +196,7 @@ export class TerminalPanel {
 
     node.terminal.dispose();
     this.terminals.delete(termId);
+    /** @emits terminal:removed {{ id: string }} */
     bus.emit('terminal:removed', { id: termId });
 
     if (this.terminals.size === 0) {

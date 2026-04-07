@@ -29,6 +29,7 @@ export class WebviewManager {
     this.webviewTabs.push(wt);
     this._createWebviewContainer(wt);
     this._switchMode(wt.id);
+    /** @emits layout:changed {undefined} — webview added */
     bus.emit('layout:changed');
   }
 
@@ -87,6 +88,7 @@ export class WebviewManager {
       const removedId = this.removeWebview(wt.id);
       if (currentMode === removedId) this._switchMode('files');
       else this._renderModeBar();
+      /** @emits layout:changed {undefined} — webview removed */
       bus.emit('layout:changed');
     });
     btn.appendChild(closeBtn);

@@ -86,22 +86,27 @@ export class TabManager {
 
     // Bus event listeners — single declaration drives both registration and cleanup
     this._busListeners = subscribeBus([
+      /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
       ['terminal:cwdChanged', ({ id, cwd }) => {
         this._onTerminalCwdChanged(id, cwd);
         this.configManager.scheduleAutoSave();
       }],
+      /** @listens terminal:created {{ id: string, cwd: string }} */
       ['terminal:created', ({ id, cwd }) => {
         const tab = this._findTabForTerminal(id) || this.tabs.get(this.activeTabId);
         if (tab?.fileTree) tab.fileTree.setTerminalRoot(id, cwd);
         this.configManager.scheduleAutoSave();
       }],
+      /** @listens terminal:removed {{ id: string }} */
       ['terminal:removed', ({ id }) => {
         for (const [, tab] of this.tabs) {
           if (tab.fileTree) tab.fileTree.removeTerminal(id);
         }
         this.configManager.scheduleAutoSave();
       }],
+      /** @listens layout:changed {undefined} */
       ['layout:changed', () => this.configManager.scheduleAutoSave()],
+      /** @listens workspace:openFromFolder {{ cwd: string }} */
       ['workspace:openFromFolder', ({ cwd }) => {
         const folderName = extractFolderName(cwd);
         this.createTab(folderName, cwd);

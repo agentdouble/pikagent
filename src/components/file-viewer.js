@@ -62,16 +62,19 @@ export class FileViewer {
   _setupListeners() {
     // Bus event listeners — single declaration drives both subscription and cleanup
     this._busListeners = subscribeBus([
+      /** @listens file:open {{ path: string, name: string }} */
       ['file:open', ({ path, name }) => {
         if (!this.isActive()) return;
         this.switchMode('files');
         this.openFile(path, name);
       }],
+      /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
       ['terminal:cwdChanged', ({ cwd }) => {
         if (!this.isActive()) return;
         this.gitChanges.setCwd(cwd);
         if (this.mode === 'git') this.gitChanges.loadChanges();
       }],
+      /** @listens workspace:activated {undefined} */
       ['workspace:activated', () => {
         if (!this.isActive()) return;
         this.loadPinnedFiles();
@@ -272,6 +275,7 @@ export class FileViewer {
     const removedId = this._webviewMgr.removeWebview(webviewId);
     if (this.mode === removedId) this.switchMode('files');
     else this._renderModeBar();
+    /** @emits layout:changed {undefined} — webview removed from file-viewer */
     bus.emit('layout:changed');
   }
 

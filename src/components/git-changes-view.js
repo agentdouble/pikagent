@@ -80,6 +80,7 @@ export class GitChangesView {
       _el('span', { className: 'git-file-name-label', textContent: file.path, title: file.path }),
       _el('span', { className: 'git-open-btn', textContent: '→', title: 'Open file', onClick: (e) => {
         e.stopPropagation();
+        /** @emits file:open {{ path: string, name: string }} */
         bus.emit('file:open', { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
       }}),
     );

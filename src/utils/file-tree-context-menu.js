@@ -66,7 +66,10 @@ export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expande
     { label: 'New File', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'file') },
     { label: 'New Folder', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'folder') },
     { separator: true },
-    { label: 'Open as Workspace', action: () => bus.emit('workspace:openFromFolder', { cwd: dirPath }) },
+    { label: 'Open as Workspace', action: () => {
+      /** @emits workspace:openFromFolder {{ cwd: string }} */
+      bus.emit('workspace:openFromFolder', { cwd: dirPath });
+    } },
     { separator: true },
     ...buildCommonContextItems(dirPath, nameEl, rootCwd, promptRenameFn, `Delete folder "${dirName}" and all its contents?`),
   ];

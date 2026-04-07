@@ -98,6 +98,7 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
     if (activeRowRef.current) activeRowRef.current.classList.remove('active');
     row.classList.add('active');
     activeRowRef.current = row;
+    /** @emits file:open {{ path: string, name: string }} */
     bus.emit('file:open', { path: entry.path, name: entry.name });
   });
 
