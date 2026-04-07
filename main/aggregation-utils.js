@@ -48,15 +48,16 @@ function groupAndAggregate(items, keyFn, aggFn) {
 }
 
 /**
- * Compute a success/error rate from items using a category set map.
+ * Compute a category rate from items using a category set map.
  * Generic version that accepts category definitions.
  *
  * @param {Array} items
  * @param {Object} categories - map of categoryName -> Set of matching values
  * @param {string} [field='status'] - field to read from each item
+ * @param {string} [rateKey='success'] - category key used to compute the rate
  * @returns {Object} { total, ...counts per category, rate }
  */
-function computeRate(items, categories, field = 'status') {
+function computeRate(items, categories, field = 'status', rateKey = 'success') {
   const keys = Object.keys(categories);
   const counts = Object.fromEntries(keys.map((k) => [k, 0]));
 
@@ -68,7 +69,7 @@ function computeRate(items, categories, field = 'status') {
   }
 
   const total = items.length;
-  const rate = total > 0 ? Math.round((counts.success / total) * 100) : 0;
+  const rate = total > 0 ? Math.round(((counts[rateKey] || 0) / total) * 100) : 0;
 
   return { total, ...counts, rate };
 }

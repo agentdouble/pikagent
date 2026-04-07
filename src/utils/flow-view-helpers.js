@@ -3,7 +3,7 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
-import { formatDateTime } from '../../main/date-utils.js';
+import { formatDateTime } from './date-utils.js';
 
 export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 50000;
