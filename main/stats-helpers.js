@@ -1,33 +1,23 @@
+const { computeRate: genericComputeRate } = require('./aggregation-utils');
+const { extractDateString, generateDateRange } = require('./date-utils');
+
 const DEFAULT_DAYS = 30;
 
+/** Domain-specific status categories — kept here, not in generic utils. */
 const STATUS_CATEGORIES = {
   success: new Set(['success', 'completed']),
   error: new Set(['error', 'exited']),
   running: new Set(['running']),
 };
 
-const STATUS_KEYS = Object.keys(STATUS_CATEGORIES);
-
 function countByStatus(items, field = 'status') {
-  const counts = Object.fromEntries(STATUS_KEYS.map((k) => [k, 0]));
-  for (const item of items) {
-    const val = item[field];
-    for (const key of STATUS_KEYS) {
-      if (STATUS_CATEGORIES[key].has(val)) { counts[key]++; break; }
-    }
-  }
+  const { total, rate, ...counts } = genericComputeRate(items, STATUS_CATEGORIES, field);
   return counts;
 }
 
 function computeRate(items, statusField = 'status') {
   if (items.length === 0) return { total: 0, success: 0, error: 0, rate: 0 };
-  const { success, error } = countByStatus(items, statusField);
-  return {
-    total: items.length,
-    success,
-    error,
-    rate: Math.round((success / items.length) * 100),
-  };
+  return genericComputeRate(items, STATUS_CATEGORIES, statusField);
 }
 
 function computeDuration(durations) {
@@ -42,24 +32,18 @@ function computeDuration(durations) {
   };
 }
 
+/** @deprecated Use extractDateString from date-utils instead. */
 function dateStr(iso) {
-  return iso ? iso.slice(0, 10) : null;
+  return extractDateString(iso);
 }
 
+/** @deprecated Use generateDateRange from date-utils instead. */
 function dayLabels(days = DEFAULT_DAYS) {
-  const now = new Date();
-  return Array.from({ length: days }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - (days - 1 - i));
-    return {
-      date: d.toISOString().slice(0, 10),
-      label: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-    };
-  });
+  return generateDateRange(days);
 }
 
 function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
-  const labels = dayLabels(days);
+  const labels = generateDateRange(days);
   return labels.map((day) => {
     const dayItems = items.filter((r) => dateExtractor(r) === day.date);
     return { ...day, total: dayItems.length, ...countByStatus(dayItems) };
