@@ -12,7 +12,7 @@ const {
 const { safeSend } = require('./ipc-helpers');
 const { PollingTimer } = require('./polling-timer');
 const { buildRecord } = require('./record-helpers');
-const { createLogger } = require('./logger');
+const { createLogger, trySafe } = require('./logger');
 
 const log = createLogger('flow-manager');
 const ensureDir = ensureDirOnce(LOGS_DIR);
@@ -64,13 +64,15 @@ class FlowManager {
   }
 
   async remove(id) {
-    try {
-      await fsp.unlink(flowPath(id));
-      await this._cleanLogs(id);
-      return true;
-    } catch {
-      return false;
-    }
+    return trySafe(
+      async () => {
+        await fsp.unlink(flowPath(id));
+        await this._cleanLogs(id);
+        return true;
+      },
+      false,
+      { log, label: 'remove' },
+    );
   }
 
   async toggleEnabled(id) {
@@ -87,11 +89,11 @@ class FlowManager {
   }
 
   async getRunLog(flowId, timestamp) {
-    try {
-      return await fsp.readFile(logPath(flowId, timestamp), 'utf-8');
-    } catch {
-      return null;
-    }
+    return trySafe(
+      () => fsp.readFile(logPath(flowId, timestamp), 'utf-8'),
+      null,
+      { log, label: 'getRunLog' },
+    );
   }
 
   // --- Categories ---
@@ -109,10 +111,14 @@ class FlowManager {
   }
 
   async _cleanLogs(flowId) {
-    try {
-      const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
-      await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
-    } catch {}
+    await trySafe(
+      async () => {
+        const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
+        await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
+      },
+      undefined,
+      { log, label: 'cleanLogs' },
+    );
   }
 
   // --- Scheduling ---
@@ -134,11 +140,11 @@ class FlowManager {
 
   async _saveLog(flowId, runTimestamp, output) {
     await ensureDir();
-    try {
-      await fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8');
-    } catch (e) {
-      log.warn('save log failed', e);
-    }
+    await trySafe(
+      () => fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8'),
+      undefined,
+      { log, label: 'saveLog' },
+    );
   }
 
   _setupPtyListeners(proc, flow, ptyId, runTimestamp) {

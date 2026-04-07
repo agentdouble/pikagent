@@ -1,7 +1,7 @@
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked } = require('./git-helpers');
-const { createLogger } = require('./logger');
+const { createLogger, trySafe } = require('./logger');
 
 const log = createLogger('git-manager');
 const execFileAsync = promisify(execFile);
@@ -12,14 +12,15 @@ const execFileAsync = promisify(execFile);
 
 /** Run a git command, return trimmed stdout or `fallback` on error. */
 async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
-  try {
-    const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
-    const { stdout } = await execFileAsync('git', args, opts);
-    return stdout.trim();
-  } catch (err) {
-    log.warn(`git ${args[0]} failed in ${cwd}`, err);
-    return fallback;
-  }
+  return trySafe(
+    async () => {
+      const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
+      const { stdout } = await execFileAsync('git', args, opts);
+      return stdout.trim();
+    },
+    fallback,
+    { log, label: `git ${args[0]} in ${cwd}` },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -35,22 +36,23 @@ async function getRemoteUrl(cwd) {
 }
 
 async function getLocalChanges(cwd) {
-  try {
-    const [stagedRaw, unstagedRaw, untrackedRaw] = await Promise.all([
-      runGit(cwd, ['diff', '--cached', '--name-status'], { fallback: '' }),
-      runGit(cwd, ['diff', '--name-status'], { fallback: '' }),
-      runGit(cwd, ['ls-files', '--others', '--exclude-standard'], { fallback: '' }),
-    ]);
+  return trySafe(
+    async () => {
+      const [stagedRaw, unstagedRaw, untrackedRaw] = await Promise.all([
+        runGit(cwd, ['diff', '--cached', '--name-status'], { fallback: '' }),
+        runGit(cwd, ['diff', '--name-status'], { fallback: '' }),
+        runGit(cwd, ['ls-files', '--others', '--exclude-standard'], { fallback: '' }),
+      ]);
 
-    const staged = parseNameStatus(stagedRaw, true);
-    const unstaged = parseNameStatus(unstagedRaw, false);
-    const untracked = parseUntracked(untrackedRaw);
-
-    return { staged, unstaged, untracked };
-  } catch (err) {
-    log.warn('getLocalChanges failed', err);
-    return { staged: [], unstaged: [], untracked: [] };
-  }
+      return {
+        staged: parseNameStatus(stagedRaw, true),
+        unstaged: parseNameStatus(unstagedRaw, false),
+        untracked: parseUntracked(untrackedRaw),
+      };
+    },
+    { staged: [], unstaged: [], untracked: [] },
+    { log, label: 'getLocalChanges' },
+  );
 }
 
 async function getFileDiff(cwd, filePath, isStaged) {
