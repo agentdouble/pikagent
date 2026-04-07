@@ -145,7 +145,10 @@ export class BoardView {
       e.preventDefault();
       window.api.shell.openExternal(url);
     }));
-    term.registerLinkProvider(new FilePathLinkProvider(term, () => null));
+    term.registerLinkProvider(new FilePathLinkProvider(term, () => null, {
+      homedir: window.api.fs.homedir,
+      openPath: window.api.shell.openPath,
+    }));
     term.onData((data) => window.api.pty.write({ id: termId, data }));
 
     return { term, fitAddon };

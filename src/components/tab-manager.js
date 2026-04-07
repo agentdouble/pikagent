@@ -46,6 +46,9 @@ export class TabManager {
     this.activeColorFilter = null; // null = show all, or a COLOR_GROUPS id
     this.excludedColors = new Set(); // COLOR_GROUPS ids to hide
 
+    // Injected API methods for workspace-layout utils
+    this._api = { gitBranch: window.api.git.branch };
+
     this.init();
   }
 
@@ -160,14 +163,7 @@ export class TabManager {
 
   _capturePanelWidths(tab) { capturePanelWidths(tab); }
 
-  async renderWorkspace(tab) {
-    return doRenderWorkspace({
-      workspaceContainer: this.workspaceContainer,
-      activeTabId: this.activeTabId,
-      getActiveTab: () => this._activeTab(),
-      configManager: this.configManager,
-    }, tab);
-  }
+  async renderWorkspace(tab) { return doRenderWorkspace(this, tab, this._api); }
 
   serialize() {
     return doSerialize({
@@ -294,7 +290,7 @@ export class TabManager {
     );
   }
 
-  _onTerminalCwdChanged(termId, cwd) { onTerminalCwdChanged(this.tabs, this.activeTabId, termId, cwd); }
+  _onTerminalCwdChanged(termId, cwd) { onTerminalCwdChanged(this.tabs, this.activeTabId, termId, cwd, { gitBranch: window.api.git.branch }); }
 
   _disposeSideView(mode) { disposeSideView(this._viewStore(), mode); }
 

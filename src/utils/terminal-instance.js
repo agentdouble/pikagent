@@ -10,11 +10,17 @@ import { CWD_POLL_MS } from './terminal-panel-helpers.js';
  * Self-contained — does not depend on the split-panel layout.
  */
 export class TerminalInstance {
-  constructor(container, cwd) {
+  /**
+   * @param {HTMLElement} container
+   * @param {string} cwd
+   * @param {{ openExternal: Function, homedir: Function, openPath: Function, ptyWrite: Function, ptyOnData: Function, ptyOnExit: Function, ptyCreate: Function, ptyGetCwd: Function, ptyResize: Function, ptyKill: Function }} api - injected API methods
+   */
+  constructor(container, cwd, { openExternal, homedir, openPath, ptyWrite, ptyOnData, ptyOnExit, ptyCreate, ptyGetCwd, ptyResize, ptyKill }) {
     this.id = generateId('term');
     this.container = container;
     this.cwd = cwd;
     this.disposed = false;
+    this._api = { ptyWrite, ptyOnData, ptyOnExit, ptyCreate, ptyGetCwd, ptyResize, ptyKill };
 
     const { term, fitAddon } = createTerminal(container, {
       fontSize: 13,
@@ -28,9 +34,9 @@ export class TerminalInstance {
 
     this.terminal.loadAddon(new WebLinksAddon((e, url) => {
       e.preventDefault();
-      window.api.shell.openExternal(url);
+      openExternal(url);
     }));
-    this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd));
+    this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd, { homedir, openPath }));
 
     // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
     this.terminal.attachCustomKeyEventHandler((e) => {
@@ -41,15 +47,14 @@ export class TerminalInstance {
     this.fit();
 
     this.terminal.onData((data) => {
-      if (!this.disposed) window.api.pty.write({ id: this.id, data });
+      if (!this.disposed) this._api.ptyWrite({ id: this.id, data });
     });
 
-    this.unsubData = window.api.pty.onData(this.id, (data) => {
+    this.unsubData = this._api.ptyOnData(this.id, (data) => {
       if (!this.disposed) this.terminal.write(data);
     });
 
-    this.unsubExit = window.api.pty.onExit(this.id, () => {
-      /** @emits terminal:exited {{ id: string }} */
+    this.unsubExit = this._api.ptyOnExit(this.id, () => {
       bus.emit('terminal:exited', { id: this.id });
     });
 
@@ -63,16 +68,15 @@ export class TerminalInstance {
 
   async spawn() {
     const { cols, rows } = this.terminal;
-    await window.api.pty.create({ id: this.id, cwd: this.cwd, cols, rows });
+    await this._api.ptyCreate({ id: this.id, cwd: this.cwd, cols, rows });
   }
 
   startCwdPolling() {
     this.cwdPollTimer = setInterval(async () => {
       if (this.disposed || this.cwdPollingPaused) return;
-      const cwd = await window.api.pty.getCwd({ id: this.id });
+      const cwd = await this._api.ptyGetCwd({ id: this.id });
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
-        /** @emits terminal:cwdChanged {{ id: string, cwd: string }} */
         bus.emit('terminal:cwdChanged', { id: this.id, cwd });
       }
     }, CWD_POLL_MS);
@@ -82,7 +86,7 @@ export class TerminalInstance {
     try {
       this.fitAddon.fit();
       const { cols, rows } = this.terminal;
-      window.api.pty.resize({ id: this.id, cols, rows });
+      this._api.ptyResize({ id: this.id, cols, rows });
     } catch {}
   }
 
@@ -100,7 +104,7 @@ export class TerminalInstance {
     this.resizeObserver.disconnect();
     if (this.unsubData) { this.unsubData(); this.unsubData = null; }
     if (this.unsubExit) { this.unsubExit(); this.unsubExit = null; }
-    window.api.pty.kill({ id: this.id });
+    this._api.ptyKill({ id: this.id });
     this.terminal.dispose();
   }
 }

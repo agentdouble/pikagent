@@ -17,10 +17,13 @@ export class FilePathLinkProvider {
   /**
    * @param {import('@xterm/xterm').Terminal} terminal
    * @param {() => string|null} getCwd  returns the shell's current working directory
+   * @param {{ homedir: Function, openPath: Function }} api - injected API methods
    */
-  constructor(terminal, getCwd) {
+  constructor(terminal, getCwd, { homedir, openPath }) {
     this._terminal = terminal;
     this._getCwd = getCwd;
+    this._homedir = homedir;
+    this._openPath = openPath;
   }
 
   provideLinks(y, callback) {
@@ -51,7 +54,7 @@ export class FilePathLinkProvider {
 
     // Expand ~ to home dir
     if (filePath.startsWith('~/')) {
-      const home = await window.api.fs.homedir();
+      const home = await this._homedir();
       filePath = home + filePath.slice(1);
     }
 
@@ -61,6 +64,6 @@ export class FilePathLinkProvider {
       filePath = cwd + '/' + filePath;
     }
 
-    window.api.shell.openPath(filePath);
+    this._openPath(filePath);
   }
 }

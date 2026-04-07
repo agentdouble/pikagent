@@ -134,10 +134,11 @@ export function updateStatusBar(statusBar, editorEl, file) {
  * @param {Object} file - { content, savedContent, error }
  * @param {HTMLElement} statusBar
  * @param {{ onSuccess: Function }} callbacks
+ * @param {{ writefile: Function }} api - injected API methods
  */
-export async function saveFile(filePath, file, statusBar, { onSuccess }) {
+export async function saveFile(filePath, file, statusBar, { onSuccess }, { writefile }) {
   if (!file || file.error) return;
-  const result = await window.api.fs.writefile(filePath, file.content);
+  const result = await writefile(filePath, file.content);
   if (result.error) {
     statusBar.replaceChildren(_el('span', 'status-item status-error', `Save failed: ${result.error}`));
     return;

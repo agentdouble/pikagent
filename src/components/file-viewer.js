@@ -216,7 +216,7 @@ export class FileViewer {
         this.renderTabs();
         this.updateStatusBar();
       },
-    });
+    }, { writefile: window.api.fs.writefile });
   }
 
   closeFile(filePath) {

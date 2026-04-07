@@ -179,8 +179,9 @@ export function findTabForTerminal(tabs, termId) {
  * @param {string|null} activeTabId
  * @param {string} termId  - Terminal id that changed
  * @param {string} cwd     - New working directory
+ * @param {{ gitBranch: Function }} api - injected API methods
  */
-export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd) {
+export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch }) {
   const tab = findTabForTerminal(tabs, termId);
   if (!tab) return;
 
@@ -197,7 +198,7 @@ export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd) {
     tab.cwd = cwd;
     if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
     if (tab.branchBadgeEl) {
-      window.api.git.branch(cwd).then((branch) => {
+      gitBranch(cwd).then((branch) => {
         if (tab.branchBadgeEl) {
           tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
         }
