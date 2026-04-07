@@ -88,8 +88,43 @@ function getHomedir() {
   return os.homedir();
 }
 
+function registerHandlers(ipcMain, { getWindow }) {
+  const { shell } = require('electron');
+  const { safeSend, registerForward, registerSpread } = require('./ipc-helpers');
+
+  registerForward(ipcMain, { readDirectory, readFile, makeDir, getHomedir, copyEntry }, [
+    ['fs:readdir',  'readDirectory'],
+    ['fs:readfile', 'readFile'],
+    ['fs:mkdir',    'makeDir'],
+    ['fs:homedir',  'getHomedir'],
+    ['fs:copy',     'copyEntry'],
+  ]);
+
+  registerSpread(ipcMain, { writeFile, renameEntry, copyFileTo, unwatchDir }, [
+    ['fs:writefile', 'writeFile',  ['filePath', 'content']],
+    ['fs:rename',    'renameEntry', ['oldPath', 'newName']],
+    ['fs:copyTo',    'copyFileTo', ['srcPath', 'destDir']],
+    ['fs:unwatch',   'unwatchDir', ['id']],
+  ]);
+
+  ipcMain.handle('fs:watch', (_, { id, dirPath }) => {
+    watchDir(id, dirPath, (change) => {
+      safeSend(getWindow, 'fs:changed', change);
+    });
+  });
+
+  ipcMain.handle('fs:trash', async (_, filePath) => {
+    try {
+      await shell.trashItem(filePath);
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+}
+
 function cleanup() {
   unwatchAll();
 }
 
-module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo, renameEntry, getHomedir, watchDir, unwatchDir, unwatchAll, cleanup };
+module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo, renameEntry, getHomedir, watchDir, unwatchDir, cleanup, registerHandlers };

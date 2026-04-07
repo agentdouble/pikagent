@@ -66,10 +66,10 @@ describe('session-helpers', () => {
     });
 
     it('trims to last max entries', () => {
-      const sessions = Array.from({ length: 250 }, (_, i) => ({ id: i }));
+      const sessions = Array.from({ length: MAX_SESSIONS + 50 }, (_, i) => ({ id: i }));
       const trimmed = trimSessions(sessions);
       expect(trimmed).toHaveLength(MAX_SESSIONS);
-      expect(trimmed[0].id).toBe(50); // 250 - 200 = 50
+      expect(trimmed[0].id).toBe(50); // (MAX_SESSIONS + 50) - MAX_SESSIONS = 50
     });
   });
 });

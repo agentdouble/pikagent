@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-const { safeSend, FORWARD_TABLE, SPREAD_TABLE, registerManagerHandlers } = require('../../main/ipc-helpers');
+const { safeSend, FORWARD_TABLE, SPREAD_TABLE, registerForward, registerSpread, registerManagerHandlers } = require('../../main/ipc-helpers');
 
 describe('ipc-helpers', () => {
   describe('safeSend', () => {
@@ -124,6 +124,117 @@ describe('ipc-helpers', () => {
       const ipc = { handle: vi.fn() };
       registerManagerHandlers(ipc, {});
       expect(ipc.handle).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('registerForward', () => {
+    it('registers ipc handlers that forward a single arg to target methods', async () => {
+      const handlers = {};
+      const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
+      const target = { doSomething: vi.fn().mockReturnValue('ok') };
+
+      registerForward(ipc, target, [['test:forward', 'doSomething']]);
+
+      expect(ipc.handle).toHaveBeenCalledWith('test:forward', expect.any(Function));
+      const result = await handlers['test:forward']({}, { foo: 1 });
+      expect(target.doSomething).toHaveBeenCalledWith({ foo: 1 });
+      expect(result).toBe('ok');
+    });
+
+    it('registers multiple channels at once', () => {
+      const ipc = { handle: vi.fn() };
+      const target = { a: vi.fn(), b: vi.fn() };
+
+      registerForward(ipc, target, [
+        ['ch:a', 'a'],
+        ['ch:b', 'b'],
+      ]);
+
+      expect(ipc.handle).toHaveBeenCalledTimes(2);
+      const channels = ipc.handle.mock.calls.map(([ch]) => ch);
+      expect(channels).toContain('ch:a');
+      expect(channels).toContain('ch:b');
+    });
+
+    it('works with expected forward-style channels like pty:checkAgents and fs:readdir', async () => {
+      const handlers = {};
+      const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
+      const target = {
+        checkAgents: vi.fn().mockReturnValue(['agent1']),
+        readDirectory: vi.fn().mockReturnValue([]),
+      };
+
+      registerForward(ipc, target, [
+        ['pty:checkAgents', 'checkAgents'],
+        ['fs:readdir', 'readDirectory'],
+      ]);
+
+      const agents = await handlers['pty:checkAgents']({}, '/some/path');
+      expect(target.checkAgents).toHaveBeenCalledWith('/some/path');
+      expect(agents).toEqual(['agent1']);
+
+      const entries = await handlers['fs:readdir']({}, '/tmp');
+      expect(target.readDirectory).toHaveBeenCalledWith('/tmp');
+      expect(entries).toEqual([]);
+    });
+  });
+
+  describe('registerSpread', () => {
+    it('registers ipc handlers that spread keyed args to target methods', async () => {
+      const handlers = {};
+      const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
+      const target = { write: vi.fn().mockReturnValue(true) };
+
+      registerSpread(ipc, target, [['pty:write', 'write', ['id', 'data']]]);
+
+      expect(ipc.handle).toHaveBeenCalledWith('pty:write', expect.any(Function));
+      const result = await handlers['pty:write']({}, { id: 'term-1', data: 'hello' });
+      expect(target.write).toHaveBeenCalledWith('term-1', 'hello');
+      expect(result).toBe(true);
+    });
+
+    it('registers multiple channels at once', () => {
+      const ipc = { handle: vi.fn() };
+      const target = { write: vi.fn(), resize: vi.fn() };
+
+      registerSpread(ipc, target, [
+        ['pty:write', 'write', ['id', 'data']],
+        ['pty:resize', 'resize', ['id', 'cols', 'rows']],
+      ]);
+
+      expect(ipc.handle).toHaveBeenCalledTimes(2);
+      const channels = ipc.handle.mock.calls.map(([ch]) => ch);
+      expect(channels).toContain('pty:write');
+      expect(channels).toContain('pty:resize');
+    });
+
+    it('spreads keys in correct order for multi-arg calls', async () => {
+      const handlers = {};
+      const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
+      const target = { resize: vi.fn() };
+
+      registerSpread(ipc, target, [['pty:resize', 'resize', ['id', 'cols', 'rows']]]);
+
+      await handlers['pty:resize']({}, { id: 'term-1', cols: 80, rows: 24 });
+      expect(target.resize).toHaveBeenCalledWith('term-1', 80, 24);
+    });
+
+    it('has no overlap between forward and spread channel patterns', () => {
+      // Verify the registration functions handle their respective channel types correctly
+      const forwardHandlers = {};
+      const spreadHandlers = {};
+      const forwardIpc = { handle: vi.fn((ch, fn) => { forwardHandlers[ch] = fn; }) };
+      const spreadIpc = { handle: vi.fn((ch, fn) => { spreadHandlers[ch] = fn; }) };
+      const target = { a: vi.fn(), b: vi.fn() };
+
+      registerForward(forwardIpc, target, [['shared:test', 'a']]);
+      registerSpread(spreadIpc, target, [['spread:test', 'b', ['key1']]]);
+
+      const forwardChannels = new Set(Object.keys(forwardHandlers));
+      const spreadChannels = new Set(Object.keys(spreadHandlers));
+      for (const ch of spreadChannels) {
+        expect(forwardChannels.has(ch)).toBe(false);
+      }
     });
   });
 });
