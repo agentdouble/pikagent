@@ -68,4 +68,4 @@ function buildApiFromSchema(schema, overrides = {}) {
   return api;
 }
 
-module.exports = { _onIpc, _fwd, _pack, _createTargetedChannel, buildApiFromSchema };
+module.exports = { _createTargetedChannel, buildApiFromSchema };
