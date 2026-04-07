@@ -23,19 +23,15 @@ function clearTabShifts(ctx) {
 }
 
 /**
- * While dragging, determine which tab the cursor is over and shift
- * surrounding tabs to open a visual gap.
+ * Determine where the dragged tab should be inserted based on cursor
+ * position relative to tab midpoints.
+ *
+ * @returns {{ dropTargetId: string|null, dropBefore: boolean, insertIdx: number }}
  */
-function updateTabDropTarget(ctx, state, mx, dragId) {
-  state.dropTargetId = null;
-  state.dropBefore = true;
-
-  const orderedIds = Array.from(ctx._tabElements.keys());
-  const dragEl = ctx._tabElements.get(dragId);
-  const shiftAmount = dragEl ? dragEl.getBoundingClientRect().width : 0;
-
+function computeDropPosition(ctx, mx, orderedIds, dragId) {
+  let dropTargetId = null;
+  let dropBefore = true;
   let insertIdx = -1;
-  const dragIdx = orderedIds.indexOf(dragId);
 
   for (let i = 0; i < orderedIds.length; i++) {
     const id = orderedIds[i];
@@ -45,8 +41,8 @@ function updateTabDropTarget(ctx, state, mx, dragId) {
     const midX = rect.left + rect.width / 2;
 
     if (mx < midX) {
-      state.dropTargetId = id;
-      state.dropBefore = true;
+      dropTargetId = id;
+      dropBefore = true;
       insertIdx = i;
       break;
     }
@@ -56,13 +52,20 @@ function updateTabDropTarget(ctx, state, mx, dragId) {
   if (insertIdx === -1) {
     const lastId = orderedIds.filter((id) => id !== dragId).pop();
     if (lastId) {
-      state.dropTargetId = lastId;
-      state.dropBefore = false;
+      dropTargetId = lastId;
+      dropBefore = false;
       insertIdx = orderedIds.length;
     }
   }
 
-  // Shift tabs to make visual gap
+  return { dropTargetId, dropBefore, insertIdx };
+}
+
+/**
+ * Shift surrounding tabs with CSS transforms to open a visual gap at the
+ * computed insertion position.
+ */
+function renderDropIndicator(ctx, orderedIds, dragIdx, insertIdx, shiftAmount, dragId) {
   for (let i = 0; i < orderedIds.length; i++) {
     const id = orderedIds[i];
     if (id === dragId) continue;
@@ -81,6 +84,71 @@ function updateTabDropTarget(ctx, state, mx, dragId) {
   }
 }
 
+/**
+ * While dragging, determine which tab the cursor is over and shift
+ * surrounding tabs to open a visual gap.
+ */
+function updateTabDropTarget(ctx, state, mx, dragId) {
+  const orderedIds = Array.from(ctx._tabElements.keys());
+  const dragEl = ctx._tabElements.get(dragId);
+  const shiftAmount = dragEl ? dragEl.getBoundingClientRect().width : 0;
+  const dragIdx = orderedIds.indexOf(dragId);
+
+  const { dropTargetId, dropBefore, insertIdx } = computeDropPosition(ctx, mx, orderedIds, dragId);
+
+  state.dropTargetId = dropTargetId;
+  state.dropBefore = dropBefore;
+
+  renderDropIndicator(ctx, orderedIds, dragIdx, insertIdx, shiftAmount, dragId);
+}
+
+/** Create initial per-drag transient state. */
+function initDragState() {
+  return { dropTargetId: null, dropBefore: true };
+}
+
+/**
+ * Apply visual drag-start effects: add CSS class, set cursor, and create
+ * a floating ghost clone of the tab element.
+ *
+ * @returns {HTMLElement} the ghost element appended to document.body
+ */
+function handleDragStart(tabEl) {
+  tabEl.classList.add('tab-dragging');
+  document.body.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+
+  // Create floating ghost clone
+  const ghost = tabEl.cloneNode(true);
+  ghost.className = 'tab tab-ghost';
+  if (tabEl.classList.contains('active')) ghost.classList.add('active');
+  const r = tabEl.getBoundingClientRect();
+  ghost.style.width = `${r.width}px`;
+  ghost.style.height = `${r.height}px`;
+  ghost.style.top = `${r.top}px`;
+  document.body.appendChild(ghost);
+
+  return ghost;
+}
+
+/**
+ * Clean up after a drag operation: remove visual effects, commit the
+ * reorder if the tab was dropped on a valid target, and reset state.
+ */
+function handleDragEnd(ctx, tabEl, ghost, state, tabId) {
+  tabEl.classList.remove('tab-dragging');
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  if (ghost) { ghost.remove(); }
+  clearTabShifts(ctx);
+
+  if (state.dropTargetId && state.dropTargetId !== tabId) {
+    ctx.reorderTab(tabId, state.dropTargetId, state.dropBefore);
+  }
+  state.dropTargetId = null;
+  state.dropBefore = null;
+}
+
 // ── Public API ──────────────────────────────────────────────────────
 
 /**
@@ -96,8 +164,7 @@ export function setupTabDrag(ctx, tabEl, tabId) {
   let ghost = null;
   let offsetX = 0;
 
-  // Per-drag transient state (not stored on ctx)
-  const state = { dropTargetId: null, dropBefore: true };
+  const state = initDragState();
 
   tabEl.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
@@ -109,19 +176,7 @@ export function setupTabDrag(ctx, tabEl, tabId) {
     const onMouseMove = (ev) => {
       if (!dragging && Math.abs(ev.clientX - startX) > DRAG_THRESHOLD) {
         dragging = true;
-        tabEl.classList.add('tab-dragging');
-        document.body.style.cursor = 'grabbing';
-        document.body.style.userSelect = 'none';
-
-        // Create floating ghost clone
-        ghost = tabEl.cloneNode(true);
-        ghost.className = 'tab tab-ghost';
-        if (tabEl.classList.contains('active')) ghost.classList.add('active');
-        const r = tabEl.getBoundingClientRect();
-        ghost.style.width = `${r.width}px`;
-        ghost.style.height = `${r.height}px`;
-        ghost.style.top = `${r.top}px`;
-        document.body.appendChild(ghost);
+        ghost = handleDragStart(tabEl);
       }
       if (dragging && ghost) {
         ghost.style.left = `${ev.clientX - offsetX}px`;
@@ -134,17 +189,8 @@ export function setupTabDrag(ctx, tabEl, tabId) {
       document.removeEventListener('mouseup', onMouseUp);
 
       if (dragging) {
-        tabEl.classList.remove('tab-dragging');
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-        if (ghost) { ghost.remove(); ghost = null; }
-        clearTabShifts(ctx);
-
-        if (state.dropTargetId && state.dropTargetId !== tabId) {
-          ctx.reorderTab(tabId, state.dropTargetId, state.dropBefore);
-        }
-        state.dropTargetId = null;
-        state.dropBefore = null;
+        handleDragEnd(ctx, tabEl, ghost, state, tabId);
+        ghost = null;
       }
     };
 
