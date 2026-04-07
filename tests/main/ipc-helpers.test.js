@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-const { safeSend, FORWARD_TABLE, SPREAD_TABLE, registerForward, registerSpread, registerManagerHandlers } = require('../../main/ipc-helpers');
+const { safeSend, FORWARD_TABLE, SPREAD_TABLE, buildTablesFromSchema, registerForward, registerSpread, registerManagerHandlers } = require('../../main/ipc-helpers');
+const { API_SCHEMA } = require('../../api-schema');
 
 describe('ipc-helpers', () => {
   describe('safeSend', () => {
@@ -23,14 +24,35 @@ describe('ipc-helpers', () => {
     });
   });
 
-  describe('FORWARD_TABLE', () => {
-    it('is an array of [channel, targetKey, method] tuples', () => {
+  describe('buildTablesFromSchema', () => {
+    it('derives tables from a minimal schema', () => {
+      const schema = {
+        test: {
+          foo: { type: 'fwd' },
+          bar: { type: 'pack', keys: ['a', 'b'] },
+          baz: { type: 'on', channel: 'test:bazEvent' },
+        },
+      };
+      const { forward, spread } = buildTablesFromSchema(schema);
+      expect(forward).toEqual([['test:foo', 'test']]);
+      expect(spread).toEqual([['test:bar', 'test', ['a', 'b']]]);
+      // 'on' entries are renderer-only, not in either table
+    });
+
+    it('uses explicit channel when provided', () => {
+      const schema = { x: { y: { type: 'fwd', channel: 'custom:ch' } } };
+      const { forward } = buildTablesFromSchema(schema);
+      expect(forward[0][0]).toBe('custom:ch');
+    });
+  });
+
+  describe('FORWARD_TABLE (derived from API_SCHEMA)', () => {
+    it('is an array of [channel, domain] tuples', () => {
       expect(FORWARD_TABLE.length).toBeGreaterThan(0);
       for (const entry of FORWARD_TABLE) {
-        expect(entry).toHaveLength(3);
-        expect(typeof entry[0]).toBe('string');
-        expect(typeof entry[1]).toBe('string');
-        expect(typeof entry[2]).toBe('string');
+        expect(entry).toHaveLength(2);
+        expect(typeof entry[0]).toBe('string');  // channel
+        expect(typeof entry[1]).toBe('string');  // domain
       }
     });
 
@@ -48,17 +70,26 @@ describe('ipc-helpers', () => {
       expect(channels).toContain('flow:save');
       expect(channels).toContain('usage:getMetrics');
     });
+
+    it('matches all fwd entries from API_SCHEMA', () => {
+      let expectedCount = 0;
+      for (const methods of Object.values(API_SCHEMA)) {
+        for (const def of Object.values(methods)) {
+          if (def.type === 'fwd') expectedCount++;
+        }
+      }
+      expect(FORWARD_TABLE.length).toBe(expectedCount);
+    });
   });
 
-  describe('SPREAD_TABLE', () => {
-    it('is an array of [channel, targetKey, method, keys] tuples', () => {
+  describe('SPREAD_TABLE (derived from API_SCHEMA)', () => {
+    it('is an array of [channel, domain, keys] tuples', () => {
       expect(SPREAD_TABLE.length).toBeGreaterThan(0);
       for (const entry of SPREAD_TABLE) {
-        expect(entry).toHaveLength(4);
-        expect(typeof entry[0]).toBe('string');
-        expect(typeof entry[1]).toBe('string');
-        expect(typeof entry[2]).toBe('string');
-        expect(Array.isArray(entry[3])).toBe(true);
+        expect(entry).toHaveLength(3);
+        expect(typeof entry[0]).toBe('string');     // channel
+        expect(typeof entry[1]).toBe('string');     // domain
+        expect(Array.isArray(entry[2])).toBe(true); // keys
       }
     });
 
@@ -75,12 +106,22 @@ describe('ipc-helpers', () => {
     });
 
     it('spread keys are non-empty string arrays', () => {
-      for (const [, , , keys] of SPREAD_TABLE) {
+      for (const [, , keys] of SPREAD_TABLE) {
         expect(keys.length).toBeGreaterThan(0);
         for (const k of keys) {
           expect(typeof k).toBe('string');
         }
       }
+    });
+
+    it('matches all pack entries from API_SCHEMA', () => {
+      let expectedCount = 0;
+      for (const methods of Object.values(API_SCHEMA)) {
+        for (const def of Object.values(methods)) {
+          if (def.type === 'pack') expectedCount++;
+        }
+      }
+      expect(SPREAD_TABLE.length).toBe(expectedCount);
     });
   });
 
@@ -94,16 +135,18 @@ describe('ipc-helpers', () => {
       const myMethod = vi.fn((arg) => `result:${arg}`);
       const mySpreadMethod = vi.fn((a, b) => `${a}+${b}`);
 
-      const targets = {
-        pty: { checkAgents: myMethod },
-        fs: { readDirectory: myMethod, readFile: myMethod, makeDir: myMethod, getHomedir: myMethod, copyEntry: myMethod, writeFile: mySpreadMethod, renameEntry: mySpreadMethod, copyFileTo: mySpreadMethod, unwatchDir: mySpreadMethod },
-        git: { getBranch: myMethod, getRemoteUrl: myMethod, getLocalChanges: myMethod, getFileDiff: mySpreadMethod },
-        config: { load: myMethod, list: myMethod, remove: myMethod, setDefault: myMethod, getDefault: myMethod, loadDefault: myMethod, save: mySpreadMethod },
-        flow: { save: myMethod, get: myMethod, list: myMethod, remove: myMethod, toggleEnabled: myMethod, runNow: myMethod, getRunning: myMethod, getCategories: myMethod, saveCategories: myMethod, getRunLog: mySpreadMethod },
-        usage: { getMetrics: myMethod },
-        shell: { showItemInFolder: myMethod, openExternal: myMethod, openPath: myMethod },
-        clipboard: { writeText: myMethod },
-      };
+      // Build targets with method names matching channel suffixes (domain:method -> method)
+      const targets = {};
+      for (const [channel, domain] of FORWARD_TABLE) {
+        if (!targets[domain]) targets[domain] = {};
+        const method = channel.split(':')[1];
+        targets[domain][method] = myMethod;
+      }
+      for (const [channel, domain] of SPREAD_TABLE) {
+        if (!targets[domain]) targets[domain] = {};
+        const method = channel.split(':')[1];
+        targets[domain][method] = mySpreadMethod;
+      }
 
       registerManagerHandlers(ipc, targets);
 
