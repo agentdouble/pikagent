@@ -136,10 +136,9 @@ export function restorePanelSizes(panels, panelEls) {
 /**
  * @param {Object} ctx
  * @param {WorkspaceTab} tab
- * @param {{ gitBranch: Function }} [api] - injected API methods (defaults to ctx._api)
+ * @param {{ gitBranch: Function }} api - injected API methods
  */
-export async function renderWorkspace(ctx, tab, api) {
-  const { gitBranch } = api || ctx._api;
+export async function renderWorkspace(ctx, tab, { gitBranch }) {
   ctx.workspaceContainer.replaceChildren();
 
   const layout = _el('div', 'workspace-layout');
