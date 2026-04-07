@@ -117,6 +117,7 @@ export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, ty
         await window.api.fs.mkdir(newPath);
       } else {
         await window.api.fs.writefile(newPath, '');
+        /** @emits file:open {{ path: string, name: string }} */
         bus.emit('file:open', { path: newPath, name });
       }
     },

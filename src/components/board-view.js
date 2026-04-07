@@ -215,8 +215,11 @@ export class BoardView {
 
     // Bus event listeners — single declaration drives both subscription and cleanup
     this._busListeners = subscribeBus([
+      /** @listens terminal:created {{ id: string, cwd: string }} */
       [EVT_CREATED, () => { if (!this.disposed) this.scanAgents(); }],
+      /** @listens terminal:removed {{ id: string }} */
       [EVT_REMOVED, onTerminalGone],
+      /** @listens terminal:exited {{ id: string }} */
       [EVT_EXITED, onTerminalGone],
     ]);
   }

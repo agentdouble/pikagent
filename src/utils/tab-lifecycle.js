@@ -124,6 +124,7 @@ export function switchTo(deps, id) {
       if (tab.layoutElement) {
         reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
         syncFileTree(tab);
+        /** @emits workspace:activated {undefined} — tab re-shown */
         bus.emit('workspace:activated');
       }
       deps.renderTabBar();
@@ -149,6 +150,7 @@ export function switchTo(deps, id) {
   if (tab.layoutElement) {
     reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
     syncFileTree(tab);
+    /** @emits workspace:activated {undefined} — tab switched */
     bus.emit('workspace:activated');
   } else {
     // First time rendering this tab
