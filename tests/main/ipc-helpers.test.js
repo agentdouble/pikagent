@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-const { safeSend, FORWARD_TABLE, SPREAD_TABLE } = require('../../main/ipc-helpers');
+const { safeSend, FORWARD_TABLE, SPREAD_TABLE, registerManagerHandlers } = require('../../main/ipc-helpers');
 
 describe('ipc-helpers', () => {
   describe('safeSend', () => {
@@ -81,6 +81,49 @@ describe('ipc-helpers', () => {
           expect(typeof k).toBe('string');
         }
       }
+    });
+  });
+
+  describe('registerManagerHandlers', () => {
+    it('registers forward and spread handlers from tables', () => {
+      const handlers = {};
+      const ipc = {
+        handle: vi.fn((channel, handler) => { handlers[channel] = handler; }),
+      };
+
+      const myMethod = vi.fn((arg) => `result:${arg}`);
+      const mySpreadMethod = vi.fn((a, b) => `${a}+${b}`);
+
+      const targets = {
+        pty: { checkAgents: myMethod },
+        fs: { readDirectory: myMethod, readFile: myMethod, makeDir: myMethod, getHomedir: myMethod, copyEntry: myMethod, writeFile: mySpreadMethod, renameEntry: mySpreadMethod, copyFileTo: mySpreadMethod, unwatchDir: mySpreadMethod },
+        git: { getBranch: myMethod, getRemoteUrl: myMethod, getLocalChanges: myMethod, getFileDiff: mySpreadMethod },
+        config: { load: myMethod, list: myMethod, remove: myMethod, setDefault: myMethod, getDefault: myMethod, loadDefault: myMethod, save: mySpreadMethod },
+        flow: { save: myMethod, get: myMethod, list: myMethod, remove: myMethod, toggleEnabled: myMethod, runNow: myMethod, getRunning: myMethod, getCategories: myMethod, saveCategories: myMethod, getRunLog: mySpreadMethod },
+        usage: { getMetrics: myMethod },
+        shell: { showItemInFolder: myMethod, openExternal: myMethod, openPath: myMethod },
+        clipboard: { writeText: myMethod },
+      };
+
+      registerManagerHandlers(ipc, targets);
+
+      // Should register all channels from both tables
+      const totalExpected = FORWARD_TABLE.length + SPREAD_TABLE.length;
+      expect(ipc.handle).toHaveBeenCalledTimes(totalExpected);
+
+      // Verify a forward handler works
+      const forwardResult = handlers['fs:readdir'](null, '/some/path');
+      expect(myMethod).toHaveBeenCalledWith('/some/path');
+
+      // Verify a spread handler works
+      handlers['config:save'](null, { name: 'test', data: {} });
+      expect(mySpreadMethod).toHaveBeenCalledWith('test', {});
+    });
+
+    it('skips targets not in the map', () => {
+      const ipc = { handle: vi.fn() };
+      registerManagerHandlers(ipc, {});
+      expect(ipc.handle).not.toHaveBeenCalled();
     });
   });
 });

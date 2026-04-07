@@ -20,12 +20,12 @@ const {
   TOP_FILES_LIMIT,
   GIT_TIMEOUT_MS,
 } = require('./usage-helpers');
+const { Cache } = require('./cache');
 
 const execFileAsync = promisify(execFile);
 
 let _sessionManager = null;
-let _metricsCache = null;
-let _metricsCacheTime = 0;
+const _metricsCache = new Cache(CACHE_TTL);
 
 function init(sessionMgr) {
   _sessionManager = sessionMgr;
@@ -106,10 +106,8 @@ async function getMostModifiedFiles(cwds) {
 // ===== Aggregation =====
 
 async function getMetrics() {
-  const now = Date.now();
-  if (_metricsCache && (now - _metricsCacheTime) < CACHE_TTL) {
-    return _metricsCache;
-  }
+  const cached = _metricsCache.get();
+  if (cached) return cached;
 
   const flows = await getAllFlows();
   const flowRuns = getFlowRuns(flows);
@@ -133,20 +131,9 @@ async function getMetrics() {
     hasData: flows.length > 0 || allSessions.length > 0 || tokens.total > 0,
   };
 
-  _metricsCache = result;
-  _metricsCacheTime = now;
+  _metricsCache.set(result);
 
   return result;
 }
 
-function registerHandlers(ipcMain, { sessionManager }) {
-  const { registerForward } = require('./ipc-helpers');
-
-  init(sessionManager);
-
-  registerForward(ipcMain, { getMetrics }, [
-    ['usage:getMetrics', 'getMetrics'],
-  ]);
-}
-
-module.exports = { getMetrics, registerHandlers };
+module.exports = { init, getMetrics };
