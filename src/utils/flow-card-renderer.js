@@ -2,18 +2,21 @@
  * Pure rendering helpers for flow cards.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el } from './dom.js';
+import { _el, createButton } from './dom.js';
 import { formatSchedule } from './flow-schedule-helpers.js';
 import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flow-view-helpers.js';
 
 /**
  * Create a single action button for a flow card.
+ * Thin wrapper around the centralized `createButton` factory.
  */
 function createFlowActionButton(icon, title, onClick, extraClass = '') {
-  const btn = _el('button', extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn', icon);
-  btn.title = title;
-  btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
-  return btn;
+  return createButton({
+    label: icon,
+    title,
+    className: extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn',
+    onClick: (e) => { e.stopPropagation(); onClick(); },
+  });
 }
 
 /**

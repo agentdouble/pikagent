@@ -49,15 +49,57 @@ export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
     else input.remove();
   };
 
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); }
-    if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
+  setupKeyboardShortcuts(input, {
+    onEnter: (e) => { e.preventDefault(); e.stopPropagation(); commit(); },
+    onEscape: (e) => { e.stopPropagation(); cancel(); },
   });
   input.addEventListener('blur', () => {
     if (blurDelay > 0) setTimeout(() => { if (!committed) commit(); }, blurDelay);
     else if (!committed) commit();
   });
   input.addEventListener('click', (e) => e.stopPropagation());
+}
+
+/**
+ * Create a <button> element with common options.
+ * @param {{ label?: string, title?: string, className?: string, onClick?: Function }} opts
+ * @returns {HTMLButtonElement}
+ */
+export function createButton({ label = '', title, className, onClick } = {}) {
+  const btn = _el('button', className || '', label);
+  if (title) btn.title = title;
+  if (onClick) btn.addEventListener('click', onClick);
+  return btn;
+}
+
+/**
+ * Create a <select> element from an options map.
+ * @param {{ options: Object<string, string>, value?: string, className?: string, onChange?: Function }} opts
+ * @returns {HTMLSelectElement}
+ */
+export function createSelect({ options, value, className, onChange } = {}) {
+  const select = _el('select', { className: className || '' });
+  for (const [val, label] of Object.entries(options)) {
+    select.appendChild(_el('option', { value: val, textContent: label }));
+  }
+  if (value !== undefined) select.value = value;
+  if (onChange) select.addEventListener('change', onChange);
+  return select;
+}
+
+/**
+ * Wire up Enter / Escape keyboard shortcuts on an element.
+ * @param {HTMLElement} el
+ * @param {{ onEnter?: Function, onEscape?: Function }} handlers
+ * @returns {Function} cleanup — removes the listener
+ */
+export function setupKeyboardShortcuts(el, { onEnter, onEscape } = {}) {
+  const handler = (e) => {
+    if (e.key === 'Enter' && onEnter) { onEnter(e); }
+    if (e.key === 'Escape' && onEscape) { onEscape(e); }
+  };
+  el.addEventListener('keydown', handler);
+  return () => el.removeEventListener('keydown', handler);
 }
 
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
@@ -88,17 +130,17 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
     const confirm = () => { const v = input.value.trim(); close(v || null); };
 
     const input = _el('input', { className: 'prompt-dialog-input', type: 'text', value: defaultValue, placeholder });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') confirm();
-      if (e.key === 'Escape') close(null);
+    setupKeyboardShortcuts(input, {
+      onEnter: () => confirm(),
+      onEscape: () => close(null),
     });
 
     const box = _el('div', 'prompt-dialog-box',
       _el('label', 'prompt-dialog-label', title),
       input,
       _el('div', 'prompt-dialog-btns',
-        _el('button', { className: 'prompt-dialog-cancel', textContent: cancelLabel, onClick: () => close(null) }),
-        _el('button', { className: 'prompt-dialog-confirm', textContent: confirmLabel, onClick: confirm }),
+        createButton({ label: cancelLabel, className: 'prompt-dialog-cancel', onClick: () => close(null) }),
+        createButton({ label: confirmLabel, className: 'prompt-dialog-confirm', onClick: confirm }),
       ),
     );
 
@@ -140,8 +182,8 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
     else box.appendChild(message);
 
     const btnRow = _el('div', 'confirm-buttons',
-      _el('button', { className: 'confirm-cancel', textContent: cancelLabel, onClick: () => cleanup(false) }),
-      _el('button', { className: 'confirm-ok', textContent: confirmLabel, onClick: () => cleanup(true) }),
+      createButton({ label: cancelLabel, className: 'confirm-cancel', onClick: () => cleanup(false) }),
+      createButton({ label: confirmLabel, className: 'confirm-ok', onClick: () => cleanup(true) }),
     );
     box.appendChild(btnRow);
     overlay.appendChild(box);

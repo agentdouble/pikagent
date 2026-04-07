@@ -1,15 +1,13 @@
-import { _el } from './dom.js';
+import { createButton } from './dom.js';
 
 /**
  * Build a button element from a descriptor.
+ * Thin wrapper around the centralized `createButton` factory.
  * @param {{ label: string, title?: string, cls?: string, onClick: Function }} desc
  * @returns {HTMLButtonElement}
  */
 export function buildActionBtn({ label, title, cls, onClick }) {
-  const btn = _el('button', cls, label);
-  if (title) btn.title = title;
-  btn.addEventListener('click', onClick);
-  return btn;
+  return createButton({ label, title, className: cls, onClick });
 }
 
 /** Fade-out duration (ms) before removing the modal overlay. */

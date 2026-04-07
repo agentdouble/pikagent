@@ -1,4 +1,4 @@
-import { _el } from './dom.js';
+import { _el, createSelect } from './dom.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
 
 // --- Constants ---
@@ -22,13 +22,12 @@ export function _vis(el, show) {
   el.style.display = show ? 'flex' : 'none';
 }
 
+/**
+ * Create a <select> for flow modals.
+ * Thin wrapper around the centralized `createSelect` factory.
+ */
 export function _createSelect(options, value) {
-  const select = _el('select', { className: 'flow-modal-select' });
-  for (const [val, label] of Object.entries(options)) {
-    select.appendChild(_el('option', { value: val, textContent: label }));
-  }
-  select.value = value;
-  return select;
+  return createSelect({ options, value, className: 'flow-modal-select' });
 }
 
 export function _createChip(icon, content, extra = {}) {
