@@ -24,6 +24,20 @@ export class TerminalPanel {
     this.activeTerminal = null;
     this.terminals = new Map();
 
+    // Injected API methods forwarded to TerminalInstance
+    this._terminalApi = {
+      openExternal: window.api.shell.openExternal,
+      homedir: window.api.fs.homedir,
+      openPath: window.api.shell.openPath,
+      ptyWrite: window.api.pty.write,
+      ptyOnData: window.api.pty.onData,
+      ptyOnExit: window.api.pty.onExit,
+      ptyCreate: window.api.pty.create,
+      ptyGetCwd: window.api.pty.getCwd,
+      ptyResize: window.api.pty.resize,
+      ptyKill: window.api.pty.kill,
+    };
+
     // Drag and drop state
     this._dragSourceId = null;
     this._drop = new DropIndicatorManager(container);
@@ -95,7 +109,7 @@ export class TerminalPanel {
     return createTerminalNodeHelper(cwd, this.cwd, this.terminals, {
       buildTopBar: (node) => this._buildTopBar(node),
       onMousedown: (node) => this.setActive(node),
-    });
+    }, this._terminalApi);
   }
 
   // ===== Drag & Drop =====

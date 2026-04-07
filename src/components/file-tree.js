@@ -39,6 +39,21 @@ export class FileTree {
     this.sections = new Map();
     this.debounceTimers = new Map();
     this._activeRow = null;
+
+    // Injected API methods for file-tree-drop and file-tree-context-menu utils
+    this._contextMenuApi = {
+      clipboardWrite: window.api.clipboard.write,
+      fsCopy: window.api.fs.copy,
+      showInFolder: window.api.shell.showInFolder,
+      fsTrash: window.api.fs.trash,
+    };
+    this._dropApi = {
+      copyTo: window.api.fs.copyTo,
+      rename: window.api.fs.rename,
+      mkdir: window.api.fs.mkdir,
+      writefile: window.api.fs.writefile,
+    };
+
     this.render();
     this.listenForChanges();
   }
@@ -178,6 +193,7 @@ export class FileTree {
       cwd, cwd, contentEl, 0, expandedDirs, null,
       (path, nameEl) => this.promptRename(path, nameEl),
       (dirPath, cEl, depth, eDirs, type) => this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
+      this._contextMenuApi,
     ));
 
     return header;
@@ -195,19 +211,20 @@ export class FileTree {
   // --- Rename inline input ---
 
   promptRename(entryPath, nameEl) {
-    doPromptRename(entryPath, nameEl);
+    doPromptRename(entryPath, nameEl, { rename: this._dropApi.rename });
   }
 
   // --- New File / Folder inline input ---
 
   promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type) {
-    doPromptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type);
+    doPromptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type, { mkdir: this._dropApi.mkdir, writefile: this._dropApi.writefile });
   }
 
   // --- Drag & Drop ---
 
   _setupDropZone(el, getTargetDir) {
-    setupDropZone(el, getTargetDir, handleFileDrop);
+    const api = this._dropApi;
+    setupDropZone(el, getTargetDir, (files, destDir) => handleFileDrop(files, destDir, { copyTo: api.copyTo }));
   }
 
   // --- Directory expand/collapse ---
@@ -241,6 +258,7 @@ export class FileTree {
       promptRename: (path, nameEl) => this.promptRename(path, nameEl),
       promptNewEntry: (dirPath, cEl, depth, eDirs, type) =>
         this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
+      contextMenuApi: this._contextMenuApi,
     };
   }
 
@@ -258,6 +276,7 @@ export class FileTree {
       activeRowRef,
       findRootCwd: (entryPath) => this.findRootCwd(entryPath),
       promptRename: (path, nameEl) => this.promptRename(path, nameEl),
+      contextMenuApi: this._contextMenuApi,
     });
   }
 

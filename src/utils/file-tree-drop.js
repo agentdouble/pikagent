@@ -45,11 +45,12 @@ export function setupDropZone(el, getTargetDir, handleFileDrop, className = 'dro
  *
  * @param {FileList|File[]} files
  * @param {string} destDir
+ * @param {{ copyTo: Function }} api - injected API methods
  */
-export async function handleFileDrop(files, destDir) {
+export async function handleFileDrop(files, destDir, { copyTo }) {
   for (const file of files) {
     if (file.path) {
-      await window.api.fs.copyTo(file.path, destDir);
+      await copyTo(file.path, destDir);
     }
   }
 }
@@ -60,8 +61,9 @@ export async function handleFileDrop(files, destDir) {
  *
  * @param {string} entryPath
  * @param {HTMLElement} nameEl
+ * @param {{ rename: Function }} api - injected API methods
  */
-export function promptRename(entryPath, nameEl) {
+export function promptRename(entryPath, nameEl, { rename }) {
   const oldName = entryPath.split('/').pop();
   const input = _el('input', { className: 'file-tree-rename-input', type: 'text', value: oldName });
 
@@ -77,7 +79,7 @@ export function promptRename(entryPath, nameEl) {
       input.remove();
       nameEl.style.display = '';
       if (!newName || newName === oldName) return;
-      await window.api.fs.rename(entryPath, newName);
+      await rename(entryPath, newName);
     },
     onCancel: () => {
       input.remove();
@@ -95,8 +97,9 @@ export function promptRename(entryPath, nameEl) {
  * @param {number} depth
  * @param {Set<string>} expandedDirs
  * @param {'file'|'folder'} type
+ * @param {{ mkdir: Function, writefile: Function }} api - injected API methods
  */
-export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type) {
+export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type, { mkdir, writefile }) {
   const input = _el('input', {
     className: 'file-tree-new-input',
     type: 'text',
@@ -114,10 +117,9 @@ export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, ty
       if (!name) return;
       const newPath = dirPath + '/' + name;
       if (type === 'folder') {
-        await window.api.fs.mkdir(newPath);
+        await mkdir(newPath);
       } else {
-        await window.api.fs.writefile(newPath, '');
-        /** @emits file:open {{ path: string, name: string }} */
+        await writefile(newPath, '');
         bus.emit('file:open', { path: newPath, name });
       }
     },

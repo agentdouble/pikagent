@@ -44,7 +44,7 @@ export function buildRow(entry, depth) {
  * @param {Function} callbacks.promptNewEntry - (dirPath, contentEl, depth, expandedDirs, type) => void
  */
 export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callbacks) {
-  const { setupDropZone, expandDir, collapseDir, findRootCwd, promptRename, promptNewEntry } = callbacks;
+  const { setupDropZone, expandDir, collapseDir, findRootCwd, promptRename, promptNewEntry, contextMenuApi } = callbacks;
   const { row, chevron, name } = buildRow(entry, depth);
   const isExpanded = expandedDirs.has(entry.path);
   chevron.textContent = isExpanded ? CHEVRON_EXPANDED : CHEVRON_COLLAPSED;
@@ -76,6 +76,7 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
       childContainer, depth + 1, expandedDirs, name,
       (path, nameEl) => promptRename(path, nameEl),
       (dirPath, cEl, d, eDirs, type) => promptNewEntry(dirPath, cEl, d, eDirs, type),
+      contextMenuApi,
     );
   });
 }
@@ -90,7 +91,7 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
  * @param {{ activeRowRef: { current: HTMLElement|null }, findRootCwd: Function, promptRename: Function }} callbacks
  */
 export function renderFileEntry(entry, parentEl, depth, callbacks) {
-  const { activeRowRef, findRootCwd, promptRename } = callbacks;
+  const { activeRowRef, findRootCwd, promptRename, contextMenuApi } = callbacks;
   const { row, name } = buildRow(entry, depth);
   parentEl.appendChild(row);
 
@@ -105,5 +106,6 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
   attachContextMenu(row, () => buildFileContextItems(
     entry.path, name, findRootCwd(entry.path),
     (path, nameEl) => promptRename(path, nameEl),
+    contextMenuApi,
   ));
 }

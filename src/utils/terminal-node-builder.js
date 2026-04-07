@@ -45,9 +45,10 @@ export function buildTopBar(node, { onClose, setupDrag }) {
  * @param {string} defaultCwd - fallback cwd when `cwd` is null
  * @param {Map<string, SplitNode>} terminals - mutable registry
  * @param {{ buildTopBar: Function, onMousedown: Function }} callbacks
+ * @param {Object} api - injected API methods forwarded to TerminalInstance
  * @returns {SplitNode}
  */
-export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: buildTopBarFn, onMousedown }) {
+export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: buildTopBarFn, onMousedown }, api) {
   const spawnCwd = cwd || defaultCwd;
   const node = new SplitNode('terminal');
 
@@ -58,7 +59,7 @@ export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: bu
   wrapper.appendChild(termContainer);
 
   node.element = wrapper;
-  node.terminal = new TerminalInstance(termContainer, spawnCwd);
+  node.terminal = new TerminalInstance(termContainer, spawnCwd, api);
   terminals.set(node.terminal.id, node);
 
   /** @emits terminal:created {{ id: string, cwd: string }} */
