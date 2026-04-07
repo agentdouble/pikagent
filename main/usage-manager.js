@@ -4,7 +4,8 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { FLOWS_DIR, CLAUDE_PROJECTS_DIR } = require('./paths');
 const { readDirJson } = require('./fs-utils');
-const { DEFAULT_DAYS, dayLabels } = require('./stats-helpers');
+const { DEFAULT_DAYS } = require('./stats-helpers');
+const { generateDateRange } = require('./date-utils');
 const {
   newTokenTotals,
   addTokens,
@@ -79,7 +80,7 @@ async function collectProjectTokens(days) {
 }
 
 async function getTokenMetrics(days = DEFAULT_DAYS) {
-  const labels = dayLabels(days);
+  const labels = generateDateRange(days);
   const projectResults = await collectProjectTokens(days);
   return aggregateTokenData(labels, projectResults);
 }

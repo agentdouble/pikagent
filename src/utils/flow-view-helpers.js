@@ -3,6 +3,8 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
+import { formatDateTime } from '../../main/date-utils.js';
+
 export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 50000;
 export const LIVE_SCROLLBACK = 10000;
@@ -26,29 +28,10 @@ export const CATEGORY_ACTIONS = [
   { icon: '✕', title: 'Supprimer la catégorie', cls: 'flow-category-btn-danger', action: 'delete' },
 ];
 
-// --- Run time formatting ---
+// --- Run time formatting (delegated to shared date-utils) ---
 
-const TIME_LOCALE = 'fr-FR';
-const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' };
-
-/**
- * Format a run timestamp into a short time string (e.g. "14:32").
- * Returns '' if timestamp is falsy.
- */
-function formatRunTime(timestamp) {
-  return timestamp
-    ? new Date(timestamp).toLocaleTimeString(TIME_LOCALE, TIME_FORMAT)
-    : '';
-}
-
-/**
- * Build a "date time" label from a run's date and timestamp.
- * e.g. "2025-03-29 14:32" or just "2025-03-29" if no timestamp.
- */
-export function formatRunDateTime(date, timestamp) {
-  const time = formatRunTime(timestamp);
-  return `${date}${time ? ' ' + time : ''}`;
-}
+/** @see formatDateTime from date-utils */
+export const formatRunDateTime = formatDateTime;
 
 /**
  * Build the tooltip text displayed on run-status dots.

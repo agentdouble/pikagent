@@ -1,6 +1,7 @@
 const os = require('os');
 const path = require('path');
-const { computeRate, computeDuration, perDay, dateStr, DEFAULT_DAYS } = require('./stats-helpers');
+const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
+const { extractDateString } = require('./date-utils');
 const { groupBy, countBy } = require('./collection-helpers');
 
 // ===== Declarative configs =====
@@ -62,7 +63,7 @@ function parseTokenUsage(line, cutoffMs) {
   if (entry.timestamp) {
     const ts = typeof entry.timestamp === 'number' ? entry.timestamp : new Date(entry.timestamp).getTime();
     if (ts < cutoffMs) return null;
-    dateKey = new Date(ts).toISOString().slice(0, 10);
+    dateKey = extractDateString(new Date(ts).toISOString());
   }
 
   return {
@@ -186,7 +187,7 @@ function buildAgentMetrics(sessions, activeSessions) {
   return {
     rate: computeRate(allSessions),
     duration: computeDuration(allSessions.map((s) => s.durationSec)),
-    perDay: perDay(allSessions, (s) => dateStr(s.startedAt), DEFAULT_DAYS),
+    perDay: perDay(allSessions, (s) => extractDateString(s.startedAt), DEFAULT_DAYS),
     byAgent: getByAgent(allSessions),
     totalSessions: allSessions.length,
     activeSessions: activeSessions.length,
