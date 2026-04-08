@@ -22,7 +22,9 @@ const {
   GIT_TIMEOUT_MS,
 } = require('./usage-helpers');
 const { Cache } = require('./cache');
+const { createLogger, trySafe } = require('./logger');
 
+const log = createLogger('usage-manager');
 const execFileAsync = promisify(execFile);
 
 let _sessionManager = null;
@@ -64,19 +66,20 @@ async function collectProjectTokens(days) {
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffMs = cutoff.getTime();
 
-  try {
-    const allEntries = await fsp.readdir(CLAUDE_PROJECTS_DIR, { withFileTypes: true });
-    const projects = allEntries.filter((d) => d.isDirectory()).map((d) => d.name);
-    return Promise.all(
-      projects.map(async (proj) => {
-        const data = await readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);
-        return { proj, ...data };
-      })
-    );
-  } catch (err) {
-    console.error('[usage-manager] Failed to read Claude projects:', err.message);
-    return [];
-  }
+  return trySafe(
+    async () => {
+      const allEntries = await fsp.readdir(CLAUDE_PROJECTS_DIR, { withFileTypes: true });
+      const projects = allEntries.filter((d) => d.isDirectory()).map((d) => d.name);
+      return Promise.all(
+        projects.map(async (proj) => {
+          const data = await readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);
+          return { proj, ...data };
+        })
+      );
+    },
+    [],
+    { log, label: 'collectProjectTokens' },
+  );
 }
 
 async function getTokenMetrics(days = DEFAULT_DAYS) {
@@ -88,16 +91,18 @@ async function getTokenMetrics(days = DEFAULT_DAYS) {
 async function getMostModifiedFiles(cwds) {
   const results = await Promise.all(
     cwds.map(async (cwd) => {
-      try {
-        const { stdout } = await execFileAsync(
-          'git',
-          ['log', `--since=${DEFAULT_DAYS} days ago`, '--name-only', '--pretty=format:', '--diff-filter=ACMR'],
-          { cwd, encoding: 'utf-8', timeout: GIT_TIMEOUT_MS }
-        );
-        return { cwd, files: stdout.split('\n').map((l) => l.trim()).filter(Boolean) };
-      } catch {
-        return { cwd, files: [] };
-      }
+      return trySafe(
+        async () => {
+          const { stdout } = await execFileAsync(
+            'git',
+            ['log', `--since=${DEFAULT_DAYS} days ago`, '--name-only', '--pretty=format:', '--diff-filter=ACMR'],
+            { cwd, encoding: 'utf-8', timeout: GIT_TIMEOUT_MS }
+          );
+          return { cwd, files: stdout.split('\n').map((l) => l.trim()).filter(Boolean) };
+        },
+        { cwd, files: [] },
+        { log, label: `git log in ${cwd}` },
+      );
     })
   );
 
