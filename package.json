@@ -42,6 +42,7 @@
       "main.js",
       "preload.js",
       "main/**/*",
+      "shared/**/*",
       "src/**/*",
       "dist/**/*",
       "package.json"

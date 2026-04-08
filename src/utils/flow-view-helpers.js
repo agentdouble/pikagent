@@ -4,6 +4,7 @@
  */
 
 import { formatDateTime } from './date-utils.js';
+import { getLastRun } from '../../shared/flow-utils.js';
 
 export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 50000;
@@ -144,13 +145,8 @@ export function deleteCategoryData(catData, catId) {
   return true;
 }
 
-/**
- * Return the last run from a flow's runs array, or null if none.
- * Shared logic — keep in sync with main/flow-helpers.js::getLastRun
- */
-export function getLastRun(flow) {
-  return flow.runs?.at(-1) ?? null;
-}
+// getLastRun imported from shared/flow-utils.js and re-exported
+export { getLastRun };
 
 /**
  * Build the list of card action descriptors for a given flow state.

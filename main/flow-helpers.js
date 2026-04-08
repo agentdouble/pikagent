@@ -1,6 +1,7 @@
 const path = require('path');
 const { FLOWS_DIR, LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
+const { getLastRun } = require('../shared/flow-utils');
 
 const MS_PER_HOUR = 3_600_000;
 const SCHEDULER_INTERVAL_MS = 60_000;
@@ -44,10 +45,7 @@ function _buildAgentCmd(agent, prompt, opts = {}) {
   return parts.join(' ');
 }
 
-// Shared logic — keep in sync with src/utils/flow-view-helpers.js::getLastRun
-function getLastRun(flow) {
-  return flow.runs?.at(-1) ?? null;
-}
+// getLastRun imported from shared/flow-utils.js
 
 /* ── Schedule day filters (single source of truth) ─────────────── */
 
