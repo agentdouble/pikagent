@@ -44,6 +44,7 @@ function _buildAgentCmd(agent, prompt, opts = {}) {
   return parts.join(' ');
 }
 
+// Shared logic — keep in sync with src/utils/flow-view-helpers.js::getLastRun
 function getLastRun(flow) {
   return flow.runs?.at(-1) ?? null;
 }
