@@ -39,7 +39,6 @@ function buildTablesFromSchema(schema) {
   return { forward, spread };
 }
 
-/** @internal — exported for tests only */
 const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(API_SCHEMA);
 
 /**
@@ -93,4 +92,4 @@ function registerManagerHandlers(ipc, targets, skip = new Set()) {
   }
 }
 
-module.exports = { safeSend, FORWARD_TABLE, SPREAD_TABLE, buildTablesFromSchema, registerForward, registerSpread, registerManagerHandlers };
+module.exports = { safeSend, buildTablesFromSchema, registerForward, registerSpread, registerManagerHandlers };
