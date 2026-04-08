@@ -20,9 +20,9 @@ export const WORKSPACE_PANELS = [
 ];
 
 /** @internal */
-export const LEFT_MAX_WIDTH = SIDE_CONFIG.left.maxWidth;
+const LEFT_MAX_WIDTH = SIDE_CONFIG.left.maxWidth;
 /** @internal */
-export const RIGHT_MAX_WIDTH = SIDE_CONFIG.right.maxWidth;
+const RIGHT_MAX_WIDTH = SIDE_CONFIG.right.maxWidth;
 
 // ── Activity bar buttons ──
 export const ACTIVITY_BUTTONS = [
