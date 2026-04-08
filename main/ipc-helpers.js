@@ -73,9 +73,11 @@ function registerSpread(ipc, target, entries) {
  *
  * @param {object} ipc - Electron ipcMain
  * @param {Object<string, object>} targets - Map of domain -> target object
+ * @param {Set<string>} [skip] - Channels to skip (registered as custom handlers elsewhere)
  */
-function registerManagerHandlers(ipc, targets) {
+function registerManagerHandlers(ipc, targets, skip = new Set()) {
   for (const [channel, domain] of FORWARD_TABLE) {
+    if (skip.has(channel)) continue;
     const target = targets[domain];
     if (!target) continue;
     const method = channel.split(':')[1];
@@ -83,6 +85,7 @@ function registerManagerHandlers(ipc, targets) {
   }
 
   for (const [channel, domain, keys] of SPREAD_TABLE) {
+    if (skip.has(channel)) continue;
     const target = targets[domain];
     if (!target) continue;
     const method = channel.split(':')[1];

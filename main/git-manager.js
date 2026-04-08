@@ -61,4 +61,12 @@ async function getFileDiff(cwd, filePath, isStaged) {
   return result;
 }
 
-module.exports = { getBranch, getRemoteUrl, getLocalChanges, getFileDiff };
+module.exports = {
+  // Method aliases matching channel suffixes (git:branch → branch, etc.)
+  branch: getBranch,
+  remote: getRemoteUrl,
+  localChanges: getLocalChanges,
+  fileDiff: getFileDiff,
+  // Original names
+  getBranch, getRemoteUrl, getLocalChanges, getFileDiff,
+};

@@ -92,4 +92,18 @@ function cleanup() {
   unwatchAll();
 }
 
-module.exports = { readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo, renameEntry, getHomedir, watchDir, unwatchDir, cleanup };
+module.exports = {
+  // Method aliases matching channel suffixes (fs:readdir → readdir, etc.)
+  readdir: readDirectory,
+  readfile: readFile,
+  writefile: writeFile,
+  mkdir: makeDir,
+  copy: copyEntry,
+  copyTo: copyFileTo,
+  rename: renameEntry,
+  homedir: getHomedir,
+  unwatch: unwatchDir,
+  // Original names (used internally and by ipc-handlers.js custom handlers)
+  readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo,
+  renameEntry, getHomedir, watchDir, unwatchDir, cleanup,
+};
