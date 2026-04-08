@@ -83,4 +83,8 @@ async function loadDefault() {
   return load(name);
 }
 
-module.exports = { save, load, list, remove, setDefault, getDefault, loadDefault };
+module.exports = {
+  save, load, list, remove, setDefault, getDefault, loadDefault,
+  // Alias matching channel suffix (config:delete → delete)
+  delete: remove,
+};

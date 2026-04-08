@@ -229,6 +229,10 @@ class FlowManager {
     await this.save(flow);
   }
 
+  // Aliases matching channel suffixes (flow:delete → delete, flow:toggle → toggle)
+  delete(id) { return this.remove(id); }
+  toggle(id) { return this.toggleEnabled(id); }
+
   cleanup() {
     this.stop();
   }

@@ -37,8 +37,11 @@ function register(getWindow) {
     clipboard,
   };
 
+  // Channels with custom handlers (registered below) — skip declarative registration.
+  const customChannels = new Set(['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder']);
+
   // Register all declarative forward/spread handlers in one pass.
-  registerManagerHandlers(ipcMain, targets);
+  registerManagerHandlers(ipcMain, targets, customChannels);
 
   // -- Custom handlers that cannot be expressed declaratively --
 
