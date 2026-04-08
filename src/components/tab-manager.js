@@ -84,8 +84,12 @@ export class TabManager {
       this.createTab('Workspace 1');
     }
 
-    // Bus event listeners — single declaration drives both registration and cleanup
-    this._busListeners = subscribeBus([
+    this._busListeners = this._setupBusListeners();
+  }
+
+  /** Register bus event listeners. Returns the subscription handle for cleanup. */
+  _setupBusListeners() {
+    return subscribeBus([
       /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
       ['terminal:cwdChanged', ({ id, cwd }) => {
         this._onTerminalCwdChanged(id, cwd);

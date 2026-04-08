@@ -100,6 +100,39 @@ export async function closeTab(deps, createTabFn, switchToFn, id) {
   deps.configManager.scheduleAutoSave();
 }
 
+// ── Tab activation — helpers ──
+
+/**
+ * Detach the outgoing tab's layout, capturing panel widths first.
+ * @param {Map<string, WorkspaceTab>} tabs
+ * @param {string|null} activeTabId
+ */
+function _cleanupPreviousTab(tabs, activeTabId) {
+  if (!activeTabId) return;
+  const prev = tabs.get(activeTabId);
+  if (prev && prev.layoutElement) {
+    capturePanelWidths(prev);
+    prev.layoutElement.remove();
+  }
+}
+
+/**
+ * Attach the incoming tab's layout (or render it for the first time).
+ * @param {SwitchToDeps} deps
+ * @param {WorkspaceTab} tab
+ */
+function _activateTab(deps, tab) {
+  if (tab.layoutElement) {
+    reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
+    syncFileTree(tab);
+    /** @emits workspace:activated {undefined} — tab switched */
+    bus.emit('workspace:activated');
+  } else {
+    // First time rendering this tab
+    deps.renderWorkspace(tab);
+  }
+}
+
 // ── Tab activation ──
 
 /**
@@ -121,12 +154,7 @@ export function switchTo(deps, id) {
 
     // If this tab is already active, just re-show its layout
     if (id === activeTabId) {
-      if (tab.layoutElement) {
-        reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
-        syncFileTree(tab);
-        /** @fires workspace:activated {undefined} — tab re-shown */
-        bus.emit('workspace:activated');
-      }
+      if (tab.layoutElement) _activateTab(deps, tab);
       deps.renderTabBar();
       return;
     }
@@ -134,28 +162,10 @@ export function switchTo(deps, id) {
 
   if (id === activeTabId) return;
 
-  // Detach outgoing tab (keep terminals alive!)
-  if (activeTabId) {
-    const prev = deps.tabs.get(activeTabId);
-    if (prev && prev.layoutElement) {
-      // Capture panel widths before detaching (needs attached DOM)
-      capturePanelWidths(prev);
-      prev.layoutElement.remove();
-    }
-  }
-
+  _cleanupPreviousTab(deps.tabs, activeTabId);
   deps.setActiveTabId(id);
   deps.renderTabBar();
-
-  if (tab.layoutElement) {
-    reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
-    syncFileTree(tab);
-    /** @fires workspace:activated {undefined} — tab switched */
-    bus.emit('workspace:activated');
-  } else {
-    // First time rendering this tab
-    deps.renderWorkspace(tab);
-  }
+  _activateTab(deps, tab);
 }
 
 // ── Terminal CWD tracking (decoupled — no ctx dependency) ──

@@ -97,24 +97,9 @@ export class FlowView {
     this.container.appendChild(wrapper);
   }
 
-  _renderList() {
-    if (!this.listEl) return;
-
-    this._termManager.cleanupStaleLiveTerminals(this._runningMap);
-    this._termManager.disposeAllLogTerminals();
-
-    this.listEl.replaceChildren();
-
-    const hasCats = this.catData.categories.length > 0;
-    const uncatFlows = getUncategorizedFlows(this.flows, this.catData.order);
-    const totalFlows = this.flows.length;
-
-    if (totalFlows === 0 && !hasCats) {
-      this.listEl.appendChild(_el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
-      return;
-    }
-
-    const groupParams = (cat, flows, isUncat = false) => ({
+  /** Build the shared groupParams object for a category section. */
+  _buildGroupParams(cat, flows, isUncat = false) {
+    return {
       cat,
       flows,
       isUncategorized: isUncat,
@@ -131,26 +116,49 @@ export class FlowView {
         getDragFlowId: () => this._drag.flowId,
         clearDrag: () => { this._drag.flowId = null; this._drag.catId = null; },
       },
-    });
+    };
+  }
 
-    // Render categorized groups
+  /** Render named category groups into the list element. */
+  _renderCategorizedGroups() {
     for (const cat of this.catData.categories) {
       const flows = getFlowsForCategory(this.flows, this.catData.order, cat.id);
-      this.listEl.appendChild(createCategoryGroup(groupParams(cat, flows)));
+      this.listEl.appendChild(createCategoryGroup(this._buildGroupParams(cat, flows)));
     }
+  }
 
-    // Render uncategorized
-    if (uncatFlows.length > 0 || hasCats) {
-      if (hasCats) {
-        this.listEl.appendChild(createCategoryGroup(
-          groupParams({ id: UNCATEGORIZED, name: 'Sans catégorie' }, uncatFlows, true)
-        ));
-      } else {
-        for (const flow of uncatFlows) {
-          this.listEl.appendChild(this._createCard(flow, UNCATEGORIZED));
-        }
+  /** Render the uncategorized section into the list element. */
+  _renderUncategorizedSection(uncatFlows, hasCats) {
+    if (uncatFlows.length === 0 && !hasCats) return;
+    if (hasCats) {
+      this.listEl.appendChild(createCategoryGroup(
+        this._buildGroupParams({ id: UNCATEGORIZED, name: 'Sans catégorie' }, uncatFlows, true)
+      ));
+    } else {
+      for (const flow of uncatFlows) {
+        this.listEl.appendChild(this._createCard(flow, UNCATEGORIZED));
       }
     }
+  }
+
+  _renderList() {
+    if (!this.listEl) return;
+
+    this._termManager.cleanupStaleLiveTerminals(this._runningMap);
+    this._termManager.disposeAllLogTerminals();
+
+    this.listEl.replaceChildren();
+
+    const hasCats = this.catData.categories.length > 0;
+    const uncatFlows = getUncategorizedFlows(this.flows, this.catData.order);
+
+    if (this.flows.length === 0 && !hasCats) {
+      this.listEl.appendChild(_el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
+      return;
+    }
+
+    this._renderCategorizedGroups();
+    this._renderUncategorizedSection(uncatFlows, hasCats);
   }
 
   _toggleCollapse(catId) {
