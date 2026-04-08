@@ -118,7 +118,7 @@ export class TabManager {
   }
 
   // Find which tab owns a terminal
-  _findTabForTerminal(termId) { return findTabForTerminal(this.tabs, termId); }
+  _findTabForTerminal(termId) { return findTabForTerminal(this.tabs, termId)?.tab ?? null; }
 
   _activeTab() {
     return this.tabs.get(this.activeTabId);

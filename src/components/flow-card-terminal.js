@@ -3,7 +3,7 @@
  * Extracted from FlowView to reduce component size.
  */
 import { _el, _safeFit } from '../utils/dom.js';
-import { createReadonlyTerminal, disposeTerminal } from '../utils/terminal-factory.js';
+import { createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
@@ -31,12 +31,6 @@ export class FlowCardTerminalManager {
     if (!data) return;
     disposeTerminal(data);
     map.delete(flowId);
-  }
-
-  _disposeAllFromMap(map) {
-    for (const [flowId] of map) {
-      this._disposeTerminalEntry(map, flowId);
-    }
   }
 
   // === Live Terminal (for running flows) ===
@@ -127,11 +121,11 @@ export class FlowCardTerminalManager {
   }
 
   disposeAllLogTerminals() {
-    this._disposeAllFromMap(this._logTerminals);
+    disposeTerminalMap(this._logTerminals);
   }
 
   disposeAll() {
-    this._disposeAllFromMap(this._liveTerminals);
-    this._disposeAllFromMap(this._logTerminals);
+    disposeTerminalMap(this._liveTerminals);
+    disposeTerminalMap(this._logTerminals);
   }
 }

@@ -146,6 +146,7 @@ export function deleteCategoryData(catData, catId) {
 
 /**
  * Return the last run from a flow's runs array, or null if none.
+ * Shared logic — keep in sync with main/flow-helpers.js::getLastRun
  */
 export function getLastRun(flow) {
   return flow.runs?.at(-1) ?? null;

@@ -4,6 +4,7 @@ import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { RendererPollingTimer } from '../utils/polling.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
   STATUS_CONFIG, ALL_CARD_CLASSES, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
@@ -240,21 +241,20 @@ export class BoardView {
   }
 
   _startPolling() {
-    if (this._pollTimer || this.disposed) return;
-    this._pollTimer = setInterval(() => {
-      if (!this.disposed) {
-        this.scanAgents();
-        this._checkIdleCards();
-      }
-    }, POLL_INTERVAL_MS);
-    this.scanAgents();
+    if (this.disposed) return;
+    if (!this._pollTimer) {
+      this._pollTimer = new RendererPollingTimer(POLL_INTERVAL_MS, () => {
+        if (!this.disposed) {
+          this.scanAgents();
+          this._checkIdleCards();
+        }
+      });
+    }
+    this._pollTimer.start();
   }
 
   pause() {
-    if (this._pollTimer) {
-      clearInterval(this._pollTimer);
-      this._pollTimer = null;
-    }
+    if (this._pollTimer) this._pollTimer.stop();
   }
 
   resume() {

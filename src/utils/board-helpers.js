@@ -3,6 +3,9 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
+import { findTabForTerminal } from './tab-lifecycle.js';
+export { findTabForTerminal };
+
 // Minimum bytes of meaningful output per poll interval to consider agent "working".
 // ANSI escape codes (cursor moves, color resets, status bar refreshes) produce
 // small data bursts even when idle. Real agent output (streaming text, tool
@@ -57,19 +60,6 @@ export function formatCardLabel(agent, tabName) {
  */
 export function resolveCardStatus(dataBytes) {
   return dataBytes >= DATA_VOLUME_THRESHOLD ? 'running' : 'waiting';
-}
-
-/**
- * Find the tab containing a given terminal ID.
- * @param {Map} tabs - tabManager.tabs
- * @param {string} termId
- * @returns {{ tabId: string, tab: object } | null}
- */
-export function findTabForTerminal(tabs, termId) {
-  for (const [tabId, tab] of tabs) {
-    if (tab.terminalPanel?.terminals?.has(termId)) return { tabId, tab };
-  }
-  return null;
 }
 
 /**

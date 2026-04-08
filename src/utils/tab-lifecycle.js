@@ -162,13 +162,15 @@ export function switchTo(deps, id) {
 
 /**
  * Find which tab owns a given terminal id.
+ * Returns the richer `{ tabId, tab }` format so callers needing just the tab
+ * can destructure while callers needing the id (e.g. navigation) also get it.
  * @param {Map<string, WorkspaceTab>} tabs
  * @param {string} termId  - Terminal id to look up
- * @returns {WorkspaceTab|null}
+ * @returns {{ tabId: string, tab: WorkspaceTab } | null}
  */
 export function findTabForTerminal(tabs, termId) {
-  for (const [, tab] of tabs) {
-    if (tab.terminalPanel?.terminals?.has(termId)) return tab;
+  for (const [tabId, tab] of tabs) {
+    if (tab.terminalPanel?.terminals?.has(termId)) return { tabId, tab };
   }
   return null;
 }
@@ -182,8 +184,9 @@ export function findTabForTerminal(tabs, termId) {
  * @param {{ gitBranch: Function }} api - injected API methods
  */
 export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch }) {
-  const tab = findTabForTerminal(tabs, termId);
-  if (!tab) return;
+  const match = findTabForTerminal(tabs, termId);
+  if (!match) return;
+  const { tab } = match;
 
   // Update file tree (works even for inactive tabs)
   if (tab.fileTree) {
