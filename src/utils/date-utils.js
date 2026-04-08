@@ -14,7 +14,7 @@ const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' };
  * @param {number|string|null} timestamp
  * @returns {string}
  */
-export function formatTime(timestamp) {
+function formatTime(timestamp) {
   return timestamp
     ? new Date(timestamp).toLocaleTimeString(DATE_LOCALE, TIME_FORMAT)
     : '';

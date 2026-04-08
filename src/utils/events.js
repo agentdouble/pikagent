@@ -21,7 +21,7 @@
  *
  * @type {Record<string, EventDef>}
  */
-export const EVENT_CATALOG = {
+const EVENT_CATALOG = {
   /**
    * Fired when a terminal's working directory changes (e.g. user ran `cd`).
    * @event terminal:cwdChanged
@@ -123,7 +123,7 @@ export const EVENT_CATALOG = {
   },
 };
 
-export class EventBus {
+class EventBus {
   constructor() {
     this.listeners = new Map();
   }
