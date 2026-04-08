@@ -1,4 +1,4 @@
-const { computeRate: genericComputeRate } = require('./aggregation-utils');
+const { computeRate: genericComputeRate, groupAndAggregate, computeNumericStats } = require('./aggregation-utils');
 const { generateDateRange } = require('./date-utils');
 
 const DEFAULT_DAYS = 30;
@@ -20,24 +20,25 @@ function computeRate(items, statusField = 'status') {
   return genericComputeRate(items, STATUS_CATEGORIES, statusField);
 }
 
+/** Delegate to generic computeNumericStats from aggregation-utils. */
 function computeDuration(durations) {
-  const valid = durations.filter((d) => d != null && d > 0);
-  if (valid.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
-  const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
-  return {
-    avg: Math.round(avg),
-    min: Math.round(Math.min(...valid)),
-    max: Math.round(Math.max(...valid)),
-    count: valid.length,
-  };
+  return computeNumericStats(durations);
 }
 
 function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
   const labels = generateDateRange(days);
-  return labels.map((day) => {
-    const dayItems = items.filter((r) => dateExtractor(r) === day.date);
-    return { ...day, total: dayItems.length, ...countByStatus(dayItems) };
-  });
+  // Group items by date once (O(n)) instead of filtering per label (O(n*d))
+  const grouped = groupAndAggregate(
+    items,
+    (item) => dateExtractor(item),
+    (groupItems) => ({ total: groupItems.length, ...countByStatus(groupItems) }),
+  );
+  return labels.map((day) => ({
+    ...day,
+    total: 0,
+    ...countByStatus([]),
+    ...grouped[day.date],
+  }));
 }
 
 module.exports = { DEFAULT_DAYS, countByStatus, computeRate, computeDuration, perDay };

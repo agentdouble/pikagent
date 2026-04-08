@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-const { computeRate } = require('../../main/aggregation-utils');
+const { aggregateByKey, groupAndAggregate, computeRate, computeNumericStats } = require('../../main/aggregation-utils');
 
 describe('aggregation-utils', () => {
   describe('computeRate', () => {
@@ -53,6 +53,31 @@ describe('aggregation-utils', () => {
       const items = [{ status: 'success' }];
       const result = computeRate(items, categories, 'status', 'unknown');
       expect(result.rate).toBe(0);
+    });
+  });
+
+  describe('computeNumericStats', () => {
+    it('computes avg, min, max from values', () => {
+      const result = computeNumericStats([10, 20, 30]);
+      expect(result.avg).toBe(20);
+      expect(result.min).toBe(10);
+      expect(result.max).toBe(30);
+      expect(result.count).toBe(3);
+    });
+
+    it('filters out null/zero/negative values', () => {
+      const result = computeNumericStats([null, 0, -5, 100]);
+      expect(result.count).toBe(1);
+      expect(result.avg).toBe(100);
+    });
+
+    it('returns zeros for empty input', () => {
+      expect(computeNumericStats([])).toEqual({ avg: 0, min: 0, max: 0, count: 0 });
+    });
+
+    it('rounds results', () => {
+      const result = computeNumericStats([10, 15]);
+      expect(result.avg).toBe(13); // Math.round(12.5)
     });
   });
 });

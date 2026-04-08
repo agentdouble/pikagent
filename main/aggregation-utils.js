@@ -76,4 +76,23 @@ function computeRate(items, categories, field = 'status', rateKey = 'success') {
   return { total, ...counts, rate };
 }
 
-module.exports = { computeRate };
+/**
+ * Compute basic numeric statistics (avg, min, max, count) from an array of values.
+ * Filters out null/undefined/zero/negative values before computing.
+ *
+ * @param {Array<number|null>} values
+ * @returns {{ avg: number, min: number, max: number, count: number }}
+ */
+function computeNumericStats(values) {
+  const valid = values.filter((v) => v != null && v > 0);
+  if (valid.length === 0) return { avg: 0, min: 0, max: 0, count: 0 };
+  const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
+  return {
+    avg: Math.round(avg),
+    min: Math.round(Math.min(...valid)),
+    max: Math.round(Math.max(...valid)),
+    count: valid.length,
+  };
+}
+
+module.exports = { aggregateByKey, groupAndAggregate, computeRate, computeNumericStats };
