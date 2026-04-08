@@ -64,7 +64,7 @@ function _getExt(filename) {
 }
 
 /** @internal */
-export function getFileIcon(name, isDirectory) {
+function getFileIcon(name, isDirectory) {
   if (isDirectory) return '📁';
   const cfg = FILE_CONFIG[_getExt(name)];
   return (cfg && cfg.icon) || DEFAULT_ICON;

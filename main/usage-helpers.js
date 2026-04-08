@@ -2,8 +2,19 @@ const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
-const { aggregateByKey } = require('./aggregation-utils');
 const { groupBy, countBy } = require('./collection-helpers');
+
+/** @internal — moved from aggregation-utils (no longer exported there). */
+function aggregateByKey(items, keyFn, initFn, accFn) {
+  const result = {};
+  for (const item of items) {
+    const key = keyFn(item);
+    if (key == null) continue;
+    if (!result[key]) result[key] = initFn();
+    accFn(result[key], item);
+  }
+  return result;
+}
 
 // ===== Declarative configs =====
 
@@ -231,15 +242,11 @@ module.exports = {
   GIT_TIMEOUT_MS,
   newTokenTotals,
   addTokens,
-  parseLogTimestamp,
   parseTokenUsage,
-  projectShortName,
   aggregateTokenData,
   accumulatePerDay,
-  buildFileKey,
   rankModifiedFiles,
   getFlowRuns,
-  getFlowRunDuration,
   buildFlowMetrics,
   buildAgentMetrics,
   collectUniqueCwds,

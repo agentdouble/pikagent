@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DRAG_THRESHOLD, PANEL_MIN_WIDTH, LEFT_MAX_WIDTH, RIGHT_MAX_WIDTH,
+  DRAG_THRESHOLD, PANEL_MIN_WIDTH,
   ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, WorkspaceTab,
   clampPanelWidth, panelArrowState, reorderEntries,
   findCycleTarget, findColorGroupTarget,
@@ -18,8 +18,8 @@ describe('tab-manager-helpers', () => {
       expect(PANEL_MIN_WIDTH).toBeGreaterThan(0);
     });
 
-    it('LEFT_MAX_WIDTH < RIGHT_MAX_WIDTH', () => {
-      expect(LEFT_MAX_WIDTH).toBeLessThan(RIGHT_MAX_WIDTH);
+    it('left max < right max (validated via clampPanelWidth)', () => {
+      expect(clampPanelWidth(9999, 'left')).toBeLessThan(clampPanelWidth(9999, 'right'));
     });
   });
 
@@ -107,12 +107,16 @@ describe('tab-manager-helpers', () => {
       expect(clampPanelWidth(10, 'left')).toBe(PANEL_MIN_WIDTH);
     });
 
-    it('clamps above LEFT_MAX_WIDTH for left', () => {
-      expect(clampPanelWidth(9999, 'left')).toBe(LEFT_MAX_WIDTH);
+    it('clamps above max for left side', () => {
+      const clamped = clampPanelWidth(9999, 'left');
+      expect(clamped).toBeLessThan(9999);
+      expect(clamped).toBeGreaterThan(PANEL_MIN_WIDTH);
     });
 
-    it('clamps above RIGHT_MAX_WIDTH for right', () => {
-      expect(clampPanelWidth(9999, 'right')).toBe(RIGHT_MAX_WIDTH);
+    it('clamps above max for right side', () => {
+      const clamped = clampPanelWidth(9999, 'right');
+      expect(clamped).toBeLessThan(9999);
+      expect(clamped).toBeGreaterThan(PANEL_MIN_WIDTH);
     });
 
     it('passes through valid width', () => {

@@ -76,4 +76,4 @@ function computeRate(items, categories, field = 'status', rateKey = 'success') {
   return { total, ...counts, rate };
 }
 
-module.exports = { aggregateByKey, groupAndAggregate, computeRate };
+module.exports = { computeRate };
