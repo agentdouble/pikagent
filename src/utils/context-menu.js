@@ -9,9 +9,7 @@ export class ContextMenu {
     this._onMouseDown = (e) => {
       if (!this.el.contains(e.target)) this.close();
     };
-    this._onKeyDown = (e) => {
-      if (e.key === 'Escape') this.close();
-    };
+    this._cleanupKeyboard = null;
   }
 
   _buildItem(item) {
@@ -61,15 +59,17 @@ export class ContextMenu {
 
     // Register dismiss listeners only while visible (idempotent remove-then-add)
     document.removeEventListener('mousedown', this._onMouseDown);
-    document.removeEventListener('keydown', this._onKeyDown);
+    if (this._cleanupKeyboard) this._cleanupKeyboard();
     document.addEventListener('mousedown', this._onMouseDown);
-    document.addEventListener('keydown', this._onKeyDown);
+    this._cleanupKeyboard = setupKeyboardShortcuts(document, {
+      onEscape: () => this.close(),
+    });
   }
 
   close() {
     this.el.style.display = 'none';
     document.removeEventListener('mousedown', this._onMouseDown);
-    document.removeEventListener('keydown', this._onKeyDown);
+    if (this._cleanupKeyboard) { this._cleanupKeyboard(); this._cleanupKeyboard = null; }
   }
 }
 

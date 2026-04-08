@@ -1,5 +1,5 @@
 import { generateId } from '../utils/id.js';
-import { _el, createModalOverlay } from '../utils/dom.js';
+import { _el, createButton, createModalOverlay } from '../utils/dom.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,
@@ -13,9 +13,9 @@ import {
 
 function _buildHeader(existing, state) {
   const title = _el('h3', { textContent: existing ? 'Modifier le flow' : 'Nouveau flow' });
-  const clearBtn = _el('button', {
+  const clearBtn = createButton({
+    label: 'Clear',
     className: 'flow-modal-clear-btn',
-    textContent: 'Clear',
     onClick: () => {
       state.nameInput.value = '';
       state.promptArea.value = '';
@@ -121,9 +121,9 @@ function _buildDaysChip(existing) {
   const selectedDays = new Set(existing?.schedule?.days || WEEKDAY_INDICES);
   const daysChip = _el('div', { className: 'flow-modal-chip flow-modal-days' });
   for (let d = 0; d < 7; d++) {
-    const dayBtn = _el('button', {
+    const dayBtn = createButton({
+      label: DAY_NAMES[d],
       className: 'flow-day-btn',
-      textContent: DAY_NAMES[d],
       onClick: (e) => {
         e.preventDefault();
         selectedDays.has(d) ? selectedDays.delete(d) : selectedDays.add(d);
@@ -201,14 +201,14 @@ function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef,
   const close = () => { overlayRef.overlay.remove(); resolve(null); };
 
   const actionBar = _el('div', { className: 'flow-modal-actions' },
-    _el('button', {
+    createButton({
+      label: 'Annuler',
       className: 'flow-modal-btn flow-modal-btn-cancel',
-      textContent: 'Annuler',
       onClick: close,
     }),
-    _el('button', {
+    createButton({
+      label: existing ? 'Enregistrer' : 'Créer',
       className: 'flow-modal-btn flow-modal-btn-create',
-      textContent: existing ? 'Enregistrer' : 'Créer',
       onClick: () => {
         const name = fields.nameInput.value.trim();
         const prompt = fields.promptArea.value.trim();
