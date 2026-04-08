@@ -7,10 +7,10 @@
 
 /**
  * @typedef {Object} EventDef
- * @property {string} description
+ * @property {string} description - human-readable purpose of the event
  * @property {string} payload - JSDoc-style payload type description
- * @property {string[]} emitters - files that emit this event
- * @property {string[]} listeners - files that listen for this event
+ * @property {string[]} emitters - source files that call bus.emit() for this event
+ * @property {string[]} consumers - source files that call bus.on()/subscribeBus() for this event
  */
 
 /**
@@ -19,11 +19,21 @@
  * Before adding a new event, register it here with its payload type,
  * producers, and consumers so that the implicit coupling is documented.
  *
+ * Coupling analysis (issue #49):
+ * - terminal:exited and workspace:openFromFolder are 1-emitter → 1-consumer,
+ *   but the emitter/consumer are distant in the component tree, so converting
+ *   to direct callbacks would add plumbing complexity without clear benefit.
+ * - All other events have multiple emitters or consumers, making the bus the
+ *   appropriate communication mechanism.
+ *
  * @type {Record<string, EventDef>}
  */
 const EVENT_CATALOG = {
+  // ── Terminal lifecycle events ──
+
   /**
    * Fired when a terminal's working directory changes (e.g. user ran `cd`).
+   * The cwd-polling loop in TerminalInstance detects the change via pty.getCwd().
    * @event terminal:cwdChanged
    * @type {{ id: string, cwd: string }}
    */
@@ -31,11 +41,12 @@ const EVENT_CATALOG = {
     description: 'Terminal working directory changed',
     payload: '{ id: string, cwd: string }',
     emitters: ['terminal-instance.js'],
-    listeners: ['tab-manager.js', 'file-viewer.js'],
+    consumers: ['tab-manager.js', 'file-viewer.js'],
   },
 
   /**
    * Fired after a new terminal process is spawned and attached to a tab.
+   * Emitted by the node-builder right after the TerminalInstance is constructed.
    * @event terminal:created
    * @type {{ id: string, cwd: string }}
    */
@@ -43,11 +54,12 @@ const EVENT_CATALOG = {
     description: 'New terminal spawned in a tab',
     payload: '{ id: string, cwd: string }',
     emitters: ['terminal-node-builder.js'],
-    listeners: ['tab-manager.js', 'board-view.js'],
+    consumers: ['tab-manager.js', 'board-view.js'],
   },
 
   /**
-   * Fired when a terminal is closed and its DOM node removed from the panel.
+   * Fired when a terminal is closed by the user and its DOM node removed
+   * from the split-panel layout.
    * @event terminal:removed
    * @type {{ id: string }}
    */
@@ -55,37 +67,41 @@ const EVENT_CATALOG = {
     description: 'Terminal closed and removed from panel',
     payload: '{ id: string }',
     emitters: ['terminal-panel.js'],
-    listeners: ['tab-manager.js', 'board-view.js'],
+    consumers: ['tab-manager.js', 'board-view.js'],
   },
 
   /**
-   * Fired when a terminal's underlying PTY process exits.
+   * Fired when a terminal's underlying PTY process exits on its own
+   * (not via user close — see terminal:removed for that).
    * @event terminal:exited
    * @type {{ id: string }}
    */
   'terminal:exited': {
-    description: 'Terminal process exited',
+    description: 'Terminal PTY process exited',
     payload: '{ id: string }',
     emitters: ['terminal-instance.js'],
-    listeners: ['board-view.js'],
+    consumers: ['board-view.js'],
   },
 
+  // ── Layout / workspace events ──
+
   /**
-   * Fired when workspace layout changes (panel resize, split, webview add/remove).
-   * Carries no payload.
+   * Fired when workspace layout changes (panel resize, terminal split/move,
+   * webview add/remove). Carries no payload — consumers re-read state as needed.
    * @event layout:changed
    * @type {undefined}
    */
   'layout:changed': {
-    description: 'Workspace layout changed (panel resize, split, etc.)',
+    description: 'Workspace layout changed (panel resize, split, webview)',
     payload: 'undefined',
     emitters: ['file-viewer.js', 'file-viewer-webview.js', 'terminal-panel.js', 'terminal-split-ops.js'],
-    listeners: ['tab-manager.js'],
+    consumers: ['tab-manager.js'],
   },
 
   /**
-   * Fired when a workspace tab is activated or re-shown (tab switch, restore).
-   * Carries no payload.
+   * Fired when a workspace tab is activated or re-shown (tab switch, restore,
+   * or initial render). Carries no payload — consumers check their own
+   * isActive() predicate to decide whether to act.
    * @event workspace:activated
    * @type {undefined}
    */
@@ -93,12 +109,14 @@ const EVENT_CATALOG = {
     description: 'Workspace tab activated or re-shown',
     payload: 'undefined',
     emitters: ['tab-lifecycle.js', 'workspace-layout.js'],
-    listeners: ['file-viewer.js'],
+    consumers: ['file-viewer.js'],
   },
+
+  // ── User-action events ──
 
   /**
    * Fired when the user requests to open a folder as a new workspace tab
-   * (e.g. from the file-tree context menu).
+   * (e.g. from the file-tree directory context menu "Open as Workspace").
    * @event workspace:openFromFolder
    * @type {{ cwd: string }}
    */
@@ -106,12 +124,12 @@ const EVENT_CATALOG = {
     description: 'User requested to open a folder as a new workspace tab',
     payload: '{ cwd: string }',
     emitters: ['file-tree-context-menu.js'],
-    listeners: ['tab-manager.js'],
+    consumers: ['tab-manager.js'],
   },
 
   /**
    * Fired when the user requests to open a file in the editor
-   * (click in file tree, drag-drop, or git changes view).
+   * (click in file tree, drag-drop, new file creation, or git changes view).
    * @event file:open
    * @type {{ path: string, name: string }}
    */
@@ -119,7 +137,7 @@ const EVENT_CATALOG = {
     description: 'User requested to open a file in the editor',
     payload: '{ path: string, name: string }',
     emitters: ['file-tree-renderer.js', 'file-tree-drop.js', 'git-changes-view.js'],
-    listeners: ['file-viewer.js'],
+    consumers: ['file-viewer.js'],
   },
 };
 

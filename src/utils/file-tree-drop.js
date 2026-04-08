@@ -120,6 +120,7 @@ export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, ty
         await mkdir(newPath);
       } else {
         await writefile(newPath, '');
+        /** @emits file:open {{ path: string, name: string }} — newly created file */
         bus.emit('file:open', { path: newPath, name });
       }
     },
