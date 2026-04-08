@@ -1,7 +1,7 @@
 /**
- * Date/time utilities for the renderer process.
- * Mirror of the functions needed from main/date-utils.js,
- * kept here to avoid cross-layer imports (renderer → main).
+ * Centralized date/time utilities for the renderer process.
+ * Parallel to main/date-utils.js — kept separate to avoid
+ * cross-layer imports (renderer → main).
  * Pure functions — no side effects.
  */
 
@@ -14,7 +14,7 @@ const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' };
  * @param {number|string|null} timestamp
  * @returns {string}
  */
-function formatTime(timestamp) {
+export function formatTime(timestamp) {
   return timestamp
     ? new Date(timestamp).toLocaleTimeString(DATE_LOCALE, TIME_FORMAT)
     : '';
