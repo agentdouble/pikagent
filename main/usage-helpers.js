@@ -2,6 +2,7 @@ const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
+const { aggregateByKey } = require('./aggregation-utils');
 const { groupBy, countBy } = require('./collection-helpers');
 
 // ===== Declarative configs =====
@@ -84,25 +85,26 @@ function aggregateTokenData(labels, projectResults) {
   for (const day of labels) globalPerDay[day.date] = newPerDayTotals();
 
   const totals = newTokenTotals();
-  const perProjectMap = {};
 
-  for (const { proj, totals: pt, perDayMap } of projectResults) {
+  for (const { totals: pt, perDayMap } of projectResults) {
     addTokens(totals, pt);
-
     for (const [dateKey, dayData] of Object.entries(perDayMap)) {
       if (globalPerDay[dateKey]) {
         for (const k of PERDAY_KEYS) globalPerDay[dateKey][k] += dayData[k];
       }
     }
-
-    const perDayTotal = PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
-    if (perDayTotal > 0) {
-      perProjectMap[projectShortName(proj)] = {
-        ...Object.fromEntries(PERDAY_KEYS.map(k => [k, pt[k]])),
-        total: perDayTotal,
-      };
-    }
   }
+
+  // Use aggregateByKey to accumulate per-project token data
+  const perProjectAgg = aggregateByKey(
+    projectResults.filter(({ totals: pt }) => PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0) > 0),
+    ({ proj }) => projectShortName(proj),
+    () => ({ ...Object.fromEntries(PERDAY_KEYS.map(k => [k, 0])), total: 0 }),
+    (bucket, { totals: pt }) => {
+      for (const k of PERDAY_KEYS) bucket[k] += pt[k];
+      bucket.total += PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
+    },
+  );
 
   const tokenPerDay = labels.map((day) => {
     const g = globalPerDay[day.date];
@@ -110,7 +112,7 @@ function aggregateTokenData(labels, projectResults) {
     return { ...day, ...g, total };
   });
 
-  const perProject = Object.entries(perProjectMap)
+  const perProject = Object.entries(perProjectAgg)
     .map(([project, data]) => ({ project, ...data }))
     .sort((a, b) => b.total - a.total)
     .slice(0, TOP_PROJECTS_LIMIT);

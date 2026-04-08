@@ -1,5 +1,5 @@
 const { computeRate: genericComputeRate } = require('./aggregation-utils');
-const { extractDateString, generateDateRange } = require('./date-utils');
+const { generateDateRange } = require('./date-utils');
 
 const DEFAULT_DAYS = 30;
 
@@ -32,16 +32,6 @@ function computeDuration(durations) {
   };
 }
 
-/** @internal @deprecated Use extractDateString from date-utils instead. */
-function dateStr(iso) {
-  return extractDateString(iso);
-}
-
-/** @internal @deprecated Use generateDateRange from date-utils instead. */
-function dayLabels(days = DEFAULT_DAYS) {
-  return generateDateRange(days);
-}
-
 function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
   const labels = generateDateRange(days);
   return labels.map((day) => {
@@ -50,4 +40,4 @@ function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
   });
 }
 
-module.exports = { DEFAULT_DAYS, countByStatus, computeRate, computeDuration, dateStr, dayLabels, perDay };
+module.exports = { DEFAULT_DAYS, countByStatus, computeRate, computeDuration, perDay };
