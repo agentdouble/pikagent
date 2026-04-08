@@ -4,7 +4,7 @@
  */
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
-import { _el } from '../utils/dom.js';
+import { _el, createButton } from '../utils/dom.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 
@@ -78,13 +78,16 @@ export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
   const currentMode = getAppTheme();
 
   for (const { mode, label } of MODE_BUTTONS) {
-    const btn = _el('button', 'theme-mode-btn', label);
-    if (currentMode === mode) btn.classList.add('active');
-    btn.addEventListener('click', () => {
-      setAppTheme(mode);
-      if (switchTerminalForMode(mode)) applyThemeToTerminals(tabManager);
-      renderAppearanceFn();
+    const btn = createButton({
+      label,
+      className: 'theme-mode-btn',
+      onClick: () => {
+        setAppTheme(mode);
+        if (switchTerminalForMode(mode)) applyThemeToTerminals(tabManager);
+        renderAppearanceFn();
+      },
     });
+    if (currentMode === mode) btn.classList.add('active');
     modeToggle.appendChild(btn);
   }
 
