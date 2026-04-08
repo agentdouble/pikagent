@@ -39,6 +39,7 @@ function buildTablesFromSchema(schema) {
   return { forward, spread };
 }
 
+/** @internal — exported for tests only */
 const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(API_SCHEMA);
 
 /**
