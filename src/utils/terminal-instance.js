@@ -55,7 +55,7 @@ export class TerminalInstance {
     });
 
     this.unsubExit = this._api.ptyOnExit(this.id, () => {
-      /** @emits terminal:exited {{ id: string }} — PTY process exited */
+      /** @fires terminal:exited {{ id: string }} — PTY process exited */
       bus.emit('terminal:exited', { id: this.id });
     });
 
@@ -78,7 +78,7 @@ export class TerminalInstance {
       const cwd = await this._api.ptyGetCwd({ id: this.id });
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
-        /** @emits terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
+        /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
         bus.emit('terminal:cwdChanged', { id: this.id, cwd });
       }
     }, CWD_POLL_MS);

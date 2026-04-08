@@ -240,7 +240,7 @@ export async function renderWorkspace({ workspaceContainer, getActiveTabId, getA
   const branch = await gitBranch(tab.cwd);
   if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
 
-  /** @emits workspace:activated {undefined} — initial workspace render complete */
+  /** @fires workspace:activated {undefined} — initial workspace render complete */
   bus.emit('workspace:activated');
 }
 
