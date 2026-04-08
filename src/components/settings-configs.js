@@ -5,6 +5,7 @@
 import { _el } from '../utils/dom.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta, buildActionBtn } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
   const handlers = {
@@ -110,3 +111,5 @@ export async function renderConfigs(contentEl, tabManager, renderConfigsFn) {
     content: [currentBar, list, _createBottomActions(currentName, tabManager, renderConfigsFn)],
   });
 }
+
+registerComponent('renderConfigs', renderConfigs);

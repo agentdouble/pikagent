@@ -1,5 +1,5 @@
 import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
-import { ConfigManager } from './config-manager.js';
+import { getComponent } from '../utils/component-registry.js';
 import { extractFolderName } from '../utils/file-tree-helpers.js';
 import {
   reorderEntries, findCycleTarget, findColorGroupTarget,
@@ -32,6 +32,7 @@ export class TabManager {
     this.activeTabId = null;
     this.defaultCwd = null;
     this.onOpenSettings = null;
+    const ConfigManager = getComponent('ConfigManager');
     this.configManager = new ConfigManager(this);
     this.boardView = null;
     this._boardContainerEl = null;
