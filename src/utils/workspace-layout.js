@@ -2,7 +2,35 @@
  * Workspace Layout Manager — extracted from tab-manager.js.
  *
  * Handles workspace panel building, resize, serialization, and restoration.
- * All functions receive a `ctx` (TabManager instance) as their first argument.
+ * All functions receive explicit dependency objects instead of the full
+ * TabManager instance — see typedefs below.
+ *
+ * @typedef {Object} PanelInteractionDeps
+ * @property {Function} getActiveTab      - () => WorkspaceTab|null
+ * @property {Function} scheduleAutoSave  - () => void
+ *
+ * @typedef {Object} RenderWorkspaceDeps
+ * @property {HTMLElement} workspaceContainer
+ * @property {Function} getActiveTabId    - () => string|null
+ * @property {Function} getActiveTab      - () => WorkspaceTab|null
+ * @property {Function} scheduleAutoSave  - () => void
+ *
+ * @typedef {Object} SerializeDeps
+ * @property {Map<string, WorkspaceTab>} tabs
+ * @property {string|null} activeTabId
+ *
+ * @typedef {Object} RestoreConfigDeps
+ * @property {Map<string, WorkspaceTab>} tabs
+ * @property {Function} setActiveTabId    - (id) => void
+ * @property {string} defaultCwd
+ * @property {Function} renderTabBar      - () => void
+ * @property {Function} switchTo          - (id) => void
+ * @property {{ isRestoring: boolean }} configManager
+ * @property {import('./sidebar-manager.js').SideViewStore} viewStore
+ *
+ * @typedef {Object} DisposeAllTabsDeps
+ * @property {Map<string, WorkspaceTab>} tabs
+ * @property {Function} setActiveTabId    - (id) => void
  */
 
 import { getComponent } from './component-registry.js';
@@ -19,7 +47,12 @@ import { disposeAllSideViews } from './sidebar-manager.js';
 
 // ── Panel building ──
 
-export function buildSidePanel(ctx, { side, contentCls, title }) {
+/**
+ * Build a collapsible side panel (left or right).
+ * @param {PanelInteractionDeps} deps
+ * @param {{ side: string, contentCls: string, title?: string }} panelDef
+ */
+export function buildSidePanel(deps, { side, contentCls, title }) {
   const panel = _el('div', `panel panel-${side}`);
   if (title) {
     const header = _el('div', 'panel-header');
@@ -29,11 +62,18 @@ export function buildSidePanel(ctx, { side, contentCls, title }) {
   const content = _el('div', contentCls);
   panel.appendChild(content);
   const handle = _el('div', 'panel-resize-handle');
-  setupPanelResize(ctx, handle, panel, side);
+  setupPanelResize(deps, handle, panel, side);
   return { panel, handle, content };
 }
 
-export function buildCenterPanel(ctx, tab, leftPanel, rightPanel) {
+/**
+ * Build the center panel with path info, branch badge, and terminal area.
+ * @param {PanelInteractionDeps} deps
+ * @param {WorkspaceTab} tab
+ * @param {HTMLElement} leftPanel
+ * @param {HTMLElement} rightPanel
+ */
+export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
   const panel = _el('div', 'panel panel-center');
   const header = _el('div', 'panel-header');
 
@@ -41,14 +81,14 @@ export function buildCenterPanel(ctx, tab, leftPanel, rightPanel) {
 
   const pathArrowLeft = _el('span', 'path-arrow', '\u2190');
   pathArrowLeft.title = 'Collapse left panel';
-  pathArrowLeft.addEventListener('click', () => togglePanel(ctx, leftPanel, 'left', pathArrowLeft));
+  pathArrowLeft.addEventListener('click', () => togglePanel(deps, leftPanel, 'left', pathArrowLeft));
 
   const pathText = _el('span', 'path-text', tab.cwd);
   const branchBadge = _el('span', 'branch-badge', '');
 
   const pathArrowRight = _el('span', 'path-arrow', '\u2192');
   pathArrowRight.title = 'Collapse right panel';
-  pathArrowRight.addEventListener('click', () => togglePanel(ctx, rightPanel, 'right', pathArrowRight));
+  pathArrowRight.addEventListener('click', () => togglePanel(deps, rightPanel, 'right', pathArrowRight));
 
   pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
   header.appendChild(pathInfo);
@@ -66,7 +106,14 @@ export function buildCenterPanel(ctx, tab, leftPanel, rightPanel) {
 
 // ── Panel resize / toggle ──
 
-export function setupPanelResize(ctx, handle, panel, side) {
+/**
+ * Attach mousedown resize handler to a panel handle.
+ * @param {PanelInteractionDeps} deps
+ * @param {HTMLElement} handle
+ * @param {HTMLElement} panel
+ * @param {string} side
+ */
+export function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, panel, side) {
   let startX = 0;
   let startWidth = 0;
 
@@ -80,14 +127,21 @@ export function setupPanelResize(ctx, handle, panel, side) {
         const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
         panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
         panel.style.flex = 'none';
-        ctx._activeTab()?.terminalPanel?.fitAll();
+        getActiveTab()?.terminalPanel?.fitAll();
       },
-      () => ctx.configManager.scheduleAutoSave(),
+      () => scheduleAutoSave(),
     );
   });
 }
 
-export function togglePanel(ctx, panel, side, arrowEl) {
+/**
+ * Toggle a panel's collapsed state and re-fit terminals.
+ * @param {PanelInteractionDeps} deps
+ * @param {HTMLElement} panel
+ * @param {string} side
+ * @param {HTMLElement} [arrowEl]
+ */
+export function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arrowEl) {
   panel.classList.add('animating');
   panel.classList.toggle('collapsed');
   const isCollapsed = panel.classList.contains('collapsed');
@@ -100,9 +154,9 @@ export function togglePanel(ctx, panel, side, arrowEl) {
 
   setTimeout(() => {
     panel.classList.remove('animating');
-    ctx._activeTab()?.terminalPanel?.fitAll();
+    getActiveTab()?.terminalPanel?.fitAll();
   }, FIT_DELAY_MS);
-  ctx.configManager.scheduleAutoSave();
+  scheduleAutoSave();
 }
 
 // ── Panel width capture / restore ──
@@ -134,29 +188,31 @@ export function restorePanelSizes(panels, panelEls) {
 // ── Workspace rendering ──
 
 /**
- * @param {Object} ctx
+ * Render the full workspace layout for a tab.
+ * @param {RenderWorkspaceDeps} deps
  * @param {WorkspaceTab} tab
  * @param {{ gitBranch: Function }} api - injected API methods
  */
-export async function renderWorkspace(ctx, tab, { gitBranch }) {
-  ctx.workspaceContainer.replaceChildren();
+export async function renderWorkspace({ workspaceContainer, getActiveTabId, getActiveTab, scheduleAutoSave }, tab, { gitBranch }) {
+  workspaceContainer.replaceChildren();
 
+  const panelDeps = { getActiveTab, scheduleAutoSave };
   const layout = _el('div', 'workspace-layout');
 
   // Build side panels from declarative config
   const sides = {};
   for (const def of WORKSPACE_PANELS) {
-    sides[def.side] = buildSidePanel(ctx, def);
+    sides[def.side] = buildSidePanel(panelDeps, def);
   }
 
-  const { panel: centerPanel, termContainer } = buildCenterPanel(ctx, tab, sides.left.panel, sides.right.panel);
+  const { panel: centerPanel, termContainer } = buildCenterPanel(panelDeps, tab, sides.left.panel, sides.right.panel);
 
   layout.append(
     sides.left.panel, sides.left.handle,
     centerPanel,
     sides.right.handle, sides.right.panel,
   );
-  ctx.workspaceContainer.appendChild(layout);
+  workspaceContainer.appendChild(layout);
 
   const FileTree = getComponent('FileTree');
   const FileViewer = getComponent('FileViewer');
@@ -164,7 +220,7 @@ export async function renderWorkspace(ctx, tab, { gitBranch }) {
 
   tab.layoutElement = layout;
   tab.fileTree = new FileTree(sides.left.content);
-  tab.fileViewer = new FileViewer(sides.right.content, () => tab.id === ctx.activeTabId);
+  tab.fileViewer = new FileViewer(sides.right.content, () => tab.id === getActiveTabId());
 
   if (tab._restoreData?.splitTree) {
     tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
@@ -189,9 +245,14 @@ export async function renderWorkspace(ctx, tab, { gitBranch }) {
 
 // ── Layout helpers ──
 
-export function reattachLayout(ctx, tab) {
-  ctx.workspaceContainer.replaceChildren();
-  ctx.workspaceContainer.appendChild(tab.layoutElement);
+/**
+ * Re-attach a tab's existing layout element to the workspace container.
+ * @param {{ workspaceContainer: HTMLElement }} deps
+ * @param {WorkspaceTab} tab
+ */
+export function reattachLayout({ workspaceContainer }, tab) {
+  workspaceContainer.replaceChildren();
+  workspaceContainer.appendChild(tab.layoutElement);
   if (tab.terminalPanel) {
     tab.terminalPanel.fitAll();
     if (tab.terminalPanel.activeTerminal) {
@@ -217,13 +278,18 @@ export function syncFileTree(tab) {
 
 // ── Serialization ──
 
-export function serialize(ctx) {
-  const tabs = [];
+/**
+ * Serialize all tabs into a config object.
+ * @param {SerializeDeps} deps
+ * @returns {{ tabs: Array, activeTabIndex: number }}
+ */
+export function serialize({ tabs, activeTabId }) {
+  const serializedTabs = [];
   let activeTabIndex = 0;
   let i = 0;
 
-  for (const [id, tab] of ctx.tabs) {
-    if (id === ctx.activeTabId) activeTabIndex = i;
+  for (const [id, tab] of tabs) {
+    if (id === activeTabId) activeTabIndex = i;
 
     const tabData = {
       name: tab.name,
@@ -245,45 +311,50 @@ export function serialize(ctx) {
     }
 
     // Panel widths — active tab: snapshot from live DOM; inactive: use cached
-    if (id === ctx.activeTabId) capturePanelWidths(tab);
+    if (id === activeTabId) capturePanelWidths(tab);
     if (tab._panelWidths) tabData.panels = { ...tab._panelWidths };
 
-    tabs.push(tabData);
+    serializedTabs.push(tabData);
     i++;
   }
 
-  return { tabs, activeTabIndex };
+  return { tabs: serializedTabs, activeTabIndex };
 }
 
 // ── Restore ──
 
-export async function restoreConfig(ctx, config) {
+/**
+ * Restore workspace from a saved config.
+ * @param {RestoreConfigDeps} deps
+ * @param {Object} config
+ */
+export async function restoreConfig({ tabs, setActiveTabId, defaultCwd, renderTabBar, switchTo, configManager, viewStore }, config) {
   if (!config || !config.tabs || config.tabs.length === 0) return;
 
-  ctx.configManager.isRestoring = true;
+  configManager.isRestoring = true;
 
   // Reset side views (old terminal IDs will be invalid)
-  disposeAllSideViews(ctx);
-  disposeAllTabs(ctx);
+  disposeAllSideViews(viewStore);
+  disposeAllTabs({ tabs, setActiveTabId });
 
   // Create tabs from config
   for (const tabData of config.tabs) {
     const id = generateId('tab');
-    const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || ctx.defaultCwd || '/');
+    const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || defaultCwd || '/');
     tab.noShortcut = tabData.noShortcut || false;
     tab.colorGroup = tabData.colorGroup || null;
     tab._restoreData = tabData;
-    ctx.tabs.set(id, tab);
+    tabs.set(id, tab);
   }
 
-  ctx.renderTabBar();
+  renderTabBar();
 
   // Switch to the active tab
-  const tabIds = Array.from(ctx.tabs.keys());
+  const tabIds = Array.from(tabs.keys());
   const activeIdx = Math.min(config.activeTabIndex || 0, tabIds.length - 1);
-  ctx.switchTo(tabIds[activeIdx]);
+  switchTo(tabIds[activeIdx]);
 
-  ctx.configManager.isRestoring = false;
+  configManager.isRestoring = false;
 }
 
 // ── Tab disposal ──
@@ -293,10 +364,14 @@ export function disposeTab(tab) {
   if (tab.layoutElement) tab.layoutElement.remove();
 }
 
-export function disposeAllTabs(ctx) {
-  for (const [id, tab] of [...ctx.tabs]) {
+/**
+ * Dispose all tabs and clear the tab map.
+ * @param {DisposeAllTabsDeps} deps
+ */
+export function disposeAllTabs({ tabs, setActiveTabId }) {
+  for (const [id, tab] of [...tabs]) {
     disposeTab(tab);
-    ctx.tabs.delete(id);
+    tabs.delete(id);
   }
-  ctx.activeTabId = null;
+  setActiveTabId(null);
 }
