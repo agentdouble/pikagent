@@ -70,7 +70,7 @@ export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expande
     { label: 'New Folder', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'folder') },
     { separator: true },
     { label: 'Open as Workspace', action: () => {
-      /** @emits workspace:openFromFolder {{ cwd: string }} */
+      /** @fires workspace:openFromFolder {{ cwd: string }} */
       bus.emit('workspace:openFromFolder', { cwd: dirPath });
     } },
     { separator: true },

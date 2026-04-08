@@ -51,7 +51,7 @@ export function moveTerminal(sourceId, targetId, side, terminals, { createSplitH
 
   fitAll();
   setActive(sourceNode);
-  /** @emits layout:changed {undefined} — split operation complete */
+  /** @fires layout:changed {undefined} — split operation complete */
   bus.emit('layout:changed');
 }
 

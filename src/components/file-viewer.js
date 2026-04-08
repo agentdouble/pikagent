@@ -275,7 +275,7 @@ export class FileViewer {
     const removedId = this._webviewMgr.removeWebview(webviewId);
     if (this.mode === removedId) this.switchMode('files');
     else this._renderModeBar();
-    /** @emits layout:changed {undefined} — webview removed from file-viewer */
+    /** @fires layout:changed {undefined} — webview removed from file-viewer */
     bus.emit('layout:changed');
   }
 

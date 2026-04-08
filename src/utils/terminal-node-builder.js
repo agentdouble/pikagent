@@ -62,7 +62,7 @@ export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: bu
   node.terminal = new TerminalInstance(termContainer, spawnCwd, api);
   terminals.set(node.terminal.id, node);
 
-  /** @emits terminal:created {{ id: string, cwd: string }} */
+  /** @fires terminal:created {{ id: string, cwd: string }} */
   bus.emit('terminal:created', { id: node.terminal.id, cwd: spawnCwd });
 
   wrapper.addEventListener('mousedown', () => onMousedown(node));
