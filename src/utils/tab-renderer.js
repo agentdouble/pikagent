@@ -1,6 +1,19 @@
 /**
  * Tab element rendering helpers.
  * Extracted from tab-manager.js to reduce component size.
+ *
+ * Functions receive explicit dependency objects instead of the full
+ * TabManager instance.
+ *
+ * @typedef {Object} TabElementDeps
+ * @property {string|null} activeTabId            - Currently active tab id
+ * @property {Map<string, Object>} tabs           - Tab map (used for .size)
+ * @property {Function} switchTo                  - (id) => void
+ * @property {Function} closeTab                  - (id) => void
+ * @property {Function} renameTab                 - (id, nameEl) => void
+ * @property {Function} setTabColorGroup          - (id, colorGroupId) => void
+ * @property {Function} toggleNoShortcut          - (id) => void
+ * @property {import('./tab-drag.js').TabDragDeps} dragDeps - Dependencies for tab drag
  */
 import { _el, setupInlineInput } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
@@ -9,14 +22,14 @@ import { attachContextMenu } from './context-menu.js';
 
 /**
  * Build a single tab DOM element.
- * @param {Object} ctx - { tabs, activeTabId, switchTo, closeTab, renameTab }
+ * @param {TabElementDeps} deps
  * @param {string} id
  * @param {Object} tab
  */
-export function buildTabElement(ctx, id, tab) {
+export function buildTabElement(deps, id, tab) {
   const tabEl = _el('div', 'tab');
   tabEl.dataset.tabId = id;
-  if (id === ctx.activeTabId) tabEl.classList.add('active');
+  if (id === deps.activeTabId) tabEl.classList.add('active');
   if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
 
   if (tab.colorGroup) {
@@ -25,53 +38,58 @@ export function buildTabElement(ctx, id, tab) {
       const dot = _el('span', 'tab-color-dot');
       dot.style.background = cg.color;
       tabEl.appendChild(dot);
-      tabEl.style.borderBottomColor = id === ctx.activeTabId ? cg.color : '';
+      tabEl.style.borderBottomColor = id === deps.activeTabId ? cg.color : '';
     }
   }
 
   const nameEl = _el('span', 'tab-name', tab.name);
-  nameEl.addEventListener('dblclick', () => ctx.renameTab(id, nameEl));
+  nameEl.addEventListener('dblclick', () => deps.renameTab(id, nameEl));
   tabEl.appendChild(nameEl);
 
-  if (ctx.tabs.size > 1) {
+  if (deps.tabs.size > 1) {
     const closeEl = _el('span', 'tab-close', '\u00d7');
     closeEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      ctx.closeTab(id);
+      deps.closeTab(id);
     });
     tabEl.appendChild(closeEl);
   }
 
-  tabEl.addEventListener('click', () => ctx.switchTo(id));
-  setupTabDrag(ctx, tabEl, id);
-  bindTabContextMenu(ctx, tabEl, id, tab, nameEl);
+  tabEl.addEventListener('click', () => deps.switchTo(id));
+  setupTabDrag(deps.dragDeps, tabEl, id);
+  bindTabContextMenu(deps, tabEl, id, tab, nameEl);
 
   return tabEl;
 }
 
 /**
  * Bind context menu to a tab element.
+ * @param {TabElementDeps} deps
+ * @param {HTMLElement} tabEl
+ * @param {string} id
+ * @param {Object} tab
+ * @param {HTMLElement} nameEl
  */
-export function bindTabContextMenu(ctx, tabEl, id, tab, nameEl) {
+export function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
   attachContextMenu(tabEl, () => {
     const colorItems = COLOR_GROUPS.map((cg) => ({
       label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,
       colorDot: cg.color,
-      action: () => ctx.setTabColorGroup(id, tab.colorGroup === cg.id ? null : cg.id),
+      action: () => deps.setTabColorGroup(id, tab.colorGroup === cg.id ? null : cg.id),
     }));
     if (tab.colorGroup) {
-      colorItems.push({ label: 'Remove color', action: () => ctx.setTabColorGroup(id, null) });
+      colorItems.push({ label: 'Remove color', action: () => deps.setTabColorGroup(id, null) });
     }
     return [
-      { label: 'Rename', action: () => ctx.renameTab(id, nameEl) },
+      { label: 'Rename', action: () => deps.renameTab(id, nameEl) },
       {
         label: tab.noShortcut ? '\u2713 NoShortcut' : 'NoShortcut',
-        action: () => ctx.toggleNoShortcut(id),
+        action: () => deps.toggleNoShortcut(id),
       },
       { separator: true },
       { label: 'Color Group', children: colorItems },
       { separator: true },
-      { label: 'Close', action: () => ctx.closeTab(id) },
+      { label: 'Close', action: () => deps.closeTab(id) },
     ];
   });
 }

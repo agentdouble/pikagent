@@ -267,9 +267,24 @@ export class TabManager {
 
     this._tabElements = new Map();
 
+    /** @type {import('../utils/tab-renderer.js').TabElementDeps} */
+    const tabElementDeps = {
+      activeTabId: this.activeTabId,
+      tabs: this.tabs,
+      switchTo: (id) => this.switchTo(id),
+      closeTab: (id) => this.closeTab(id),
+      renameTab: (id, nameEl) => this.renameTab(id, nameEl),
+      setTabColorGroup: (id, cg) => this.setTabColorGroup(id, cg),
+      toggleNoShortcut: (id) => this.toggleNoShortcut(id),
+      dragDeps: {
+        getTabElements: () => this._tabElements,
+        reorderTab: (fromId, toId, before) => this.reorderTab(fromId, toId, before),
+      },
+    };
+
     for (const [id, tab] of this.tabs) {
       if (!this._isTabVisible(tab)) continue;
-      const tabEl = buildTabElement(this, id, tab);
+      const tabEl = buildTabElement(tabElementDeps, id, tab);
       this.tabBar.appendChild(tabEl);
       this._tabElements.set(id, tabEl);
     }
