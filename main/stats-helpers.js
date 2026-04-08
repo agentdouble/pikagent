@@ -32,12 +32,12 @@ function computeDuration(durations) {
   };
 }
 
-/** @deprecated Use extractDateString from date-utils instead. */
+/** @internal @deprecated Use extractDateString from date-utils instead. */
 function dateStr(iso) {
   return extractDateString(iso);
 }
 
-/** @deprecated Use generateDateRange from date-utils instead. */
+/** @internal @deprecated Use generateDateRange from date-utils instead. */
 function dayLabels(days = DEFAULT_DAYS) {
   return generateDateRange(days);
 }

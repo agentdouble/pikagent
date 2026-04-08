@@ -4,6 +4,7 @@
  */
 
 /**
+ * @internal
  * Accumulate values into a map keyed by `keyFn(item)`.
  * For each item, calls `accFn(bucket, item)` to merge data into the bucket.
  * Creates new buckets via `initFn()` when a key is first seen.
@@ -26,6 +27,7 @@ function aggregateByKey(items, keyFn, initFn, accFn) {
 }
 
 /**
+ * @internal
  * Group items by key, then apply an aggregation function to each group.
  *
  * @param {Array} items

@@ -42,6 +42,7 @@ function addTokens(target, source) {
   for (const k of TOKEN_KEYS) target[k] += source[k] || 0;
 }
 
+/** @internal */
 function parseLogTimestamp(logTs) {
   const parts = logTs.split('T');
   if (parts.length !== 2) return null;
@@ -72,6 +73,7 @@ function parseTokenUsage(line, cutoffMs) {
   };
 }
 
+/** @internal */
 function projectShortName(proj) {
   const parts = proj.split('-').filter(Boolean);
   return parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
@@ -137,6 +139,7 @@ function getFlowRuns(flows) {
   );
 }
 
+/** @internal */
 function getFlowRunDuration(run) {
   if (!run.logTimestamp || !run.timestamp) return null;
   const start = parseLogTimestamp(run.logTimestamp);
@@ -200,6 +203,7 @@ function accumulatePerDay(perDayMap, usage) {
   for (const k of PERDAY_KEYS) perDayMap[usage.dateKey][k] += usage[k];
 }
 
+/** @internal */
 function buildFileKey(cwd, filePath) {
   return `${path.basename(path.dirname(cwd))}/${path.basename(cwd)}/${filePath}`;
 }
@@ -235,7 +239,6 @@ module.exports = {
   getFlowRuns,
   getFlowRunDuration,
   buildFlowMetrics,
-  getByAgent,
   buildAgentMetrics,
   collectUniqueCwds,
 };

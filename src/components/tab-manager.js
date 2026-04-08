@@ -2,7 +2,6 @@ import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { ConfigManager } from './config-manager.js';
 import { extractFolderName } from '../utils/file-tree-helpers.js';
 import {
-  COLOR_GROUPS,
   reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
 import { isTabVisible, buildColorFilters } from '../utils/tab-color-filter.js';
@@ -24,8 +23,6 @@ import {
   onTerminalCwdChanged,
 } from '../utils/tab-lifecycle.js';
 import { _el } from '../utils/dom.js';
-
-export { COLOR_GROUPS };
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {

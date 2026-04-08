@@ -63,6 +63,7 @@ function _getExt(filename) {
   return filename.split('.').pop().toLowerCase();
 }
 
+/** @internal */
 export function getFileIcon(name, isDirectory) {
   if (isDirectory) return '📁';
   const cfg = FILE_CONFIG[_getExt(name)];
