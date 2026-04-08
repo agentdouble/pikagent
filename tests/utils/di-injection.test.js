@@ -282,33 +282,40 @@ describe('DI: tab-lifecycle onTerminalCwdChanged', () => {
   });
 });
 
-// ── 6. workspace-layout: renderWorkspace uses explicit api param ──
+// ── 6. workspace-layout: renderWorkspace uses explicit deps (no ctx) ──
 
 describe('DI: workspace-layout renderWorkspace signature', () => {
-  it('renderWorkspace requires api as third parameter (no ctx._api fallback)', () => {
+  it('renderWorkspace uses destructured deps instead of ctx', () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, '../../src/utils/workspace-layout.js'),
       'utf-8',
     );
 
-    // Should destructure gitBranch from the third parameter directly
-    expect(src).toMatch(/renderWorkspace\(ctx,\s*tab,\s*\{\s*gitBranch\s*\}\)/);
+    // Should destructure deps and gitBranch from parameters (no raw ctx)
+    expect(src).toMatch(/renderWorkspace\(\{\s*workspaceContainer/);
+    expect(src).toMatch(/\{\s*gitBranch\s*\}/);
 
-    // Should NOT contain ctx._api (regression risk with PR #69)
+    // Should NOT contain ctx._api or ctx.workspaceContainer (fully decoupled)
     expect(src).not.toContain('ctx._api');
+    expect(src).not.toContain('ctx.workspaceContainer');
+    expect(src).not.toContain('ctx.activeTabId');
+    expect(src).not.toContain('ctx.configManager');
   });
 });
 
-// ── 7. tab-manager passes api explicitly to renderWorkspace ──
+// ── 7. tab-manager passes explicit deps to renderWorkspace ──
 
-describe('DI: tab-manager caller passes api explicitly', () => {
-  it('renderWorkspace call in tab-manager passes this._api as third argument', () => {
+describe('DI: tab-manager caller passes explicit deps to renderWorkspace', () => {
+  it('renderWorkspace call in tab-manager passes explicit deps object and this._api', () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, '../../src/components/tab-manager.js'),
       'utf-8',
     );
 
-    // Verify the caller passes this._api explicitly
-    expect(src).toContain('doRenderWorkspace(this, tab, this._api)');
+    // Verify the caller passes an explicit deps object (not `this`)
+    expect(src).toContain('doRenderWorkspace({');
+    expect(src).toContain('this._api');
+    // Should NOT pass `this` as first argument
+    expect(src).not.toMatch(/doRenderWorkspace\(this,/);
   });
 });

@@ -160,7 +160,14 @@ export class TabManager {
 
   _capturePanelWidths(tab) { capturePanelWidths(tab); }
 
-  async renderWorkspace(tab) { return doRenderWorkspace(this, tab, this._api); }
+  async renderWorkspace(tab) {
+    return doRenderWorkspace({
+      workspaceContainer: this.workspaceContainer,
+      getActiveTabId: () => this.activeTabId,
+      getActiveTab: () => this._activeTab(),
+      scheduleAutoSave: () => this.configManager.scheduleAutoSave(),
+    }, tab, this._api);
+  }
 
   serialize() {
     return doSerialize({
