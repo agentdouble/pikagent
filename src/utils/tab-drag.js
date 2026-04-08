@@ -3,20 +3,23 @@
  * component file focused on workspace orchestration.
  *
  * Exports a single factory that wires drag behaviour onto tab elements,
- * reading / writing shared state through a thin `ctx` interface.
+ * reading / writing shared state through an explicit dependency interface.
  *
- * ctx shape (provided by TabManager):
- *   _tabElements   : Map<tabId, HTMLElement>   — live tab DOM elements
- *   reorderTab(fromId, toId, before): void      — commit the reorder
+ * @typedef {Object} TabDragDeps
+ * @property {Function} getTabElements  - () => Map<tabId, HTMLElement> — live tab DOM elements
+ * @property {Function} reorderTab      - (fromId, toId, before) => void — commit the reorder
  */
 
 import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
-/** Reset CSS transforms on every tab element. */
-function clearTabShifts(ctx) {
-  for (const [, el] of ctx._tabElements) {
+/**
+ * Reset CSS transforms on every tab element.
+ * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
+ */
+function clearTabShifts(getTabElements) {
+  for (const [, el] of getTabElements()) {
     el.style.transform = '';
     el.style.transition = '';
   }
@@ -26,9 +29,13 @@ function clearTabShifts(ctx) {
  * Determine where the dragged tab should be inserted based on cursor
  * position relative to tab midpoints.
  *
+ * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
+ * @param {number} mx
+ * @param {string[]} orderedIds
+ * @param {string} dragId
  * @returns {{ dropTargetId: string|null, dropBefore: boolean, insertIdx: number }}
  */
-function computeDropPosition(ctx, mx, orderedIds, dragId) {
+function computeDropPosition(getTabElements, mx, orderedIds, dragId) {
   let dropTargetId = null;
   let dropBefore = true;
   let insertIdx = -1;
@@ -36,7 +43,7 @@ function computeDropPosition(ctx, mx, orderedIds, dragId) {
   for (let i = 0; i < orderedIds.length; i++) {
     const id = orderedIds[i];
     if (id === dragId) continue;
-    const el = ctx._tabElements.get(id);
+    const el = getTabElements().get(id);
     const rect = el.getBoundingClientRect();
     const midX = rect.left + rect.width / 2;
 
@@ -64,12 +71,19 @@ function computeDropPosition(ctx, mx, orderedIds, dragId) {
 /**
  * Shift surrounding tabs with CSS transforms to open a visual gap at the
  * computed insertion position.
+ *
+ * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
+ * @param {string[]} orderedIds
+ * @param {number} dragIdx
+ * @param {number} insertIdx
+ * @param {number} shiftAmount
+ * @param {string} dragId
  */
-function renderDropIndicator(ctx, orderedIds, dragIdx, insertIdx, shiftAmount, dragId) {
+function renderDropIndicator(getTabElements, orderedIds, dragIdx, insertIdx, shiftAmount, dragId) {
   for (let i = 0; i < orderedIds.length; i++) {
     const id = orderedIds[i];
     if (id === dragId) continue;
-    const el = ctx._tabElements.get(id);
+    const el = getTabElements().get(id);
     el.style.transition = 'transform 0.2s ease';
 
     if (dragIdx < insertIdx) {
@@ -87,19 +101,25 @@ function renderDropIndicator(ctx, orderedIds, dragIdx, insertIdx, shiftAmount, d
 /**
  * While dragging, determine which tab the cursor is over and shift
  * surrounding tabs to open a visual gap.
+ *
+ * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
+ * @param {Object} state
+ * @param {number} mx
+ * @param {string} dragId
  */
-function updateTabDropTarget(ctx, state, mx, dragId) {
-  const orderedIds = Array.from(ctx._tabElements.keys());
-  const dragEl = ctx._tabElements.get(dragId);
+function updateTabDropTarget(getTabElements, state, mx, dragId) {
+  const tabElements = getTabElements();
+  const orderedIds = Array.from(tabElements.keys());
+  const dragEl = tabElements.get(dragId);
   const shiftAmount = dragEl ? dragEl.getBoundingClientRect().width : 0;
   const dragIdx = orderedIds.indexOf(dragId);
 
-  const { dropTargetId, dropBefore, insertIdx } = computeDropPosition(ctx, mx, orderedIds, dragId);
+  const { dropTargetId, dropBefore, insertIdx } = computeDropPosition(getTabElements, mx, orderedIds, dragId);
 
   state.dropTargetId = dropTargetId;
   state.dropBefore = dropBefore;
 
-  renderDropIndicator(ctx, orderedIds, dragIdx, insertIdx, shiftAmount, dragId);
+  renderDropIndicator(getTabElements, orderedIds, dragIdx, insertIdx, shiftAmount, dragId);
 }
 
 /** Create initial per-drag transient state. */
@@ -134,16 +154,22 @@ function handleDragStart(tabEl) {
 /**
  * Clean up after a drag operation: remove visual effects, commit the
  * reorder if the tab was dropped on a valid target, and reset state.
+ *
+ * @param {TabDragDeps} deps
+ * @param {HTMLElement} tabEl
+ * @param {HTMLElement|null} ghost
+ * @param {Object} state
+ * @param {string} tabId
  */
-function handleDragEnd(ctx, tabEl, ghost, state, tabId) {
+function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId) {
   tabEl.classList.remove('tab-dragging');
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
   if (ghost) { ghost.remove(); }
-  clearTabShifts(ctx);
+  clearTabShifts(getTabElements);
 
   if (state.dropTargetId && state.dropTargetId !== tabId) {
-    ctx.reorderTab(tabId, state.dropTargetId, state.dropBefore);
+    reorderTab(tabId, state.dropTargetId, state.dropBefore);
   }
   state.dropTargetId = null;
   state.dropBefore = null;
@@ -154,11 +180,11 @@ function handleDragEnd(ctx, tabEl, ghost, state, tabId) {
 /**
  * Wire drag-to-reorder behaviour on a single tab element.
  *
- * @param {object} ctx       — TabManager instance (provides _tabElements & reorderTab)
+ * @param {TabDragDeps} deps  — explicit dependency interface
  * @param {HTMLElement} tabEl — the tab DOM element
  * @param {string} tabId     — the tab's unique id
  */
-export function setupTabDrag(ctx, tabEl, tabId) {
+export function setupTabDrag({ getTabElements, reorderTab }, tabEl, tabId) {
   let startX = 0;
   let dragging = false;
   let ghost = null;
@@ -180,7 +206,7 @@ export function setupTabDrag(ctx, tabEl, tabId) {
       }
       if (dragging && ghost) {
         ghost.style.left = `${ev.clientX - offsetX}px`;
-        updateTabDropTarget(ctx, state, ev.clientX, tabId);
+        updateTabDropTarget(getTabElements, state, ev.clientX, tabId);
       }
     };
 
@@ -189,7 +215,7 @@ export function setupTabDrag(ctx, tabEl, tabId) {
       document.removeEventListener('mouseup', onMouseUp);
 
       if (dragging) {
-        handleDragEnd(ctx, tabEl, ghost, state, tabId);
+        handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId);
         ghost = null;
       }
     };
