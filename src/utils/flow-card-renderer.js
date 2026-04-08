@@ -27,11 +27,10 @@ function createFlowActionButton(icon, title, onClick, extraClass = '') {
 function createRunDots(flow, onShowLog) {
   const dots = _el('div', 'flow-card-dots');
   for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
-    const dot = _el('button', `flow-dot flow-dot-${run.status}`);
-    dot.title = buildDotTooltip(run);
-    dot.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onShowLog(flow, run);
+    const dot = createButton({
+      className: `flow-dot flow-dot-${run.status}`,
+      title: buildDotTooltip(run),
+      onClick: (e) => { e.stopPropagation(); onShowLog(flow, run); },
     });
     dots.appendChild(dot);
   }
@@ -67,14 +66,11 @@ export function createCardHeader(flow, isRunning, isExpanded, opts) {
   nameRow.appendChild(_el('span', 'flow-card-name', flow.name));
   if (isRunning) nameRow.appendChild(_el('span', 'flow-running-badge', 'En cours...'));
   if (isRunning) {
-    nameRow.appendChild(_el('button', {
+    nameRow.appendChild(createButton({
+      label: isExpanded ? '▾ Sortie' : '▸ Sortie',
       className: 'flow-output-toggle',
-      textContent: isExpanded ? '▾ Sortie' : '▸ Sortie',
       title: isExpanded ? 'Masquer la sortie' : 'Afficher la sortie',
-      onClick: (e) => {
-        e.stopPropagation();
-        opts.onToggleOutput(flow.id);
-      },
+      onClick: (e) => { e.stopPropagation(); opts.onToggleOutput(flow.id); },
     }));
   }
   info.appendChild(nameRow);
