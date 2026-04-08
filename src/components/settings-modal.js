@@ -1,9 +1,7 @@
 import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
 import { _el, createButton, createModalOverlay } from '../utils/dom.js';
 import { MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS } from '../utils/settings-helpers.js';
-import { renderAppearance } from './settings-appearance.js';
-import { renderKeybindings } from './settings-keybindings.js';
-import { renderConfigs } from './settings-configs.js';
+import { getComponent } from '../utils/component-registry.js';
 
 export class SettingsModal {
   constructor(shortcutManager) {
@@ -93,7 +91,7 @@ export class SettingsModal {
   // ===== Delegated section renderers =====
 
   _renderAppearance() {
-    renderAppearance(
+    getComponent('renderAppearance')(
       this.content,
       this.tabManager,
       () => this._renderAppearance(),
@@ -101,7 +99,7 @@ export class SettingsModal {
   }
 
   _renderKeybindings() {
-    renderKeybindings(
+    getComponent('renderKeybindings')(
       this.content,
       this.shortcutManager,
       (actionId, index, badgeEl) => this.startRecording(actionId, index, badgeEl),
@@ -110,7 +108,7 @@ export class SettingsModal {
   }
 
   _renderConfigs() {
-    renderConfigs(
+    getComponent('renderConfigs')(
       this.content,
       this.tabManager,
       () => this._renderConfigs(),

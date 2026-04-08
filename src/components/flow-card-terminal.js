@@ -9,6 +9,7 @@ import {
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
   formatRunDateTime,
 } from '../utils/flow-view-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class FlowCardTerminalManager {
   constructor() {
@@ -129,3 +130,5 @@ export class FlowCardTerminalManager {
     disposeTerminalMap(this._logTerminals);
   }
 }
+
+registerComponent('FlowCardTerminalManager', FlowCardTerminalManager);

@@ -1,14 +1,12 @@
-import { openFlowModal } from './flow-modal.js';
 import { _el, showPromptDialog, setupInlineInput } from '../utils/dom.js';
 import { generateId } from '../utils/id.js';
-import { registerComponent } from '../utils/component-registry.js';
+import { registerComponent, getComponent } from '../utils/component-registry.js';
 import {
   EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
 } from '../utils/flow-view-helpers.js';
 import { createCardHeader } from '../utils/flow-card-renderer.js';
-import { FlowCardTerminalManager } from './flow-card-terminal.js';
 import { createCategoryGroup } from '../utils/flow-category-renderer.js';
 import { setupCardDrag, buildCardBody, setupCardHeaderClick } from '../utils/flow-card-setup.js';
 
@@ -20,6 +18,7 @@ export class FlowView {
     this.flows = [];
     this.catData = { categories: [], order: {} };
     this.disposed = false;
+    const FlowCardTerminalManager = getComponent('FlowCardTerminalManager');
     this._termManager = new FlowCardTerminalManager();
     this._expandedCards = new Set();
     this._collapsedCategories = new Set();
@@ -267,6 +266,7 @@ export class FlowView {
   // ===== Creation / Edit Modal =====
 
   async _openModal(existing = null) {
+    const openFlowModal = getComponent('openFlowModal');
     const flow = await openFlowModal(existing, this.catData.categories);
     if (flow) {
       const catId = flow._category;

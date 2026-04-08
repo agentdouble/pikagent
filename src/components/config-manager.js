@@ -7,6 +7,7 @@ import {
   configLabel,
   suggestedDuplicateName,
 } from '../utils/config-manager-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class ConfigManager {
   constructor(tabManager) {
@@ -124,3 +125,5 @@ export class ConfigManager {
     if (name) callback(name);
   }
 }
+
+registerComponent('ConfigManager', ConfigManager);

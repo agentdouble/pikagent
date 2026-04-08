@@ -2,6 +2,7 @@ import { bus } from '../utils/events.js';
 import { DiffViewer } from './diff-viewer.js';
 import { _el } from '../utils/dom.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class GitChangesView {
   constructor(container) {
@@ -121,3 +122,5 @@ export class GitChangesView {
     new DiffViewer(container, diff, filePath);
   }
 }
+
+registerComponent('GitChangesView', GitChangesView);

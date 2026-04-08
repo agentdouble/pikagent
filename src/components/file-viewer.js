@@ -1,12 +1,10 @@
 import { detectLanguage } from '../utils/file-icons.js';
 import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
-import { GitChangesView } from './git-changes-view.js';
 import { _el } from '../utils/dom.js';
 import { EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
 import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
-import { registerComponent } from '../utils/component-registry.js';
-import { WebviewManager } from './file-viewer-webview.js';
+import { registerComponent, getComponent } from '../utils/component-registry.js';
 
 export class FileViewer {
   constructor(container, isActive) {
@@ -20,6 +18,7 @@ export class FileViewer {
     this.mode = 'files'; // 'files' | 'git' | webview id
     this.gitChanges = null;
     this.render();
+    const WebviewManager = getComponent('WebviewManager');
     this._webviewMgr = new WebviewManager(
       this.container, this.statusBar,
       (mode) => this.switchMode(mode),
@@ -51,6 +50,7 @@ export class FileViewer {
     this.gitViewEl = _el('div', 'git-changes-view');
     this.gitViewEl.style.display = 'none';
     this.container.appendChild(this.gitViewEl);
+    const GitChangesView = getComponent('GitChangesView');
     this.gitChanges = new GitChangesView(this.gitViewEl);
 
     this.statusBar = _el('div', 'editor-status-bar');

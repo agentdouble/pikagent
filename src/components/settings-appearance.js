@@ -7,6 +7,7 @@ import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 import { _el, createButton } from '../utils/dom.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 /**
  * Apply the current terminal theme to all terminal panels across tabs.
@@ -107,3 +108,5 @@ export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
     content: [modeRow, subHeading, grid],
   });
 }
+
+registerComponent('renderAppearance', renderAppearance);

@@ -8,6 +8,7 @@ import {
   AGENT_OPTIONS, DEFAULT_CWD_LABEL, SKIP_PERM_CONFIG,
   _vis, _createSelect, _createChip, _updateScheduleVis,
 } from '../utils/flow-modal-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 // --- Section builders ---
 
@@ -253,3 +254,5 @@ export function openFlowModal(existing = null, categories = []) {
     fields.nameInput.focus();
   });
 }
+
+registerComponent('openFlowModal', openFlowModal);

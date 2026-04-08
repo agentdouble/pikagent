@@ -5,6 +5,7 @@
 import { formatCombo } from '../utils/shortcut-helpers.js';
 import { _el, createButton } from '../utils/dom.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 /**
  * Create a key badge element for a binding at a given index.
@@ -92,3 +93,5 @@ export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, 
     content: [list],
   });
 }
+
+registerComponent('renderKeybindings', renderKeybindings);

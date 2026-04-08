@@ -7,6 +7,7 @@ import { generateId } from '../utils/id.js';
 import { bus } from '../utils/events.js';
 import { parseWebviewUrl } from '../utils/editor-helpers.js';
 import { WebviewInstance } from './webview-panel.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class WebviewManager {
   /**
@@ -129,3 +130,5 @@ export class WebviewManager {
     this._webviewEls.clear();
   }
 }
+
+registerComponent('WebviewManager', WebviewManager);
