@@ -56,7 +56,7 @@ export const EVENTS = {
   FILE_OPEN: 'file:open',
 };
 
-export const EVENT_CATALOG = {
+const EVENT_CATALOG = {
   // ── Terminal lifecycle events ──
 
   /**
