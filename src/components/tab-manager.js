@@ -1,15 +1,14 @@
-import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
+import { unsubscribeBus } from '../utils/events.js';
 import { getComponent } from '../utils/component-registry.js';
-import { extractFolderName } from '../utils/file-tree-helpers.js';
 import {
   reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
-import { isTabVisible, buildColorFilters } from '../utils/tab-color-filter.js';
-import { buildTabElement, inlineRenameTab } from '../utils/tab-renderer.js';
-
-// Extracted modules
+import { isTabVisible } from '../utils/tab-color-filter.js';
+import { inlineRenameTab } from '../utils/tab-renderer.js';
+import { renderTabBar as doRenderTabBar } from '../utils/tab-bar-renderer.js';
+import { initTabManager, setupBusListeners } from '../utils/tab-manager-init.js';
 import {
-  renderActivityBar, detachSidebarView, activateSideView,
+  renderActivityBar, detachSidebarView, changeSidebarMode,
   disposeSideView, disposeAllSideViews,
 } from '../utils/sidebar-manager.js';
 import {
@@ -21,10 +20,8 @@ import {
 } from '../utils/workspace-serializer.js';
 import {
   createTab as doCreateTab, closeTab as doCloseTab,
-  switchTo as doSwitchTo, findTabForTerminal,
-  onTerminalCwdChanged,
+  switchTo as doSwitchTo,
 } from '../utils/tab-lifecycle.js';
-import { _el } from '../utils/dom.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
@@ -52,8 +49,6 @@ export class TabManager {
     this.init();
   }
 
-  // ── View store accessor — maps dynamic viewKey/containerKey to instance properties ──
-
   /** @returns {import('../utils/sidebar-manager.js').SideViewStore} */
   _viewStore() {
     return {
@@ -65,64 +60,22 @@ export class TabManager {
   }
 
   async init() {
-    this.defaultCwd = await window.api.fs.homedir();
+    this.defaultCwd = await initTabManager({
+      configManager: this.configManager,
+      renderActivityBar: () => this.renderActivityBar(),
+      restoreConfig: (config) => this.restoreConfig(config),
+      createTab: (name) => this.createTab(name),
+      api: { homedir: window.api.fs.homedir, getDefault: window.api.config.getDefault, loadDefault: window.api.config.loadDefault },
+    });
 
-    // Render the activity bar (work/board sidebar)
-    this.renderActivityBar();
-
-    // Auto-restore default config on startup
-    try {
-      const defaultName = await window.api.config.getDefault();
-      const defaultConfig = await window.api.config.loadDefault();
-      if (defaultConfig && defaultConfig.tabs && defaultConfig.tabs.length > 0) {
-        this.configManager.currentConfigName = defaultName;
-        await this.restoreConfig(defaultConfig);
-      } else {
-        this.configManager.currentConfigName = 'Default';
-        this.createTab('Workspace 1');
-      }
-    } catch (e) {
-      console.warn('Failed to restore config:', e);
-      this.configManager.currentConfigName = 'Default';
-      this.createTab('Workspace 1');
-    }
-
-    this._busListeners = this._setupBusListeners();
+    this._busListeners = setupBusListeners({
+      tabs: this.tabs,
+      getActiveTabId: () => this.activeTabId,
+      configManager: this.configManager,
+      createTab: (name, cwd) => this.createTab(name, cwd),
+      api: { gitBranch: window.api.git.branch },
+    });
   }
-
-  /** Register bus event listeners. Returns the subscription handle for cleanup. */
-  _setupBusListeners() {
-    return subscribeBus([
-      /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
-      ['terminal:cwdChanged', ({ id, cwd }) => {
-        this._onTerminalCwdChanged(id, cwd);
-        this.configManager.scheduleAutoSave();
-      }],
-      /** @listens terminal:created {{ id: string, cwd: string }} */
-      ['terminal:created', ({ id, cwd }) => {
-        const tab = this._findTabForTerminal(id) || this.tabs.get(this.activeTabId);
-        if (tab?.fileTree) tab.fileTree.setTerminalRoot(id, cwd);
-        this.configManager.scheduleAutoSave();
-      }],
-      /** @listens terminal:removed {{ id: string }} */
-      ['terminal:removed', ({ id }) => {
-        for (const [, tab] of this.tabs) {
-          if (tab.fileTree) tab.fileTree.removeTerminal(id);
-        }
-        this.configManager.scheduleAutoSave();
-      }],
-      /** @listens layout:changed {undefined} */
-      ['layout:changed', () => this.configManager.scheduleAutoSave()],
-      /** @listens workspace:openFromFolder {{ cwd: string }} */
-      ['workspace:openFromFolder', ({ cwd }) => {
-        const folderName = extractFolderName(cwd);
-        this.createTab(folderName, cwd);
-      }],
-    ]);
-  }
-
-  // Find which tab owns a terminal
-  _findTabForTerminal(termId) { return findTabForTerminal(this.tabs, termId)?.tab ?? null; }
 
   _activeTab() {
     return this.tabs.get(this.activeTabId);
@@ -139,34 +92,21 @@ export class TabManager {
   setSidebarMode(mode) {
     if (mode === this.sidebarMode) return;
 
-    detachSidebarView({
+    changeSidebarMode({
       getActiveTab: () => this._activeTab(),
       capturePanelWidths,
       viewStore: this._viewStore(),
-    }, this.sidebarMode);
+      workspaceContainer: this.workspaceContainer,
+      reattachLayout,
+      renderWorkspace: (tab) => this.renderWorkspace(tab),
+      tabManager: this,
+    }, this.sidebarMode, mode);
     this.sidebarMode = mode;
-
-    if (mode !== 'work') {
-      activateSideView({
-        workspaceContainer: this.workspaceContainer,
-        viewStore: this._viewStore(),
-      }, mode, {
-        boardCtorArgs: [this],
-        flowCtorArgs: [this],
-      });
-    } else {
-      const tab = this._activeTab();
-      if (tab?.layoutElement) reattachLayout({ workspaceContainer: this.workspaceContainer }, tab);
-      else if (tab) this.renderWorkspace(tab);
-    }
 
     this.renderActivityBar();
   }
 
   switchToBoard() { this.setSidebarMode('board'); }
-
-  _capturePanelWidths(tab) { capturePanelWidths(tab); }
-
   async renderWorkspace(tab) {
     return doRenderWorkspace({
       workspaceContainer: this.workspaceContainer,
@@ -196,7 +136,6 @@ export class TabManager {
   }
 
   autoSave() { return this.configManager.autoSave(); }
-
   createTab(name = null, cwd = null) {
     return doCreateTab({
       tabs: this.tabs,
@@ -263,42 +202,25 @@ export class TabManager {
   }
 
   renderTabBar() {
-    this.tabBar.replaceChildren();
-
-    const filters = buildColorFilters(this.tabs, this.activeColorFilter, this.excludedColors, {
-      onClearFilter: () => { this.activeColorFilter = null; this.excludedColors.clear(); this.renderTabBar(); },
-      onSetFilter: (id) => this.setColorFilter(id),
-      onToggleExclude: (id) => this.toggleExcludeColor(id),
-    });
-    if (filters) this.tabBar.appendChild(filters);
-
-    this._tabElements = new Map();
-
-    /** @type {import('../utils/tab-renderer.js').TabElementDeps} */
-    const tabElementDeps = {
-      activeTabId: this.activeTabId,
+    this._tabElements = doRenderTabBar({
+      tabBar: this.tabBar,
       tabs: this.tabs,
+      activeTabId: this.activeTabId,
+      activeColorFilter: this.activeColorFilter,
+      excludedColors: this.excludedColors,
       switchTo: (id) => this.switchTo(id),
       closeTab: (id) => this.closeTab(id),
       renameTab: (id, nameEl) => this.renameTab(id, nameEl),
       setTabColorGroup: (id, cg) => this.setTabColorGroup(id, cg),
       toggleNoShortcut: (id) => this.toggleNoShortcut(id),
-      dragDeps: {
-        getTabElements: () => this._tabElements,
-        reorderTab: (fromId, toId, before) => this.reorderTab(fromId, toId, before),
-      },
-    };
-
-    for (const [id, tab] of this.tabs) {
-      if (!this._isTabVisible(tab)) continue;
-      const tabEl = buildTabElement(tabElementDeps, id, tab);
-      this.tabBar.appendChild(tabEl);
-      this._tabElements.set(id, tabEl);
-    }
-
-    const addBtn = _el('div', 'tab tab-add', '+');
-    addBtn.addEventListener('click', () => this.createTab());
-    this.tabBar.appendChild(addBtn);
+      setColorFilter: (id) => this.setColorFilter(id),
+      toggleExcludeColor: (id) => this.toggleExcludeColor(id),
+      clearColorFilters: () => { this.activeColorFilter = null; this.excludedColors.clear(); },
+      createTab: () => this.createTab(),
+      reorderTab: (fromId, toId, before) => this.reorderTab(fromId, toId, before),
+      isTabVisible: (tab) => this._isTabVisible(tab),
+      renderTabBar: () => this.renderTabBar(),
+    });
   }
 
   reorderTab(fromId, toId, before) {
@@ -316,12 +238,7 @@ export class TabManager {
     );
   }
 
-  _onTerminalCwdChanged(termId, cwd) { onTerminalCwdChanged(this.tabs, this.activeTabId, termId, cwd, { gitBranch: window.api.git.branch }); }
-
   _disposeSideView(mode) { disposeSideView(this._viewStore(), mode); }
-
-  _disposeAllSideViews() { disposeAllSideViews(this._viewStore()); }
-
   _disposeAllTabs() {
     disposeAllTabs({ tabs: this.tabs, setActiveTabId: (id) => { this.activeTabId = id; } });
   }
@@ -354,17 +271,9 @@ export class TabManager {
     this.configManager.scheduleAutoSave();
   }
 
-  isActiveNoShortcut() {
-    return this._activeTab()?.noShortcut ?? false;
-  }
-
-  splitHorizontal() {
-    this._activeTab()?.terminalPanel?.splitActive('horizontal');
-  }
-
-  splitVertical() {
-    this._activeTab()?.terminalPanel?.splitActive('vertical');
-  }
+  isActiveNoShortcut() { return this._activeTab()?.noShortcut ?? false; }
+  splitHorizontal() { this._activeTab()?.terminalPanel?.splitActive('horizontal'); }
+  splitVertical() { this._activeTab()?.terminalPanel?.splitActive('vertical'); }
 
   focusDirection(direction) {
     if (this.sidebarMode === 'board' && this.boardView) {

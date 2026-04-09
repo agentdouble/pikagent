@@ -6,6 +6,7 @@
 import { _el } from './dom.js';
 import { getLastRun } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-category-renderer.js';
+import { createCardHeader } from './flow-card-renderer.js';
 
 /**
  * Attach dragstart / dragend handlers to a flow card element.
@@ -95,4 +96,68 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
     }
     onRenderList();
   });
+}
+
+/**
+ * Build a complete flow card element.
+ *
+ * @typedef {Object} CreateFlowCardDeps
+ * @property {Object} runningMap        - { [flowId]: ptyId }
+ * @property {Set<string>} expandedCards
+ * @property {Object} drag              - mutable drag state { flowId, catId }
+ * @property {Object} termManager       - FlowCardTerminalManager instance
+ * @property {Function} onRenderList    - () => void
+ * @property {Function} onShowLog       - (flow, run) => void
+ * @property {Function} onRun           - (flowId) => void
+ * @property {Function} onToggle        - (flowId) => Promise
+ * @property {Function} onRefresh       - () => void
+ * @property {Function} onOpenModal     - (flow) => void
+ * @property {Function} onDeleteFlow    - (flowId) => void
+ *
+ * @param {CreateFlowCardDeps} deps
+ * @param {Object} flow
+ * @param {string} catId
+ * @returns {HTMLElement}
+ */
+export function createFlowCard(deps, flow, catId) {
+  const isRunning = !!deps.runningMap[flow.id];
+  const isExpanded = deps.expandedCards.has(flow.id);
+
+  const card = _el('div', 'flow-card');
+  card.dataset.flowId = flow.id;
+  card.draggable = true;
+
+  if (!flow.enabled) card.classList.add('flow-card-disabled');
+  if (isRunning) card.classList.add('flow-card-running');
+  if (isExpanded) card.classList.add('flow-card-expanded');
+
+  setupCardDrag(card, flow.id, catId, deps.drag);
+
+  const headerRow = createCardHeader(flow, isRunning, isExpanded, {
+    onToggleOutput: (flowId) => {
+      if (deps.expandedCards.has(flowId)) deps.expandedCards.delete(flowId);
+      else deps.expandedCards.add(flowId);
+      deps.onRenderList();
+    },
+    onShowLog: (f, run) => deps.onShowLog(f, run),
+    actionHandlers: {
+      run:    () => deps.onRun(flow.id),
+      toggle: async () => { await deps.onToggle(flow.id); deps.onRefresh(); },
+      edit:   () => deps.onOpenModal(flow),
+      delete: () => deps.onDeleteFlow(flow.id),
+    },
+  });
+  card.appendChild(headerRow);
+
+  const body = buildCardBody(flow, isRunning, isExpanded, deps.termManager, deps.runningMap);
+  if (body) card.appendChild(body);
+
+  setupCardHeaderClick(headerRow, flow, isRunning, {
+    expandedCards: deps.expandedCards,
+    onRenderList: () => deps.onRenderList(),
+    onOpenModal: (f) => deps.onOpenModal(f),
+    termManager: deps.termManager,
+  });
+
+  return card;
 }

@@ -6,9 +6,8 @@ import {
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
 } from '../utils/flow-view-helpers.js';
-import { createCardHeader } from '../utils/flow-card-renderer.js';
 import { createCategoryGroup } from '../utils/flow-category-renderer.js';
-import { setupCardDrag, buildCardBody, setupCardHeaderClick } from '../utils/flow-card-setup.js';
+import { createFlowCard } from '../utils/flow-card-setup.js';
 
 
 export class FlowView {
@@ -169,49 +168,20 @@ export class FlowView {
     this._renderList();
   }
 
-  // --- Card rendering ---
-
   _createCard(flow, catId) {
-    const isRunning = !!this._runningMap[flow.id];
-    const isExpanded = this._expandedCards.has(flow.id);
-
-    const card = _el('div', 'flow-card');
-    card.dataset.flowId = flow.id;
-    card.draggable = true;
-
-    if (!flow.enabled) card.classList.add('flow-card-disabled');
-    if (isRunning) card.classList.add('flow-card-running');
-    if (isExpanded) card.classList.add('flow-card-expanded');
-
-    setupCardDrag(card, flow.id, catId, this._drag);
-
-    const headerRow = createCardHeader(flow, isRunning, isExpanded, {
-      onToggleOutput: (flowId) => {
-        if (this._expandedCards.has(flowId)) this._expandedCards.delete(flowId);
-        else this._expandedCards.add(flowId);
-        this._renderList();
-      },
-      onShowLog: (f, run) => this._termManager.showRunLog(f, run),
-      actionHandlers: {
-        run:    () => window.api.flow.runNow(flow.id),
-        toggle: async () => { await window.api.flow.toggle(flow.id); this.refresh(); },
-        edit:   () => this._openModal(flow),
-        delete: () => this._deleteFlow(flow.id),
-      },
-    });
-    card.appendChild(headerRow);
-
-    const body = buildCardBody(flow, isRunning, isExpanded, this._termManager, this._runningMap);
-    if (body) card.appendChild(body);
-
-    setupCardHeaderClick(headerRow, flow, isRunning, {
+    return createFlowCard({
+      runningMap: this._runningMap,
       expandedCards: this._expandedCards,
-      onRenderList: () => this._renderList(),
-      onOpenModal: (f) => this._openModal(f),
+      drag: this._drag,
       termManager: this._termManager,
-    });
-
-    return card;
+      onRenderList: () => this._renderList(),
+      onShowLog: (f, run) => this._termManager.showRunLog(f, run),
+      onRun: (flowId) => window.api.flow.runNow(flowId),
+      onToggle: (flowId) => window.api.flow.toggle(flowId),
+      onRefresh: () => this.refresh(),
+      onOpenModal: (f) => this._openModal(f),
+      onDeleteFlow: (id) => this._deleteFlow(id),
+    }, flow, catId);
   }
 
 
