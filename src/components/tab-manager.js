@@ -14,9 +14,11 @@ import {
 } from '../utils/sidebar-manager.js';
 import {
   renderWorkspace as doRenderWorkspace, reattachLayout,
-  serialize as doSerialize, restoreConfig as doRestoreConfig,
   capturePanelWidths, disposeAllTabs,
 } from '../utils/workspace-layout.js';
+import {
+  serialize as doSerialize, restoreConfig as doRestoreConfig,
+} from '../utils/workspace-serializer.js';
 import {
   createTab as doCreateTab, closeTab as doCloseTab,
   switchTo as doSwitchTo, findTabForTerminal,

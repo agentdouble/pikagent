@@ -32,9 +32,6 @@ export {
   capturePanelWidths, restorePanelSizes,
 } from './workspace-resize.js';
 
-// Re-export from workspace-serializer.js for backward compatibility
-export { serialize, restoreConfig } from './workspace-serializer.js';
-
 // ── Workspace rendering ──
 
 /**
