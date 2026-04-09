@@ -109,6 +109,11 @@ export function reattachLayout({ workspaceContainer }, tab) {
   }
 }
 
+/**
+ * Synchronize a tab's file tree with its terminal panel, removing stale
+ * entries and updating roots for all active terminals.
+ * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ */
 export function syncFileTree(tab) {
   if (tab.fileTree && tab.terminalPanel) {
     // Remove stale entries (e.g. ghost terminal from TerminalPanel.init() before restoreFromTree)
@@ -126,6 +131,11 @@ export function syncFileTree(tab) {
 
 // ── Tab disposal ──
 
+/**
+ * Dispose a single tab — call dispose() on all disposable sub-components
+ * and remove the layout element from the DOM.
+ * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ */
 export function disposeTab(tab) {
   for (const key of TAB_DISPOSABLES) if (tab[key]) tab[key].dispose();
   if (tab.layoutElement) tab.layoutElement.remove();

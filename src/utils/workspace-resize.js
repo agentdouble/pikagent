@@ -132,6 +132,10 @@ export function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arr
 
 // ── Panel width capture / restore ──
 
+/**
+ * Snapshot current panel widths and collapsed state into `tab._panelWidths`.
+ * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ */
 export function capturePanelWidths(tab) {
   if (!tab.layoutElement) return;
   tab._panelWidths = {};
@@ -143,6 +147,11 @@ export function capturePanelWidths(tab) {
   }
 }
 
+/**
+ * Restore panel widths and collapsed state from a saved config.
+ * @param {Object} panels                      - Saved panel size data
+ * @param {{ left?: HTMLElement, right?: HTMLElement }} panelEls - Panel DOM elements
+ */
 export function restorePanelSizes(panels, panelEls) {
   if (!panels) return;
   for (const { widthKey, collapsedKey, side } of WORKSPACE_PANELS) {
