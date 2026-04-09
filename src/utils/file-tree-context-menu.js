@@ -2,7 +2,7 @@
  * Context menu builders for the file tree.
  * Extracted from FileTree to reduce component size.
  */
-import { bus } from './events.js';
+import { bus, EVENTS } from './events.js';
 import { getRelativePath } from './file-tree-helpers.js';
 
 /**
@@ -71,7 +71,7 @@ export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expande
     { separator: true },
     { label: 'Open as Workspace', action: () => {
       /** @fires workspace:openFromFolder {{ cwd: string }} */
-      bus.emit('workspace:openFromFolder', { cwd: dirPath });
+      bus.emit(EVENTS.WORKSPACE_OPEN_FROM_FOLDER, { cwd: dirPath });
     } },
     { separator: true },
     ...buildCommonContextItems(dirPath, nameEl, rootCwd, promptRenameFn, `Delete folder "${dirName}" and all its contents?`, api),

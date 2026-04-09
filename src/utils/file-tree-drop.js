@@ -3,7 +3,7 @@
  * Extracted from file-tree.js to reduce component size.
  */
 
-import { bus } from './events.js';
+import { bus, EVENTS } from './events.js';
 import { _el, setupInlineInput } from './dom.js';
 import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
 
@@ -121,7 +121,7 @@ export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, ty
       } else {
         await writefile(newPath, '');
         /** @fires file:open {{ path: string, name: string }} — newly created file */
-        bus.emit('file:open', { path: newPath, name });
+        bus.emit(EVENTS.FILE_OPEN, { path: newPath, name });
       }
     },
   });
