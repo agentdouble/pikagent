@@ -3,18 +3,7 @@ const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
 const { groupBy, countBy } = require('./collection-helpers');
-
-/** @internal — moved from aggregation-utils (no longer exported there). */
-function aggregateByKey(items, keyFn, initFn, accFn) {
-  const result = {};
-  for (const item of items) {
-    const key = keyFn(item);
-    if (key == null) continue;
-    if (!result[key]) result[key] = initFn();
-    accFn(result[key], item);
-  }
-  return result;
-}
+const { aggregateByKey } = require('./aggregation-utils');
 
 // ===== Declarative configs =====
 
