@@ -3,7 +3,7 @@
  * Extracted from terminal-panel.js to reduce component size.
  */
 
-import { bus } from './events.js';
+import { bus, EVENTS } from './events.js';
 import { SplitNode, isSameDirectionSplit, createSplitContainer, equalizeChildren } from './terminal-panel-helpers.js';
 import { directionFromSide, isInsertBefore, findClosestInDirection } from './split-primitives.js';
 import { detachElement, moveToCenter, insertIntoSplit, wrapInNewSplit } from './split-layout.js';
@@ -52,7 +52,7 @@ export function moveTerminal(sourceId, targetId, side, terminals, { createSplitH
   fitAll();
   setActive(sourceNode);
   /** @fires layout:changed {undefined} — split operation complete */
-  bus.emit('layout:changed');
+  bus.emit(EVENTS.LAYOUT_CHANGED);
 }
 
 /**

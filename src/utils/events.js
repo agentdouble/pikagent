@@ -28,8 +28,35 @@
  *
  * @type {Record<string, EventDef>}
  */
-/** @internal — not exported; used only by emitEvent() for dev-time validation. */
-const EVENT_CATALOG = {
+/**
+ * Typed event-name constants.
+ *
+ * Import these instead of using raw strings so that the coupling between
+ * producers and consumers is explicit, traceable, and typo-proof.
+ *
+ * @readonly
+ * @enum {string}
+ */
+export const EVENTS = {
+  /** @see EVENT_CATALOG['terminal:cwdChanged'] */
+  TERMINAL_CWD_CHANGED: 'terminal:cwdChanged',
+  /** @see EVENT_CATALOG['terminal:created'] */
+  TERMINAL_CREATED: 'terminal:created',
+  /** @see EVENT_CATALOG['terminal:removed'] */
+  TERMINAL_REMOVED: 'terminal:removed',
+  /** @see EVENT_CATALOG['terminal:exited'] */
+  TERMINAL_EXITED: 'terminal:exited',
+  /** @see EVENT_CATALOG['layout:changed'] */
+  LAYOUT_CHANGED: 'layout:changed',
+  /** @see EVENT_CATALOG['workspace:activated'] */
+  WORKSPACE_ACTIVATED: 'workspace:activated',
+  /** @see EVENT_CATALOG['workspace:openFromFolder'] */
+  WORKSPACE_OPEN_FROM_FOLDER: 'workspace:openFromFolder',
+  /** @see EVENT_CATALOG['file:open'] */
+  FILE_OPEN: 'file:open',
+};
+
+export const EVENT_CATALOG = {
   // ── Terminal lifecycle events ──
 
   /**

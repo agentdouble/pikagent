@@ -36,7 +36,7 @@
 
 import { generateId } from './id.js';
 import { showConfirmDialog, _el } from './dom.js';
-import { bus } from './events.js';
+import { bus, EVENTS } from './events.js';
 import { WorkspaceTab } from './tab-manager-helpers.js';
 import {
   reattachLayout, syncFileTree, capturePanelWidths, disposeTab,
@@ -126,7 +126,7 @@ function _activateTab(deps, tab) {
     reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
     syncFileTree(tab);
     /** @emits workspace:activated {undefined} — tab switched */
-    bus.emit('workspace:activated');
+    bus.emit(EVENTS.WORKSPACE_ACTIVATED);
   } else {
     // First time rendering this tab
     deps.renderWorkspace(tab);

@@ -1,5 +1,5 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus, subscribeBus, unsubscribeBus } from '../utils/events.js';
+import { bus, subscribeBus, unsubscribeBus, EVENTS } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
 import { EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
@@ -63,19 +63,19 @@ export class FileViewer {
     // Bus event listeners — single declaration drives both subscription and cleanup
     this._busListeners = subscribeBus([
       /** @listens file:open {{ path: string, name: string }} */
-      ['file:open', ({ path, name }) => {
+      [EVENTS.FILE_OPEN, ({ path, name }) => {
         if (!this.isActive()) return;
         this.switchMode('files');
         this.openFile(path, name);
       }],
       /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
-      ['terminal:cwdChanged', ({ cwd }) => {
+      [EVENTS.TERMINAL_CWD_CHANGED, ({ cwd }) => {
         if (!this.isActive()) return;
         this.gitChanges.setCwd(cwd);
         if (this.mode === 'git') this.gitChanges.loadChanges();
       }],
       /** @listens workspace:activated {undefined} */
-      ['workspace:activated', () => {
+      [EVENTS.WORKSPACE_ACTIVATED, () => {
         if (!this.isActive()) return;
         this.loadPinnedFiles();
       }],
@@ -276,7 +276,7 @@ export class FileViewer {
     if (this.mode === removedId) this.switchMode('files');
     else this._renderModeBar();
     /** @fires layout:changed {undefined} — webview removed from file-viewer */
-    bus.emit('layout:changed');
+    bus.emit(EVENTS.LAYOUT_CHANGED);
   }
 
   getWebviewTabs() {

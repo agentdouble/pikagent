@@ -4,7 +4,7 @@
  * Handles startup (default config restore) and bus event subscriptions.
  */
 
-import { subscribeBus } from './events.js';
+import { subscribeBus, EVENTS } from './events.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
 
@@ -71,27 +71,27 @@ export async function initTabManager(deps) {
 export function setupBusListeners(deps) {
   return subscribeBus([
     /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
-    ['terminal:cwdChanged', ({ id, cwd }) => {
+    [EVENTS.TERMINAL_CWD_CHANGED, ({ id, cwd }) => {
       onTerminalCwdChanged(deps.tabs, deps.getActiveTabId(), id, cwd, { gitBranch: deps.api.gitBranch });
       deps.configManager.scheduleAutoSave();
     }],
     /** @listens terminal:created {{ id: string, cwd: string }} */
-    ['terminal:created', ({ id, cwd }) => {
+    [EVENTS.TERMINAL_CREATED, ({ id, cwd }) => {
       const tab = findTabForTerminal(deps.tabs, id)?.tab ?? deps.tabs.get(deps.getActiveTabId());
       if (tab?.fileTree) tab.fileTree.setTerminalRoot(id, cwd);
       deps.configManager.scheduleAutoSave();
     }],
     /** @listens terminal:removed {{ id: string }} */
-    ['terminal:removed', ({ id }) => {
+    [EVENTS.TERMINAL_REMOVED, ({ id }) => {
       for (const [, tab] of deps.tabs) {
         if (tab.fileTree) tab.fileTree.removeTerminal(id);
       }
       deps.configManager.scheduleAutoSave();
     }],
     /** @listens layout:changed {undefined} */
-    ['layout:changed', () => deps.configManager.scheduleAutoSave()],
+    [EVENTS.LAYOUT_CHANGED, () => deps.configManager.scheduleAutoSave()],
     /** @listens workspace:openFromFolder {{ cwd: string }} */
-    ['workspace:openFromFolder', ({ cwd }) => {
+    [EVENTS.WORKSPACE_OPEN_FROM_FOLDER, ({ cwd }) => {
       const folderName = extractFolderName(cwd);
       deps.createTab(folderName, cwd);
     }],

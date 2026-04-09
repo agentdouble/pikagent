@@ -4,7 +4,7 @@
  */
 import { _el, setupInlineInput } from '../utils/dom.js';
 import { generateId } from '../utils/id.js';
-import { bus } from '../utils/events.js';
+import { bus, EVENTS } from '../utils/events.js';
 import { parseWebviewUrl } from '../utils/editor-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 
@@ -30,7 +30,7 @@ export class WebviewManager {
     this._createWebviewContainer(wt);
     this._switchMode(wt.id);
     /** @fires layout:changed {undefined} — webview added */
-    bus.emit('layout:changed');
+    bus.emit(EVENTS.LAYOUT_CHANGED);
   }
 
   removeWebview(webviewId) {
@@ -90,7 +90,7 @@ export class WebviewManager {
       if (currentMode === removedId) this._switchMode('files');
       else this._renderModeBar();
       /** @fires layout:changed {undefined} — webview removed */
-      bus.emit('layout:changed');
+      bus.emit(EVENTS.LAYOUT_CHANGED);
     });
     btn.appendChild(closeBtn);
     btn.addEventListener('click', () => this._switchMode(wt.id));
