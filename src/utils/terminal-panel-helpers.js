@@ -1,7 +1,7 @@
 /* Pure helpers and constants for terminal-panel. */
 import { _el } from './dom.js';
-import { computeResizeRatio } from './split-helpers.js';
-import { getPanels } from './split-layout-ops.js';
+import { computeResizeRatio } from './split-primitives.js';
+import { getPanels } from './split-layout.js';
 
 /** Polling interval (ms) for detecting terminal cwd changes. */
 export const CWD_POLL_MS = 1500;

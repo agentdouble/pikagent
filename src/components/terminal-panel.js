@@ -8,13 +8,13 @@ import {
 import { DropIndicatorManager } from '../utils/terminal-drop-indicator.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { serializeLayout, serializeElement } from '../utils/terminal-serializer.js';
-import { detachElement } from '../utils/split-layout-ops.js';
+import { detachElement } from '../utils/split-layout.js';
 import {
   buildTopBar,
   createTerminalNode as createTerminalNodeHelper,
   buildFromTree as buildFromTreeHelper,
 } from '../utils/terminal-node-builder.js';
-import { moveTerminal as moveTerminalHelper, splitTerminal, focusDirection as focusDirectionHelper } from '../utils/terminal-split-ops.js';
+import { moveTerminal as moveTerminalHelper, splitTerminal, focusDirection as focusDirectionHelper } from '../utils/terminal-split.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {

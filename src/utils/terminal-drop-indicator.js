@@ -3,7 +3,7 @@
  * Extracted from terminal-panel.js to reduce component size.
  */
 import { _el } from './dom.js';
-import { detectDropSide, computeIndicatorRect } from './split-helpers.js';
+import { detectDropSide, computeIndicatorRect } from './split-primitives.js';
 
 export class DropIndicatorManager {
   constructor(container) {

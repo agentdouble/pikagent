@@ -94,7 +94,7 @@ export const EVENT_CATALOG = {
   'layout:changed': {
     description: 'Workspace layout changed (panel resize, split, webview)',
     payload: 'undefined',
-    emitters: ['file-viewer.js', 'file-viewer-webview.js', 'terminal-panel.js', 'terminal-split-ops.js'],
+    emitters: ['file-viewer.js', 'file-viewer-webview.js', 'terminal-panel.js', 'terminal-split.js'],
     consumers: ['tab-manager.js'],
   },
 
