@@ -14,6 +14,7 @@ function safeSend(getWindow, channel, payload) {
 }
 
 /**
+ * @internal Exported for testing only — production code uses registerManagerHandlers().
  * Derive FORWARD_TABLE and SPREAD_TABLE from API_SCHEMA.
  *
  * FORWARD_TABLE entries: [channel, domain]
@@ -42,6 +43,7 @@ function buildTablesFromSchema(schema) {
 const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(API_SCHEMA);
 
 /**
+ * @internal Exported for testing only — production code uses registerManagerHandlers().
  * Register forward-style handlers on ipcMain for a given target.
  * @param {object} ipc - Electron ipcMain
  * @param {object} target - The object whose methods will be called
@@ -54,6 +56,7 @@ function registerForward(ipc, target, entries) {
 }
 
 /**
+ * @internal Exported for testing only — production code uses registerManagerHandlers().
  * Register spread-style handlers on ipcMain for a given target.
  * @param {object} ipc - Electron ipcMain
  * @param {object} target - The object whose methods will be called
