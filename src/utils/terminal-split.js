@@ -5,8 +5,8 @@
 
 import { bus } from './events.js';
 import { SplitNode, isSameDirectionSplit, createSplitContainer, equalizeChildren } from './terminal-panel-helpers.js';
-import { directionFromSide, isInsertBefore, findClosestInDirection } from './split-helpers.js';
-import { detachElement, moveToCenter, insertIntoSplit, wrapInNewSplit } from './split-layout-ops.js';
+import { directionFromSide, isInsertBefore, findClosestInDirection } from './split-primitives.js';
+import { detachElement, moveToCenter, insertIntoSplit, wrapInNewSplit } from './split-layout.js';
 
 /**
  * Move a terminal from `sourceId` to a position relative to `targetId`.
