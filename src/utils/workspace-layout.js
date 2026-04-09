@@ -35,6 +35,40 @@ export {
 // ── Workspace rendering ──
 
 /**
+ * Instantiate tab sub-components and restore saved state if present.
+ *
+ * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {HTMLElement} layout
+ * @param {{ left: { content: HTMLElement, panel: HTMLElement }, right: { content: HTMLElement, panel: HTMLElement } }} sides
+ * @param {HTMLElement} termContainer
+ * @param {Function} getActiveTabId - () => string|null
+ */
+function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId) {
+  const FileTree = getComponent('FileTree');
+  const FileViewer = getComponent('FileViewer');
+  const TerminalPanel = getComponent('TerminalPanel');
+
+  tab.layoutElement = layout;
+  tab.fileTree = new FileTree(sides.left.content);
+  tab.fileViewer = new FileViewer(sides.right.content, () => tab.id === getActiveTabId());
+
+  if (tab._restoreData?.splitTree) {
+    tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
+    tab.terminalPanel.restoreFromTree(tab._restoreData.splitTree);
+    restorePanelSizes(tab._restoreData.panels, { left: sides.left.panel, right: sides.right.panel });
+    syncFileTree(tab);
+    if (tab._restoreData.webviewTabs && tab.fileViewer) {
+      tab.fileViewer.setWebviewTabs(tab._restoreData.webviewTabs);
+    }
+    delete tab._restoreData;
+  } else {
+    tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
+    const firstTermId = tab.terminalPanel.activeTerminal?.terminal?.id;
+    if (firstTermId) tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
+  }
+}
+
+/**
  * Render the full workspace layout for a tab.
  * @param {RenderWorkspaceDeps} deps
  * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
@@ -61,28 +95,7 @@ export async function renderWorkspace({ workspaceContainer, getActiveTabId, getA
   );
   workspaceContainer.appendChild(layout);
 
-  const FileTree = getComponent('FileTree');
-  const FileViewer = getComponent('FileViewer');
-  const TerminalPanel = getComponent('TerminalPanel');
-
-  tab.layoutElement = layout;
-  tab.fileTree = new FileTree(sides.left.content);
-  tab.fileViewer = new FileViewer(sides.right.content, () => tab.id === getActiveTabId());
-
-  if (tab._restoreData?.splitTree) {
-    tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
-    tab.terminalPanel.restoreFromTree(tab._restoreData.splitTree);
-    restorePanelSizes(tab._restoreData.panels, { left: sides.left.panel, right: sides.right.panel });
-    syncFileTree(tab);
-    if (tab._restoreData.webviewTabs && tab.fileViewer) {
-      tab.fileViewer.setWebviewTabs(tab._restoreData.webviewTabs);
-    }
-    delete tab._restoreData;
-  } else {
-    tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
-    const firstTermId = tab.terminalPanel.activeTerminal?.terminal?.id;
-    if (firstTermId) tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
-  }
+  _initTabComponents(tab, layout, sides, termContainer, getActiveTabId);
 
   const branch = await gitBranch(tab.cwd);
   if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
