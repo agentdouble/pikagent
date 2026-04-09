@@ -11,15 +11,13 @@
  * @property {Function} getActiveTab      - () => WorkspaceTab|null
  * @property {Function} scheduleAutoSave  - () => void
  *
- * @typedef {Object} DisposeAllTabsDeps
- * @property {Map<string, WorkspaceTab>} tabs
- * @property {Function} setActiveTabId    - (id) => void
+ * Tab disposal logic lives in workspace-cleanup.js.
  */
 
 import { getComponent } from './component-registry.js';
 import { bus, EVENTS } from './events.js';
 import { _el } from './dom.js';
-import { WORKSPACE_PANELS, TAB_DISPOSABLES } from './tab-manager-helpers.js';
+import { WORKSPACE_PANELS } from './tab-manager-helpers.js';
 import {
   buildSidePanel, buildCenterPanel,
   capturePanelWidths, restorePanelSizes,
@@ -31,6 +29,9 @@ export {
   setupPanelResize, togglePanel,
   capturePanelWidths, restorePanelSizes,
 } from './workspace-resize.js';
+
+// Re-export from workspace-cleanup.js for backward compatibility
+export { disposeTab, disposeAllTabs } from './workspace-cleanup.js';
 
 // ── Workspace rendering ──
 
@@ -129,26 +130,3 @@ export function syncFileTree(tab) {
   }
 }
 
-// ── Tab disposal ──
-
-/**
- * Dispose a single tab — call dispose() on all disposable sub-components
- * and remove the layout element from the DOM.
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
- */
-export function disposeTab(tab) {
-  for (const key of TAB_DISPOSABLES) if (tab[key]) tab[key].dispose();
-  if (tab.layoutElement) tab.layoutElement.remove();
-}
-
-/**
- * Dispose all tabs and clear the tab map.
- * @param {DisposeAllTabsDeps} deps
- */
-export function disposeAllTabs({ tabs, setActiveTabId }) {
-  for (const [id, tab] of [...tabs]) {
-    disposeTab(tab);
-    tabs.delete(id);
-  }
-  setActiveTabId(null);
-}
