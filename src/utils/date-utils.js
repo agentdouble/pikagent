@@ -4,6 +4,6 @@
  * esbuild resolves the CommonJS require for the renderer bundle.
  */
 
-const { formatTime, formatDateTime } = require('../../shared/date-utils');
+const { formatDateTime } = require('../../shared/date-utils');
 
-export { formatTime, formatDateTime };
+export { formatDateTime };
