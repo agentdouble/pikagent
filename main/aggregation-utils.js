@@ -95,4 +95,4 @@ function computeNumericStats(values) {
   };
 }
 
-module.exports = { aggregateByKey, groupAndAggregate, computeRate, computeNumericStats };
+module.exports = { groupAndAggregate, computeRate, computeNumericStats };
