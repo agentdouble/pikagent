@@ -168,7 +168,7 @@ export function switchTo(deps, id) {
   _activateTab(deps, tab);
 }
 
-// ── Terminal CWD tracking (decoupled — no ctx dependency) ──
+// ── Terminal CWD tracking (decoupled — receives only data it needs) ──
 
 /**
  * Find which tab owns a given terminal id.
