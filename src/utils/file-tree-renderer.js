@@ -5,9 +5,28 @@
 
 import { bus } from './events.js';
 import { _el } from './dom.js';
-import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED } from './file-tree-helpers.js';
+import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';
+
+// ── SVG icon parsing and action button factory ──
+
+function _parseSvg(svgStr) {
+  const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
+  return doc.documentElement;
+}
+
+/** Parse all SVG icons once at module load from the declarative SVG_ICONS map. */
+export const PARSED_ICONS = Object.fromEntries(
+  Object.entries(SVG_ICONS).map(([k, v]) => [k, _parseSvg(v)])
+);
+
+/** Create a header action button with an SVG icon clone. */
+export function createActionBtn(title, iconNode, action) {
+  const btn = _el('button', { className: 'file-tree-action-btn', title, onClick: (e) => { e.stopPropagation(); action(); } });
+  btn.appendChild(iconNode.cloneNode(true));
+  return btn;
+}
 
 /**
  * Build a generic row element with a chevron and name span.

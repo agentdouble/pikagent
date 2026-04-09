@@ -2,35 +2,18 @@ import { _el } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, WATCH_PREFIX,
-  SVG_ICONS, HEADER_ACTIONS,
+  HEADER_ACTIONS,
   extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
 import { attachContextMenu } from '../utils/context-menu.js';
-import { renderDirEntry, renderFileEntry } from '../utils/file-tree-renderer.js';
+import { renderDirEntry, renderFileEntry, PARSED_ICONS, createActionBtn } from '../utils/file-tree-renderer.js';
 import {
   setupDropZone, handleFileDrop,
   promptRename as doPromptRename,
   promptNewEntry as doPromptNewEntry,
 } from '../utils/file-tree-drop.js';
-
-function _parseSvg(svgStr) {
-  const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
-  return doc.documentElement;
-}
-
-/** Parse all SVG icons once at module load from the declarative SVG_ICONS map. */
-const PARSED_ICONS = Object.fromEntries(
-  Object.entries(SVG_ICONS).map(([k, v]) => [k, _parseSvg(v)])
-);
-
-/** Create a header action button with an SVG icon clone. */
-function _createActionBtn(title, iconNode, action) {
-  const btn = _el('button', { className: 'file-tree-action-btn', title, onClick: (e) => { e.stopPropagation(); action(); } });
-  btn.appendChild(iconNode.cloneNode(true));
-  return btn;
-}
 
 export class FileTree {
   constructor(container) {
@@ -174,7 +157,7 @@ export class FileTree {
       const action = entryType
         ? () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, entryType)
         : () => this.refreshSection(cwd);
-      return _createActionBtn(title, PARSED_ICONS[key], action);
+      return createActionBtn(title, PARSED_ICONS[key], action);
     });
 
     const header = _el('div', {

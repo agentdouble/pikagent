@@ -148,6 +148,48 @@ export function activateSideView(deps, mode, extraArgs = {}) {
   if (reattached) renderer.onReattach(deps.viewStore);
 }
 
+// ── Sidebar mode switching ──
+
+/**
+ * Switch sidebar mode: detach current view, activate new view (or re-attach work layout).
+ *
+ * @typedef {Object} ChangeSidebarModeDeps
+ * @property {Function} getActiveTab         - () => WorkspaceTab|null
+ * @property {Function} capturePanelWidths   - (tab) => void
+ * @property {SideViewStore} viewStore
+ * @property {HTMLElement} workspaceContainer
+ * @property {Function} reattachLayout       - (deps, tab) => void
+ * @property {Function} renderWorkspace      - (tab) => void
+ * @property {Object} tabManager             - Reference for BoardView/FlowView ctor args
+ */
+
+/**
+ * @param {ChangeSidebarModeDeps} deps
+ * @param {string} currentMode  - Current sidebar mode
+ * @param {string} newMode      - Target sidebar mode
+ */
+export function changeSidebarMode(deps, currentMode, newMode) {
+  detachSidebarView({
+    getActiveTab: deps.getActiveTab,
+    capturePanelWidths: deps.capturePanelWidths,
+    viewStore: deps.viewStore,
+  }, currentMode);
+
+  if (newMode !== 'work') {
+    activateSideView({
+      workspaceContainer: deps.workspaceContainer,
+      viewStore: deps.viewStore,
+    }, newMode, {
+      boardCtorArgs: [deps.tabManager],
+      flowCtorArgs: [deps.tabManager],
+    });
+  } else {
+    const tab = deps.getActiveTab();
+    if (tab?.layoutElement) deps.reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
+    else if (tab) deps.renderWorkspace(tab);
+  }
+}
+
 // ── Side view detach / disposal ──
 
 /**
