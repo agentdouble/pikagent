@@ -28,7 +28,8 @@
  *
  * @type {Record<string, EventDef>}
  */
-export const EVENT_CATALOG = {
+/** @internal — not exported; used only by emitEvent() for dev-time validation. */
+const EVENT_CATALOG = {
   // ── Terminal lifecycle events ──
 
   /**
@@ -141,6 +142,7 @@ export const EVENT_CATALOG = {
   },
 };
 
+/** @internal */
 class EventBus {
   constructor() {
     this.listeners = new Map();
