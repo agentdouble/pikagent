@@ -120,12 +120,45 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
 }
 
 /**
+ * High-level modal builder: creates overlay + modal with a title bar,
+ * content area, and optional close button. Appends to document.body.
+ *
+ * @param {{ title?: string, content?: Node|Node[], onClose: Function,
+ *           overlayClass?: string, modalClass?: string }} opts
+ * @returns {{ overlay: HTMLElement, modal: HTMLElement, body: HTMLElement, close: Function }}
+ */
+export function createCustomModal({ title, content, onClose, overlayClass = 'modal-overlay', modalClass = 'modal' } = {}) {
+  const close = () => { overlay.remove(); onClose?.(); };
+  const { overlay, modal } = createModalOverlay(overlayClass, modalClass, close);
+
+  if (title) {
+    const header = _el('div', `${modalClass}-header`,
+      _el('span', `${modalClass}-title`, title),
+      createButton({ label: '\u00D7', className: `${modalClass}-close-btn`, onClick: close }),
+    );
+    modal.appendChild(header);
+  }
+
+  const body = _el('div', `${modalClass}-body`);
+  if (content) {
+    const nodes = Array.isArray(content) ? content : [content];
+    for (const node of nodes) {
+      if (node) body.appendChild(node);
+    }
+  }
+  modal.appendChild(body);
+
+  setupKeyboardShortcuts(overlay, { onEscape: close });
+
+  return { overlay, modal, body, close };
+}
+
+/**
  * Show a prompt dialog for a single text value.
  * @returns {Promise<string|null>} trimmed value or null if cancelled
  */
 export function showPromptDialog({ title, placeholder = '', defaultValue = '', confirmLabel = 'Create', cancelLabel = 'Cancel' }) {
   return new Promise((resolve) => {
-    const overlay = _el('div', 'prompt-dialog-overlay');
     const close = (val) => { overlay.remove(); resolve(val); };
     const confirm = () => { const v = input.value.trim(); close(v || null); };
 
@@ -135,7 +168,9 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
       onEscape: () => close(null),
     });
 
-    const box = _el('div', 'prompt-dialog-box',
+    const { overlay } = createModalOverlay('prompt-dialog-overlay', 'prompt-dialog-box', () => close(null));
+    const box = overlay.firstChild;
+    box.append(
       _el('label', 'prompt-dialog-label', title),
       input,
       _el('div', 'prompt-dialog-btns',
@@ -144,8 +179,6 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
       ),
     );
 
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
-    overlay.appendChild(box);
     document.body.appendChild(overlay);
     input.focus();
     if (defaultValue) input.select();
@@ -175,8 +208,10 @@ export function positionInViewport(x, y, width, height, padding = 8) {
  */
 export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 'Cancel' } = {}) {
   return new Promise((resolve) => {
-    const overlay = _el('div', 'confirm-overlay');
-    const box = _el('div', 'confirm-box');
+    const cleanup = (result) => { overlay.remove(); resolve(result); };
+
+    const { overlay } = createModalOverlay('confirm-overlay', 'confirm-box', () => cleanup(false));
+    const box = overlay.firstChild;
 
     if (typeof message === 'string') box.appendChild(_el('p', null, message));
     else box.appendChild(message);
@@ -186,11 +221,13 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
       createButton({ label: confirmLabel, className: 'confirm-ok', onClick: () => cleanup(true) }),
     );
     box.appendChild(btnRow);
-    overlay.appendChild(box);
     document.body.appendChild(overlay);
 
-    const cleanup = (result) => { overlay.remove(); resolve(result); };
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(false); });
+    setupKeyboardShortcuts(overlay, {
+      onEscape: () => cleanup(false),
+      onEnter: () => cleanup(true),
+    });
+    overlay.setAttribute('tabindex', '-1');
     btnRow.querySelector('.confirm-ok').focus();
   });
 }

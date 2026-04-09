@@ -2,9 +2,11 @@ import { createButton } from './dom.js';
 
 /**
  * Build a button element from a descriptor.
- * Thin wrapper around the centralized `createButton` factory.
+ * Delegates to the centralized `createButton` factory,
+ * mapping the `cls` field name to `className`.
  * @param {{ label: string, title?: string, cls?: string, onClick: Function }} desc
  * @returns {HTMLButtonElement}
+ * @deprecated Use `createButton` from `dom.js` directly with `className` instead of `cls`.
  */
 export function buildActionBtn({ label, title, cls, onClick }) {
   return createButton({ label, title, className: cls, onClick });

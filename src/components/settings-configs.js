@@ -2,8 +2,8 @@
  * Workspace Configs section renderer for SettingsModal.
  * Extracted from settings-modal.js to reduce component size.
  */
-import { _el } from '../utils/dom.js';
-import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta, buildActionBtn } from '../utils/settings-helpers.js';
+import { _el, createButton } from '../utils/dom.js';
+import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
@@ -22,7 +22,7 @@ function _createConfigActions(config, tabManager, renderConfigsFn) {
   const actions = _el('div', 'config-actions');
   for (const desc of CONFIG_ACTIONS) {
     if (desc.hideWhen && config[desc.hideWhen]) continue;
-    actions.appendChild(buildActionBtn({ ...desc, onClick: handlers[desc.action] }));
+    actions.appendChild(createButton({ ...desc, className: desc.cls, onClick: handlers[desc.action] }));
   }
   return actions;
 }
@@ -80,7 +80,7 @@ function _createBottomActions(currentName, tabManager, renderConfigsFn) {
   };
   const container = _el('div', 'config-bottom-actions');
   for (const { label, action } of BOTTOM_CONFIG_BUTTONS) {
-    container.appendChild(buildActionBtn({ label, cls: 'config-bottom-btn', onClick: handlers[action] }));
+    container.appendChild(createButton({ label, className: 'config-bottom-btn', onClick: handlers[action] }));
   }
   return container;
 }
