@@ -12,6 +12,7 @@ import {
   clampConsoleHeight,
   shortLevelLabel,
 } from '../utils/webview-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class WebviewInstance {
   constructor(container, url) {
@@ -203,3 +204,5 @@ export class WebviewInstance {
     this.container.replaceChildren();
   }
 }
+
+registerComponent('WebviewInstance', WebviewInstance);

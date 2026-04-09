@@ -6,8 +6,7 @@ import { _el, setupInlineInput } from '../utils/dom.js';
 import { generateId } from '../utils/id.js';
 import { bus } from '../utils/events.js';
 import { parseWebviewUrl } from '../utils/editor-helpers.js';
-import { WebviewInstance } from './webview-panel.js';
-import { registerComponent } from '../utils/component-registry.js';
+import { registerComponent, getComponent } from '../utils/component-registry.js';
 
 export class WebviewManager {
   /**
@@ -53,6 +52,7 @@ export class WebviewManager {
     const container = _el('div', 'webview-area');
     container.style.display = 'none';
     this._container.insertBefore(container, this._statusBar);
+    const WebviewInstance = getComponent('WebviewInstance');
     const instance = new WebviewInstance(container, wt.url);
     this._webviewEls.set(wt.id, { container, instance });
   }
