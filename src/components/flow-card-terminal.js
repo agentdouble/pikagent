@@ -2,7 +2,7 @@
  * Terminal management for flow cards: live terminals, inline log terminals, and log modal.
  * Extracted from FlowView to reduce component size.
  */
-import { _el, _safeFit } from '../utils/dom.js';
+import { _el, _safeFit, createModalOverlay, setupKeyboardShortcuts } from '../utils/dom.js';
 import { createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
@@ -95,11 +95,10 @@ export class FlowCardTerminalManager {
   async showRunLog(flow, run) {
     const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
 
-    const overlay = _el('div', 'flow-modal-overlay');
-    const modal = _el('div', 'flow-log-modal');
+    const close = () => { resizeObs.disconnect(); term.dispose(); overlay.remove(); };
+    const { overlay, modal } = createModalOverlay('flow-modal-overlay', 'flow-log-modal', close);
     const termContainer = _el('div', 'flow-log-terminal');
     modal.append(this._buildLogModalHeader(flow, run), termContainer);
-    overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
     const { term, resizeObs } = this._createReadonlyTerminal(termContainer, {
@@ -108,9 +107,8 @@ export class FlowCardTerminalManager {
 
     term.write(log || NO_LOG_MODAL_MESSAGE);
 
-    const close = () => { resizeObs.disconnect(); term.dispose(); overlay.remove(); };
     modal.querySelector('.flow-log-close').addEventListener('click', close);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    setupKeyboardShortcuts(overlay, { onEscape: close });
   }
 
   // === Cleanup on render / refresh ===

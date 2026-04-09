@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom.js';
+import { _el, setupKeyboardShortcuts } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {
   MAX_LOGS,
@@ -44,11 +44,11 @@ export class WebviewInstance {
     this.urlInput.type = 'text';
     this.urlInput.value = this.url;
     this.urlInput.spellcheck = false;
-    this.urlInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+    setupKeyboardShortcuts(this.urlInput, {
+      onEnter: (e) => {
         e.preventDefault();
         this.navigate(this.urlInput.value.trim());
-      }
+      },
     });
 
     this._mobileBtn = _el('button', 'webview-nav-btn', { textContent: '\u{1F4F1}', title: 'Mobile view' });
