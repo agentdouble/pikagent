@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom.js';
+import { _el, createButton } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, WATCH_PREFIX,
@@ -8,7 +8,7 @@ import {
 import { registerComponent } from '../utils/component-registry.js';
 import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
 import { attachContextMenu } from '../utils/context-menu.js';
-import { renderDirEntry, renderFileEntry, PARSED_ICONS, createActionBtn } from '../utils/file-tree-renderer.js';
+import { renderDirEntry, renderFileEntry, PARSED_ICONS } from '../utils/file-tree-renderer.js';
 import {
   setupDropZone, handleFileDrop,
   promptRename as doPromptRename,
@@ -157,7 +157,13 @@ export class FileTree {
       const action = entryType
         ? () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, entryType)
         : () => this.refreshSection(cwd);
-      return createActionBtn(title, PARSED_ICONS[key], action);
+      return createButton({
+        title,
+        className: 'file-tree-action-btn',
+        childNode: PARSED_ICONS[key].cloneNode(true),
+        stopPropagation: true,
+        onClick: action,
+      });
     });
 
     const header = _el('div', {

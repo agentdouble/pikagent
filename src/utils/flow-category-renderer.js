@@ -3,7 +3,7 @@
  * Handles category headers, collapse state, and drag-drop zone setup.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el } from './dom.js';
+import { _el, renderButtonBar } from './dom.js';
 import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
 
 /**
@@ -62,18 +62,18 @@ function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, 
   header.append(chevron, name, count);
 
   if (!isUncategorized) {
-    const actions = _el('div', 'flow-category-actions');
     const catHandlers = {
       rename: () => onRenameCategory(cat.id, name),
       delete: () => onDeleteCategory(cat.id),
     };
-    for (const { icon, title, cls, action } of CATEGORY_ACTIONS) {
-      const btn = _el('button', cls ? `flow-category-btn ${cls}` : 'flow-category-btn', icon);
-      btn.title = title;
-      btn.addEventListener('click', (e) => { e.stopPropagation(); catHandlers[action](); });
-      actions.appendChild(btn);
-    }
-    header.appendChild(actions);
+    const configs = CATEGORY_ACTIONS.map(({ icon, title, cls, action }) => ({
+      label: icon,
+      title,
+      className: cls ? `flow-category-btn ${cls}` : 'flow-category-btn',
+      action,
+      stopPropagation: true,
+    }));
+    header.appendChild(renderButtonBar({ containerClass: 'flow-category-actions', configs, handlers: catHandlers }));
   }
 
   header.addEventListener('click', () => onToggleCollapse(cat.id));

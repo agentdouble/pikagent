@@ -1,17 +1,3 @@
-import { createButton } from './dom.js';
-
-/**
- * Build a button element from a descriptor.
- * Delegates to the centralized `createButton` factory,
- * mapping the `cls` field name to `className`.
- * @param {{ label: string, title?: string, cls?: string, onClick: Function }} desc
- * @returns {HTMLButtonElement}
- * @deprecated Use `createButton` from `dom.js` directly with `className` instead of `cls`.
- */
-export function buildActionBtn({ label, title, cls, onClick }) {
-  return createButton({ label, title, className: cls, onClick });
-}
-
 /** Fade-out duration (ms) before removing the modal overlay. */
 export const MODAL_CLOSE_TRANSITION_MS = 200;
 
