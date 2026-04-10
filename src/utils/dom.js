@@ -62,14 +62,54 @@ export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
 
 /**
  * Create a <button> element with common options.
- * @param {{ label?: string, title?: string, className?: string, onClick?: Function }} opts
+ *
+ * Supports text labels, child nodes (e.g. SVG icons), and optional
+ * stopPropagation wrapping on the click handler.
+ *
+ * @param {{ label?: string, title?: string, className?: string,
+ *           onClick?: Function, childNode?: Node,
+ *           stopPropagation?: boolean }} opts
  * @returns {HTMLButtonElement}
  */
-export function createButton({ label = '', title, className, onClick } = {}) {
+export function createButton({ label = '', title, className, onClick, childNode, stopPropagation = false } = {}) {
   const btn = _el('button', className || '', label);
   if (title) btn.title = title;
-  if (onClick) btn.addEventListener('click', onClick);
+  if (childNode) btn.appendChild(childNode);
+  if (onClick) {
+    btn.addEventListener('click', stopPropagation
+      ? (e) => { e.stopPropagation(); onClick(e); }
+      : onClick);
+  }
   return btn;
+}
+
+/**
+ * Render a row of buttons from an array of config descriptors.
+ *
+ * Each entry in `configs` is an object with button properties
+ * (label, title, className, childNode, stopPropagation) plus an
+ * `action` key that maps into the `handlers` object.
+ *
+ * @param {{ containerClass: string,
+ *           configs: Array<{ action: string, label?: string, title?: string,
+ *                            className?: string, childNode?: Node,
+ *                            stopPropagation?: boolean }>,
+ *           handlers: Object<string, Function> }} opts
+ * @returns {HTMLElement}
+ */
+export function renderButtonBar({ containerClass, configs, handlers }) {
+  const bar = _el('div', containerClass);
+  for (const cfg of configs) {
+    bar.appendChild(createButton({
+      label: cfg.label || cfg.icon || cfg.text || '',
+      title: cfg.title,
+      className: cfg.className || cfg.cls,
+      childNode: cfg.childNode,
+      stopPropagation: cfg.stopPropagation ?? false,
+      onClick: handlers[cfg.action],
+    }));
+  }
+  return bar;
 }
 
 /**

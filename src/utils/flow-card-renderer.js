@@ -2,22 +2,9 @@
  * Pure rendering helpers for flow cards.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el, createButton } from './dom.js';
+import { _el, createButton, renderButtonBar } from './dom.js';
 import { formatSchedule } from './flow-schedule-helpers.js';
 import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flow-view-helpers.js';
-
-/**
- * Create a single action button for a flow card.
- * Thin wrapper around the centralized `createButton` factory.
- */
-function createFlowActionButton(icon, title, onClick, extraClass = '') {
-  return createButton({
-    label: icon,
-    title,
-    className: extraClass ? `flow-card-btn ${extraClass}` : 'flow-card-btn',
-    onClick: (e) => { e.stopPropagation(); onClick(); },
-  });
-}
 
 /**
  * Create the run-status dots row for a flow card.
@@ -44,11 +31,14 @@ function createRunDots(flow, onShowLog) {
  * @param {Object} handlers - { run, toggle, edit, delete }
  */
 function createCardActions(flow, isRunning, handlers) {
-  const actions = _el('div', 'flow-card-actions');
-  for (const { icon, title, action, cls } of buildCardActionEntries(flow, isRunning)) {
-    actions.appendChild(createFlowActionButton(icon, title, handlers[action], cls));
-  }
-  return actions;
+  const configs = buildCardActionEntries(flow, isRunning).map(({ icon, title, action, cls }) => ({
+    label: icon,
+    title,
+    className: cls ? `flow-card-btn ${cls}` : 'flow-card-btn',
+    action,
+    stopPropagation: true,
+  }));
+  return renderButtonBar({ containerClass: 'flow-card-actions', configs, handlers });
 }
 
 /**

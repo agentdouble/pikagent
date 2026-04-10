@@ -1,7 +1,7 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
-import { _el, _safeFit } from '../utils/dom.js';
+import { _el, _safeFit, renderButtonBar } from '../utils/dom.js';
 import { createTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
@@ -127,14 +127,13 @@ export class BoardView {
       },
     };
 
-    const headerBtns = _el('div', { className: 'board-card-btns' },
-      ...HEADER_BUTTONS.map(btn => _el('button', {
-        className: 'board-card-btn',
-        textContent: btn.text,
-        title: btn.title,
-        onClick: actionHandlers[btn.action],
-      })),
-    );
+    const configs = HEADER_BUTTONS.map(({ text, title, action }) => ({
+      label: text,
+      title,
+      className: 'board-card-btn',
+      action,
+    }));
+    const headerBtns = renderButtonBar({ containerClass: 'board-card-btns', configs, handlers: actionHandlers });
 
     return _el('div', { className: 'board-card-header' }, nameGroup, headerBtns);
   }

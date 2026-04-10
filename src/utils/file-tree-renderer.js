@@ -9,7 +9,7 @@ import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS } from '.
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';
 
-// ── SVG icon parsing and action button factory ──
+// ── SVG icon parsing ──
 
 function _parseSvg(svgStr) {
   const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
@@ -20,13 +20,6 @@ function _parseSvg(svgStr) {
 export const PARSED_ICONS = Object.fromEntries(
   Object.entries(SVG_ICONS).map(([k, v]) => [k, _parseSvg(v)])
 );
-
-/** Create a header action button with an SVG icon clone. */
-export function createActionBtn(title, iconNode, action) {
-  const btn = _el('button', { className: 'file-tree-action-btn', title, onClick: (e) => { e.stopPropagation(); action(); } });
-  btn.appendChild(iconNode.cloneNode(true));
-  return btn;
-}
 
 /**
  * Build a generic row element with a chevron and name span.

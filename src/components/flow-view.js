@@ -1,4 +1,4 @@
-import { _el, showPromptDialog, setupInlineInput } from '../utils/dom.js';
+import { _el, showPromptDialog, setupInlineInput, renderButtonBar } from '../utils/dom.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import {
@@ -78,13 +78,15 @@ export class FlowView {
     const header = _el('div', 'flow-header');
     header.appendChild(_el('h2', 'flow-title', 'Flows'));
 
-    const headerRight = _el('div', { className: 'flow-header-right', style: { display: 'flex', gap: '8px' } });
     const headerHandlers = { addCategory: () => this._addCategory(), addFlow: () => this._openModal() };
-    for (const { label, action } of HEADER_BUTTONS) {
-      const btn = _el('button', 'flow-add-btn', label);
-      btn.addEventListener('click', () => headerHandlers[action]());
-      headerRight.appendChild(btn);
-    }
+    const configs = HEADER_BUTTONS.map(({ label, action }) => ({
+      label,
+      className: 'flow-add-btn',
+      action,
+    }));
+    const headerRight = renderButtonBar({ containerClass: 'flow-header-right', configs, handlers: headerHandlers });
+    headerRight.style.display = 'flex';
+    headerRight.style.gap = '8px';
 
     header.appendChild(headerRight);
     wrapper.appendChild(header);
