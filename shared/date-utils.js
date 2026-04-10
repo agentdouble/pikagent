@@ -11,6 +11,7 @@ const DATE_LOCALE = 'fr-FR';
 const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' };
 
 /**
+ * @internal
  * Format a timestamp into a short time string (e.g. "14:32").
  * Returns '' if timestamp is falsy.
  * @param {number|string|null} timestamp
