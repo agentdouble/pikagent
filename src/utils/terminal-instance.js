@@ -22,6 +22,23 @@ export class TerminalInstance {
     this.disposed = false;
     this._api = { ptyWrite, ptyOnData, ptyOnExit, ptyCreate, ptyGetCwd, ptyResize, ptyKill };
 
+    this._initTerminal(container, { openExternal, homedir, openPath });
+    this._attachPtyBridge();
+
+    this.resizeObserver = new ResizeObserver(() => this.fit());
+    this.resizeObserver.observe(container);
+
+    this.cwdPollingPaused = false;
+    this.spawn();
+    this.startCwdPolling();
+  }
+
+  /**
+   * Create the xterm terminal, load addons, and attach custom key handler.
+   * @param {HTMLElement} container
+   * @param {{ openExternal: Function, homedir: Function, openPath: Function }} linkApi
+   */
+  _initTerminal(container, { openExternal, homedir, openPath }) {
     const { term, fitAddon } = createTerminal(container, {
       fontSize: 13,
       lineHeight: 1.3,
@@ -45,7 +62,12 @@ export class TerminalInstance {
     });
 
     this.fit();
+  }
 
+  /**
+   * Wire up bidirectional data flow between xterm and the PTY process.
+   */
+  _attachPtyBridge() {
     this.terminal.onData((data) => {
       if (!this.disposed) this._api.ptyWrite({ id: this.id, data });
     });
@@ -58,13 +80,6 @@ export class TerminalInstance {
       /** @fires terminal:exited {{ id: string }} — PTY process exited */
       bus.emit(EVENTS.TERMINAL_EXITED, { id: this.id });
     });
-
-    this.resizeObserver = new ResizeObserver(() => this.fit());
-    this.resizeObserver.observe(container);
-
-    this.cwdPollingPaused = false;
-    this.spawn();
-    this.startCwdPolling();
   }
 
   async spawn() {
