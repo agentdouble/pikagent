@@ -160,8 +160,39 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
 }
 
 /**
+ * Private dialog lifecycle helper.
+ * Creates overlay + modal via createModalOverlay, calls builder to populate
+ * content, appends to document.body, and wraps everything in a Promise.
+ *
+ * @param {Object} opts
+ * @param {string} opts.overlayClass - CSS class for the overlay element
+ * @param {string} opts.modalClass - CSS class for the modal element
+ * @param {*} [opts.cancelValue=null] - value passed to resolve on cancel / click-outside
+ * @param {Function} [opts.onCancel] - optional callback fired after cancel cleanup
+ * @param {Function} opts.builder - receives ({ overlay, modal, cleanup, cancel }).
+ *   cleanup(value) removes the overlay and resolves the promise.
+ *   cancel() is a shorthand for cleanup(cancelValue) + onCancel?.().
+ *   May return a function that runs after the overlay is appended to the DOM
+ *   (useful for focusing elements).
+ * @returns {Promise}
+ */
+function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCancel, builder }) {
+  return new Promise((resolve) => {
+    let overlay;
+    const cleanup = (value) => { overlay.remove(); resolve(value); };
+    const cancel = () => { cleanup(cancelValue); onCancel?.(); };
+    ({ overlay } = createModalOverlay(overlayClass, modalClass, cancel));
+    const modal = overlay.firstChild;
+    const afterMount = builder({ overlay, modal, cleanup, cancel });
+    document.body.appendChild(overlay);
+    if (typeof afterMount === 'function') afterMount();
+  });
+}
+
+/**
  * High-level modal builder: creates overlay + modal with a title bar,
- * content area, and optional close button. Appends to document.body.
+ * content area, and optional close button. Does NOT append to document.body —
+ * the caller is responsible for mounting the overlay.
  *
  * @param {{ title?: string, content?: Node|Node[], onClose: () => void,
  *           overlayClass?: string, modalClass?: string }} opts
@@ -198,30 +229,29 @@ export function createCustomModal({ title, content, onClose, overlayClass = 'mod
  * @returns {Promise<string|null>} trimmed value or null if cancelled
  */
 export function showPromptDialog({ title, placeholder = '', defaultValue = '', confirmLabel = 'Create', cancelLabel = 'Cancel' }) {
-  return new Promise((resolve) => {
-    const close = (val) => { overlay.remove(); resolve(val); };
-    const confirm = () => { const v = input.value.trim(); close(v || null); };
-
-    const input = _el('input', { className: 'prompt-dialog-input', type: 'text', value: defaultValue, placeholder });
-    setupKeyboardShortcuts(input, {
-      onEnter: () => confirm(),
-      onEscape: () => close(null),
-    });
-
-    const { overlay } = createModalOverlay('prompt-dialog-overlay', 'prompt-dialog-box', () => close(null));
-    const box = overlay.firstChild;
-    box.append(
-      _el('label', 'prompt-dialog-label', title),
-      input,
-      _el('div', 'prompt-dialog-btns',
-        createButton({ label: cancelLabel, className: 'prompt-dialog-cancel', onClick: () => close(null) }),
-        createButton({ label: confirmLabel, className: 'prompt-dialog-confirm', onClick: confirm }),
-      ),
-    );
-
-    document.body.appendChild(overlay);
-    input.focus();
-    if (defaultValue) input.select();
+  return createDialogBase({
+    overlayClass: 'prompt-dialog-overlay',
+    modalClass: 'prompt-dialog-box',
+    builder({ modal, cleanup, cancel }) {
+      const confirm = () => { const v = input.value.trim(); cleanup(v || null); };
+      const input = _el('input', { className: 'prompt-dialog-input', type: 'text', value: defaultValue, placeholder });
+      setupKeyboardShortcuts(input, {
+        onEnter: () => confirm(),
+        onEscape: cancel,
+      });
+      modal.append(
+        _el('label', 'prompt-dialog-label', title),
+        input,
+        _el('div', 'prompt-dialog-btns',
+          createButton({ label: cancelLabel, className: 'prompt-dialog-cancel', onClick: cancel }),
+          createButton({ label: confirmLabel, className: 'prompt-dialog-confirm', onClick: confirm }),
+        ),
+      );
+      return () => {
+        input.focus();
+        if (defaultValue) input.select();
+      };
+    },
   });
 }
 
@@ -262,27 +292,26 @@ export function positionInViewport(x, y, width, height, padding = 8) {
  * @returns {Promise<boolean>}
  */
 export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 'Cancel' } = {}) {
-  return new Promise((resolve) => {
-    const cleanup = (result) => { overlay.remove(); resolve(result); };
+  return createDialogBase({
+    overlayClass: 'confirm-overlay',
+    modalClass: 'confirm-box',
+    cancelValue: false,
+    builder({ overlay, modal, cleanup, cancel }) {
+      if (typeof message === 'string') modal.appendChild(_el('p', null, message));
+      else modal.appendChild(message);
 
-    const { overlay } = createModalOverlay('confirm-overlay', 'confirm-box', () => cleanup(false));
-    const box = overlay.firstChild;
+      const btnRow = _el('div', 'confirm-buttons',
+        createButton({ label: cancelLabel, className: 'confirm-cancel', onClick: cancel }),
+        createButton({ label: confirmLabel, className: 'confirm-ok', onClick: () => cleanup(true) }),
+      );
+      modal.appendChild(btnRow);
 
-    if (typeof message === 'string') box.appendChild(_el('p', null, message));
-    else box.appendChild(message);
-
-    const btnRow = _el('div', 'confirm-buttons',
-      createButton({ label: cancelLabel, className: 'confirm-cancel', onClick: () => cleanup(false) }),
-      createButton({ label: confirmLabel, className: 'confirm-ok', onClick: () => cleanup(true) }),
-    );
-    box.appendChild(btnRow);
-    document.body.appendChild(overlay);
-
-    setupKeyboardShortcuts(overlay, {
-      onEscape: () => cleanup(false),
-      onEnter: () => cleanup(true),
-    });
-    overlay.setAttribute('tabindex', '-1');
-    btnRow.querySelector('.confirm-ok').focus();
+      setupKeyboardShortcuts(overlay, {
+        onEscape: cancel,
+        onEnter: () => cleanup(true),
+      });
+      overlay.setAttribute('tabindex', '-1');
+      return () => btnRow.querySelector('.confirm-ok').focus();
+    },
   });
 }
