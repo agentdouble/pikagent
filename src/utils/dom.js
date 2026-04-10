@@ -226,6 +226,21 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
 }
 
 /**
+ * Build a row containing a chevron span and a name span.
+ *
+ * Used by file-tree rows and flow-category headers — any place that needs
+ * the common "chevron + label" pattern.
+ *
+ * @param {{ chevronClass: string, nameClass: string, name: string, chevronText?: string }} opts
+ * @returns {{ chevron: HTMLElement, name: HTMLElement }}
+ */
+export function buildChevronRow(opts) {
+  const chevron = _el('span', { className: opts.chevronClass, textContent: opts.chevronText || '' });
+  const name = _el('span', { className: opts.nameClass, textContent: opts.name });
+  return { chevron, name };
+}
+
+/**
  * Clamp (x, y) so a box of (width, height) stays within the viewport.
  * @param {number} x
  * @param {number} y

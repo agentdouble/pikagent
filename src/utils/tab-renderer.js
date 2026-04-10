@@ -13,43 +13,111 @@ import { setupTabDrag } from './tab-drag.js';
 import { attachContextMenu } from './context-menu.js';
 
 /**
+ * Generic tab element factory.
+ *
+ * Both the workspace tab bar and the file-viewer tab bar share the same
+ * structural pattern: base element + optional prefix children + name +
+ * optional close button + click handler.  This factory captures that
+ * pattern while remaining fully configurable.
+ *
+ * @typedef {Object} TabConfig
+ * @property {string}            className     - CSS class for the root element (e.g. 'tab', 'file-tab')
+ * @property {boolean}           isActive      - Whether the tab should get the 'active' class
+ * @property {string}            name          - Display text for the name span
+ * @property {string}            [nameClass]   - CSS class for the name span (default: none)
+ * @property {string[]}          [extraClasses]- Additional CSS classes for the root element
+ * @property {HTMLElement[]}     [prefixEls]   - Elements inserted before the name span (e.g. color dot, pin icon)
+ * @property {{ text: string, className: string, onClick: (e: Event) => void }|null} [close] - Close button config (null to omit)
+ * @property {(tabEl: HTMLElement) => void}   onClick      - Click handler for the whole tab
+ * @property {(tabEl: HTMLElement, nameEl: HTMLElement) => void} [setup] - Post-creation hook (context menu, drag, etc.)
+ * @property {Object<string,string>}          [dataset]    - dataset entries to set on the root element
+ * @property {Object<string,string>}          [style]      - inline styles to set on the root element
+ *
+ * @param {TabConfig} config
+ * @returns {{ tabEl: HTMLElement, nameEl: HTMLElement }}
+ */
+export function createTabElement(config) {
+  const tabEl = _el('div', config.className);
+  if (config.isActive) tabEl.classList.add('active');
+  if (config.extraClasses) {
+    for (const cls of config.extraClasses) tabEl.classList.add(cls);
+  }
+  if (config.dataset) {
+    for (const [k, v] of Object.entries(config.dataset)) tabEl.dataset[k] = v;
+  }
+  if (config.style) {
+    Object.assign(tabEl.style, config.style);
+  }
+
+  if (config.prefixEls) {
+    for (const el of config.prefixEls) tabEl.appendChild(el);
+  }
+
+  const nameEl = _el('span', config.nameClass || null, config.name);
+  tabEl.appendChild(nameEl);
+
+  if (config.close) {
+    const closeEl = _el('span', config.close.className, config.close.text);
+    closeEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      config.close.onClick(e);
+    });
+    tabEl.appendChild(closeEl);
+  }
+
+  tabEl.addEventListener('click', () => config.onClick(tabEl));
+
+  if (config.setup) {
+    config.setup(tabEl, nameEl);
+  }
+
+  return { tabEl, nameEl };
+}
+
+/**
  * Build a single tab DOM element.
  * @param {TabElementDeps} deps
  * @param {string} id
  * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
  */
 export function buildTabElement(deps, id, tab) {
-  const tabEl = _el('div', 'tab');
-  tabEl.dataset.tabId = id;
-  if (id === deps.activeTabId) tabEl.classList.add('active');
-  if (tab.noShortcut) tabEl.classList.add('tab-no-shortcut');
+  const isActive = id === deps.activeTabId;
 
+  // Build optional prefix elements
+  const prefixEls = [];
+  let borderColor = '';
   if (tab.colorGroup) {
     const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
     if (cg) {
       const dot = _el('span', 'tab-color-dot');
       dot.style.background = cg.color;
-      tabEl.appendChild(dot);
-      tabEl.style.borderBottomColor = id === deps.activeTabId ? cg.color : '';
+      prefixEls.push(dot);
+      if (isActive) borderColor = cg.color;
     }
   }
 
-  const nameEl = _el('span', 'tab-name', tab.name);
-  nameEl.addEventListener('dblclick', () => deps.renameTab(id, nameEl));
-  tabEl.appendChild(nameEl);
+  const extraClasses = [];
+  if (tab.noShortcut) extraClasses.push('tab-no-shortcut');
 
-  if (deps.tabs.size > 1) {
-    const closeEl = _el('span', 'tab-close', '\u00d7');
-    closeEl.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deps.closeTab(id);
-    });
-    tabEl.appendChild(closeEl);
-  }
-
-  tabEl.addEventListener('click', () => deps.switchTo(id));
-  setupTabDrag(deps.dragDeps, tabEl, id);
-  bindTabContextMenu(deps, tabEl, id, tab, nameEl);
+  const { tabEl, nameEl } = createTabElement({
+    className: 'tab',
+    isActive,
+    name: tab.name,
+    nameClass: 'tab-name',
+    extraClasses,
+    prefixEls,
+    dataset: { tabId: id },
+    style: borderColor ? { borderBottomColor: borderColor } : undefined,
+    close: deps.tabs.size > 1
+      ? { text: '\u00d7', className: 'tab-close', onClick: () => deps.closeTab(id) }
+      : null,
+    onClick: () => deps.switchTo(id),
+    setup: (el, nEl) => {
+      nEl.addEventListener('dblclick', () => deps.renameTab(id, nEl));
+      setupTabDrag(deps.dragDeps, el, id);
+      bindTabContextMenu(deps, el, id, tab, nEl);
+    },
+  });
 
   return tabEl;
 }

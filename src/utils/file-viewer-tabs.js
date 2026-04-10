@@ -5,6 +5,7 @@
 
 import { _el } from './dom.js';
 import { attachContextMenu } from './context-menu.js';
+import { createTabElement } from './tab-renderer.js';
 
 /**
  * Build a single tab element for the given file path.
@@ -18,28 +19,31 @@ import { attachContextMenu } from './context-menu.js';
  * @returns {HTMLElement}
  */
 export function createTabEl(filePath, file, activeFile, isPinned, isModified, { onClose, onActivate, onTogglePin }) {
-  const tab = _el('div', 'file-tab');
-  if (filePath === activeFile) tab.classList.add('active');
-
   const pinned = isPinned(filePath);
   const modified = isModified(filePath);
 
-  if (pinned) tab.appendChild(_el('span', 'file-tab-pin', '\u{1F4CC}'));
-  tab.appendChild(_el('span', 'file-tab-modified', modified ? '\u25CF' : ''));
-  tab.appendChild(_el('span', null, file.name));
+  // Build prefix elements: optional pin icon + modified indicator
+  const prefixEls = [];
+  if (pinned) prefixEls.push(_el('span', 'file-tab-pin', '\u{1F4CC}'));
+  prefixEls.push(_el('span', 'file-tab-modified', modified ? '\u25CF' : ''));
 
-  const close = _el('span', 'file-tab-close', '\u00D7');
-  close.addEventListener('click', (e) => { e.stopPropagation(); onClose(filePath); });
-  tab.appendChild(close);
+  const { tabEl } = createTabElement({
+    className: 'file-tab',
+    isActive: filePath === activeFile,
+    name: file.name,
+    prefixEls,
+    close: { text: '\u00D7', className: 'file-tab-close', onClick: () => onClose(filePath) },
+    onClick: () => onActivate(filePath),
+    setup: (el) => {
+      attachContextMenu(el, () => [
+        { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => onTogglePin(filePath) },
+        { separator: true },
+        { label: 'Close', action: () => onClose(filePath) },
+      ]);
+    },
+  });
 
-  tab.addEventListener('click', () => onActivate(filePath));
-  attachContextMenu(tab, () => [
-    { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => onTogglePin(filePath) },
-    { separator: true },
-    { label: 'Close', action: () => onClose(filePath) },
-  ]);
-
-  return tab;
+  return tabEl;
 }
 
 /**
