@@ -38,9 +38,9 @@ import { generateId } from './id.js';
 import { showConfirmDialog, _el } from './dom.js';
 import { bus, EVENTS } from './events.js';
 import { WorkspaceTab } from './tab-manager-helpers.js';
-import {
-  reattachLayout, syncFileTree, capturePanelWidths, disposeTab,
-} from './workspace-layout.js';
+import { reattachLayout, syncFileTree } from './workspace-layout.js';
+import { capturePanelWidths } from './workspace-resize.js';
+import { disposeTab } from './workspace-cleanup.js';
 
 // ── Tab creation ──
 
