@@ -10,14 +10,11 @@ import { attachContextMenu } from './context-menu.js';
  * Build a single tab element for the given file path.
  *
  * @param {string} filePath
- * @param {Object} file - { name }
+ * @param {{ name: string }} file
  * @param {string|null} activeFile - currently active file path
- * @param {Function} isPinned - (filePath) => boolean
- * @param {Function} isModified - (filePath) => boolean
- * @param {Object} callbacks
- * @param {Function} callbacks.onClose - (filePath) => void
- * @param {Function} callbacks.onActivate - (filePath) => void
- * @param {Function} callbacks.onTogglePin - (filePath) => void
+ * @param {(filePath: string) => boolean} isPinned
+ * @param {(filePath: string) => boolean} isModified
+ * @param {{ onClose: (filePath: string) => void, onActivate: (filePath: string) => void, onTogglePin: (filePath: string) => void }} callbacks
  * @returns {HTMLElement}
  */
 export function createTabEl(filePath, file, activeFile, isPinned, isModified, { onClose, onActivate, onTogglePin }) {
@@ -49,11 +46,11 @@ export function createTabEl(filePath, file, activeFile, isPinned, isModified, { 
  * Rebuild the entire tabs bar from the current open-files map.
  *
  * @param {HTMLElement} tabsBar
- * @param {Map<string, Object>} openFiles - path → file object
+ * @param {Map<string, { name: string }>} openFiles - path -> file object
  * @param {string|null} activeFile
- * @param {Function} isPinned
- * @param {Function} isModified
- * @param {Object} callbacks - forwarded to createTabEl
+ * @param {(filePath: string) => boolean} isPinned
+ * @param {(filePath: string) => boolean} isModified
+ * @param {{ onClose: (filePath: string) => void, onActivate: (filePath: string) => void, onTogglePin: (filePath: string) => void }} callbacks
  */
 export function renderTabs(tabsBar, openFiles, activeFile, isPinned, isModified, callbacks) {
   tabsBar.replaceChildren();

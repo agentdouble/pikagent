@@ -12,26 +12,26 @@
  * @property {Map<string, WorkspaceTab>} tabs
  * @property {string} defaultCwd
  * @property {string|null} activeColorFilter
- * @property {Function} renderTabBar
- * @property {{ scheduleAutoSave: Function }} configManager
+ * @property {() => void} renderTabBar
+ * @property {{ scheduleAutoSave: () => void }} configManager
  *
  * @typedef {Object} CloseTabDeps
  * @property {Map<string, WorkspaceTab>} tabs
  * @property {string|null} activeTabId
- * @property {Function} renderTabBar
- * @property {{ scheduleAutoSave: Function }} configManager
+ * @property {() => void} renderTabBar
+ * @property {{ scheduleAutoSave: () => void }} configManager
  *
  * @typedef {Object} SwitchToDeps
  * @property {Map<string, WorkspaceTab>} tabs
- * @property {Function} getActiveTabId         - () => string|null
- * @property {Function} setActiveTabId         - (id) => void
- * @property {Function} getSidebarMode         - () => string
- * @property {Function} setSidebarMode         - (mode) => void
+ * @property {() => string|null} getActiveTabId
+ * @property {(id: string) => void} setActiveTabId
+ * @property {() => string} getSidebarMode
+ * @property {(mode: string) => void} setSidebarMode
  * @property {HTMLElement} workspaceContainer
- * @property {Function} renderTabBar
- * @property {Function} renderActivityBar
- * @property {Function} renderWorkspace
- * @property {Function} detachSidebarView      - (mode) => void
+ * @property {() => void} renderTabBar
+ * @property {() => void} renderActivityBar
+ * @property {(tab: WorkspaceTab) => void} renderWorkspace
+ * @property {(mode: string) => void} detachSidebarView
  */
 
 import { generateId } from './id.js';
@@ -47,7 +47,7 @@ import { disposeTab } from './workspace-cleanup.js';
 /**
  * Create a new tab and switch to it.
  * @param {CreateTabDeps} deps
- * @param {Function} switchToFn  - Function to switch to a tab by id
+ * @param {(id: string) => void} switchToFn  - Function to switch to a tab by id
  * @param {string|null} name     - Optional tab name
  * @param {string|null} cwd      - Optional working directory
  * @returns {WorkspaceTab}
@@ -69,8 +69,8 @@ export function createTab(deps, switchToFn, name = null, cwd = null) {
 /**
  * Close a tab by id, prompting the user for confirmation.
  * @param {CloseTabDeps} deps
- * @param {Function} createTabFn  - Function to create a new tab (when closing last)
- * @param {Function} switchToFn   - Function to switch to a tab by id
+ * @param {() => WorkspaceTab} createTabFn  - Function to create a new tab (when closing last)
+ * @param {(id: string) => void} switchToFn   - Function to switch to a tab by id
  * @param {string} id             - Tab id to close
  */
 export async function closeTab(deps, createTabFn, switchToFn, id) {
@@ -191,7 +191,7 @@ export function findTabForTerminal(tabs, termId) {
  * @param {string|null} activeTabId
  * @param {string} termId  - Terminal id that changed
  * @param {string} cwd     - New working directory
- * @param {{ gitBranch: Function }} api - injected API methods
+ * @param {{ gitBranch: (cwd: string) => Promise<string|null> }} api - injected API methods
  */
 export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch }) {
   const match = findTabForTerminal(tabs, termId);

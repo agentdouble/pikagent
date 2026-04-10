@@ -5,21 +5,22 @@
  *
  * @typedef {Object} RenderTabBarDeps
  * @property {HTMLElement} tabBar
- * @property {Map<string, Object>} tabs
+ * @property {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
  * @property {string|null} activeTabId
  * @property {string|null} activeColorFilter
  * @property {Set<string>} excludedColors
- * @property {Function} switchTo         - (id) => void
- * @property {Function} closeTab         - (id) => void
- * @property {Function} renameTab        - (id, nameEl) => void
- * @property {Function} setTabColorGroup - (id, colorGroupId) => void
- * @property {Function} toggleNoShortcut - (id) => void
- * @property {Function} setColorFilter   - (colorGroupId) => void
- * @property {Function} toggleExcludeColor - (colorGroupId) => void
- * @property {Function} createTab        - () => void
- * @property {Function} reorderTab       - (fromId, toId, before) => void
- * @property {Function} isTabVisible     - (tab) => boolean
- * @property {Function} renderTabBar     - () => void   — for callbacks that re-render
+ * @property {(id: string) => void} switchTo
+ * @property {(id: string) => void} closeTab
+ * @property {(id: string, nameEl: HTMLElement) => void} renameTab
+ * @property {(id: string, colorGroupId: string|null) => void} setTabColorGroup
+ * @property {(id: string) => void} toggleNoShortcut
+ * @property {(colorGroupId: string) => void} setColorFilter
+ * @property {(colorGroupId: string) => void} toggleExcludeColor
+ * @property {() => void} createTab
+ * @property {(fromId: string, toId: string, before: boolean) => void} reorderTab
+ * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => boolean} isTabVisible
+ * @property {() => void} renderTabBar     - for callbacks that re-render
+ * @property {() => void} clearColorFilters
  */
 
 import { _el } from './dom.js';

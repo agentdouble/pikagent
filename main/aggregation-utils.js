@@ -9,11 +9,11 @@
  * For each item, calls `accFn(bucket, item)` to merge data into the bucket.
  * Creates new buckets via `initFn()` when a key is first seen.
  *
- * @param {Array} items
- * @param {Function} keyFn    - (item) => string key
- * @param {Function} initFn   - () => initial bucket value
- * @param {Function} accFn    - (bucket, item) => void (mutates bucket)
- * @returns {Object} map of key -> accumulated bucket
+ * @param {Array<unknown>} items
+ * @param {(item: unknown) => string|null} keyFn    - extracts grouping key from item
+ * @param {() => unknown} initFn                    - creates initial bucket value
+ * @param {(bucket: unknown, item: unknown) => void} accFn - mutates bucket with item
+ * @returns {Record<string, unknown>} map of key -> accumulated bucket
  */
 function aggregateByKey(items, keyFn, initFn, accFn) {
   const result = {};
@@ -30,10 +30,10 @@ function aggregateByKey(items, keyFn, initFn, accFn) {
  * @internal
  * Group items by key, then apply an aggregation function to each group.
  *
- * @param {Array} items
- * @param {Function} keyFn  - (item) => string key
- * @param {Function} aggFn  - (groupItems) => aggregated value
- * @returns {Object} map of key -> aggregated value
+ * @param {Array<unknown>} items
+ * @param {(item: unknown) => string|null} keyFn  - extracts grouping key from item
+ * @param {(groupItems: Array<unknown>) => unknown} aggFn  - aggregation function per group
+ * @returns {Record<string, unknown>} map of key -> aggregated value
  */
 function groupAndAggregate(items, keyFn, aggFn) {
   const groups = {};
@@ -53,11 +53,11 @@ function groupAndAggregate(items, keyFn, aggFn) {
  * Compute a category rate from items using a category set map.
  * Generic version that accepts category definitions.
  *
- * @param {Array} items
- * @param {Object} categories - map of categoryName -> Set of matching values
+ * @param {Array<Record<string, unknown>>} items
+ * @param {Record<string, Set<unknown>>} categories - map of categoryName -> Set of matching values
  * @param {string} [field='status'] - field to read from each item
  * @param {string} [rateKey='success'] - category key used to compute the rate
- * @returns {Object} { total, ...counts per category, rate }
+ * @returns {{ total: number, rate: number } & Record<string, number>}
  */
 function computeRate(items, categories, field = 'status', rateKey = 'success') {
   const keys = Object.keys(categories);

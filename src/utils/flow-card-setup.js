@@ -14,9 +14,7 @@ import { createCardHeader } from './flow-card-renderer.js';
  * @param {HTMLElement} card
  * @param {string} flowId
  * @param {string} catId
- * @param {Object} dragState - mutable drag state object
- * @param {string|null} dragState.flowId
- * @param {string|null} dragState.catId
+ * @param {{ flowId: string|null, catId: string|null }} dragState - mutable drag state object
  */
 export function setupCardDrag(card, flowId, catId, dragState) {
   card.addEventListener('dragstart', (e) => {
@@ -39,11 +37,11 @@ export function setupCardDrag(card, flowId, catId, dragState) {
  * Build the collapsible body portion of a flow card (terminal or log view).
  * Returns null when nothing should be rendered.
  *
- * @param {Object} flow
+ * @param {{ id: string, runs?: Array<unknown>, enabled?: boolean }} flow
  * @param {boolean} isRunning
  * @param {boolean} isExpanded
- * @param {Object} termManager - FlowCardTerminalManager instance
- * @param {Object} runningMap - { [flowId]: ptyId }
+ * @param {{ createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: unknown, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }} termManager - FlowCardTerminalManager instance
+ * @param {Record<string, string>} runningMap - { [flowId]: ptyId }
  * @returns {HTMLElement|null}
  */
 export function buildCardBody(flow, isRunning, isExpanded, termManager, runningMap) {
@@ -68,13 +66,9 @@ export function buildCardBody(flow, isRunning, isExpanded, termManager, runningM
  * or opens the flow modal when there are no runs.
  *
  * @param {HTMLElement} headerRow
- * @param {Object} flow
+ * @param {{ id: string, runs?: Array<unknown>, enabled?: boolean }} flow
  * @param {boolean} isRunning
- * @param {Object} callbacks
- * @param {Set<string>} callbacks.expandedCards
- * @param {Function} callbacks.onRenderList
- * @param {Function} callbacks.onOpenModal - (flow) => void
- * @param {Object} callbacks.termManager
+ * @param {{ expandedCards: Set<string>, onRenderList: () => void, onOpenModal: (flow: { id: string, runs?: Array<unknown>, enabled?: boolean }) => void, termManager: { disposeLogTerminal: (flowId: string) => void } }} callbacks
  */
 export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
   headerRow.addEventListener('click', () => {
@@ -102,20 +96,20 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
  * Build a complete flow card element.
  *
  * @typedef {Object} CreateFlowCardDeps
- * @property {Object} runningMap        - { [flowId]: ptyId }
+ * @property {Record<string, string>} runningMap        - { [flowId]: ptyId }
  * @property {Set<string>} expandedCards
- * @property {Object} drag              - mutable drag state { flowId, catId }
- * @property {Object} termManager       - FlowCardTerminalManager instance
- * @property {Function} onRenderList    - () => void
- * @property {Function} onShowLog       - (flow, run) => void
- * @property {Function} onRun           - (flowId) => void
- * @property {Function} onToggle        - (flowId) => Promise
- * @property {Function} onRefresh       - () => void
- * @property {Function} onOpenModal     - (flow) => void
- * @property {Function} onDeleteFlow    - (flowId) => void
+ * @property {{ flowId: string|null, catId: string|null }} drag - mutable drag state
+ * @property {{ createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: unknown, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }} termManager - FlowCardTerminalManager instance
+ * @property {() => void} onRenderList
+ * @property {(flow: { id: string }, run: unknown) => void} onShowLog
+ * @property {(flowId: string) => void} onRun
+ * @property {(flowId: string) => Promise<void>} onToggle
+ * @property {() => void} onRefresh
+ * @property {(flow: { id: string }) => void} onOpenModal
+ * @property {(flowId: string) => void} onDeleteFlow
  *
  * @param {CreateFlowCardDeps} deps
- * @param {Object} flow
+ * @param {{ id: string, runs?: Array<unknown>, enabled?: boolean }} flow
  * @param {string} catId
  * @returns {HTMLElement}
  */
