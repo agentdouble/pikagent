@@ -191,41 +191,37 @@ function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCanc
 
 /**
  * High-level modal builder: creates overlay + modal with a title bar,
- * content area, and optional close button. Appends to document.body.
+ * content area, and optional close button. Does NOT append to document.body —
+ * the caller is responsible for mounting the overlay.
  *
  * @param {{ title?: string, content?: Node|Node[], onClose: () => void,
  *           overlayClass?: string, modalClass?: string }} opts
  * @returns {{ overlay: HTMLElement, modal: HTMLElement, body: HTMLElement, close: () => void }}
  */
 export function createCustomModal({ title, content, onClose, overlayClass = 'modal-overlay', modalClass = 'modal' } = {}) {
-  let _overlay, _modal, _body, _close;
-  createDialogBase({
-    overlayClass,
-    modalClass,
-    onCancel: onClose,
-    builder({ overlay, modal, cancel }) {
-      _close = cancel;
-      if (title) {
-        const header = _el('div', `${modalClass}-header`,
-          _el('span', `${modalClass}-title`, title),
-          createButton({ label: '\u00D7', className: `${modalClass}-close-btn`, onClick: cancel }),
-        );
-        modal.appendChild(header);
-      }
-      _body = _el('div', `${modalClass}-body`);
-      if (content) {
-        const nodes = Array.isArray(content) ? content : [content];
-        for (const node of nodes) {
-          if (node) _body.appendChild(node);
-        }
-      }
-      modal.appendChild(_body);
-      setupKeyboardShortcuts(overlay, { onEscape: cancel });
-      _overlay = overlay;
-      _modal = modal;
-    },
-  });
-  return { overlay: _overlay, modal: _modal, body: _body, close: _close };
+  const close = () => { overlay.remove(); onClose?.(); };
+  const { overlay, modal } = createModalOverlay(overlayClass, modalClass, close);
+
+  if (title) {
+    const header = _el('div', `${modalClass}-header`,
+      _el('span', `${modalClass}-title`, title),
+      createButton({ label: '\u00D7', className: `${modalClass}-close-btn`, onClick: close }),
+    );
+    modal.appendChild(header);
+  }
+
+  const body = _el('div', `${modalClass}-body`);
+  if (content) {
+    const nodes = Array.isArray(content) ? content : [content];
+    for (const node of nodes) {
+      if (node) body.appendChild(node);
+    }
+  }
+  modal.appendChild(body);
+
+  setupKeyboardShortcuts(overlay, { onEscape: close });
+
+  return { overlay, modal, body, close };
 }
 
 /**
