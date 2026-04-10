@@ -1,5 +1,3 @@
-const DEFAULT_ICON = '📄';
-
 /** Unified file-type config: maps each extension to its icon and/or language.
  *  Single source of truth — add new file types here. */
 const FILE_CONFIG = {
@@ -61,13 +59,6 @@ const FILENAME_LANG = {
 
 function _getExt(filename) {
   return filename.split('.').pop().toLowerCase();
-}
-
-/** @internal */
-function getFileIcon(name, isDirectory) {
-  if (isDirectory) return '📁';
-  const cfg = FILE_CONFIG[_getExt(name)];
-  return (cfg && cfg.icon) || DEFAULT_ICON;
 }
 
 export function detectLanguage(filename) {

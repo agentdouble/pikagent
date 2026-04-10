@@ -19,11 +19,6 @@ export const WORKSPACE_PANELS = [
   { side: 'right', contentCls: 'file-viewer',                    widthKey: 'rightWidth', collapsedKey: 'rightCollapsed' },
 ];
 
-/** @internal */
-const LEFT_MAX_WIDTH = SIDE_CONFIG.left.maxWidth;
-/** @internal */
-const RIGHT_MAX_WIDTH = SIDE_CONFIG.right.maxWidth;
-
 // ── Activity bar buttons ──
 export const ACTIVITY_BUTTONS = [
   { label: 'work', mode: 'work' },
