@@ -3,18 +3,9 @@
  *
  * Handles tab serialization and config restoration.
  *
- * @typedef {Object} SerializeDeps
- * @property {Map<string, WorkspaceTab>} tabs
- * @property {string|null} activeTabId
+ * @typedef {{ tabs: Map<string, WorkspaceTab>, activeTabId: string|null }} SerializeDeps
  *
- * @typedef {Object} RestoreConfigDeps
- * @property {Map<string, WorkspaceTab>} tabs
- * @property {Function} setActiveTabId    - (id) => void
- * @property {string} defaultCwd
- * @property {Function} renderTabBar      - () => void
- * @property {Function} switchTo          - (id) => void
- * @property {{ isRestoring: boolean }} configManager
- * @property {import('./sidebar-manager.js').SideViewStore} viewStore
+ * @typedef {{ tabs: Map<string, WorkspaceTab>, setActiveTabId: (id: string|null) => void, defaultCwd: string, renderTabBar: () => void, switchTo: (id: string) => void, configManager: { isRestoring: boolean }, viewStore: import('./sidebar-manager.js').SideViewStore }} RestoreConfigDeps
  */
 
 import { generateId } from './id.js';
@@ -73,7 +64,7 @@ export function serialize({ tabs, activeTabId }) {
 /**
  * Restore workspace from a saved config.
  * @param {RestoreConfigDeps} deps
- * @param {Object} config
+ * @param {{ tabs: Array<{ name: string, cwd?: string, noShortcut?: boolean, colorGroup?: string|null, splitTree?: unknown, panels?: Record<string, unknown>, webviewTabs?: unknown }>, activeTabIndex?: number }} config
  */
 export async function restoreConfig({ tabs, setActiveTabId, defaultCwd, renderTabBar, switchTo, configManager, viewStore }, config) {
   if (!config || !config.tabs || config.tabs.length === 0) return;

@@ -6,11 +6,7 @@
  */
 
 /**
- * @typedef {Object} EventDef
- * @property {string} description - human-readable purpose of the event
- * @property {string} payload - JSDoc-style payload type description
- * @property {string[]} emitters - source files that call bus.emit() for this event
- * @property {string[]} consumers - source files that call bus.on()/subscribeBus() for this event
+ * @typedef {{ description: string, payload: string, emitters: string[], consumers: string[] }} EventDef
  */
 
 /**
@@ -203,7 +199,7 @@ export const bus = new EventBus();
  * Prefer this over raw bus.emit() so that unknown events are caught early.
  *
  * @param {keyof typeof EVENT_CATALOG} event - must be a key in EVENT_CATALOG
- * @param {*} data - payload matching the catalog's documented shape
+ * @param {unknown} data - payload matching the catalog's documented shape
  */
 export function emitEvent(event, data) {
   if (process.env.NODE_ENV !== 'production' && !EVENT_CATALOG[event]) {

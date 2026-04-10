@@ -13,7 +13,7 @@ import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
  *
  * @param {HTMLElement} el - element to receive drop events
  * @param {string|Function} getTargetDir - target dir path or a function returning it
- * @param {Function} handleFileDrop - async (files, destDir) => void
+ * @param {(files: FileList, destDir: string) => Promise<void>} handleFileDrop
  * @param {string} [className='drop-target'] - CSS class toggled during drag
  */
 export function setupDropZone(el, getTargetDir, handleFileDrop, className = 'drop-target') {
@@ -45,7 +45,7 @@ export function setupDropZone(el, getTargetDir, handleFileDrop, className = 'dro
  *
  * @param {FileList|File[]} files
  * @param {string} destDir
- * @param {{ copyTo: Function }} api - injected API methods
+ * @param {{ copyTo: (src: string, dest: string) => Promise<unknown> }} api - injected API methods
  */
 export async function handleFileDrop(files, destDir, { copyTo }) {
   for (const file of files) {
@@ -61,7 +61,7 @@ export async function handleFileDrop(files, destDir, { copyTo }) {
  *
  * @param {string} entryPath
  * @param {HTMLElement} nameEl
- * @param {{ rename: Function }} api - injected API methods
+ * @param {{ rename: (entryPath: string, newName: string) => Promise<unknown> }} api - injected API methods
  */
 export function promptRename(entryPath, nameEl, { rename }) {
   const oldName = entryPath.split('/').pop();
@@ -97,7 +97,7 @@ export function promptRename(entryPath, nameEl, { rename }) {
  * @param {number} depth
  * @param {Set<string>} expandedDirs
  * @param {'file'|'folder'} type
- * @param {{ mkdir: Function, writefile: Function }} api - injected API methods
+ * @param {{ mkdir: (path: string) => Promise<unknown>, writefile: (path: string, content: string) => Promise<unknown> }} api - injected API methods
  */
 export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type, { mkdir, writefile }) {
   const input = _el('input', {

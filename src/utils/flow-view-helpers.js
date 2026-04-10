@@ -64,7 +64,7 @@ function resolveIds(ids, flowMap) {
 /**
  * Return flows belonging to a given category, ordered by catData.order.
  * @param {Array} flows - all flow objects
- * @param {Object} order - catData.order mapping catId → [flowId, …]
+ * @param {Record<string, string[]>} order - catData.order mapping catId → [flowId, …]
  * @param {string} catId - category id
  * @returns {Array} ordered flows for this category
  */
@@ -76,7 +76,7 @@ export function getFlowsForCategory(flows, order, catId) {
  * Return flows not assigned to any named category, respecting the
  * UNCATEGORIZED order when present, and appending any remaining flows.
  * @param {Array} flows - all flow objects
- * @param {Object} order - catData.order mapping catId → [flowId, …]
+ * @param {Record<string, string[]>} order - catData.order mapping catId → [flowId, …]
  * @returns {Array} ordered uncategorized flows
  */
 export function getUncategorizedFlows(flows, order) {
@@ -98,7 +98,7 @@ export function getUncategorizedFlows(flows, order) {
 
 /**
  * Remove a flow id from every category array in order (in-place).
- * @param {Object} order - catData.order
+ * @param {Record<string, string[]>} order - catData.order
  * @param {string} flowId
  */
 export function removeFlowFromOrder(order, flowId) {
@@ -110,7 +110,7 @@ export function removeFlowFromOrder(order, flowId) {
 /**
  * Move a flow into a target category at the given position (in-place).
  * Removes the flow from all categories first, then inserts it.
- * @param {Object} order - catData.order
+ * @param {Record<string, string[]>} order - catData.order
  * @param {string} flowId
  * @param {string} targetCatId
  * @param {number} [insertIndex=-1] - position to insert (-1 = append)
@@ -128,7 +128,7 @@ export function moveFlowInOrder(order, flowId, targetCatId, insertIndex = -1) {
 
 /**
  * Delete a category: move its flows to UNCATEGORIZED, then remove it (in-place).
- * @param {Object} catData - { categories, order }
+ * @param {{ categories: Array<{ id: string, name: string }>, order: Record<string, string[]> }} catData
  * @param {string} catId
  * @returns {boolean} true if category was found and removed
  */

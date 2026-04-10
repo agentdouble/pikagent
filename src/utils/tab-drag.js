@@ -5,9 +5,7 @@
  * Exports a single factory that wires drag behaviour onto tab elements,
  * reading / writing shared state through an explicit dependency interface.
  *
- * @typedef {Object} TabDragDeps
- * @property {() => Map<string, HTMLElement>} getTabElements  - live tab DOM elements
- * @property {(fromId: string, toId: string, before: boolean) => void} reorderTab - commit the reorder
+ * @typedef {{ getTabElements: () => Map<string, HTMLElement>, reorderTab: (fromId: string, toId: string, before: boolean) => void }} TabDragDeps
  */
 
 import { DRAG_THRESHOLD } from './tab-manager-helpers.js';

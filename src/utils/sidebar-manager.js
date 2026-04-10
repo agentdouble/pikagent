@@ -7,25 +7,13 @@
  * Functions receive explicit dependency objects instead of the full
  * TabManager instance.
  *
- * @typedef {Object} ActivityBarDeps
- * @property {string} sidebarMode          - Current sidebar mode ('work', 'board', etc.)
- * @property {(mode: string) => void} setSidebarMode     - Callback to change sidebar mode
- * @property {(() => void)|null} onOpenSettings - Callback for settings button
+ * @typedef {{ sidebarMode: string, setSidebarMode: (mode: string) => void, onOpenSettings: (() => void)|null }} ActivityBarDeps
  *
- * @typedef {Object} SideViewStore
- * @property {(viewKey: string) => unknown} getView         - view instance or null
- * @property {(viewKey: string, value: unknown) => void} setView
- * @property {(containerKey: string) => HTMLElement|null} getContainer
- * @property {(containerKey: string, value: HTMLElement|null) => void} setContainer
+ * @typedef {{ getView: (viewKey: string) => unknown, setView: (viewKey: string, value: unknown) => void, getContainer: (containerKey: string) => HTMLElement|null, setContainer: (containerKey: string, value: HTMLElement|null) => void }} SideViewStore
  *
- * @typedef {Object} SideViewDeps
- * @property {HTMLElement} workspaceContainer - Workspace container element
- * @property {SideViewStore} viewStore        - Accessor for view/container instances
+ * @typedef {{ workspaceContainer: HTMLElement, viewStore: SideViewStore }} SideViewDeps
  *
- * @typedef {Object} DetachDeps
- * @property {() => import('./tab-manager-helpers.js').WorkspaceTab|null} getActiveTab
- * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} capturePanelWidths
- * @property {SideViewStore} viewStore       - Accessor for view/container instances
+ * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, viewStore: SideViewStore }} DetachDeps
  */
 
 import { getComponent } from './component-registry.js';
@@ -153,14 +141,7 @@ export function activateSideView(deps, mode, extraArgs = {}) {
 /**
  * Switch sidebar mode: detach current view, activate new view (or re-attach work layout).
  *
- * @typedef {Object} ChangeSidebarModeDeps
- * @property {() => import('./tab-manager-helpers.js').WorkspaceTab|null} getActiveTab
- * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} capturePanelWidths
- * @property {SideViewStore} viewStore
- * @property {HTMLElement} workspaceContainer
- * @property {(deps: { workspaceContainer: HTMLElement }, tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} reattachLayout
- * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} renderWorkspace
- * @property {unknown} tabManager             - Reference for BoardView/FlowView ctor args
+ * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, viewStore: SideViewStore, workspaceContainer: HTMLElement, reattachLayout: (deps: { workspaceContainer: HTMLElement }, tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, renderWorkspace: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, tabManager: unknown }} ChangeSidebarModeDeps
  */
 
 /**

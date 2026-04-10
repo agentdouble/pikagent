@@ -8,17 +8,7 @@ import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
 
 /**
  * Create a category group DOM element with header and flow items.
- * @param {Object} params
- * @param {Object} params.cat - { id, name }
- * @param {Array} params.flows - flow objects in this category
- * @param {boolean} params.isUncategorized
- * @param {Set} params.collapsedCategories
- * @param {function} params.createCard - (flow, catId) => HTMLElement
- * @param {function} params.onToggleCollapse - (catId) => void
- * @param {function} params.onRenameCategory - (catId, nameEl) => void
- * @param {function} params.onDeleteCategory - (catId) => void
- * @param {function} params.onDropFlow - (flowId, catId, insertIndex) => void
- * @param {Object} params.dragState - { getDragFlowId, clearDrag }
+ * @param {{ cat: { id: string, name: string }, flows: Array<unknown>, isUncategorized: boolean, collapsedCategories: Set<string>, createCard: (flow: unknown, catId: string) => HTMLElement, onToggleCollapse: (catId: string) => void, onRenameCategory: (catId: string, nameEl: HTMLElement) => void, onDeleteCategory: (catId: string) => void, onDropFlow: (flowId: string, catId: string, insertIndex: number) => void, dragState: { getDragFlowId: () => string|null, clearDrag: () => void } }} params
  * @returns {HTMLElement}
  */
 export function createCategoryGroup(params) {

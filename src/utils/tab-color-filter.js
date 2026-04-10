@@ -20,7 +20,7 @@ export function isTabVisible(tab, activeColorFilter, excludedColors) {
  * @param {Map} tabs
  * @param {string|null} activeColorFilter
  * @param {Set} excludedColors
- * @param {Object} handlers - { onClearFilter, onSetFilter, onToggleExclude }
+ * @param {{ onClearFilter: () => void, onSetFilter: (colorGroupId: string) => void, onToggleExclude: (colorGroupId: string) => void }} handlers
  * @returns {HTMLElement|null}
  */
 export function buildColorFilters(tabs, activeColorFilter, excludedColors, handlers) {

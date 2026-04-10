@@ -9,7 +9,7 @@
  * @param {HTMLElement} el - either a split-container or terminal-wrapper
  * @param {function} findTerminalCwd - (el) => cwd string
  * @param {string} fallbackCwd - default cwd if terminal not found
- * @returns {Object} tree descriptor
+ * @returns {{ type: string, direction?: string, flex: number, cwd?: string, children?: Array<unknown> }} tree descriptor
  */
 export function serializeElement(el, findTerminalCwd, fallbackCwd) {
   if (el.classList.contains('split-container')) {
@@ -45,7 +45,7 @@ export function serializeElement(el, findTerminalCwd, fallbackCwd) {
  * @param {HTMLElement} container - the terminal-panel container
  * @param {function} findTerminalCwd - (el) => cwd string
  * @param {string} fallbackCwd - default cwd
- * @returns {Object} tree descriptor
+ * @returns {{ type: string, direction?: string, flex: number, cwd?: string, children?: Array<unknown> }} tree descriptor
  */
 export function serializeLayout(container, findTerminalCwd, fallbackCwd) {
   const rootEl = container.firstElementChild;

@@ -5,8 +5,8 @@
 /**
  * Groups an array of items by a key function.
  * @param {Array} items
- * @param {Function} keyFn - Returns the grouping key for each item
- * @returns {Object} map of key -> array of items
+ * @param {(item: unknown) => string} keyFn - Returns the grouping key for each item
+ * @returns {Record<string, Array<unknown>>} map of key -> array of items
  */
 function groupBy(items, keyFn) {
   const groups = {};
@@ -20,8 +20,8 @@ function groupBy(items, keyFn) {
 /**
  * Counts occurrences of each key produced by keyFn.
  * @param {Array} items
- * @param {Function} keyFn - Returns the key for each item
- * @returns {Object} map of key -> count
+ * @param {(item: unknown) => string} keyFn - Returns the key for each item
+ * @returns {Record<string, number>} map of key -> count
  */
 function countBy(items, keyFn) {
   const counts = {};

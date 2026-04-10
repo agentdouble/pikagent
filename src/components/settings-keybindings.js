@@ -9,9 +9,9 @@ import { registerComponent } from '../utils/component-registry.js';
 
 /**
  * Create a key badge element for a binding at a given index.
- * @param {Object} binding - { id, label, keys }
+ * @param {{ id: string, label: string, keys: string[] }} binding
  * @param {number} index
- * @param {Object} shortcutManager
+ * @param {{ updateBinding: (id: string, keys: string[]) => void, getBindingsList: () => Array<{ id: string, label: string, keys: string[] }>, resetToDefaults: () => void }} shortcutManager
  * @param {function} startRecordingFn - (actionId, index, badgeEl) => void
  * @param {function} renderKeybindingsFn - callback to re-render
  * @returns {HTMLElement}
@@ -46,9 +46,9 @@ export function createKeyBadge(binding, index, shortcutManager, startRecordingFn
 /**
  * Render the Keybindings section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
- * @param {Object} shortcutManager
- * @param {function} startRecordingFn
- * @param {function} renderKeybindingsFn - callback to re-render
+ * @param {{ updateBinding: (id: string, keys: string[]) => void, getBindingsList: () => Array<{ id: string, label: string, keys: string[] }>, resetToDefaults: () => void }} shortcutManager
+ * @param {(actionId: string, index: number, badgeEl: HTMLElement) => void} startRecordingFn
+ * @param {() => void} renderKeybindingsFn - callback to re-render
  */
 export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const resetBtn = createButton({

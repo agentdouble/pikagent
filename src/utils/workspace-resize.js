@@ -3,9 +3,7 @@
  *
  * Handles panel resize interactions and panel toggle (collapse/expand).
  *
- * @typedef {Object} PanelInteractionDeps
- * @property {Function} getActiveTab      - () => WorkspaceTab|null
- * @property {Function} scheduleAutoSave  - () => void
+ * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, scheduleAutoSave: () => void }} PanelInteractionDeps
  */
 
 import { _el } from './dom.js';
@@ -149,7 +147,7 @@ export function capturePanelWidths(tab) {
 
 /**
  * Restore panel widths and collapsed state from a saved config.
- * @param {Object} panels                      - Saved panel size data
+ * @param {{ [widthKey: string]: number, [collapsedKey: string]: boolean }} panels - Saved panel size data
  * @param {{ left?: HTMLElement, right?: HTMLElement }} panelEls - Panel DOM elements
  */
 export function restorePanelSizes(panels, panelEls) {

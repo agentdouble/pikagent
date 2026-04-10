@@ -11,12 +11,7 @@ import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
 // ── Initialization ──
 
 /**
- * @typedef {Object} InitDeps
- * @property {{ scheduleAutoSave: Function, currentConfigName: string }} configManager
- * @property {Function} renderActivityBar - () => void
- * @property {Function} restoreConfig     - (config) => Promise
- * @property {Function} createTab         - (name) => void
- * @property {{ homedir: Function, getDefault: Function, loadDefault: Function }} api
+ * @typedef {{ configManager: { scheduleAutoSave: () => void, currentConfigName: string }, renderActivityBar: () => void, restoreConfig: (config: unknown) => Promise<void>, createTab: (name: string) => void, api: { homedir: () => Promise<string>, getDefault: () => Promise<string>, loadDefault: () => Promise<unknown> } }} InitDeps
  */
 
 /**
@@ -53,12 +48,7 @@ export async function initTabManager(deps) {
 // ── Bus listeners ──
 
 /**
- * @typedef {Object} BusListenerDeps
- * @property {Map<string, Object>} tabs
- * @property {Function} getActiveTabId   - () => string|null
- * @property {{ scheduleAutoSave: Function }} configManager
- * @property {Function} createTab        - (name, cwd) => void
- * @property {{ gitBranch: Function }} api
+ * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, getActiveTabId: () => string|null, configManager: { scheduleAutoSave: () => void }, createTab: (name: string, cwd: string) => void, api: { gitBranch: (cwd: string) => Promise<string|null> } }} BusListenerDeps
  */
 
 /**

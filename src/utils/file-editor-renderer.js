@@ -12,7 +12,7 @@ import { getCursorPosition, insertTab, SAVE_FLASH_MS, TAB_SPACES } from './edito
  * Returns { lineNumbers, highlightLayer, editorEl }.
  *
  * @param {HTMLElement} editorWrapper
- * @param {Object} file - { content }
+ * @param {{ content: string }} file
  * @returns {{ lineNumbers: HTMLElement, highlightLayer: HTMLElement, editorEl: HTMLTextAreaElement }}
  */
 export function createEditorDOM(editorWrapper, file) {
@@ -38,8 +38,8 @@ export function createEditorDOM(editorWrapper, file) {
  * @param {HTMLTextAreaElement} editorEl
  * @param {HTMLElement} lineNumbers
  * @param {HTMLElement} highlightLayer
- * @param {Object} file - mutable file object (content is updated on input)
- * @param {{ onUpdate: Function, onSave: Function }} callbacks
+ * @param {{ content: string }} file - mutable file object (content is updated on input)
+ * @param {{ onUpdate: () => void, onSave: () => void }} callbacks
  */
 export function bindEditorEvents(editorEl, lineNumbers, highlightLayer, file, { onUpdate, onSave }) {
   editorEl.addEventListener('input', () => {
@@ -111,7 +111,7 @@ export function updateHighlight(highlightLayer, editorEl, lang) {
  *
  * @param {HTMLElement} statusBar
  * @param {HTMLTextAreaElement} editorEl
- * @param {Object} file - { lang, content, savedContent }
+ * @param {{ lang: string, content: string, savedContent: string }} file
  */
 export function updateStatusBar(statusBar, editorEl, file) {
   if (!statusBar || !editorEl || !file) return;
@@ -131,10 +131,10 @@ export function updateStatusBar(statusBar, editorEl, file) {
  * Mutates file.savedContent on success.
  *
  * @param {string} filePath
- * @param {Object} file - { content, savedContent, error }
+ * @param {{ content: string, savedContent: string, error?: string }} file
  * @param {HTMLElement} statusBar
- * @param {{ onSuccess: Function }} callbacks
- * @param {{ writefile: Function }} api - injected API methods
+ * @param {{ onSuccess: () => void }} callbacks
+ * @param {{ writefile: (path: string, content: string) => Promise<{ error?: string }> }} api - injected API methods
  */
 export async function saveFile(filePath, file, statusBar, { onSuccess }, { writefile }) {
   if (!file || file.error) return;

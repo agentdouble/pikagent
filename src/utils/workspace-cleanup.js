@@ -4,9 +4,7 @@
  * Extracted from workspace-layout.js to break the circular dependency
  * between workspace-layout.js and workspace-serializer.js (issue #94).
  *
- * @typedef {Object} DisposeAllTabsDeps
- * @property {Map<string, WorkspaceTab>} tabs
- * @property {Function} setActiveTabId    - (id) => void
+ * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, setActiveTabId: (id: string|null) => void }} DisposeAllTabsDeps
  */
 
 import { TAB_DISPOSABLES } from './tab-manager-helpers.js';
