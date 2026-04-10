@@ -67,7 +67,7 @@ export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
  * stopPropagation wrapping on the click handler.
  *
  * @param {{ label?: string, title?: string, className?: string,
- *           onClick?: Function, childNode?: Node,
+ *           onClick?: (e: MouseEvent) => void, childNode?: Node,
  *           stopPropagation?: boolean }} opts
  * @returns {HTMLButtonElement}
  */
@@ -94,7 +94,7 @@ export function createButton({ label = '', title, className, onClick, childNode,
  *           configs: Array<{ action: string, label?: string, title?: string,
  *                            className?: string, childNode?: Node,
  *                            stopPropagation?: boolean }>,
- *           handlers: Object<string, Function> }} opts
+ *           handlers: Record<string, (e: MouseEvent) => void> }} opts
  * @returns {HTMLElement}
  */
 export function renderButtonBar({ containerClass, configs, handlers }) {
@@ -114,7 +114,7 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
 
 /**
  * Create a <select> element from an options map.
- * @param {{ options: Object<string, string>, value?: string, className?: string, onChange?: Function }} opts
+ * @param {{ options: Record<string, string>, value?: string, className?: string, onChange?: (e: Event) => void }} opts
  * @returns {HTMLSelectElement}
  */
 export function createSelect({ options, value, className, onChange } = {}) {
@@ -130,8 +130,8 @@ export function createSelect({ options, value, className, onChange } = {}) {
 /**
  * Wire up Enter / Escape keyboard shortcuts on an element.
  * @param {HTMLElement} el
- * @param {{ onEnter?: Function, onEscape?: Function }} handlers
- * @returns {Function} cleanup — removes the listener
+ * @param {{ onEnter?: (e: KeyboardEvent) => void, onEscape?: (e: KeyboardEvent) => void }} handlers
+ * @returns {() => void} cleanup — removes the listener
  */
 export function setupKeyboardShortcuts(el, { onEnter, onEscape } = {}) {
   const handler = (e) => {
@@ -163,9 +163,9 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
  * High-level modal builder: creates overlay + modal with a title bar,
  * content area, and optional close button. Appends to document.body.
  *
- * @param {{ title?: string, content?: Node|Node[], onClose: Function,
+ * @param {{ title?: string, content?: Node|Node[], onClose: () => void,
  *           overlayClass?: string, modalClass?: string }} opts
- * @returns {{ overlay: HTMLElement, modal: HTMLElement, body: HTMLElement, close: Function }}
+ * @returns {{ overlay: HTMLElement, modal: HTMLElement, body: HTMLElement, close: () => void }}
  */
 export function createCustomModal({ title, content, onClose, overlayClass = 'modal-overlay', modalClass = 'modal' } = {}) {
   const close = () => { overlay.remove(); onClose?.(); };

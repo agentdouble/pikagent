@@ -15,8 +15,8 @@ async function safeAsync(fn) {
 
 /**
  * Factory that wraps an async function with safeAsync error handling.
- * @param {Function} fn - async function to wrap
- * @returns {Function} wrapped function with same signature
+ * @param {(...args: unknown[]) => Promise<unknown>} fn - async function to wrap
+ * @returns {(...args: unknown[]) => Promise<unknown>} wrapped function with same signature
  */
 function createSafeHandler(fn) {
   return function (...args) {

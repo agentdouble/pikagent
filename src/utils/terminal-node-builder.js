@@ -13,7 +13,7 @@ import { TerminalInstance } from './terminal-instance.js';
  * Wires up the close button and delegates drag setup to a callback.
  *
  * @param {SplitNode} node - the terminal node
- * @param {{ onClose: Function, setupDrag: Function }} callbacks
+ * @param {{ onClose: () => void, setupDrag: (dragHandle: HTMLElement, node: SplitNode) => void }} callbacks
  * @returns {HTMLElement}
  */
 export function buildTopBar(node, { onClose, setupDrag }) {
@@ -44,8 +44,8 @@ export function buildTopBar(node, { onClose, setupDrag }) {
  * @param {string|null} cwd - working directory for the terminal
  * @param {string} defaultCwd - fallback cwd when `cwd` is null
  * @param {Map<string, SplitNode>} terminals - mutable registry
- * @param {{ buildTopBar: Function, onMousedown: Function }} callbacks
- * @param {Object} api - injected API methods forwarded to TerminalInstance
+ * @param {{ buildTopBar: (node: SplitNode) => HTMLElement, onMousedown: (node: SplitNode) => void }} callbacks
+ * @param {{ spawn: (cwd: string) => unknown, onData: (id: string, cb: (data: string) => void) => () => void, onExit: (id: string, cb: () => void) => () => void, write: (id: string, data: string) => void, resize: (id: string, cols: number, rows: number) => void, getCwd: (id: string) => Promise<string>, kill: (id: string) => void }} api - injected API methods forwarded to TerminalInstance
  * @returns {SplitNode}
  */
 export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: buildTopBarFn, onMousedown }, api) {
@@ -73,8 +73,8 @@ export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: bu
 /**
  * Recursively build a split-panel tree from a serialised layout descriptor.
  *
- * @param {Object} tree - serialized node ({ type, cwd?, flex?, direction?, children? })
- * @param {{ createTerminalNode: Function, createSplitHandle: Function }} callbacks
+ * @param {{ type: string, cwd?: string, flex?: number, direction?: string, children?: Array<unknown> }} tree - serialized layout node
+ * @param {{ createTerminalNode: (cwd?: string) => SplitNode, createSplitHandle: (direction: string, splitEl: HTMLElement) => HTMLElement }} callbacks
  * @returns {SplitNode}
  */
 export function buildFromTree(tree, { createTerminalNode: createTerminalNodeFn, createSplitHandle }) {

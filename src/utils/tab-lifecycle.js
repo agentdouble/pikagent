@@ -8,30 +8,11 @@
  * Pure lookup functions (findTabForTerminal, onTerminalCwdChanged) accept
  * only the data they need.
  *
- * @typedef {Object} CreateTabDeps
- * @property {Map<string, WorkspaceTab>} tabs
- * @property {string} defaultCwd
- * @property {string|null} activeColorFilter
- * @property {() => void} renderTabBar
- * @property {{ scheduleAutoSave: () => void }} configManager
+ * @typedef {{ tabs: Map<string, WorkspaceTab>, defaultCwd: string, activeColorFilter: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void } }} CreateTabDeps
  *
- * @typedef {Object} CloseTabDeps
- * @property {Map<string, WorkspaceTab>} tabs
- * @property {string|null} activeTabId
- * @property {() => void} renderTabBar
- * @property {{ scheduleAutoSave: () => void }} configManager
+ * @typedef {{ tabs: Map<string, WorkspaceTab>, activeTabId: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void } }} CloseTabDeps
  *
- * @typedef {Object} SwitchToDeps
- * @property {Map<string, WorkspaceTab>} tabs
- * @property {() => string|null} getActiveTabId
- * @property {(id: string) => void} setActiveTabId
- * @property {() => string} getSidebarMode
- * @property {(mode: string) => void} setSidebarMode
- * @property {HTMLElement} workspaceContainer
- * @property {() => void} renderTabBar
- * @property {() => void} renderActivityBar
- * @property {(tab: WorkspaceTab) => void} renderWorkspace
- * @property {(mode: string) => void} detachSidebarView
+ * @typedef {{ tabs: Map<string, WorkspaceTab>, getActiveTabId: () => string|null, setActiveTabId: (id: string) => void, getSidebarMode: () => string, setSidebarMode: (mode: string) => void, workspaceContainer: HTMLElement, renderTabBar: () => void, renderActivityBar: () => void, renderWorkspace: (tab: WorkspaceTab) => void, detachSidebarView: (mode: string) => void }} SwitchToDeps
  */
 
 import { generateId } from './id.js';

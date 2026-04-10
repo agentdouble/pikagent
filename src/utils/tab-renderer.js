@@ -5,15 +5,7 @@
  * Functions receive explicit dependency objects instead of the full
  * TabManager instance.
  *
- * @typedef {Object} TabElementDeps
- * @property {string|null} activeTabId            - Currently active tab id
- * @property {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs - Tab map (used for .size)
- * @property {(id: string) => void} switchTo
- * @property {(id: string) => void} closeTab
- * @property {(id: string, nameEl: HTMLElement) => void} renameTab
- * @property {(id: string, colorGroupId: string|null) => void} setTabColorGroup
- * @property {(id: string) => void} toggleNoShortcut
- * @property {import('./tab-drag.js').TabDragDeps} dragDeps - Dependencies for tab drag
+ * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
  */
 import { _el, setupInlineInput } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';

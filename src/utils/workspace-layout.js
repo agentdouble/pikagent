@@ -5,11 +5,7 @@
  * Resize logic lives in workspace-resize.js.
  * Serialization logic lives in workspace-serializer.js.
  *
- * @typedef {Object} RenderWorkspaceDeps
- * @property {HTMLElement} workspaceContainer
- * @property {Function} getActiveTabId    - () => string|null
- * @property {Function} getActiveTab      - () => WorkspaceTab|null
- * @property {Function} scheduleAutoSave  - () => void
+ * @typedef {{ workspaceContainer: HTMLElement, getActiveTabId: () => string|null, getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, scheduleAutoSave: () => void }} RenderWorkspaceDeps
  *
  * Tab disposal logic lives in workspace-cleanup.js.
  */
@@ -35,7 +31,7 @@ import {
  * @param {HTMLElement} layout
  * @param {{ left: { content: HTMLElement, panel: HTMLElement }, right: { content: HTMLElement, panel: HTMLElement } }} sides
  * @param {HTMLElement} termContainer
- * @param {Function} getActiveTabId - () => string|null
+ * @param {() => string|null} getActiveTabId
  */
 function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId) {
   const FileTree = getComponent('FileTree');

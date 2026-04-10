@@ -3,24 +3,7 @@
  *
  * Builds the tab bar UI: color filters, tab elements, and the add-tab button.
  *
- * @typedef {Object} RenderTabBarDeps
- * @property {HTMLElement} tabBar
- * @property {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
- * @property {string|null} activeTabId
- * @property {string|null} activeColorFilter
- * @property {Set<string>} excludedColors
- * @property {(id: string) => void} switchTo
- * @property {(id: string) => void} closeTab
- * @property {(id: string, nameEl: HTMLElement) => void} renameTab
- * @property {(id: string, colorGroupId: string|null) => void} setTabColorGroup
- * @property {(id: string) => void} toggleNoShortcut
- * @property {(colorGroupId: string) => void} setColorFilter
- * @property {(colorGroupId: string) => void} toggleExcludeColor
- * @property {() => void} createTab
- * @property {(fromId: string, toId: string, before: boolean) => void} reorderTab
- * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => boolean} isTabVisible
- * @property {() => void} renderTabBar     - for callbacks that re-render
- * @property {() => void} clearColorFilters
+ * @typedef {{ tabBar: HTMLElement, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, activeTabId: string|null, activeColorFilter: string|null, excludedColors: Set<string>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, setColorFilter: (colorGroupId: string) => void, toggleExcludeColor: (colorGroupId: string) => void, createTab: () => void, reorderTab: (fromId: string, toId: string, before: boolean) => void, isTabVisible: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => boolean, renderTabBar: () => void, clearColorFilters: () => void }} RenderTabBarDeps
  */
 
 import { _el } from './dom.js';

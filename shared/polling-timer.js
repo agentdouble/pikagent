@@ -8,7 +8,7 @@
 class PollingTimer {
   /**
    * @param {number} intervalMs  - Polling interval in milliseconds
-   * @param {Function} callback  - Called on each tick and immediately on start
+   * @param {() => void} callback  - Called on each tick and immediately on start
    */
   constructor(intervalMs, callback) {
     this._intervalMs = intervalMs;

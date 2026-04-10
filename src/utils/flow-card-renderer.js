@@ -8,8 +8,8 @@ import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flo
 
 /**
  * Create the run-status dots row for a flow card.
- * @param {Object} flow
- * @param {function} onShowLog - (flow, run) => void
+ * @param {{ runs?: Array<{ status: string, date?: string, timestamp?: number }> }} flow
+ * @param {(flow: { runs?: Array<unknown> }, run: { status: string, date?: string, timestamp?: number }) => void} onShowLog
  */
 function createRunDots(flow, onShowLog) {
   const dots = _el('div', 'flow-card-dots');
@@ -26,9 +26,9 @@ function createRunDots(flow, onShowLog) {
 
 /**
  * Create the action buttons row for a flow card.
- * @param {Object} flow
+ * @param {{ enabled?: boolean }} flow
  * @param {boolean} isRunning
- * @param {Object} handlers - { run, toggle, edit, delete }
+ * @param {{ run: () => void, toggle: () => void, edit: () => void, delete: () => void }} handlers
  */
 function createCardActions(flow, isRunning, handlers) {
   const configs = buildCardActionEntries(flow, isRunning).map(({ icon, title, action, cls }) => ({
@@ -43,10 +43,10 @@ function createCardActions(flow, isRunning, handlers) {
 
 /**
  * Create the full header row for a flow card.
- * @param {Object} flow
+ * @param {{ id: string, name: string, enabled?: boolean, schedule?: unknown, runs?: Array<{ status: string, date?: string, timestamp?: number }> }} flow
  * @param {boolean} isRunning
  * @param {boolean} isExpanded
- * @param {Object} opts - { onToggleOutput, onShowLog, actionHandlers }
+ * @param {{ onToggleOutput: (flowId: string) => void, onShowLog: (flow: unknown, run: unknown) => void, actionHandlers: { run: () => void, toggle: () => void, edit: () => void, delete: () => void } }} opts
  */
 export function createCardHeader(flow, isRunning, isExpanded, opts) {
   const headerRow = _el('div', 'flow-card-header');

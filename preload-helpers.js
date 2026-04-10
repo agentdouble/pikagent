@@ -47,9 +47,9 @@ function _createTargetedChannel(channel, extract) {
 /**
  * Build a flat API object from a schema, merging custom overrides.
  *
- * @param {Object} schema - domain → method → { type, channel?, keys? }
- * @param {Object} [overrides] - domain → method → handler (for 'custom' entries)
- * @returns {Object} flat API: { domain: { method: handler } }
+ * @param {Record<string, Record<string, { type: string, channel?: string, keys?: string[] }>>} schema - domain → method → { type, channel?, keys? }
+ * @param {Record<string, Record<string, (...args: unknown[]) => unknown>>} [overrides] - domain → method → handler (for 'custom' entries)
+ * @returns {Record<string, Record<string, (...args: unknown[]) => unknown>>} flat API: { domain: { method: handler } }
  */
 function buildApiFromSchema(schema, overrides = {}) {
   const api = {};

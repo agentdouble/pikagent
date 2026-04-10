@@ -95,7 +95,7 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
 /**
  * Build a complete flow card element.
  *
- * @typedef {Object} CreateFlowCardDeps
+ * @typedef {object} CreateFlowCardDeps
  * @property {Record<string, string>} runningMap        - { [flowId]: ptyId }
  * @property {Set<string>} expandedCards
  * @property {{ flowId: string|null, catId: string|null }} drag - mutable drag state

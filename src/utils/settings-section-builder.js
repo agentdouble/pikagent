@@ -9,10 +9,7 @@ import { _el } from './dom.js';
  * Build a settings section and populate the given container.
  *
  * @param {HTMLElement} contentEl - the settings content container (will be cleared)
- * @param {Object} config
- * @param {string}        config.heading  - section title text
- * @param {HTMLElement[]} [config.actions]  - extra elements appended to the heading row (e.g. reset button)
- * @param {HTMLElement[]} [config.content]  - main content elements appended after the heading
+ * @param {{ heading: string, actions?: HTMLElement[], content?: HTMLElement[] }} config
  * @returns {HTMLElement} the heading element that was created
  */
 export function createSettingsSection(contentEl, { heading, actions = [], content = [] }) {
