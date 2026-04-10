@@ -2,8 +2,8 @@ const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
-const { groupBy, countBy } = require('./collection-helpers');
-const { aggregateByKey } = require('./aggregation-utils');
+const { countBy } = require('./collection-helpers');
+const { aggregateByKey, groupAndAggregate } = require('./aggregation-utils');
 
 // ===== Declarative configs =====
 
@@ -81,21 +81,31 @@ function projectShortName(proj) {
 }
 
 function aggregateTokenData(labels, projectResults) {
-  const globalPerDay = {};
-  for (const day of labels) globalPerDay[day.date] = newPerDayTotals();
+  // Build the set of valid date keys from labels for filtering
+  const validDates = new Set(labels.map(d => d.date));
 
+  // Flatten all per-day entries from every project into a single stream,
+  // then aggregate via aggregateByKey (replaces the manual nested loop).
+  const perDayEntries = projectResults.flatMap(({ perDayMap }) =>
+    Object.entries(perDayMap)
+      .filter(([dateKey]) => validDates.has(dateKey))
+      .map(([dateKey, dayData]) => ({ dateKey, dayData })),
+  );
+
+  const globalPerDay = aggregateByKey(
+    perDayEntries,
+    ({ dateKey }) => dateKey,
+    () => newPerDayTotals(),
+    (bucket, { dayData }) => {
+      for (const k of PERDAY_KEYS) bucket[k] += dayData[k];
+    },
+  );
+
+  // Accumulate overall totals across all projects
   const totals = newTokenTotals();
+  for (const { totals: pt } of projectResults) addTokens(totals, pt);
 
-  for (const { totals: pt, perDayMap } of projectResults) {
-    addTokens(totals, pt);
-    for (const [dateKey, dayData] of Object.entries(perDayMap)) {
-      if (globalPerDay[dateKey]) {
-        for (const k of PERDAY_KEYS) globalPerDay[dateKey][k] += dayData[k];
-      }
-    }
-  }
-
-  // Use aggregateByKey to accumulate per-project token data
+  // Aggregate per-project token data using aggregateByKey
   const perProjectAgg = aggregateByKey(
     projectResults.filter(({ totals: pt }) => PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0) > 0),
     ({ proj }) => projectShortName(proj),
@@ -107,7 +117,7 @@ function aggregateTokenData(labels, projectResults) {
   );
 
   const tokenPerDay = labels.map((day) => {
-    const g = globalPerDay[day.date];
+    const g = globalPerDay[day.date] || newPerDayTotals();
     const total = PERDAY_KEYS.reduce((sum, k) => sum + g[k], 0);
     return { ...day, ...g, total };
   });
@@ -177,14 +187,17 @@ function buildFlowMetrics(flows, flowRuns) {
 // ===== Agent helpers =====
 
 function getByAgent(sessions) {
-  return Object.entries(groupBy(sessions, s => s.agent || 'Unknown'))
-    .map(([agent, items]) => ({
-      agent,
+  const grouped = groupAndAggregate(
+    sessions,
+    (s) => s.agent || 'Unknown',
+    (items) => ({
       totalSessions: items.length,
       successRate: computeRate(items).rate,
       avgDuration: computeDuration(items.map((s) => s.durationSec)).avg,
       active: items.filter((s) => s.status === 'running').length,
-    }));
+    }),
+  );
+  return Object.entries(grouped).map(([agent, data]) => ({ agent, ...data }));
 }
 
 function buildAgentMetrics(sessions, activeSessions) {
