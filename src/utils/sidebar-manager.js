@@ -9,22 +9,22 @@
  *
  * @typedef {Object} ActivityBarDeps
  * @property {string} sidebarMode          - Current sidebar mode ('work', 'board', etc.)
- * @property {Function} setSidebarMode     - Callback to change sidebar mode
- * @property {Function|null} onOpenSettings - Callback for settings button
+ * @property {(mode: string) => void} setSidebarMode     - Callback to change sidebar mode
+ * @property {(() => void)|null} onOpenSettings - Callback for settings button
  *
  * @typedef {Object} SideViewStore
- * @property {Function} getView         - (viewKey) => view instance or null
- * @property {Function} setView         - (viewKey, value) => void
- * @property {Function} getContainer    - (containerKey) => container element or null
- * @property {Function} setContainer    - (containerKey, value) => void
+ * @property {(viewKey: string) => unknown} getView         - view instance or null
+ * @property {(viewKey: string, value: unknown) => void} setView
+ * @property {(containerKey: string) => HTMLElement|null} getContainer
+ * @property {(containerKey: string, value: HTMLElement|null) => void} setContainer
  *
  * @typedef {Object} SideViewDeps
  * @property {HTMLElement} workspaceContainer - Workspace container element
  * @property {SideViewStore} viewStore        - Accessor for view/container instances
  *
  * @typedef {Object} DetachDeps
- * @property {Function} getActiveTab         - () => active WorkspaceTab or null
- * @property {Function} capturePanelWidths   - (tab) => void
+ * @property {() => import('./tab-manager-helpers.js').WorkspaceTab|null} getActiveTab
+ * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} capturePanelWidths
  * @property {SideViewStore} viewStore       - Accessor for view/container instances
  */
 
@@ -110,8 +110,8 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
  * @param {SideViewDeps} deps
  * @param {string} viewKey       - Property key for the view instance
  * @param {string} containerKey  - Property key for the container element
- * @param {Function} ViewClass   - Constructor for the view
- * @param {...*} ctorArgs        - Arguments for the ViewClass constructor
+ * @param {new (container: HTMLElement, ...args: unknown[]) => unknown} ViewClass   - Constructor for the view
+ * @param {...unknown} ctorArgs  - Arguments for the ViewClass constructor
  * @returns {boolean}
  */
 export function renderSideView({ workspaceContainer, viewStore }, viewKey, containerKey, ViewClass, ...ctorArgs) {
@@ -134,7 +134,7 @@ export function renderSideView({ workspaceContainer, viewStore }, viewKey, conta
  * Activate a side view by mode using SIDE_VIEW_RENDERERS config.
  * @param {SideViewDeps} deps
  * @param {string} mode         - Side view mode (board, flow, usage)
- * @param {Object} extraArgs    - Additional constructor args per mode
+ * @param {{ boardCtorArgs?: unknown[], flowCtorArgs?: unknown[] }} extraArgs - Additional constructor args per mode
  */
 export function activateSideView(deps, mode, extraArgs = {}) {
   const sideView = SIDE_VIEWS[mode];
@@ -154,13 +154,13 @@ export function activateSideView(deps, mode, extraArgs = {}) {
  * Switch sidebar mode: detach current view, activate new view (or re-attach work layout).
  *
  * @typedef {Object} ChangeSidebarModeDeps
- * @property {Function} getActiveTab         - () => WorkspaceTab|null
- * @property {Function} capturePanelWidths   - (tab) => void
+ * @property {() => import('./tab-manager-helpers.js').WorkspaceTab|null} getActiveTab
+ * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} capturePanelWidths
  * @property {SideViewStore} viewStore
  * @property {HTMLElement} workspaceContainer
- * @property {Function} reattachLayout       - (deps, tab) => void
- * @property {Function} renderWorkspace      - (tab) => void
- * @property {Object} tabManager             - Reference for BoardView/FlowView ctor args
+ * @property {(deps: { workspaceContainer: HTMLElement }, tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} reattachLayout
+ * @property {(tab: import('./tab-manager-helpers.js').WorkspaceTab) => void} renderWorkspace
+ * @property {unknown} tabManager             - Reference for BoardView/FlowView ctor args
  */
 
 /**

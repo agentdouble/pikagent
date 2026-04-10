@@ -7,12 +7,12 @@
  *
  * @typedef {Object} TabElementDeps
  * @property {string|null} activeTabId            - Currently active tab id
- * @property {Map<string, Object>} tabs           - Tab map (used for .size)
- * @property {Function} switchTo                  - (id) => void
- * @property {Function} closeTab                  - (id) => void
- * @property {Function} renameTab                 - (id, nameEl) => void
- * @property {Function} setTabColorGroup          - (id, colorGroupId) => void
- * @property {Function} toggleNoShortcut          - (id) => void
+ * @property {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs - Tab map (used for .size)
+ * @property {(id: string) => void} switchTo
+ * @property {(id: string) => void} closeTab
+ * @property {(id: string, nameEl: HTMLElement) => void} renameTab
+ * @property {(id: string, colorGroupId: string|null) => void} setTabColorGroup
+ * @property {(id: string) => void} toggleNoShortcut
  * @property {import('./tab-drag.js').TabDragDeps} dragDeps - Dependencies for tab drag
  */
 import { _el, setupInlineInput } from './dom.js';
@@ -24,7 +24,7 @@ import { attachContextMenu } from './context-menu.js';
  * Build a single tab DOM element.
  * @param {TabElementDeps} deps
  * @param {string} id
- * @param {Object} tab
+ * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
  */
 export function buildTabElement(deps, id, tab) {
   const tabEl = _el('div', 'tab');
@@ -67,7 +67,7 @@ export function buildTabElement(deps, id, tab) {
  * @param {TabElementDeps} deps
  * @param {HTMLElement} tabEl
  * @param {string} id
- * @param {Object} tab
+ * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
  * @param {HTMLElement} nameEl
  */
 export function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
@@ -96,10 +96,10 @@ export function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
 
 /**
  * Inline rename a tab.
- * @param {Object} tab
+ * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
  * @param {HTMLElement} nameEl
- * @param {function} onCommit - callback after successful rename (re-render + save)
- * @param {function} onCancel - callback on cancel (re-render only, no save)
+ * @param {() => void} onCommit - callback after successful rename (re-render + save)
+ * @param {() => void} onCancel - callback on cancel (re-render only, no save)
  */
 export function inlineRenameTab(tab, nameEl, onCommit, onCancel) {
   const input = _el('input', { className: 'tab-rename-input', value: tab.name });

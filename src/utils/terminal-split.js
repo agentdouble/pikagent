@@ -15,10 +15,7 @@ import { detachElement, moveToCenter, insertIntoSplit, wrapInNewSplit } from './
  * @param {string} targetId
  * @param {string} side - 'center'|'left'|'right'|'top'|'bottom'
  * @param {Map<string, SplitNode>} terminals
- * @param {Object} callbacks
- * @param {Function} callbacks.createSplitHandle - (direction, splitEl) => HTMLElement
- * @param {Function} callbacks.fitAll - () => void
- * @param {Function} callbacks.setActive - (node) => void
+ * @param {{ createSplitHandle: (direction: string, splitEl: HTMLElement) => HTMLElement, fitAll: () => void, setActive: (node: SplitNode) => void }} callbacks
  */
 export function moveTerminal(sourceId, targetId, side, terminals, { createSplitHandle, fitAll, setActive }) {
   const sourceNode = terminals.get(sourceId);
@@ -60,15 +57,8 @@ export function moveTerminal(sourceId, targetId, side, terminals, { createSplitH
  *
  * @param {SplitNode} targetNode
  * @param {string} direction - 'horizontal'|'vertical'
- * @param {Object} state - mutable panel state
- * @param {string} state.cwd - default working directory
- * @param {SplitNode|null} state.root - root split node (may be updated)
- * @param {Object} callbacks
- * @param {Function} callbacks.createTerminalNode - (cwd) => SplitNode
- * @param {Function} callbacks.createSplitHandle - (direction, splitEl) => HTMLElement
- * @param {Function} callbacks.fitAll - () => void
- * @param {Function} callbacks.setActive - (node) => void
- * @param {Function} callbacks.setRoot - (node) => void
+ * @param {{ cwd: string, root: SplitNode|null }} state - mutable panel state
+ * @param {{ createTerminalNode: (cwd: string) => SplitNode, createSplitHandle: (direction: string, splitEl: HTMLElement) => HTMLElement, fitAll: () => void, setActive: (node: SplitNode) => void, setRoot: (node: SplitNode) => void }} callbacks
  */
 export function splitTerminal(targetNode, direction, state, { createTerminalNode, createSplitHandle, fitAll, setActive, setRoot }) {
   const parentEl = targetNode.element.parentElement;
@@ -107,7 +97,7 @@ export function splitTerminal(targetNode, direction, state, { createTerminalNode
  * @param {SplitNode} activeTerminal
  * @param {Map<string, SplitNode>} terminals
  * @param {string} dir - 'left'|'right'|'up'|'down'
- * @param {Function} setActive - (node) => void
+ * @param {(node: SplitNode) => void} setActive
  */
 export function focusDirection(activeTerminal, terminals, dir, setActive) {
   if (!activeTerminal || terminals.size < 2) return;

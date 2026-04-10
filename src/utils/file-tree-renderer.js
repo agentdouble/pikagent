@@ -31,7 +31,7 @@ export function createActionBtn(title, iconNode, action) {
 /**
  * Build a generic row element with a chevron and name span.
  *
- * @param {Object} entry - { name }
+ * @param {{ name: string }} entry
  * @param {number} depth
  * @returns {{ row: HTMLElement, chevron: HTMLElement, name: HTMLElement }}
  */
@@ -49,18 +49,11 @@ export function buildRow(entry, depth) {
  * Render a single directory entry into `parentEl`, with expand/collapse
  * and context-menu behaviour wired up.
  *
- * @param {Object} entry - { name, path, isDirectory }
+ * @param {{ name: string, path: string, isDirectory: boolean }} entry
  * @param {HTMLElement} parentEl
  * @param {number} depth
  * @param {Set<string>} expandedDirs
- * @param {Object} callbacks
- * @param {Function} callbacks.setupDropZone - (el, targetDir) => void
- * @param {Function} callbacks.expandDir - (dirPath, childContainer, chevron, depth, expandedDirs) => Promise
- * @param {Function} callbacks.collapseDir - (dirPath, childContainer, chevron, expandedDirs) => void
- * @param {Function} callbacks.renderDir - (dirPath, parentEl, depth, expandedDirs) => Promise
- * @param {Function} callbacks.findRootCwd - (entryPath) => string
- * @param {Function} callbacks.promptRename - (path, nameEl) => void
- * @param {Function} callbacks.promptNewEntry - (dirPath, contentEl, depth, expandedDirs, type) => void
+ * @param {{ setupDropZone: (el: HTMLElement, targetDir: string) => void, expandDir: (dirPath: string, childContainer: HTMLElement, chevron: HTMLElement, depth: number, expandedDirs: Set<string>) => Promise<void>, collapseDir: (dirPath: string, childContainer: HTMLElement, chevron: HTMLElement, expandedDirs: Set<string>) => void, renderDir: (dirPath: string, parentEl: HTMLElement, depth: number, expandedDirs: Set<string>) => Promise<void>, findRootCwd: (entryPath: string) => string, promptRename: (path: string, nameEl: HTMLElement) => void, promptNewEntry: (dirPath: string, contentEl: HTMLElement, depth: number, expandedDirs: Set<string>, type: string) => void, contextMenuApi: unknown }} callbacks
  */
 export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callbacks) {
   const { setupDropZone, expandDir, collapseDir, findRootCwd, promptRename, promptNewEntry, contextMenuApi } = callbacks;
@@ -104,10 +97,10 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
  * Render a single file entry into `parentEl`, wiring up click and
  * context-menu listeners.
  *
- * @param {Object} entry - { name, path }
+ * @param {{ name: string, path: string }} entry
  * @param {HTMLElement} parentEl
  * @param {number} depth
- * @param {{ activeRowRef: { current: HTMLElement|null }, findRootCwd: Function, promptRename: Function }} callbacks
+ * @param {{ activeRowRef: { current: HTMLElement|null }, findRootCwd: (entryPath: string) => string, promptRename: (path: string, nameEl: HTMLElement) => void, contextMenuApi: unknown }} callbacks
  */
 export function renderFileEntry(entry, parentEl, depth, callbacks) {
   const { activeRowRef, findRootCwd, promptRename, contextMenuApi } = callbacks;

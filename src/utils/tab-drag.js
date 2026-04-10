@@ -6,8 +6,8 @@
  * reading / writing shared state through an explicit dependency interface.
  *
  * @typedef {Object} TabDragDeps
- * @property {Function} getTabElements  - () => Map<tabId, HTMLElement> — live tab DOM elements
- * @property {Function} reorderTab      - (fromId, toId, before) => void — commit the reorder
+ * @property {() => Map<string, HTMLElement>} getTabElements  - live tab DOM elements
+ * @property {(fromId: string, toId: string, before: boolean) => void} reorderTab - commit the reorder
  */
 
 import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
@@ -16,7 +16,7 @@ import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
 
 /**
  * Reset CSS transforms on every tab element.
- * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
+ * @param {() => Map<string, HTMLElement>} getTabElements
  */
 function clearTabShifts(getTabElements) {
   for (const [, el] of getTabElements()) {
@@ -29,7 +29,7 @@ function clearTabShifts(getTabElements) {
  * Determine where the dragged tab should be inserted based on cursor
  * position relative to tab midpoints.
  *
- * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
+ * @param {() => Map<string, HTMLElement>} getTabElements
  * @param {number} mx
  * @param {string[]} orderedIds
  * @param {string} dragId
@@ -72,7 +72,7 @@ function computeDropPosition(getTabElements, mx, orderedIds, dragId) {
  * Shift surrounding tabs with CSS transforms to open a visual gap at the
  * computed insertion position.
  *
- * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
+ * @param {() => Map<string, HTMLElement>} getTabElements
  * @param {string[]} orderedIds
  * @param {number} dragIdx
  * @param {number} insertIdx
@@ -102,8 +102,8 @@ function renderDropIndicator(getTabElements, orderedIds, dragIdx, insertIdx, shi
  * While dragging, determine which tab the cursor is over and shift
  * surrounding tabs to open a visual gap.
  *
- * @param {Function} getTabElements - () => Map<tabId, HTMLElement>
- * @param {Object} state
+ * @param {() => Map<string, HTMLElement>} getTabElements
+ * @param {{ dropTargetId: string|null, dropBefore: boolean }} state
  * @param {number} mx
  * @param {string} dragId
  */
@@ -158,7 +158,7 @@ function handleDragStart(tabEl) {
  * @param {TabDragDeps} deps
  * @param {HTMLElement} tabEl
  * @param {HTMLElement|null} ghost
- * @param {Object} state
+ * @param {{ dropTargetId: string|null, dropBefore: boolean|null }} state
  * @param {string} tabId
  */
 function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId) {
