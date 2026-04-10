@@ -4,7 +4,7 @@
  */
 
 import { bus, EVENTS } from './events.js';
-import { _el } from './dom.js';
+import { _el, buildChevronRow } from './dom.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';
@@ -29,8 +29,11 @@ export const PARSED_ICONS = Object.fromEntries(
  * @returns {{ row: HTMLElement, chevron: HTMLElement, name: HTMLElement }}
  */
 export function buildRow(entry, depth) {
-  const chevron = _el('span', { className: 'file-tree-chevron' });
-  const name = _el('span', { className: 'file-tree-name', textContent: entry.name });
+  const { chevron, name } = buildChevronRow({
+    chevronClass: 'file-tree-chevron',
+    nameClass: 'file-tree-name',
+    name: entry.name,
+  });
   const row = _el('div', {
     className: 'file-tree-item',
     style: { paddingLeft: `${computeIndent(depth)}px` },

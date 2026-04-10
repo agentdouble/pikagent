@@ -3,7 +3,7 @@
  * Handles category headers, collapse state, and drag-drop zone setup.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el, renderButtonBar } from './dom.js';
+import { _el, renderButtonBar, buildChevronRow } from './dom.js';
 import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
 
 /**
@@ -56,8 +56,12 @@ export function createCategoryGroup(params) {
 function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, onToggleCollapse, onRenameCategory, onDeleteCategory) {
   const header = _el('div', 'flow-category-header');
 
-  const chevron = _el('span', 'flow-category-chevron', '▼');
-  const name = _el('span', 'flow-category-name', cat.name);
+  const { chevron, name } = buildChevronRow({
+    chevronClass: 'flow-category-chevron',
+    nameClass: 'flow-category-name',
+    name: cat.name,
+    chevronText: '▼',
+  });
   const count = _el('span', 'flow-category-count', `${flows.length}`);
   header.append(chevron, name, count);
 
