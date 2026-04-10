@@ -23,15 +23,8 @@ import {
   capturePanelWidths, restorePanelSizes,
 } from './workspace-resize.js';
 
-// Re-export from workspace-resize.js for backward compatibility
-export {
-  buildSidePanel, buildCenterPanel,
-  setupPanelResize, togglePanel,
-  capturePanelWidths, restorePanelSizes,
-} from './workspace-resize.js';
-
-// Re-export from workspace-cleanup.js for backward compatibility
-export { disposeTab, disposeAllTabs } from './workspace-cleanup.js';
+// NOTE: backward-compat re-exports removed (issue #94).
+// Import directly from workspace-resize.js and workspace-cleanup.js.
 
 // ── Workspace rendering ──
 
