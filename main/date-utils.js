@@ -2,12 +2,12 @@
  * Date/time utilities for the main process.
  * Pure functions — no side effects.
  *
- * Generic formatting (formatTime, formatDateTime) lives in shared/date-utils.js
+ * Generic formatting (formatDateTime) lives in shared/date-utils.js
  * and is re-exported here for backward compatibility.
  * Domain-specific helpers (extractDateString, generateDateRange) stay here.
  */
 
-const { formatTime, formatDateTime } = require('../shared/date-utils');
+const { formatDateTime } = require('../shared/date-utils');
 
 const DATE_LOCALE = 'fr-FR';
 const DAY_LABEL_FORMAT = { day: '2-digit', month: '2-digit' };
@@ -38,4 +38,4 @@ function generateDateRange(days = 30) {
   });
 }
 
-module.exports = { extractDateString, generateDateRange, formatTime, formatDateTime };
+module.exports = { extractDateString, generateDateRange, formatDateTime };
