@@ -62,7 +62,7 @@ function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId) {
  * Render the full workspace layout for a tab.
  * @param {RenderWorkspaceDeps} deps
  * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
- * @param {{ gitBranch: Function }} api - injected API methods
+ * @param {{ gitBranch: (cwd: string) => Promise<string> }} api - injected API methods
  */
 export async function renderWorkspace({ workspaceContainer, getActiveTabId, getActiveTab, scheduleAutoSave }, tab, { gitBranch }) {
   workspaceContainer.replaceChildren();

@@ -12,8 +12,8 @@ import { registerComponent } from '../utils/component-registry.js';
  * @param {{ id: string, label: string, keys: string[] }} binding
  * @param {number} index
  * @param {{ updateBinding: (id: string, keys: string[]) => void, getBindingsList: () => Array<{ id: string, label: string, keys: string[] }>, resetToDefaults: () => void }} shortcutManager
- * @param {function} startRecordingFn - (actionId, index, badgeEl) => void
- * @param {function} renderKeybindingsFn - callback to re-render
+ * @param {(actionId: string, index: number, badgeEl: HTMLElement) => void} startRecordingFn
+ * @param {() => void} renderKeybindingsFn - callback to re-render
  * @returns {HTMLElement}
  */
 export function createKeyBadge(binding, index, shortcutManager, startRecordingFn, renderKeybindingsFn) {

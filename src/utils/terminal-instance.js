@@ -13,7 +13,7 @@ export class TerminalInstance {
   /**
    * @param {HTMLElement} container
    * @param {string} cwd
-   * @param {{ openExternal: Function, homedir: Function, openPath: Function, ptyWrite: Function, ptyOnData: Function, ptyOnExit: Function, ptyCreate: Function, ptyGetCwd: Function, ptyResize: Function, ptyKill: Function }} api - injected API methods
+   * @param {{ openExternal: (url: string) => void, homedir: () => Promise<string>, openPath: (path: string) => void, ptyWrite: (id: string, data: string) => void, ptyOnData: (id: string, cb: (data: string) => void) => () => void, ptyOnExit: (id: string, cb: (code: number) => void) => () => void, ptyCreate: (opts: { cols: number, rows: number, cwd: string }) => Promise<string>, ptyGetCwd: (id: string) => Promise<string>, ptyResize: (id: string, cols: number, rows: number) => void, ptyKill: (id: string) => void }} api - injected API methods
    */
   constructor(container, cwd, { openExternal, homedir, openPath, ptyWrite, ptyOnData, ptyOnExit, ptyCreate, ptyGetCwd, ptyResize, ptyKill }) {
     this.id = generateId('term');
@@ -36,7 +36,7 @@ export class TerminalInstance {
   /**
    * Create the xterm terminal, load addons, and attach custom key handler.
    * @param {HTMLElement} container
-   * @param {{ openExternal: Function, homedir: Function, openPath: Function }} linkApi
+   * @param {{ openExternal: (url: string) => void, homedir: () => Promise<string>, openPath: (path: string) => void }} linkApi
    */
   _initTerminal(container, { openExternal, homedir, openPath }) {
     const { term, fitAddon } = createTerminal(container, {

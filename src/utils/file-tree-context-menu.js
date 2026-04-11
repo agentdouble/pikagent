@@ -10,10 +10,10 @@ import { getRelativePath } from './file-tree-helpers.js';
  * @param {string} entryPath
  * @param {HTMLElement} nameEl - the name span for inline rename
  * @param {string} rootCwd - workspace root for relative path
- * @param {function} promptRenameFn - (entryPath, nameEl) => void
+ * @param {(entryPath: string, nameEl: HTMLElement) => void} promptRenameFn
  * @param {string} [deleteLabel] - custom delete confirmation text
- * @param {{ clipboardWrite: Function, fsCopy: Function, showInFolder: Function, fsTrash: Function }} api - injected API methods
- * @returns {Array} menu items
+ * @param {{ clipboardWrite: (text: string) => void, fsCopy: (path: string) => void, showInFolder: (path: string) => void, fsTrash: (path: string) => void }} api - injected API methods
+ * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
 export function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, deleteLabel, { clipboardWrite, fsCopy, showInFolder, fsTrash }) {
   const displayName = entryPath.split('/').pop();
@@ -42,9 +42,9 @@ export function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRename
  * @param {string} entryPath
  * @param {HTMLElement} nameEl
  * @param {string} rootCwd
- * @param {function} promptRenameFn
- * @param {{ clipboardWrite: Function, fsCopy: Function, showInFolder: Function, fsTrash: Function }} api - injected API methods
- * @returns {Array} menu items
+ * @param {(entryPath: string, nameEl: HTMLElement) => void} promptRenameFn
+ * @param {{ clipboardWrite: (text: string) => void, fsCopy: (path: string) => void, showInFolder: (path: string) => void, fsTrash: (path: string) => void }} api - injected API methods
+ * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
 export function buildFileContextItems(entryPath, nameEl, rootCwd, promptRenameFn, api) {
   return buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, undefined, api);
@@ -58,10 +58,10 @@ export function buildFileContextItems(entryPath, nameEl, rootCwd, promptRenameFn
  * @param {number} depth
  * @param {Set<string>} expandedDirs
  * @param {HTMLElement} nameEl
- * @param {function} promptRenameFn
- * @param {function} promptNewEntryFn
- * @param {{ clipboardWrite: Function, fsCopy: Function, showInFolder: Function, fsTrash: Function }} api - injected API methods
- * @returns {Array} menu items
+ * @param {(entryPath: string, nameEl: HTMLElement) => void} promptRenameFn
+ * @param {(dirPath: string, contentEl: HTMLElement, depth: number, expandedDirs: Set<string>, type: 'file'|'folder') => void} promptNewEntryFn
+ * @param {{ clipboardWrite: (text: string) => void, fsCopy: (path: string) => void, showInFolder: (path: string) => void, fsTrash: (path: string) => void }} api - injected API methods
+ * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
 export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl, promptRenameFn, promptNewEntryFn, api) {
   const dirName = dirPath.split('/').pop();

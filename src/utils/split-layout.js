@@ -83,8 +83,8 @@ export function moveToCenter(sourceEl, targetEl) {
  * @param {string} direction
  * @param {boolean} before - insert before target?
  * @param {HTMLElement} parentEl - the split container
- * @param {function} createHandle - (direction, splitEl) => handle element
- * @param {function} equalize - (splitEl) => void
+ * @param {(direction: string, splitEl: HTMLElement) => HTMLElement} createHandle - creates a split handle element
+ * @param {(splitEl: HTMLElement) => void} equalize - equalizes flex on children
  */
 export function insertIntoSplit(sourceEl, targetEl, direction, before, parentEl, createHandle, equalize) {
   const handle = createHandle(direction, parentEl);
@@ -105,8 +105,8 @@ export function insertIntoSplit(sourceEl, targetEl, direction, before, parentEl,
  * @param {string} direction
  * @param {boolean} before - insert source before target?
  * @param {HTMLElement} parentEl - current parent of targetEl
- * @param {function} createSplitContainer - (direction, flex) => split element
- * @param {function} createHandle - (direction, splitEl) => handle element
+ * @param {(direction: string, flex: string) => HTMLElement} createSplitContainer - creates a new split container element
+ * @param {(direction: string, splitEl: HTMLElement) => HTMLElement} createHandle - creates a split handle element
  */
 export function wrapInNewSplit(sourceEl, targetEl, direction, before, parentEl, createSplitContainer, createHandle) {
   const splitEl = createSplitContainer(direction, targetEl.style.flex || '1');

@@ -6,7 +6,7 @@
  *   _el('div', 'className', 'text' | { prop: v } | child…)               — positional
  *
  * @param {string} tag
- * @param {Object|string|null} [attrsOrClass]
+ * @param {Record<string, unknown>|string|null} [attrsOrClass]
  * @param {...(Node|string|Object|null|false)} children
  */
 export function _el(tag, attrsOrClass, ...children) {

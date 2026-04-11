@@ -74,7 +74,7 @@ function registerSpread(ipc, target, entries) {
  * Method name is derived from the channel (domain:method).
  *
  * @param {object} ipc - Electron ipcMain
- * @param {Object<string, object>} targets - Map of domain -> target object
+ * @param {Record<string, object>} targets - Map of domain -> target object
  * @param {Set<string>} [skip] - Channels to skip (registered as custom handlers elsewhere)
  */
 function registerManagerHandlers(ipc, targets, skip = new Set()) {
