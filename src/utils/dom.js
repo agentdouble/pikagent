@@ -90,9 +90,6 @@ export function createActionButton({ text, label = '', title, cls, className, on
   return btn;
 }
 
-/** @deprecated Use {@link createActionButton} instead. */
-export const createButton = createActionButton;
-
 /**
  * Render a row of buttons from an array of config descriptors.
  *
