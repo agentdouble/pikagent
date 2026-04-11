@@ -1,41 +1,17 @@
 const { ipcMain } = require('electron');
-const PtyManager = require('./pty-manager');
 const { registerManagerHandlers, safeSend } = require('./ipc-helpers');
 
-const ptyManager = new PtyManager();
-const sessionManager = require('./session-manager');
-const fsManager = require('./fs-manager');
-const gitManager = require('./git-manager');
-const configManager = require('./config-manager');
-const flowManager = require('./flow-manager');
-const usageManager = require('./usage-manager');
-
 /**
- * Modules that need lifecycle hooks (start / cleanup).
- * Custom (non-table) IPC handlers are registered per-module below.
+ * Register all IPC handlers.
+ *
+ * Manager initialization and dependency wiring are handled externally by
+ * `manager-init.js`.  This module only cares about IPC dispatching.
+ *
+ * @param {() => import('electron').BrowserWindow} getWindow
+ * @param {{ targets: Record<string, object>, ptyManager: object, sessionManager: object }} deps
  */
-const LIFECYCLE_MODULES = [
-  sessionManager,
-  ptyManager,
-  fsManager,
-  flowManager,
-  usageManager,
-];
-
-function register(getWindow) {
-  const { shell, clipboard, dialog } = require('electron');
-
-  // -- Build target map used by FORWARD_TABLE / SPREAD_TABLE --
-  const targets = {
-    pty: ptyManager,
-    fs: fsManager,
-    git: gitManager,
-    config: configManager,
-    flow: flowManager,
-    usage: usageManager,
-    shell,
-    clipboard,
-  };
+function register(getWindow, { targets, ptyManager, sessionManager }) {
+  const { shell, dialog } = require('electron');
 
   // Channels with custom handlers (registered below) — skip declarative registration.
   const customChannels = new Set(['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder']);
@@ -59,7 +35,7 @@ function register(getWindow) {
 
   // FS: watch needs safeSend callback
   ipcMain.handle('fs:watch', (_, { id, dirPath }) => {
-    fsManager.watchDir(id, dirPath, (change) => {
+    targets.fs.watchDir(id, dirPath, (change) => {
       safeSend(getWindow, 'fs:changed', change);
     });
   });
@@ -83,17 +59,6 @@ function register(getWindow) {
     if (result.canceled || !result.filePaths.length) return null;
     return result.filePaths[0];
   });
-
-  // -- Lifecycle: start managers that need runtime context --
-  flowManager.start(getWindow, ptyManager);
-  sessionManager.start(ptyManager);
-  usageManager.init(sessionManager);
 }
 
-function cleanup() {
-  for (const mod of LIFECYCLE_MODULES) {
-    if (typeof mod.cleanup === 'function') mod.cleanup();
-  }
-}
-
-module.exports = { register, cleanup };
+module.exports = { register };
