@@ -104,6 +104,6 @@ module.exports = {
   homedir: getHomedir,
   unwatch: unwatchDir,
   // Original names (used internally and by ipc-handlers.js custom handlers)
-  readDirectory, readFile, writeFile, makeDir, copyEntry, copyFileTo,
-  renameEntry, getHomedir, watchDir, unwatchDir, cleanup,
+  readDirectory, readFile, writeFile, makeDir, copyFileTo,
+  getHomedir, watchDir, unwatchDir, cleanup,
 };
