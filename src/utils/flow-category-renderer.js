@@ -3,7 +3,7 @@
  * Handles category headers, collapse state, and drag-drop zone setup.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el, renderButtonBar, buildChevronRow } from './dom.js';
+import { _el, renderButtonBar, buildChevronRow, setupDropZone } from './dom.js';
 import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
 
 /**
@@ -76,31 +76,28 @@ function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, 
 }
 
 function _setupCategoryDropZone(items, catId, onDropFlow, dragState) {
-  items.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    items.classList.add('flow-drop-zone-active');
-    _updateDropIndicator(items, e.clientY);
-  });
-
-  items.addEventListener('dragleave', (e) => {
-    if (!items.contains(e.relatedTarget)) {
-      items.classList.remove('flow-drop-zone-active');
+  setupDropZone(items, {
+    hoverClass: 'flow-drop-zone-active',
+    onDragOver: (e) => {
+      e.dataTransfer.dropEffect = 'move';
+      _updateDropIndicator(items, e.clientY);
+    },
+    onDragLeave: (e) => {
+      if (!items.contains(e.relatedTarget)) {
+        items.classList.remove('flow-drop-zone-active');
+        _clearDropIndicators(items);
+      }
+    },
+    onDrop: (e) => {
       _clearDropIndicators(items);
-    }
-  });
 
-  items.addEventListener('drop', (e) => {
-    e.preventDefault();
-    items.classList.remove('flow-drop-zone-active');
-    _clearDropIndicators(items);
+      const dragFlowId = dragState.getDragFlowId();
+      if (!dragFlowId) return;
 
-    const dragFlowId = dragState.getDragFlowId();
-    if (!dragFlowId) return;
-
-    const insertIndex = _getDropIndex(items, e.clientY);
-    dragState.clearDrag();
-    onDropFlow(dragFlowId, catId, insertIndex);
+      const insertIndex = _getDropIndex(items, e.clientY);
+      dragState.clearDrag();
+      onDropFlow(dragFlowId, catId, insertIndex);
+    },
   });
 }
 
