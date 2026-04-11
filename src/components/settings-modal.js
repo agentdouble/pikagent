@@ -40,7 +40,7 @@ export class SettingsModal {
   _buildHeader() {
     const header = _el('div', 'settings-header');
     header.appendChild(_el('h2', 'settings-title', 'Settings'));
-    const closeBtn = createActionButton({ icon: '×', cls: 'settings-close-btn', onClick: () => this.close() });
+    const closeBtn = createActionButton({ text: '×', cls: 'settings-close-btn', onClick: () => this.close() });
     header.appendChild(closeBtn);
     return header;
   }

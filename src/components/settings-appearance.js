@@ -80,7 +80,7 @@ export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
 
   for (const { mode, label } of MODE_BUTTONS) {
     const btn = createActionButton({
-      icon: label,
+      text: label,
       cls: 'theme-mode-btn',
       onClick: () => {
         setAppTheme(mode);

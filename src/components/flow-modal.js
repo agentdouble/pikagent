@@ -15,7 +15,7 @@ import { registerComponent } from '../utils/component-registry.js';
 function _buildHeader(existing, state) {
   const title = _el('h3', { textContent: existing ? 'Modifier le flow' : 'Nouveau flow' });
   const clearBtn = createActionButton({
-    icon: 'Clear',
+    text: 'Clear',
     cls: 'flow-modal-clear-btn',
     onClick: () => {
       state.nameInput.value = '';
@@ -123,7 +123,7 @@ function _buildDaysChip(existing) {
   const daysChip = _el('div', { className: 'flow-modal-chip flow-modal-days' });
   for (let d = 0; d < 7; d++) {
     const dayBtn = createActionButton({
-      icon: DAY_NAMES[d],
+      text: DAY_NAMES[d],
       cls: 'flow-day-btn',
       onClick: (e) => {
         e.preventDefault();
@@ -203,12 +203,12 @@ function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef,
 
   const actionBar = _el('div', { className: 'flow-modal-actions' },
     createActionButton({
-      icon: 'Annuler',
+      text: 'Annuler',
       cls: 'flow-modal-btn flow-modal-btn-cancel',
       onClick: close,
     }),
     createActionButton({
-      icon: existing ? 'Enregistrer' : 'Créer',
+      text: existing ? 'Enregistrer' : 'Créer',
       cls: 'flow-modal-btn flow-modal-btn-create',
       onClick: () => {
         const name = fields.nameInput.value.trim();

@@ -128,7 +128,7 @@ export class BoardView {
     };
 
     const configs = HEADER_BUTTONS.map(({ text, title, action }) => ({
-      icon: text,
+      text,
       title,
       cls: 'board-card-btn',
       action,

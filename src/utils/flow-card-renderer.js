@@ -31,8 +31,8 @@ function createRunDots(flow, onShowLog) {
  * @param {{ run: () => void, toggle: () => void, edit: () => void, delete: () => void }} handlers
  */
 function createCardActions(flow, isRunning, handlers) {
-  const configs = buildCardActionEntries(flow, isRunning).map(({ icon, title, action, cls }) => ({
-    icon,
+  const configs = buildCardActionEntries(flow, isRunning).map(({ text, title, action, cls }) => ({
+    text,
     title,
     cls: cls ? `flow-card-btn ${cls}` : 'flow-card-btn',
     action,
@@ -57,7 +57,7 @@ export function createCardHeader(flow, isRunning, isExpanded, opts) {
   if (isRunning) nameRow.appendChild(_el('span', 'flow-running-badge', 'En cours...'));
   if (isRunning) {
     nameRow.appendChild(createActionButton({
-      icon: isExpanded ? '▾ Sortie' : '▸ Sortie',
+      text: isExpanded ? '▾ Sortie' : '▸ Sortie',
       cls: 'flow-output-toggle',
       title: isExpanded ? 'Masquer la sortie' : 'Afficher la sortie',
       onClick: (e) => { e.stopPropagation(); opts.onToggleOutput(flow.id); },

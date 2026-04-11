@@ -60,8 +60,8 @@ function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, 
       rename: () => onRenameCategory(cat.id, name),
       delete: () => onDeleteCategory(cat.id),
     };
-    const configs = CATEGORY_ACTIONS.map(({ icon, title, cls, action }) => ({
-      icon,
+    const configs = CATEGORY_ACTIONS.map(({ text, title, cls, action }) => ({
+      text,
       title,
       cls: cls ? `flow-category-btn ${cls}` : 'flow-category-btn',
       action,

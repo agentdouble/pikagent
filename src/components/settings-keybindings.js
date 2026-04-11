@@ -52,7 +52,7 @@ export function createKeyBadge(binding, index, shortcutManager, startRecordingFn
  */
 export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const resetBtn = createActionButton({
-    icon: 'Reset to defaults',
+    text: 'Reset to defaults',
     cls: 'settings-reset-btn',
     onClick: () => {
       shortcutManager.resetToDefaults();
@@ -72,7 +72,7 @@ export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, 
     }
 
     const addBtn = createActionButton({
-      icon: '+',
+      text: '+',
       title: 'Add keybinding',
       cls: 'keybinding-add-btn',
       onClick: () => {
