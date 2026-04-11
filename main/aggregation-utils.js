@@ -36,12 +36,8 @@ function aggregateByKey(items, keyFn, initFn, accFn) {
  * @returns {Record<string, unknown>} map of key -> aggregated value
  */
 function groupAndAggregate(items, keyFn, aggFn) {
-  const groups = {};
-  for (const item of items) {
-    const key = keyFn(item);
-    if (key == null) continue;
-    (groups[key] ||= []).push(item);
-  }
+  // Group items using aggregateByKey (no more duplicate loop)
+  const groups = aggregateByKey(items, keyFn, () => [], (bucket, item) => bucket.push(item));
   const result = {};
   for (const [key, group] of Object.entries(groups)) {
     result[key] = aggFn(group);
