@@ -1,17 +1,13 @@
-import { unsubscribeBus } from '../utils/events.js';
-import { getComponent } from '../utils/component-registry.js';
 import {
-  reorderEntries, findCycleTarget, findColorGroupTarget,
-} from '../utils/tab-manager-helpers.js';
-import { initTabManager, setupBusListeners } from '../utils/tab-manager-init.js';
-import {
-  renderActivityBar, detachSidebarView, changeSidebarMode,
-  disposeSideView, disposeAllSideViews,
-} from '../utils/sidebar-manager.js';
+  initTabManager, setupBusListeners,
+  unsubscribeBus, getComponent,
+} from '../utils/tab-manager-init.js';
 import {
   renderWorkspace as doRenderWorkspace, reattachLayout,
   capturePanelWidths, disposeAllTabs,
   serialize as doSerialize, restoreConfig as doRestoreConfig,
+  renderActivityBar, detachSidebarView, changeSidebarMode,
+  disposeSideView, disposeAllSideViews,
 } from '../utils/workspace-facade.js';
 import {
   inlineRenameTab,
@@ -19,6 +15,7 @@ import {
   isTabVisible,
   createTab as doCreateTab, closeTab as doCloseTab,
   switchTo as doSwitchTo,
+  reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-facade.js';
 
 export class TabManager {

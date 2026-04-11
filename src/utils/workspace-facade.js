@@ -11,3 +11,7 @@ export { renderWorkspace, reattachLayout } from './workspace-layout.js';
 export { capturePanelWidths } from './workspace-resize.js';
 export { disposeAllTabs } from './workspace-cleanup.js';
 export { serialize, restoreConfig } from './workspace-serializer.js';
+export {
+  renderActivityBar, detachSidebarView, changeSidebarMode,
+  disposeSideView, disposeAllSideViews,
+} from './sidebar-manager.js';

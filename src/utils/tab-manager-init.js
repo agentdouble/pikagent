@@ -2,11 +2,16 @@
  * Tab manager initialization — extracted from tab-manager.js to reduce component size.
  *
  * Handles startup (default config restore) and bus event subscriptions.
+ * Also re-exports utilities consumed exclusively by tab-manager.js so that
+ * it can import from fewer modules (issue #130).
  */
 
 import { subscribeBus, EVENTS } from './events.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
+
+export { unsubscribeBus } from './events.js';
+export { getComponent } from './component-registry.js';
 
 // ── Initialization ──
 
