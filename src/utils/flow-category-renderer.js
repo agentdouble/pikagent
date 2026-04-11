@@ -61,9 +61,9 @@ function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, 
       delete: () => onDeleteCategory(cat.id),
     };
     const configs = CATEGORY_ACTIONS.map(({ icon, title, cls, action }) => ({
-      label: icon,
+      icon,
       title,
-      className: cls ? `flow-category-btn ${cls}` : 'flow-category-btn',
+      cls: cls ? `flow-category-btn ${cls}` : 'flow-category-btn',
       action,
       stopPropagation: true,
     }));

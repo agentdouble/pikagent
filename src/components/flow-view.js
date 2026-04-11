@@ -81,7 +81,7 @@ export class FlowView {
     const headerHandlers = { addCategory: () => this._addCategory(), addFlow: () => this._openModal() };
     const configs = HEADER_BUTTONS.map(({ label, action }) => ({
       label,
-      className: 'flow-add-btn',
+      cls: 'flow-add-btn',
       action,
     }));
     const headerRight = renderButtonBar({ containerClass: 'flow-header-right', configs, handlers: headerHandlers });

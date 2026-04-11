@@ -63,16 +63,23 @@ export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
 /**
  * Create a <button> element with common options.
  *
+ * Unified factory that accepts both legacy (`label`, `className`) and
+ * short-form (`icon`, `cls`) parameter names so every call-site can
+ * converge on a single helper.
+ *
  * Supports text labels, child nodes (e.g. SVG icons), and optional
  * stopPropagation wrapping on the click handler.
  *
- * @param {{ label?: string, title?: string, className?: string,
+ * @param {{ icon?: string, label?: string, title?: string,
+ *           cls?: string, className?: string,
  *           onClick?: (e: MouseEvent) => void, childNode?: Node,
  *           stopPropagation?: boolean }} opts
  * @returns {HTMLButtonElement}
  */
-export function createButton({ label = '', title, className, onClick, childNode, stopPropagation = false } = {}) {
-  const btn = _el('button', className || '', label);
+export function createActionButton({ icon, label = '', title, cls, className, onClick, childNode, stopPropagation = false } = {}) {
+  const text = icon ?? label;
+  const cssClass = cls ?? className ?? '';
+  const btn = _el('button', cssClass, text);
   if (title) btn.title = title;
   if (childNode) btn.appendChild(childNode);
   if (onClick) {
@@ -83,6 +90,9 @@ export function createButton({ label = '', title, className, onClick, childNode,
   return btn;
 }
 
+/** @deprecated Use {@link createActionButton} instead. */
+export const createButton = createActionButton;
+
 /**
  * Render a row of buttons from an array of config descriptors.
  *
@@ -91,19 +101,19 @@ export function createButton({ label = '', title, className, onClick, childNode,
  * `action` key that maps into the `handlers` object.
  *
  * @param {{ containerClass: string,
- *           configs: Array<{ action: string, label?: string, title?: string,
- *                            className?: string, childNode?: Node,
- *                            stopPropagation?: boolean }>,
+ *           configs: Array<{ action: string, icon?: string, label?: string,
+ *                            title?: string, cls?: string, className?: string,
+ *                            childNode?: Node, stopPropagation?: boolean }>,
  *           handlers: Record<string, (e: MouseEvent) => void> }} opts
  * @returns {HTMLElement}
  */
 export function renderButtonBar({ containerClass, configs, handlers }) {
   const bar = _el('div', containerClass);
   for (const cfg of configs) {
-    bar.appendChild(createButton({
-      label: cfg.label || cfg.icon || cfg.text || '',
+    bar.appendChild(createActionButton({
+      icon: cfg.label || cfg.icon || cfg.text || '',
       title: cfg.title,
-      className: cfg.className || cfg.cls,
+      cls: cfg.className || cfg.cls,
       childNode: cfg.childNode,
       stopPropagation: cfg.stopPropagation ?? false,
       onClick: handlers[cfg.action],
@@ -207,7 +217,7 @@ export function createCustomModal({ title, content, onClose, overlayClass = 'mod
       if (title) {
         const header = _el('div', `${modalClass}-header`,
           _el('span', `${modalClass}-title`, title),
-          createButton({ label: '\u00D7', className: `${modalClass}-close-btn`, onClick: cancel }),
+          createActionButton({ text: '\u00D7', cls: `${modalClass}-close-btn`, onClick: cancel }),
         );
         modal.appendChild(header);
       }
@@ -245,8 +255,8 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
         _el('label', 'prompt-dialog-label', title),
         input,
         _el('div', 'prompt-dialog-btns',
-          createButton({ label: cancelLabel, className: 'prompt-dialog-cancel', onClick: cancel }),
-          createButton({ label: confirmLabel, className: 'prompt-dialog-confirm', onClick: confirm }),
+          createActionButton({ icon: cancelLabel, cls: 'prompt-dialog-cancel', onClick: cancel }),
+          createActionButton({ icon: confirmLabel, cls: 'prompt-dialog-confirm', onClick: confirm }),
         ),
       );
       return () => {
@@ -303,8 +313,8 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
       else modal.appendChild(message);
 
       const btnRow = _el('div', 'confirm-buttons',
-        createButton({ label: cancelLabel, className: 'confirm-cancel', onClick: cancel }),
-        createButton({ label: confirmLabel, className: 'confirm-ok', onClick: () => cleanup(true) }),
+        createActionButton({ icon: cancelLabel, cls: 'confirm-cancel', onClick: cancel }),
+        createActionButton({ icon: confirmLabel, cls: 'confirm-ok', onClick: () => cleanup(true) }),
       );
       modal.appendChild(btnRow);
 

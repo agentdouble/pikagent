@@ -1,5 +1,5 @@
 import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
-import { _el, createButton, createModalOverlay } from '../utils/dom.js';
+import { _el, createActionButton, createModalOverlay } from '../utils/dom.js';
 import { MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS } from '../utils/settings-helpers.js';
 import { getComponent } from '../utils/component-registry.js';
 
@@ -40,7 +40,7 @@ export class SettingsModal {
   _buildHeader() {
     const header = _el('div', 'settings-header');
     header.appendChild(_el('h2', 'settings-title', 'Settings'));
-    const closeBtn = createButton({ label: '×', className: 'settings-close-btn', onClick: () => this.close() });
+    const closeBtn = createActionButton({ icon: '×', cls: 'settings-close-btn', onClick: () => this.close() });
     header.appendChild(closeBtn);
     return header;
   }

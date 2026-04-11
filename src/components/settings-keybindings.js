@@ -3,7 +3,7 @@
  * Extracted from settings-modal.js to reduce component size.
  */
 import { formatCombo } from '../utils/shortcut-helpers.js';
-import { _el, createButton } from '../utils/dom.js';
+import { _el, createActionButton } from '../utils/dom.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
@@ -51,9 +51,9 @@ export function createKeyBadge(binding, index, shortcutManager, startRecordingFn
  * @param {() => void} renderKeybindingsFn - callback to re-render
  */
 export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
-  const resetBtn = createButton({
-    label: 'Reset to defaults',
-    className: 'settings-reset-btn',
+  const resetBtn = createActionButton({
+    icon: 'Reset to defaults',
+    cls: 'settings-reset-btn',
     onClick: () => {
       shortcutManager.resetToDefaults();
       renderKeybindingsFn();
@@ -71,10 +71,10 @@ export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, 
       keysContainer.appendChild(createKeyBadge(binding, i, shortcutManager, startRecordingFn, renderKeybindingsFn));
     }
 
-    const addBtn = createButton({
-      label: '+',
+    const addBtn = createActionButton({
+      icon: '+',
       title: 'Add keybinding',
-      className: 'keybinding-add-btn',
+      cls: 'keybinding-add-btn',
       onClick: () => {
         binding.keys.push('');
         shortcutManager.updateBinding(binding.id, binding.keys);
