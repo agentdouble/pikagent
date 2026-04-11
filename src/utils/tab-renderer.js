@@ -20,18 +20,7 @@ import { attachContextMenu } from './context-menu.js';
  * optional close button + click handler.  This factory captures that
  * pattern while remaining fully configurable.
  *
- * @typedef {Object} TabConfig
- * @property {string}            className     - CSS class for the root element (e.g. 'tab', 'file-tab')
- * @property {boolean}           isActive      - Whether the tab should get the 'active' class
- * @property {string}            name          - Display text for the name span
- * @property {string}            [nameClass]   - CSS class for the name span (default: none)
- * @property {string[]}          [extraClasses]- Additional CSS classes for the root element
- * @property {HTMLElement[]}     [prefixEls]   - Elements inserted before the name span (e.g. color dot, pin icon)
- * @property {{ text: string, className: string, onClick: (e: Event) => void }|null} [close] - Close button config (null to omit)
- * @property {(tabEl: HTMLElement) => void}   onClick      - Click handler for the whole tab
- * @property {(tabEl: HTMLElement, nameEl: HTMLElement) => void} [setup] - Post-creation hook (context menu, drag, etc.)
- * @property {Record<string,string>}          [dataset]    - dataset entries to set on the root element
- * @property {Record<string,string>}          [style]      - inline styles to set on the root element
+ * @typedef {{ className: string, isActive: boolean, name: string, nameClass?: string, extraClasses?: string[], prefixEls?: HTMLElement[], close?: { text: string, className: string, onClick: (e: Event) => void }|null, onClick: (tabEl: HTMLElement) => void, setup?: (tabEl: HTMLElement, nameEl: HTMLElement) => void, dataset?: Record<string,string>, style?: Record<string,string> }} TabConfig
  *
  * @param {TabConfig} config
  * @returns {{ tabEl: HTMLElement, nameEl: HTMLElement }}

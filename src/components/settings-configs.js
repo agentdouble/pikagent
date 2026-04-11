@@ -82,8 +82,8 @@ function _createBottomActions(currentName, tabManager, renderConfigsFn) {
 /**
  * Render the Workspace Configs section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
- * @param {Object|null} tabManager
- * @param {function} renderConfigsFn - callback to re-render this section
+ * @param {import('../components/tab-manager.js').TabManager|null} tabManager
+ * @param {() => void} renderConfigsFn - callback to re-render this section
  */
 export async function renderConfigs(contentEl, tabManager, renderConfigsFn) {
   const currentName = tabManager?.configManager?.currentConfigName || 'Default';

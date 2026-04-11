@@ -12,8 +12,8 @@ export class WebviewManager {
   /**
    * @param {HTMLElement} container - the file-viewer container element
    * @param {HTMLElement} statusBar - the status bar element (webview containers insert before it)
-   * @param {function} switchModeFn - callback to switch the viewer mode
-   * @param {function} renderModeBarFn - callback to re-render the mode bar
+   * @param {(modeId: string) => void} switchModeFn - callback to switch the viewer mode
+   * @param {() => void} renderModeBarFn - callback to re-render the mode bar
    */
   constructor(container, statusBar, switchModeFn, renderModeBarFn) {
     this._container = container;

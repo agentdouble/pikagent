@@ -17,7 +17,7 @@ export class FilePathLinkProvider {
   /**
    * @param {import('@xterm/xterm').Terminal} terminal
    * @param {() => string|null} getCwd  returns the shell's current working directory
-   * @param {{ homedir: Function, openPath: Function }} api - injected API methods
+   * @param {{ homedir: () => Promise<string>, openPath: (path: string) => void }} api - injected API methods
    */
   constructor(terminal, getCwd, { homedir, openPath }) {
     this._terminal = terminal;

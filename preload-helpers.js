@@ -22,8 +22,8 @@ const _pack = (ch, keys) => (...args) =>
  * pattern with a single factory.
  *
  * @param {string} channel   IPC channel name (e.g. 'pty:data')
- * @param {function} extract transforms the raw payload into { id, value }
- * @returns {(id: string, cb: function) => () => void} subscribe function
+ * @param {(payload: unknown) => { id: string, value: unknown }} extract transforms the raw payload into { id, value }
+ * @returns {(id: string, cb: (value: unknown) => void) => () => void} subscribe function
  */
 function _createTargetedChannel(channel, extract) {
   const listeners = new Map();

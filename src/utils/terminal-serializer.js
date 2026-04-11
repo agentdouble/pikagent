@@ -7,7 +7,7 @@
 /**
  * Serialize a single DOM element into a layout tree descriptor.
  * @param {HTMLElement} el - either a split-container or terminal-wrapper
- * @param {function} findTerminalCwd - (el) => cwd string
+ * @param {(el: HTMLElement) => string} findTerminalCwd - returns the terminal cwd for a given wrapper element
  * @param {string} fallbackCwd - default cwd if terminal not found
  * @returns {{ type: string, direction?: string, flex: number, cwd?: string, children?: Array<unknown> }} tree descriptor
  */
@@ -43,7 +43,7 @@ export function serializeElement(el, findTerminalCwd, fallbackCwd) {
 /**
  * Serialize the entire terminal panel layout.
  * @param {HTMLElement} container - the terminal-panel container
- * @param {function} findTerminalCwd - (el) => cwd string
+ * @param {(el: HTMLElement) => string} findTerminalCwd - returns the terminal cwd for a given wrapper element
  * @param {string} fallbackCwd - default cwd
  * @returns {{ type: string, direction?: string, flex: number, cwd?: string, children?: Array<unknown> }} tree descriptor
  */

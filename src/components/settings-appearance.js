@@ -11,7 +11,7 @@ import { registerComponent } from '../utils/component-registry.js';
 
 /**
  * Apply the current terminal theme to all terminal panels across tabs.
- * @param {Object|null} tabManager
+ * @param {import('../components/tab-manager.js').TabManager|null} tabManager
  */
 export function applyThemeToTerminals(tabManager) {
   if (!tabManager) return;
@@ -67,8 +67,8 @@ function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn)
 /**
  * Render the Appearance section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
- * @param {Object|null} tabManager
- * @param {function} renderAppearanceFn - callback to re-render this section
+ * @param {import('../components/tab-manager.js').TabManager|null} tabManager
+ * @param {() => void} renderAppearanceFn - callback to re-render this section
  */
 export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
   // Day/Night mode toggle
