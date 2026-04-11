@@ -4,7 +4,7 @@
  */
 
 import { bus, EVENTS } from './events.js';
-import { _el, setupInlineInput } from './dom.js';
+import { _el, setupInlineInput, setupDropZone as _setupDropZone } from './dom.js';
 import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
 
 /**
@@ -17,26 +17,24 @@ import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
  * @param {string} [className='drop-target'] - CSS class toggled during drag
  */
 export function setupDropZone(el, getTargetDir, handleFileDrop, className = 'drop-target') {
-  el.addEventListener('dragover', (e) => {
-    if (!e.dataTransfer.types.includes('Files')) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'copy';
-    el.classList.add(className);
-  });
-
-  el.addEventListener('dragleave', (e) => {
-    e.stopPropagation();
-    el.classList.remove(className);
-  });
-
-  el.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    el.classList.remove(className);
-    const targetDir = typeof getTargetDir === 'function' ? getTargetDir() : getTargetDir;
-    if (!targetDir) return;
-    await handleFileDrop(e.dataTransfer.files, targetDir);
+  _setupDropZone(el, {
+    hoverClass: className,
+    accept: (e) => {
+      if (!e.dataTransfer.types.includes('Files')) return false;
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      return true;
+    },
+    onDragLeave: (e) => {
+      e.stopPropagation();
+      el.classList.remove(className);
+    },
+    onDrop: async (e) => {
+      e.stopPropagation();
+      const targetDir = typeof getTargetDir === 'function' ? getTargetDir() : getTargetDir;
+      if (!targetDir) return;
+      await handleFileDrop(e.dataTransfer.files, targetDir);
+    },
   });
 }
 
