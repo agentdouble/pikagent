@@ -164,17 +164,17 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
  * Creates overlay + modal via createModalOverlay, calls builder to populate
  * content, appends to document.body, and wraps everything in a Promise.
  *
- * @param {Object} opts
+ * @param {{ overlayClass: string, modalClass: string, cancelValue?: unknown, onCancel?: () => void, builder: (ctx: { overlay: HTMLElement, modal: HTMLElement, cleanup: (value: unknown) => void, cancel: () => void }) => (() => void) | void }} opts
  * @param {string} opts.overlayClass - CSS class for the overlay element
  * @param {string} opts.modalClass - CSS class for the modal element
- * @param {*} [opts.cancelValue=null] - value passed to resolve on cancel / click-outside
- * @param {Function} [opts.onCancel] - optional callback fired after cancel cleanup
- * @param {Function} opts.builder - receives ({ overlay, modal, cleanup, cancel }).
+ * @param {unknown} [opts.cancelValue=null] - value passed to resolve on cancel / click-outside
+ * @param {() => void} [opts.onCancel] - optional callback fired after cancel cleanup
+ * @param {(ctx: { overlay: HTMLElement, modal: HTMLElement, cleanup: (value: unknown) => void, cancel: () => void }) => (() => void) | void} opts.builder - receives ({ overlay, modal, cleanup, cancel }).
  *   cleanup(value) removes the overlay and resolves the promise.
  *   cancel() is a shorthand for cleanup(cancelValue) + onCancel?.().
  *   May return a function that runs after the overlay is appended to the DOM
  *   (useful for focusing elements).
- * @returns {Promise}
+ * @returns {Promise<unknown>}
  */
 function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCancel, builder }) {
   return new Promise((resolve) => {

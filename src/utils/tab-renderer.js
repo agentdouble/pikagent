@@ -30,8 +30,8 @@ import { attachContextMenu } from './context-menu.js';
  * @property {{ text: string, className: string, onClick: (e: Event) => void }|null} [close] - Close button config (null to omit)
  * @property {(tabEl: HTMLElement) => void}   onClick      - Click handler for the whole tab
  * @property {(tabEl: HTMLElement, nameEl: HTMLElement) => void} [setup] - Post-creation hook (context menu, drag, etc.)
- * @property {Object<string,string>}          [dataset]    - dataset entries to set on the root element
- * @property {Object<string,string>}          [style]      - inline styles to set on the root element
+ * @property {Record<string,string>}          [dataset]    - dataset entries to set on the root element
+ * @property {Record<string,string>}          [style]      - inline styles to set on the root element
  *
  * @param {TabConfig} config
  * @returns {{ tabEl: HTMLElement, nameEl: HTMLElement }}
