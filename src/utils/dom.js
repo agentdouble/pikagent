@@ -191,37 +191,39 @@ function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCanc
 
 /**
  * High-level modal builder: creates overlay + modal with a title bar,
- * content area, and optional close button. Does NOT append to document.body —
- * the caller is responsible for mounting the overlay.
+ * content area, and optional close button. Appends to document.body and
+ * returns a Promise that resolves when the modal is closed.
  *
- * @param {{ title?: string, content?: Node|Node[], onClose: () => void,
+ * @param {{ title?: string, content?: Node|Node[], onClose?: () => void,
  *           overlayClass?: string, modalClass?: string }} opts
- * @returns {{ overlay: HTMLElement, modal: HTMLElement, body: HTMLElement, close: () => void }}
+ * @returns {Promise<null>}
  */
 export function createCustomModal({ title, content, onClose, overlayClass = 'modal-overlay', modalClass = 'modal' } = {}) {
-  const close = () => { overlay.remove(); onClose?.(); };
-  const { overlay, modal } = createModalOverlay(overlayClass, modalClass, close);
+  return createDialogBase({
+    overlayClass,
+    modalClass,
+    onCancel: onClose,
+    builder({ modal, cancel }) {
+      if (title) {
+        const header = _el('div', `${modalClass}-header`,
+          _el('span', `${modalClass}-title`, title),
+          createButton({ label: '\u00D7', className: `${modalClass}-close-btn`, onClick: cancel }),
+        );
+        modal.appendChild(header);
+      }
 
-  if (title) {
-    const header = _el('div', `${modalClass}-header`,
-      _el('span', `${modalClass}-title`, title),
-      createButton({ label: '\u00D7', className: `${modalClass}-close-btn`, onClick: close }),
-    );
-    modal.appendChild(header);
-  }
+      const body = _el('div', `${modalClass}-body`);
+      if (content) {
+        const nodes = Array.isArray(content) ? content : [content];
+        for (const node of nodes) {
+          if (node) body.appendChild(node);
+        }
+      }
+      modal.appendChild(body);
 
-  const body = _el('div', `${modalClass}-body`);
-  if (content) {
-    const nodes = Array.isArray(content) ? content : [content];
-    for (const node of nodes) {
-      if (node) body.appendChild(node);
-    }
-  }
-  modal.appendChild(body);
-
-  setupKeyboardShortcuts(overlay, { onEscape: close });
-
-  return { overlay, modal, body, close };
+      setupKeyboardShortcuts(modal, { onEscape: cancel });
+    },
+  });
 }
 
 /**
