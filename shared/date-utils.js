@@ -35,4 +35,4 @@ function formatDateTime(date, timestamp) {
   return `${date}${time ? ' ' + time : ''}`;
 }
 
-module.exports = { formatTime, formatDateTime };
+module.exports = { formatDateTime };

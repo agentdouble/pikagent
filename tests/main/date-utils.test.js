@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 const { extractDateString, generateDateRange, formatDateTime } = require('../../main/date-utils');
-const { formatTime } = require('../../shared/date-utils');
 
 describe('date-utils', () => {
   describe('extractDateString', () => {
@@ -46,21 +45,6 @@ describe('date-utils', () => {
       const range = generateDateRange(3);
       expect(range[0].date < range[1].date).toBe(true);
       expect(range[1].date < range[2].date).toBe(true);
-    });
-  });
-
-  describe('formatTime', () => {
-    it('formats a timestamp into a short time string', () => {
-      const result = formatTime(new Date('2025-03-15T14:32:00Z').getTime());
-      // The exact output depends on locale/TZ, but it should be a non-empty string
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('returns empty string for falsy input', () => {
-      expect(formatTime(null)).toBe('');
-      expect(formatTime(0)).toBe('');
-      expect(formatTime('')).toBe('');
     });
   });
 
