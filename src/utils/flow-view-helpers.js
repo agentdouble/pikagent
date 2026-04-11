@@ -25,8 +25,8 @@ export const HEADER_BUTTONS = [
 
 // --- Category action button configuration ---
 export const CATEGORY_ACTIONS = [
-  { icon: '✎', title: 'Renommer', action: 'rename' },
-  { icon: '✕', title: 'Supprimer la catégorie', cls: 'flow-category-btn-danger', action: 'delete' },
+  { text: '✎', title: 'Renommer', action: 'rename' },
+  { text: '✕', title: 'Supprimer la catégorie', cls: 'flow-category-btn-danger', action: 'delete' },
 ];
 
 // --- Run time formatting (delegated to shared date-utils) ---
@@ -150,18 +150,18 @@ export { getLastRun };
 
 /**
  * Build the list of card action descriptors for a given flow state.
- * Each entry: { icon, title, action, cls? }
+ * Each entry: { text, title, action, cls? }
  * Pure function — no DOM, no side effects.
  */
 export function buildCardActionEntries(flow, isRunning) {
   return [
-    !isRunning && { icon: '▶', title: 'Exécuter maintenant', action: 'run' },
+    !isRunning && { text: '▶', title: 'Exécuter maintenant', action: 'run' },
     {
-      icon: flow.enabled ? '⏸' : '⏵',
+      text: flow.enabled ? '⏸' : '⏵',
       title: flow.enabled ? 'Désactiver' : 'Activer',
       action: 'toggle',
     },
-    { icon: '✎', title: 'Modifier', action: 'edit' },
-    { icon: '✕', title: 'Supprimer', action: 'delete', cls: 'flow-card-btn-danger' },
+    { text: '✎', title: 'Modifier', action: 'edit' },
+    { text: '✕', title: 'Supprimer', action: 'delete', cls: 'flow-card-btn-danger' },
   ].filter(Boolean);
 }

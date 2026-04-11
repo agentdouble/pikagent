@@ -20,8 +20,7 @@ function _createConfigActions(config, tabManager, renderConfigsFn) {
   };
 
   const configs = CONFIG_ACTIONS
-    .filter(desc => !(desc.hideWhen && config[desc.hideWhen]))
-    .map(desc => ({ ...desc, className: desc.cls }));
+    .filter(desc => !(desc.hideWhen && config[desc.hideWhen]));
   return renderButtonBar({ containerClass: 'config-actions', configs, handlers });
 }
 
@@ -76,7 +75,7 @@ function _createBottomActions(currentName, tabManager, renderConfigsFn) {
       });
     },
   };
-  const configs = BOTTOM_CONFIG_BUTTONS.map(({ label, action }) => ({ label, action, className: 'config-bottom-btn' }));
+  const configs = BOTTOM_CONFIG_BUTTONS.map(({ label, action }) => ({ label, action, cls: 'config-bottom-btn' }));
   return renderButtonBar({ containerClass: 'config-bottom-actions', configs, handlers });
 }
 

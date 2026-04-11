@@ -2,7 +2,7 @@
  * Pure rendering helpers for flow cards.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el, createButton, renderButtonBar } from './dom.js';
+import { _el, createActionButton, renderButtonBar } from './dom.js';
 import { formatSchedule } from './flow-schedule-helpers.js';
 import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flow-view-helpers.js';
 
@@ -14,8 +14,8 @@ import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flo
 function createRunDots(flow, onShowLog) {
   const dots = _el('div', 'flow-card-dots');
   for (const run of (flow.runs || []).slice(-MAX_VISIBLE_RUNS)) {
-    const dot = createButton({
-      className: `flow-dot flow-dot-${run.status}`,
+    const dot = createActionButton({
+      cls: `flow-dot flow-dot-${run.status}`,
       title: buildDotTooltip(run),
       onClick: (e) => { e.stopPropagation(); onShowLog(flow, run); },
     });
@@ -31,10 +31,10 @@ function createRunDots(flow, onShowLog) {
  * @param {{ run: () => void, toggle: () => void, edit: () => void, delete: () => void }} handlers
  */
 function createCardActions(flow, isRunning, handlers) {
-  const configs = buildCardActionEntries(flow, isRunning).map(({ icon, title, action, cls }) => ({
-    label: icon,
+  const configs = buildCardActionEntries(flow, isRunning).map(({ text, title, action, cls }) => ({
+    text,
     title,
-    className: cls ? `flow-card-btn ${cls}` : 'flow-card-btn',
+    cls: cls ? `flow-card-btn ${cls}` : 'flow-card-btn',
     action,
     stopPropagation: true,
   }));
@@ -56,9 +56,9 @@ export function createCardHeader(flow, isRunning, isExpanded, opts) {
   nameRow.appendChild(_el('span', 'flow-card-name', flow.name));
   if (isRunning) nameRow.appendChild(_el('span', 'flow-running-badge', 'En cours...'));
   if (isRunning) {
-    nameRow.appendChild(createButton({
-      label: isExpanded ? '▾ Sortie' : '▸ Sortie',
-      className: 'flow-output-toggle',
+    nameRow.appendChild(createActionButton({
+      text: isExpanded ? '▾ Sortie' : '▸ Sortie',
+      cls: 'flow-output-toggle',
       title: isExpanded ? 'Masquer la sortie' : 'Afficher la sortie',
       onClick: (e) => { e.stopPropagation(); opts.onToggleOutput(flow.id); },
     }));

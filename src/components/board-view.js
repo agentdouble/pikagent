@@ -128,9 +128,9 @@ export class BoardView {
     };
 
     const configs = HEADER_BUTTONS.map(({ text, title, action }) => ({
-      label: text,
+      text,
       title,
-      className: 'board-card-btn',
+      cls: 'board-card-btn',
       action,
     }));
     const headerBtns = renderButtonBar({ containerClass: 'board-card-btns', configs, handlers: actionHandlers });
