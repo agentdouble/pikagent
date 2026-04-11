@@ -67,6 +67,4 @@ module.exports = {
   remote: getRemoteUrl,
   localChanges: getLocalChanges,
   fileDiff: getFileDiff,
-  // Original names (only getRemoteUrl still imported externally)
-  getRemoteUrl,
 };
