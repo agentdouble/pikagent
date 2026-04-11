@@ -195,20 +195,6 @@ class EventBus {
 export const bus = new EventBus();
 
 /**
- * Type-checked emit — validates event name exists in catalog (dev-time only).
- * Prefer this over raw bus.emit() so that unknown events are caught early.
- *
- * @param {keyof typeof EVENT_CATALOG} event - must be a key in EVENT_CATALOG
- * @param {unknown} data - payload matching the catalog's documented shape
- */
-export function emitEvent(event, data) {
-  if (process.env.NODE_ENV !== 'production' && !EVENT_CATALOG[event]) {
-    console.warn(`[EventBus] Unknown event: "${event}" — register it in EVENT_CATALOG (src/utils/events.js)`);
-  }
-  bus.emit(event, data);
-}
-
-/**
  * Register an array of [event, handler] pairs on the bus.
  * Returns the array for later cleanup with unsubscribeBus().
  */
