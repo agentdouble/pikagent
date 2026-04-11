@@ -3,9 +3,6 @@ import { getComponent } from '../utils/component-registry.js';
 import {
   reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-manager-helpers.js';
-import { isTabVisible } from '../utils/tab-color-filter.js';
-import { inlineRenameTab } from '../utils/tab-renderer.js';
-import { renderTabBar as doRenderTabBar } from '../utils/tab-bar-renderer.js';
 import { initTabManager, setupBusListeners } from '../utils/tab-manager-init.js';
 import {
   renderActivityBar, detachSidebarView, changeSidebarMode,
@@ -13,16 +10,16 @@ import {
 } from '../utils/sidebar-manager.js';
 import {
   renderWorkspace as doRenderWorkspace, reattachLayout,
-} from '../utils/workspace-layout.js';
-import { capturePanelWidths } from '../utils/workspace-resize.js';
-import { disposeAllTabs } from '../utils/workspace-cleanup.js';
-import {
+  capturePanelWidths, disposeAllTabs,
   serialize as doSerialize, restoreConfig as doRestoreConfig,
-} from '../utils/workspace-serializer.js';
+} from '../utils/workspace-facade.js';
 import {
+  inlineRenameTab,
+  renderTabBar as doRenderTabBar,
+  isTabVisible,
   createTab as doCreateTab, closeTab as doCloseTab,
   switchTo as doSwitchTo,
-} from '../utils/tab-lifecycle.js';
+} from '../utils/tab-facade.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
