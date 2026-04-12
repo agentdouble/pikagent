@@ -103,7 +103,6 @@ module.exports = {
   rename: renameEntry,
   homedir: getHomedir,
   unwatch: unwatchDir,
-  // Original names (used internally and by ipc-handlers.js custom handlers)
-  readDirectory, readFile, writeFile, makeDir, copyFileTo,
-  getHomedir, watchDir, unwatchDir, cleanup,
+  // Used directly by ipc-handlers.js (custom fs:watch handler) and manager-init.js (cleanup)
+  watchDir, cleanup,
 };
