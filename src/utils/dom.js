@@ -149,6 +149,51 @@ export function setupKeyboardShortcuts(el, { onEnter, onEscape } = {}) {
   return () => el.removeEventListener('keydown', handler);
 }
 
+/**
+ * Start an inline rename workflow: create an <input>, swap it into the DOM,
+ * focus it, optionally select a range, and wire up commit / cancel via
+ * `setupInlineInput`.
+ *
+ * Covers three common placement strategies through `opts.mode`:
+ *   - 'replace'         — `targetEl.replaceWith(input)` (default)
+ *   - 'replaceChild'    — `targetEl.parentNode.replaceChild(input, targetEl)`
+ *   - 'hideAndAppend'   — hides `targetEl`, appends input to its parent
+ *
+ * @param {HTMLElement} targetEl — the element being renamed (e.g. a <span>)
+ * @param {{ className: string,
+ *           value: string,
+ *           onCommit: (newValue: string) => void,
+ *           onCancel?: () => void,
+ *           selectRange?: [number, number],
+ *           selectAll?: boolean,
+ *           blurDelay?: number,
+ *           mode?: 'replace'|'replaceChild'|'hideAndAppend' }} opts
+ * @returns {HTMLInputElement}
+ */
+export function startInlineRename(targetEl, { className, value, onCommit, onCancel, selectRange, selectAll = true, blurDelay, mode = 'replace' }) {
+  const input = _el('input', { className, value });
+
+  if (mode === 'hideAndAppend') {
+    targetEl.style.display = 'none';
+    targetEl.parentElement.appendChild(input);
+  } else if (mode === 'replaceChild') {
+    targetEl.parentNode.replaceChild(input, targetEl);
+  } else {
+    targetEl.replaceWith(input);
+  }
+
+  input.focus();
+  if (selectRange) {
+    input.setSelectionRange(selectRange[0], selectRange[1]);
+  } else if (selectAll) {
+    input.select();
+  }
+
+  setupInlineInput(input, { onCommit, onCancel, blurDelay });
+
+  return input;
+}
+
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
   try { fitAddon.fit(); } catch {}
