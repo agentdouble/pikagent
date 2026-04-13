@@ -147,7 +147,7 @@ function _getDropIndex(container, clientY) {
  * Remove all drag state indicators from the document.
  */
 export function cleanupAllDragState() {
-  for (const el of document.querySelectorAll('.flow-drop-indicator')) el.remove();
+  _clearDropIndicators(document);
   for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
     el.classList.remove('flow-drop-zone-active');
   }
