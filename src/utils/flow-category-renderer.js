@@ -85,11 +85,11 @@ function _setupCategoryDropZone(items, catId, onDropFlow, dragState) {
     onDragLeave: (e) => {
       if (!items.contains(e.relatedTarget)) {
         items.classList.remove('flow-drop-zone-active');
-        _clearDropIndicators(items);
+        clearIndicators(items, '.flow-drop-indicator');
       }
     },
     onDrop: (e) => {
-      _clearDropIndicators(items);
+      clearIndicators(items, '.flow-drop-indicator');
 
       const dragFlowId = dragState.getDragFlowId();
       if (!dragFlowId) return;
@@ -104,7 +104,7 @@ function _setupCategoryDropZone(items, catId, onDropFlow, dragState) {
 // --- Drop indicator helpers ---
 
 function _updateDropIndicator(container, clientY) {
-  _clearDropIndicators(container);
+  clearIndicators(container, '.flow-drop-indicator');
 
   const cards = [...container.querySelectorAll(':scope > .flow-card')];
   if (cards.length === 0) return;
@@ -127,8 +127,12 @@ function _updateDropIndicator(container, clientY) {
   }
 }
 
-function _clearDropIndicators(container) {
-  for (const el of container.querySelectorAll('.flow-drop-indicator')) {
+/**
+ * Remove all elements matching `selector` from `container`.
+ * Shared by _updateDropIndicator / _setupCategoryDropZone / cleanupAllDragState.
+ */
+function clearIndicators(container, selector) {
+  for (const el of container.querySelectorAll(selector)) {
     el.remove();
   }
 }
@@ -147,7 +151,7 @@ function _getDropIndex(container, clientY) {
  * Remove all drag state indicators from the document.
  */
 export function cleanupAllDragState() {
-  _clearDropIndicators(document);
+  clearIndicators(document, '.flow-drop-indicator');
   for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
     el.classList.remove('flow-drop-zone-active');
   }
