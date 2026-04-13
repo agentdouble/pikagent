@@ -43,6 +43,10 @@ function addTokens(target, source) {
   for (const k of TOKEN_KEYS) target[k] += source[k] || 0;
 }
 
+function addPerDay(target, source) {
+  for (const k of PERDAY_KEYS) target[k] += source[k] || 0;
+}
+
 /** @internal */
 function parseLogTimestamp(logTs) {
   const parts = logTs.split('T');
@@ -96,9 +100,7 @@ function aggregateTokenData(labels, projectResults) {
     perDayEntries,
     ({ dateKey }) => dateKey,
     () => newPerDayTotals(),
-    (bucket, { dayData }) => {
-      for (const k of PERDAY_KEYS) bucket[k] += dayData[k];
-    },
+    (bucket, { dayData }) => addPerDay(bucket, dayData),
   );
 
   // Accumulate overall totals across all projects
@@ -111,7 +113,7 @@ function aggregateTokenData(labels, projectResults) {
     ({ proj }) => projectShortName(proj),
     () => ({ ...Object.fromEntries(PERDAY_KEYS.map(k => [k, 0])), total: 0 }),
     (bucket, { totals: pt }) => {
-      for (const k of PERDAY_KEYS) bucket[k] += pt[k];
+      addPerDay(bucket, pt);
       bucket.total += PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
     },
   );
@@ -215,7 +217,7 @@ function buildAgentMetrics(sessions, activeSessions) {
 function accumulatePerDay(perDayMap, usage) {
   if (!usage.dateKey) return;
   if (!perDayMap[usage.dateKey]) perDayMap[usage.dateKey] = newPerDayTotals();
-  for (const k of PERDAY_KEYS) perDayMap[usage.dateKey][k] += usage[k];
+  addPerDay(perDayMap[usage.dateKey], usage);
 }
 
 /** @internal */

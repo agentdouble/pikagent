@@ -4,7 +4,7 @@
  */
 
 import { _el } from './dom.js';
-import { getLastRun } from './flow-view-helpers.js';
+import { getLastRun, toggleInSet } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-category-renderer.js';
 import { createCardHeader } from './flow-card-renderer.js';
 
@@ -73,8 +73,7 @@ export function buildCardBody(flow, isRunning, isExpanded, termManager, runningM
 export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
   headerRow.addEventListener('click', () => {
     if (isRunning) {
-      if (expandedCards.has(flow.id)) expandedCards.delete(flow.id);
-      else expandedCards.add(flow.id);
+      toggleInSet(expandedCards, flow.id);
       onRenderList();
       return;
     }
@@ -82,11 +81,8 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
       onOpenModal(flow);
       return;
     }
-    if (expandedCards.has(flow.id)) {
-      expandedCards.delete(flow.id);
+    if (!toggleInSet(expandedCards, flow.id)) {
       termManager.disposeLogTerminal(flow.id);
-    } else {
-      expandedCards.add(flow.id);
     }
     onRenderList();
   });
@@ -129,8 +125,7 @@ export function createFlowCard(deps, flow, catId) {
 
   const headerRow = createCardHeader(flow, isRunning, isExpanded, {
     onToggleOutput: (flowId) => {
-      if (deps.expandedCards.has(flowId)) deps.expandedCards.delete(flowId);
-      else deps.expandedCards.add(flowId);
+      toggleInSet(deps.expandedCards, flowId);
       deps.onRenderList();
     },
     onShowLog: (f, run) => deps.onShowLog(f, run),

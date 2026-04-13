@@ -6,6 +6,18 @@
 import { formatDateTime } from './date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
 
+/**
+ * Toggle a value in a Set (add if absent, delete if present).
+ * @param {Set} set
+ * @param {*} value
+ * @returns {boolean} true if the value is now in the set
+ */
+export function toggleInSet(set, value) {
+  if (set.has(value)) { set.delete(value); return false; }
+  set.add(value);
+  return true;
+}
+
 export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 50000;
 export const LIVE_SCROLLBACK = 10000;
