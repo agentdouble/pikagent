@@ -50,7 +50,6 @@ const API_SCHEMA = {
   },
   git: {
     branch:       { type: 'fwd' },
-    remote:       { type: 'fwd' },
     localChanges: { type: 'fwd' },
     fileDiff:     { type: 'pack', keys: ['cwd', 'filePath', 'isStaged'] },
   },

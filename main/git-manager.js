@@ -31,10 +31,6 @@ async function getBranch(cwd) {
   return runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
 }
 
-async function getRemoteUrl(cwd) {
-  return runGit(cwd, ['config', '--get', 'remote.origin.url']);
-}
-
 async function getLocalChanges(cwd) {
   return trySafe(
     async () => {
@@ -64,7 +60,6 @@ async function getFileDiff(cwd, filePath, isStaged) {
 module.exports = {
   // Method aliases matching channel suffixes (git:branch → branch, etc.)
   branch: getBranch,
-  remote: getRemoteUrl,
   localChanges: getLocalChanges,
   fileDiff: getFileDiff,
 };
