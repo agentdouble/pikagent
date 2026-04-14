@@ -111,7 +111,7 @@ function aggregateTokenData(labels, projectResults) {
   const perProjectAgg = aggregateByKey(
     projectResults.filter(({ totals: pt }) => PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0) > 0),
     ({ proj }) => projectShortName(proj),
-    () => ({ ...Object.fromEntries(PERDAY_KEYS.map(k => [k, 0])), total: 0 }),
+    () => ({ ...newPerDayTotals(), total: 0 }),
     (bucket, { totals: pt }) => {
       addPerDay(bucket, pt);
       bucket.total += PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
