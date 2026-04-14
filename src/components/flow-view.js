@@ -1,4 +1,4 @@
-import { _el, showPromptDialog, setupInlineInput, renderButtonBar } from '../utils/dom.js';
+import { _el, showPromptDialog, startInlineRename, renderButtonBar } from '../utils/dom.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import {
@@ -216,22 +216,15 @@ export class FlowView {
     const cat = this.catData.categories.find(c => c.id === catId);
     if (!cat) return;
 
-    const input = _el('input', {
-      className: 'flow-category-name-input',
-      value: cat.name,
-    });
-
-    nameEl.parentNode.replaceChild(input, nameEl);
-    input.focus();
-    input.select();
-
     const finish = async (newName) => {
       if (newName && newName !== cat.name) cat.name = newName;
       await this._persistCategories();
       this._renderList();
     };
 
-    setupInlineInput(input, {
+    startInlineRename(nameEl, {
+      className: 'flow-category-name-input',
+      value: cat.name,
       onCommit: finish,
       onCancel: () => finish(null),
     });

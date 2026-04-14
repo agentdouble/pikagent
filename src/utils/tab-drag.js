@@ -9,6 +9,7 @@
  */
 
 import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
+import { setDragBodyState, clearDragBodyState } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
@@ -133,8 +134,7 @@ function initDragState() {
  */
 function handleDragStart(tabEl) {
   tabEl.classList.add('tab-dragging');
-  document.body.style.cursor = 'grabbing';
-  document.body.style.userSelect = 'none';
+  setDragBodyState('grabbing');
 
   // Create floating ghost clone
   const ghost = tabEl.cloneNode(true);
@@ -161,8 +161,7 @@ function handleDragStart(tabEl) {
  */
 function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId) {
   tabEl.classList.remove('tab-dragging');
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
+  clearDragBodyState();
   if (ghost) { ghost.remove(); }
   clearTabShifts(getTabElements);
 
