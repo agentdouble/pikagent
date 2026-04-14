@@ -7,7 +7,7 @@
  *
  * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
  */
-import { _el, setupInlineInput } from './dom.js';
+import { _el, startInlineRename } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
 import { setupTabDrag } from './tab-drag.js';
 import { attachContextMenu } from './context-menu.js';
@@ -151,12 +151,9 @@ export function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
  * @param {() => void} onCancel - callback on cancel (re-render only, no save)
  */
 export function inlineRenameTab(tab, nameEl, onCommit, onCancel) {
-  const input = _el('input', { className: 'tab-rename-input', value: tab.name });
-  nameEl.replaceWith(input);
-  input.focus();
-  input.select();
-
-  setupInlineInput(input, {
+  startInlineRename(nameEl, {
+    className: 'tab-rename-input',
+    value: tab.name,
     onCommit: (newName) => {
       tab.name = newName || tab.name;
       onCommit();

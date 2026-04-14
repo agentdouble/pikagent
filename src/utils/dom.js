@@ -149,6 +149,46 @@ export function setupKeyboardShortcuts(el, { onEnter, onEscape } = {}) {
   return () => el.removeEventListener('keydown', handler);
 }
 
+/**
+ * Start an inline rename workflow: create an input, replace the target element,
+ * focus + select, and wire up commit/cancel via setupInlineInput.
+ *
+ * @param {HTMLElement} targetEl - element to replace with the input
+ * @param {{ className: string, value: string, selectRange?: [number, number],
+ *           blurDelay?: number,
+ *           replaceFn?: (targetEl: HTMLElement, input: HTMLInputElement) => void,
+ *           restoreFn?: (targetEl: HTMLElement, input: HTMLInputElement) => void,
+ *           onCommit: (value: string) => void,
+ *           onCancel?: () => void }} opts
+ * @returns {HTMLInputElement}
+ */
+export function startInlineRename(targetEl, { className, value, selectRange, blurDelay, replaceFn, restoreFn, onCommit, onCancel }) {
+  const input = _el('input', { className, value });
+
+  if (replaceFn) {
+    replaceFn(targetEl, input);
+  } else {
+    targetEl.replaceWith(input);
+  }
+
+  input.focus();
+  if (selectRange) {
+    input.setSelectionRange(selectRange[0], selectRange[1]);
+  } else {
+    input.select();
+  }
+
+  const restore = restoreFn ? () => restoreFn(targetEl, input) : undefined;
+
+  setupInlineInput(input, {
+    blurDelay,
+    onCommit: (val) => { if (restore) restore(); onCommit(val); },
+    onCancel: () => { if (restore) restore(); if (onCancel) onCancel(); },
+  });
+
+  return input;
+}
+
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
   try { fitAddon.fit(); } catch {}
