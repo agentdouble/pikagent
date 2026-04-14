@@ -2,6 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from './terminal-themes.js';
 import { _safeFit } from './dom.js';
+import { disposeResources } from './disposable.js';
 
 const BASE_FONT_FAMILY =
   '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace';
@@ -38,9 +39,11 @@ export function createTerminal(container, opts = {}) {
  * Dispose a terminal entry: unsub data listener, disconnect observer, dispose terminal.
  */
 export function disposeTerminal(data) {
-  if (data.unsubData) data.unsubData();
-  if (data.resizeObs) data.resizeObs.disconnect();
-  data.term.dispose();
+  disposeResources([
+    { ref: data, key: 'unsubData',  action: 'call' },
+    { ref: data, key: 'resizeObs',  action: 'disconnect' },
+    { ref: data, key: 'term',       action: 'dispose' },
+  ]);
 }
 
 /**

@@ -8,6 +8,7 @@
  */
 
 import { TAB_DISPOSABLES } from './tab-manager-helpers.js';
+import { disposeResources } from './disposable.js';
 
 // ── Tab disposal ──
 
@@ -17,8 +18,10 @@ import { TAB_DISPOSABLES } from './tab-manager-helpers.js';
  * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
  */
 export function disposeTab(tab) {
-  for (const key of TAB_DISPOSABLES) if (tab[key]) tab[key].dispose();
-  if (tab.layoutElement) tab.layoutElement.remove();
+  disposeResources([
+    ...TAB_DISPOSABLES.map((key) => ({ ref: tab, key, action: 'dispose' })),
+    { ref: tab, key: 'layoutElement', action: 'remove' },
+  ]);
 }
 
 /**
