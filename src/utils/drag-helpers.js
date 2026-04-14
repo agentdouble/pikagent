@@ -42,3 +42,26 @@ export function trackMouse(cursor, onMove, onDone) {
   document.addEventListener('mousemove', move);
   document.addEventListener('mouseup', up);
 }
+
+/**
+ * Compute the insertion index for a drag-and-drop operation by comparing
+ * the cursor position to the midpoints of the container's child elements.
+ *
+ * Works on both axes: pass `'y'` for vertical lists, `'x'` for horizontal ones.
+ *
+ * @param {HTMLElement[]} elements  — ordered array of child elements to test against
+ * @param {number} cursorPos       — clientX or clientY depending on axis
+ * @param {'x'|'y'} [axis='y']    — axis to measure
+ * @returns {number} index where the item should be inserted, or -1 to append at end
+ */
+export function computeInsertionIndex(elements, cursorPos, axis = 'y') {
+  const start = axis === 'x' ? 'left' : 'top';
+  const size  = axis === 'x' ? 'width' : 'height';
+
+  for (let i = 0; i < elements.length; i++) {
+    const rect = elements[i].getBoundingClientRect();
+    const mid = rect[start] + rect[size] / 2;
+    if (cursorPos < mid) return i;
+  }
+  return -1; // append at end
+}

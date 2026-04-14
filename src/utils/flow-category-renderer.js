@@ -5,6 +5,7 @@
  */
 import { _el, renderButtonBar, buildChevronRow, setupDropZone } from './dom.js';
 import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
+import { computeInsertionIndex } from './drag-helpers.js';
 
 /**
  * Create a category group DOM element with header and flow items.
@@ -109,15 +110,8 @@ function _updateDropIndicator(container, clientY) {
   const cards = [...container.querySelectorAll(':scope > .flow-card')];
   if (cards.length === 0) return;
 
-  let insertBefore = null;
-  for (const card of cards) {
-    const rect = card.getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
-    if (clientY < midY) {
-      insertBefore = card;
-      break;
-    }
-  }
+  const idx = computeInsertionIndex(cards, clientY, 'y');
+  const insertBefore = idx === -1 ? null : cards[idx];
 
   const indicator = _el('div', 'flow-drop-indicator flow-drop-active');
   if (insertBefore) {
@@ -139,12 +133,7 @@ function clearIndicators(container, selector) {
 
 function _getDropIndex(container, clientY) {
   const cards = [...container.querySelectorAll(':scope > .flow-card')];
-  for (let i = 0; i < cards.length; i++) {
-    const rect = cards[i].getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
-    if (clientY < midY) return i;
-  }
-  return -1; // append at end
+  return computeInsertionIndex(cards, clientY, 'y');
 }
 
 /**
