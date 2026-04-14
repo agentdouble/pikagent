@@ -4,6 +4,7 @@ import { bus, EVENTS } from './events.js';
 import { FilePathLinkProvider } from './file-link-provider.js';
 import { createTerminal } from './terminal-factory.js';
 import { CWD_POLL_MS } from './terminal-panel-helpers.js';
+import { disposeResources } from './disposable.js';
 
 /**
  * Wraps a single xterm instance with PTY integration, cwd polling, and lifecycle management.
@@ -114,13 +115,12 @@ export class TerminalInstance {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    if (this.cwdPollTimer) {
-      clearInterval(this.cwdPollTimer);
-      this.cwdPollTimer = null;
-    }
-    this.resizeObserver.disconnect();
-    if (this.unsubData) { this.unsubData(); this.unsubData = null; }
-    if (this.unsubExit) { this.unsubExit(); this.unsubExit = null; }
+    disposeResources([
+      { ref: this, key: 'cwdPollTimer',    action: 'clearInterval' },
+      { ref: this, key: 'resizeObserver',   action: 'disconnect' },
+      { ref: this, key: 'unsubData',        action: 'call' },
+      { ref: this, key: 'unsubExit',        action: 'call' },
+    ]);
     this._api.ptyKill({ id: this.id });
     this.terminal.dispose();
   }
