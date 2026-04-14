@@ -4,7 +4,7 @@
  */
 
 import { bus, EVENTS } from './events.js';
-import { _el, startInlineRename, setupDropZone as _setupDropZone } from './dom.js';
+import { _el, setupInlineInput, startInlineRename, setupDropZone as _setupDropZone } from './dom.js';
 import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
 
 /**

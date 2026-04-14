@@ -22,8 +22,9 @@ export function clearDragBodyState() {
  * @param {string} cursor - CSS cursor value during the drag (e.g. 'grabbing', 'col-resize')
  * @param {(e: MouseEvent) => void} onMove - called on each mousemove (RAF-throttled)
  * @param {() => void} onDone - called after cleanup on mouseup
+ * @param {{ bodyClass?: string }} [opts] - optional overrides (bodyClass defaults to 'resizing')
  */
-export function trackMouse(cursor, onMove, onDone) {
+export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = {}) {
   let rafPending = false;
   const move = (e) => {
     if (rafPending) return;
@@ -34,11 +35,11 @@ export function trackMouse(cursor, onMove, onDone) {
     document.removeEventListener('mousemove', move);
     document.removeEventListener('mouseup', up);
     clearDragBodyState();
-    document.body.classList.remove('resizing');
+    if (bodyClass) document.body.classList.remove(bodyClass);
     onDone();
   };
   setDragBodyState(cursor);
-  document.body.classList.add('resizing');
+  if (bodyClass) document.body.classList.add(bodyClass);
   document.addEventListener('mousemove', move);
   document.addEventListener('mouseup', up);
 }
