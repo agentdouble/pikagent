@@ -267,6 +267,3 @@ export function setupDropZone(el, { hoverClass = 'drag-over', onDrop, onDragOver
     onDrop(e);
   });
 }
-
-// Dialog helpers extracted to dom-dialogs.js — re-exported for backward compat.
-export { createCustomModal, showPromptDialog, showConfirmDialog } from './dom-dialogs.js';

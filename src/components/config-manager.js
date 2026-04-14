@@ -1,5 +1,5 @@
 import { contextMenu } from '../utils/context-menu.js';
-import { showPromptDialog } from '../utils/dom.js';
+import { showPromptDialog } from '../utils/dom-dialogs.js';
 import {
   AUTO_SAVE_DELAY,
   MENU_OFFSET,
