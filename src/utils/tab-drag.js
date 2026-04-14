@@ -9,7 +9,7 @@
  */
 
 import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
-import { setDragBodyState, clearDragBodyState } from './drag-helpers.js';
+import { setDragBodyState, clearDragBodyState, computeInsertionIndex } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
@@ -35,36 +35,25 @@ function clearTabShifts(getTabElements) {
  * @returns {{ dropTargetId: string|null, dropBefore: boolean, insertIdx: number }}
  */
 function computeDropPosition(getTabElements, mx, orderedIds, dragId) {
-  let dropTargetId = null;
-  let dropBefore = true;
-  let insertIdx = -1;
+  // Build the list of non-dragged tab elements in order
+  const candidates = orderedIds.filter((id) => id !== dragId);
+  const elements = candidates.map((id) => getTabElements().get(id));
 
-  for (let i = 0; i < orderedIds.length; i++) {
-    const id = orderedIds[i];
-    if (id === dragId) continue;
-    const el = getTabElements().get(id);
-    const rect = el.getBoundingClientRect();
-    const midX = rect.left + rect.width / 2;
+  const rawIdx = computeInsertionIndex(elements, mx, 'x');
 
-    if (mx < midX) {
-      dropTargetId = id;
-      dropBefore = true;
-      insertIdx = i;
-      break;
-    }
+  if (rawIdx !== -1) {
+    // Map back from candidate-space index to orderedIds-space index
+    const dropTargetId = candidates[rawIdx];
+    const insertIdx = orderedIds.indexOf(dropTargetId);
+    return { dropTargetId, dropBefore: true, insertIdx };
   }
 
-  // If no target found, insert after last
-  if (insertIdx === -1) {
-    const lastId = orderedIds.filter((id) => id !== dragId).pop();
-    if (lastId) {
-      dropTargetId = lastId;
-      dropBefore = false;
-      insertIdx = orderedIds.length;
-    }
+  // No target found → insert after last
+  const lastId = candidates[candidates.length - 1] ?? null;
+  if (lastId) {
+    return { dropTargetId: lastId, dropBefore: false, insertIdx: orderedIds.length };
   }
-
-  return { dropTargetId, dropBefore, insertIdx };
+  return { dropTargetId: null, dropBefore: true, insertIdx: -1 };
 }
 
 /**
