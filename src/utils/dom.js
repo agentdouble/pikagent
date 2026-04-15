@@ -163,10 +163,3 @@ export function positionInViewport(x, y, width, height, padding = 8) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Re-exports for backward compatibility — prefer importing from the dedicated
-// modules directly: form-helpers.js, drop-zone-helpers.js, keyboard-helpers.js
-// ---------------------------------------------------------------------------
-export { setupKeyboardShortcuts } from './keyboard-helpers.js';
-export { setupInlineInput, startInlineRename } from './form-helpers.js';
-export { setupDropZone } from './drop-zone-helpers.js';
