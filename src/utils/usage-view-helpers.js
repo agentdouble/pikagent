@@ -43,7 +43,7 @@ function _td(text, attrs = {}) {
  * @param {Array<Node | { value: string|number, className?: string, style?: object, title?: string }>} columns
  * @returns {HTMLTableRowElement}
  */
-function buildTableRow(columns) {
+export function buildTableRow(columns) {
   const cells = columns.map((col) => {
     if (col instanceof Node) return col;
     const attrs = {};
