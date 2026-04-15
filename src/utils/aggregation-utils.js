@@ -1,9 +1,8 @@
 /**
  * Aggregation utilities for the renderer process.
  * Delegates to shared/aggregation-utils.js to avoid duplicating logic.
- * esbuild resolves the CommonJS require for the renderer bundle.
  */
 
-const { aggregateByKey, groupAndAggregate, countBy } = require('../../shared/aggregation-utils');
+import { aggregateByKey, groupAndAggregate, countBy } from '../../shared/aggregation-utils.js';
 
 export { aggregateByKey, groupAndAggregate, countBy };
