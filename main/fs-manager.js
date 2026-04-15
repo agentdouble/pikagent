@@ -2,7 +2,7 @@ const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
-const { MAX_FILE_SIZE, createSafeHandler, doCopy, dirFirstCompare } = require('./fs-manager-helpers');
+const { MAX_FILE_SIZE, wrapSafe, doCopy, dirFirstCompare } = require('./fs-manager-helpers');
 
 // ---------------------------------------------------------------------------
 // File Watcher
@@ -51,34 +51,34 @@ async function readDirectory(dirPath) {
   }
 }
 
-const readFile = createSafeHandler(async (filePath) => {
+const readFile = wrapSafe(async (filePath) => {
   const stat = await fsp.stat(filePath);
   if (stat.size > MAX_FILE_SIZE) return { error: 'File too large (>2MB)' };
   const content = await fsp.readFile(filePath, 'utf-8');
   return { content, size: stat.size };
 });
 
-const writeFile = createSafeHandler(async (filePath, content) => {
+const writeFile = wrapSafe(async (filePath, content) => {
   await fsp.writeFile(filePath, content, 'utf-8');
   return { success: true };
 });
 
-const makeDir = createSafeHandler(async (dirPath) => {
+const makeDir = wrapSafe(async (dirPath) => {
   await fsp.mkdir(dirPath, { recursive: true });
   return { success: true };
 });
 
-const copyEntry = createSafeHandler(async (srcPath) => {
+const copyEntry = wrapSafe(async (srcPath) => {
   const destPath = await doCopy(srcPath, path.dirname(srcPath), true);
   return { success: true, destPath };
 });
 
-const copyFileTo = createSafeHandler(async (srcPath, destDir) => {
+const copyFileTo = wrapSafe(async (srcPath, destDir) => {
   const destPath = await doCopy(srcPath, destDir, false);
   return { success: true, destPath };
 });
 
-const renameEntry = createSafeHandler(async (oldPath, newName) => {
+const renameEntry = wrapSafe(async (oldPath, newName) => {
   const newPath = path.join(path.dirname(oldPath), newName);
   await fsp.rename(oldPath, newPath);
   return { success: true, newPath };

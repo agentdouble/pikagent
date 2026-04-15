@@ -7,13 +7,16 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 /**
  * Factory that wraps an async function with error handling.
- * On success returns the result of fn directly.
+ * On success returns the result of fn directly (passthrough — no envelope).
  * On failure returns { error: err.message }.
+ *
+ * Distinct from `createSafeHandler` in safe-handler.js, which wraps results
+ * in a { success, data } envelope for IPC.
  *
  * @param {(...args: unknown[]) => Promise<unknown>} fn - async function to wrap
  * @returns {(...args: unknown[]) => Promise<unknown>} wrapped function with same signature
  */
-function createSafeHandler(fn) {
+function wrapSafe(fn) {
   return function (...args) {
     return runSafe(() => fn(...args), (err) => ({ error: err.message }));
   };
@@ -64,4 +67,4 @@ function dirFirstCompare(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-module.exports = { MAX_FILE_SIZE, createSafeHandler, doCopy, dirFirstCompare };
+module.exports = { MAX_FILE_SIZE, wrapSafe, doCopy, dirFirstCompare };

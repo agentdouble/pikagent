@@ -36,7 +36,7 @@ function createSafeHandler(asyncFn) {
   return async (...args) => {
     try {
       const result = await asyncFn(...args);
-      return { success: true, data: result };
+      return result === undefined ? { success: true } : { success: true, data: result };
     } catch (err) {
       return { error: err.message };
     }
