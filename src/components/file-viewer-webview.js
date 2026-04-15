@@ -3,6 +3,7 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 import { _el } from '../utils/dom.js';
+import { onClickStopped } from '../utils/event-helpers.js';
 import { setupInlineInput } from '../utils/form-helpers.js';
 import { generateId } from '../utils/id.js';
 import { bus, EVENTS } from '../utils/events.js';
@@ -85,8 +86,7 @@ export class WebviewManager {
     const btn = _el('button', `mode-btn mode-btn-webview${currentMode === wt.id ? ' active' : ''}`);
     btn.appendChild(_el('span', null, wt.label));
     const closeBtn = _el('span', 'mode-btn-close', { textContent: '\u00d7' });
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    onClickStopped(closeBtn, () => {
       const removedId = this.removeWebview(wt.id);
       if (currentMode === removedId) this._switchMode('files');
       else this._renderModeBar();
