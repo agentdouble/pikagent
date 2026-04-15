@@ -1,5 +1,6 @@
 const { ipcMain } = require('electron');
 const { registerManagerHandlers, safeSend } = require('./ipc-helpers');
+const { createSafeHandler } = require('./safe-handler');
 
 /**
  * Register all IPC handlers.
@@ -41,14 +42,9 @@ function register(getWindow, { targets, ptyManager, sessionManager }) {
   });
 
   // FS: trash needs Electron shell
-  ipcMain.handle('fs:trash', async (_, filePath) => {
-    try {
-      await shell.trashItem(filePath);
-      return { success: true };
-    } catch (err) {
-      return { error: err.message };
-    }
-  });
+  ipcMain.handle('fs:trash', createSafeHandler(async (_, filePath) => {
+    await shell.trashItem(filePath);
+  }));
 
   // Dialog: needs window reference
   ipcMain.handle('dialog:openFolder', async () => {

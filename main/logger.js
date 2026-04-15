@@ -1,3 +1,5 @@
+const { runSafe } = require('./safe-handler');
+
 /**
  * Lightweight logger factory for main-process modules.
  * Standardises log format: [module] message
@@ -36,12 +38,10 @@ function createLogger(module) {
  * @returns {Promise<unknown>}
  */
 async function trySafe(fn, defaultValue, { log, label } = {}) {
-  try {
-    return await fn();
-  } catch (err) {
+  return runSafe(fn, (err) => {
     if (log && label) log.warn(`${label} failed`, err);
     return defaultValue;
-  }
+  });
 }
 
 module.exports = { createLogger, trySafe };
