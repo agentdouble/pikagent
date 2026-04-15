@@ -5,7 +5,8 @@
  * createModalOverlay, setupKeyboardShortcuts).
  */
 
-import { _el, createActionButton, createModalOverlay, setupKeyboardShortcuts } from './dom.js';
+import { _el, createActionButton, createModalOverlay } from './dom.js';
+import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 
 // ── Private dialog lifecycle ──
 

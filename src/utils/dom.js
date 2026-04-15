@@ -1,7 +1,16 @@
-import { onKeyAction } from './event-helpers.js';
-
 /**
- * Lightweight DOM element factory.
+ * Core DOM utilities.
+ *
+ * This module keeps only the essential DOM factories:
+ *   _el, createActionButton, renderButtonBar, buildChevronRow, createModalOverlay
+ *
+ * The following helpers have been extracted to dedicated modules:
+ *   - setupInlineInput, startInlineRename  → ./form-helpers.js
+ *   - setupDropZone                        → ./drop-zone-helpers.js
+ *   - setupKeyboardShortcuts               → ./keyboard-helpers.js
+ *
+ * Re-exports of the extracted helpers are kept here temporarily for
+ * backward compatibility while importers are migrated.
  *
  * Supports two calling conventions:
  *   _el('div', { className: 'c', textContent: 't', onClick: fn }, child…)  — object attrs
@@ -30,36 +39,6 @@ export function _el(tag, attrsOrClass, ...children) {
     else if (child) el.appendChild(child);
   }
   return el;
-}
-
-/**
- * Wire up Enter / Escape / blur / click on an inline <input>.
- * Guarantees onCommit fires at most once.
- * @param {HTMLInputElement} input
- * @param {{ onCommit: (value: string) => void, onCancel?: () => void, blurDelay?: number }} opts
- */
-export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
-  let committed = false;
-  const commit = () => {
-    if (committed) return;
-    committed = true;
-    onCommit(input.value.trim());
-  };
-  const cancel = () => {
-    committed = true;
-    if (onCancel) onCancel();
-    else input.remove();
-  };
-
-  setupKeyboardShortcuts(input, {
-    onEnter: (e) => { e.preventDefault(); e.stopPropagation(); commit(); },
-    onEscape: (e) => { e.stopPropagation(); cancel(); },
-  });
-  input.addEventListener('blur', () => {
-    if (blurDelay > 0) setTimeout(() => { if (!committed) commit(); }, blurDelay);
-    else if (!committed) commit();
-  });
-  input.addEventListener('click', (e) => e.stopPropagation());
 }
 
 /**
@@ -136,97 +115,6 @@ export function createSelect({ options, value, className, onChange } = {}) {
   return select;
 }
 
-/**
- * Wire up Enter / Escape keyboard shortcuts on an element.
- * Delegates to onKeyAction from event-helpers.
- * @param {HTMLElement} el
- * @param {{ onEnter?: (e: KeyboardEvent) => void, onEscape?: (e: KeyboardEvent) => void }} handlers
- * @returns {() => void} cleanup — removes the listener
- */
-export function setupKeyboardShortcuts(el, { onEnter, onEscape } = {}) {
-  return onKeyAction(el, { onEnter, onEscape });
-}
-
-/**
- * Start an inline rename workflow: create an input, replace the target element,
- * focus + select, and wire up commit/cancel via setupInlineInput.
- *
- * @param {HTMLElement} targetEl - element to replace with the input
- * @param {{ className: string, value: string, selectRange?: [number, number],
- *           blurDelay?: number,
- *           replaceFn?: (targetEl: HTMLElement, input: HTMLInputElement) => void,
- *           restoreFn?: (targetEl: HTMLElement, input: HTMLInputElement) => void,
- *           onCommit: (value: string) => void,
- *           onCancel?: () => void }} opts
- * @returns {HTMLInputElement}
- */
-export function startInlineRename(targetEl, { className, value, selectRange, blurDelay, replaceFn, restoreFn, onCommit, onCancel }) {
-  const input = _el('input', { className, value });
-
-  if (replaceFn) {
-    replaceFn(targetEl, input);
-  } else {
-    targetEl.replaceWith(input);
-  }
-
-  input.focus();
-  if (selectRange) {
-    input.setSelectionRange(selectRange[0], selectRange[1]);
-  } else {
-    input.select();
-  }
-
-  const restore = restoreFn ? () => restoreFn(targetEl, input) : undefined;
-
-  setupInlineInput(input, {
-    blurDelay,
-    onCommit: (val) => { if (restore) restore(); onCommit(val); },
-    onCancel: () => { if (restore) restore(); if (onCancel) onCancel(); },
-  });
-
-  return input;
-}
-
-/**
- * Start an inline rename workflow: create an input, replace the target element,
- * focus + select, and wire up commit/cancel via setupInlineInput.
- *
- * @param {HTMLElement} targetEl - element to replace with the input
- * @param {{ className: string, value: string, selectRange?: [number, number],
- *           blurDelay?: number,
- *           replaceFn?: (targetEl: HTMLElement, input: HTMLInputElement) => void,
- *           restoreFn?: (targetEl: HTMLElement, input: HTMLInputElement) => void,
- *           onCommit: (value: string) => void,
- *           onCancel?: () => void }} opts
- * @returns {HTMLInputElement}
- */
-export function startInlineRename(targetEl, { className, value, selectRange, blurDelay, replaceFn, restoreFn, onCommit, onCancel }) {
-  const input = _el('input', { className, value });
-
-  if (replaceFn) {
-    replaceFn(targetEl, input);
-  } else {
-    targetEl.replaceWith(input);
-  }
-
-  input.focus();
-  if (selectRange) {
-    input.setSelectionRange(selectRange[0], selectRange[1]);
-  } else {
-    input.select();
-  }
-
-  const restore = restoreFn ? () => restoreFn(targetEl, input) : undefined;
-
-  setupInlineInput(input, {
-    blurDelay,
-    onCommit: (val) => { if (restore) restore(); onCommit(val); },
-    onCancel: () => { if (restore) restore(); if (onCancel) onCancel(); },
-  });
-
-  return input;
-}
-
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
   try { fitAddon.fit(); } catch {}
@@ -275,33 +163,10 @@ export function positionInViewport(x, y, width, height, padding = 8) {
   };
 }
 
-/**
- * Wire up dragover / dragleave / drop on an element.
- *
- * @param {HTMLElement} el
- * @param {{ hoverClass?: string,
- *           onDrop: (e: DragEvent) => void,
- *           onDragOver?: (e: DragEvent) => void,
- *           onDragLeave?: (e: DragEvent) => void,
- *           accept?: (e: DragEvent) => boolean }} opts
- */
-export function setupDropZone(el, { hoverClass = 'drag-over', onDrop, onDragOver, onDragLeave, accept }) {
-  el.addEventListener('dragover', (e) => {
-    if (accept && !accept(e)) return;
-    e.preventDefault();
-    el.classList.add(hoverClass);
-    if (onDragOver) onDragOver(e);
-  });
-  el.addEventListener('dragleave', (e) => {
-    if (onDragLeave) {
-      onDragLeave(e);
-    } else {
-      el.classList.remove(hoverClass);
-    }
-  });
-  el.addEventListener('drop', (e) => {
-    e.preventDefault();
-    el.classList.remove(hoverClass);
-    onDrop(e);
-  });
-}
+// ---------------------------------------------------------------------------
+// Re-exports for backward compatibility — prefer importing from the dedicated
+// modules directly: form-helpers.js, drop-zone-helpers.js, keyboard-helpers.js
+// ---------------------------------------------------------------------------
+export { setupKeyboardShortcuts } from './keyboard-helpers.js';
+export { setupInlineInput, startInlineRename } from './form-helpers.js';
+export { setupDropZone } from './drop-zone-helpers.js';
