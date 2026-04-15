@@ -4,7 +4,7 @@
  */
 
 import { bus, EVENTS } from './events.js';
-import { _el, setupInlineInput, setupDropZone as _setupDropZone } from './dom.js';
+import { _el, setupInlineInput, startInlineRename, setupDropZone as _setupDropZone } from './dom.js';
 import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
 
 /**
@@ -63,25 +63,18 @@ export async function handleFileDrop(files, destDir, { copyTo }) {
  */
 export function promptRename(entryPath, nameEl, { rename }) {
   const oldName = entryPath.split('/').pop();
-  const input = _el('input', { className: 'file-tree-rename-input', type: 'text', value: oldName });
-
-  nameEl.style.display = 'none';
-  nameEl.parentElement.appendChild(input);
-  input.focus();
   const dotIndex = oldName.lastIndexOf('.');
-  input.setSelectionRange(0, dotIndex > 0 ? dotIndex : oldName.length);
 
-  setupInlineInput(input, {
+  startInlineRename(nameEl, {
+    className: 'file-tree-rename-input',
+    value: oldName,
+    selectRange: [0, dotIndex > 0 ? dotIndex : oldName.length],
     blurDelay: INPUT_BLUR_DELAY,
+    replaceFn: (el, input) => { el.style.display = 'none'; el.parentElement.appendChild(input); },
+    restoreFn: (el, input) => { input.remove(); el.style.display = ''; },
     onCommit: async (newName) => {
-      input.remove();
-      nameEl.style.display = '';
       if (!newName || newName === oldName) return;
       await rename(entryPath, newName);
-    },
-    onCancel: () => {
-      input.remove();
-      nameEl.style.display = '';
     },
   });
 }

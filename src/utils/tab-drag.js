@@ -9,6 +9,7 @@
  */
 
 import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
+import { trackMouse, computeInsertionIndex } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
@@ -34,36 +35,25 @@ function clearTabShifts(getTabElements) {
  * @returns {{ dropTargetId: string|null, dropBefore: boolean, insertIdx: number }}
  */
 function computeDropPosition(getTabElements, mx, orderedIds, dragId) {
-  let dropTargetId = null;
-  let dropBefore = true;
-  let insertIdx = -1;
+  // Build the list of non-dragged tab elements in order
+  const candidates = orderedIds.filter((id) => id !== dragId);
+  const elements = candidates.map((id) => getTabElements().get(id));
 
-  for (let i = 0; i < orderedIds.length; i++) {
-    const id = orderedIds[i];
-    if (id === dragId) continue;
-    const el = getTabElements().get(id);
-    const rect = el.getBoundingClientRect();
-    const midX = rect.left + rect.width / 2;
+  const rawIdx = computeInsertionIndex(elements, mx, 'x');
 
-    if (mx < midX) {
-      dropTargetId = id;
-      dropBefore = true;
-      insertIdx = i;
-      break;
-    }
+  if (rawIdx !== -1) {
+    // Map back from candidate-space index to orderedIds-space index
+    const dropTargetId = candidates[rawIdx];
+    const insertIdx = orderedIds.indexOf(dropTargetId);
+    return { dropTargetId, dropBefore: true, insertIdx };
   }
 
-  // If no target found, insert after last
-  if (insertIdx === -1) {
-    const lastId = orderedIds.filter((id) => id !== dragId).pop();
-    if (lastId) {
-      dropTargetId = lastId;
-      dropBefore = false;
-      insertIdx = orderedIds.length;
-    }
+  // No target found → insert after last
+  const lastId = candidates[candidates.length - 1] ?? null;
+  if (lastId) {
+    return { dropTargetId: lastId, dropBefore: false, insertIdx: orderedIds.length };
   }
-
-  return { dropTargetId, dropBefore, insertIdx };
+  return { dropTargetId: null, dropBefore: true, insertIdx: -1 };
 }
 
 /**
@@ -126,15 +116,15 @@ function initDragState() {
 }
 
 /**
- * Apply visual drag-start effects: add CSS class, set cursor, and create
- * a floating ghost clone of the tab element.
+ * Apply visual drag-start effects: add CSS class and create a floating
+ * ghost clone of the tab element.
+ *
+ * Body cursor/userSelect are managed by trackMouse() — not set here.
  *
  * @returns {HTMLElement} the ghost element appended to document.body
  */
 function handleDragStart(tabEl) {
   tabEl.classList.add('tab-dragging');
-  document.body.style.cursor = 'grabbing';
-  document.body.style.userSelect = 'none';
 
   // Create floating ghost clone
   const ghost = tabEl.cloneNode(true);
@@ -153,6 +143,8 @@ function handleDragStart(tabEl) {
  * Clean up after a drag operation: remove visual effects, commit the
  * reorder if the tab was dropped on a valid target, and reset state.
  *
+ * Body cursor/userSelect are cleared by trackMouse() — not here.
+ *
  * @param {TabDragDeps} deps
  * @param {HTMLElement} tabEl
  * @param {HTMLElement|null} ghost
@@ -161,8 +153,6 @@ function handleDragStart(tabEl) {
  */
 function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId) {
   tabEl.classList.remove('tab-dragging');
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
   if (ghost) { ghost.remove(); }
   clearTabShifts(getTabElements);
 
@@ -184,7 +174,6 @@ function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabI
  */
 export function setupTabDrag({ getTabElements, reorderTab }, tabEl, tabId) {
   let startX = 0;
-  let dragging = false;
   let ghost = null;
   let offsetX = 0;
 
@@ -195,30 +184,42 @@ export function setupTabDrag({ getTabElements, reorderTab }, tabEl, tabId) {
     startX = e.clientX;
     const rect = tabEl.getBoundingClientRect();
     offsetX = e.clientX - rect.left;
-    dragging = false;
 
-    const onMouseMove = (ev) => {
-      if (!dragging && Math.abs(ev.clientX - startX) > DRAG_THRESHOLD) {
-        dragging = true;
-        ghost = handleDragStart(tabEl);
-      }
-      if (dragging && ghost) {
-        ghost.style.left = `${ev.clientX - offsetX}px`;
-        updateTabDropTarget(getTabElements, state, ev.clientX, tabId);
-      }
+    // Phase 1: detect threshold before activating drag.
+    // Once the threshold is exceeded we hand off to trackMouse() which
+    // manages cursor/userSelect, RAF-throttled moves, and mouseup cleanup.
+    const onThresholdMove = (ev) => {
+      if (Math.abs(ev.clientX - startX) <= DRAG_THRESHOLD) return;
+
+      // Threshold crossed — remove these preliminary listeners
+      document.removeEventListener('mousemove', onThresholdMove);
+      document.removeEventListener('mouseup', onThresholdUp);
+
+      // Phase 2: real drag via trackMouse()
+      ghost = handleDragStart(tabEl);
+      // Process the first move immediately so the ghost starts in the right position
+      ghost.style.left = `${ev.clientX - offsetX}px`;
+      updateTabDropTarget(getTabElements, state, ev.clientX, tabId);
+
+      trackMouse('grabbing',
+        (mv) => {
+          ghost.style.left = `${mv.clientX - offsetX}px`;
+          updateTabDropTarget(getTabElements, state, mv.clientX, tabId);
+        },
+        () => {
+          handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId);
+          ghost = null;
+        },
+        { bodyClass: 'dragging' },
+      );
     };
 
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-
-      if (dragging) {
-        handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId);
-        ghost = null;
-      }
+    const onThresholdUp = () => {
+      document.removeEventListener('mousemove', onThresholdMove);
+      document.removeEventListener('mouseup', onThresholdUp);
     };
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('mousemove', onThresholdMove);
+    document.addEventListener('mouseup', onThresholdUp);
   });
 }
