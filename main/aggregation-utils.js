@@ -1,49 +1,12 @@
 /**
  * Generic aggregation utilities shared across helper modules.
  * Pure functions — no domain-specific logic.
+ *
+ * aggregateByKey and groupAndAggregate are re-exported from shared/aggregation-utils.js
+ * for cross-process reuse (main + renderer).
  */
 
-/**
- * @internal
- * Accumulate values into a map keyed by `keyFn(item)`.
- * For each item, calls `accFn(bucket, item)` to merge data into the bucket.
- * Creates new buckets via `initFn()` when a key is first seen.
- *
- * @param {Array<unknown>} items
- * @param {(item: unknown) => string|null} keyFn    - extracts grouping key from item
- * @param {() => unknown} initFn                    - creates initial bucket value
- * @param {(bucket: unknown, item: unknown) => void} accFn - mutates bucket with item
- * @returns {Record<string, unknown>} map of key -> accumulated bucket
- */
-function aggregateByKey(items, keyFn, initFn, accFn) {
-  const result = {};
-  for (const item of items) {
-    const key = keyFn(item);
-    if (key == null) continue;
-    if (!result[key]) result[key] = initFn();
-    accFn(result[key], item);
-  }
-  return result;
-}
-
-/**
- * @internal
- * Group items by key, then apply an aggregation function to each group.
- *
- * @param {Array<unknown>} items
- * @param {(item: unknown) => string|null} keyFn  - extracts grouping key from item
- * @param {(groupItems: Array<unknown>) => unknown} aggFn  - aggregation function per group
- * @returns {Record<string, unknown>} map of key -> aggregated value
- */
-function groupAndAggregate(items, keyFn, aggFn) {
-  // Group items using aggregateByKey (no more duplicate loop)
-  const groups = aggregateByKey(items, keyFn, () => [], (bucket, item) => bucket.push(item));
-  const result = {};
-  for (const [key, group] of Object.entries(groups)) {
-    result[key] = aggFn(group);
-  }
-  return result;
-}
+const { aggregateByKey, groupAndAggregate } = require('../shared/aggregation-utils');
 
 /**
  * Compute a category rate from items using a category set map.
