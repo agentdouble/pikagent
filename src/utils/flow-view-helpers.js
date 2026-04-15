@@ -5,7 +5,6 @@
 
 import { formatDateTime } from './date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
-import { groupAndAggregate, countBy } from './aggregation-utils.js';
 
 /**
  * Toggle a value in a Set (add if absent, delete if present).
@@ -161,8 +160,6 @@ export function deleteCategoryData(catData, catId) {
 // getLastRun imported from shared/flow-utils.js and re-exported
 export { getLastRun };
 
-// groupAndAggregate and countBy imported from shared/aggregation-utils.js and re-exported
-export { groupAndAggregate, countBy };
 
 /**
  * Build the list of card action descriptors for a given flow state.
