@@ -5,6 +5,7 @@
 
 import { bus, EVENTS } from './events.js';
 import { _el } from './dom.js';
+import { onClickStopped } from './event-helpers.js';
 import { SplitNode, DRAG_GRIP, createSplitContainer } from './terminal-panel-helpers.js';
 import { TerminalInstance } from './terminal-instance.js';
 
@@ -26,10 +27,7 @@ export function buildTopBar(node, { onClose, setupDrag }) {
     textContent: '×',
     title: 'Close terminal',
   });
-  closeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    onClose();
-  });
+  onClickStopped(closeBtn, () => onClose());
 
   topBar.appendChild(dragHandle);
   topBar.appendChild(closeBtn);

@@ -5,6 +5,7 @@
  */
 
 import { _el } from './dom.js';
+import { onClickStopped } from './event-helpers.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 
 /**
@@ -34,7 +35,7 @@ export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
     if (blurDelay > 0) setTimeout(() => { if (!committed) commit(); }, blurDelay);
     else if (!committed) commit();
   });
-  input.addEventListener('click', (e) => e.stopPropagation());
+  onClickStopped(input, () => {});
 }
 
 /**

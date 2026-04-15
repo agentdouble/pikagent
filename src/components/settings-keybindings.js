@@ -4,6 +4,7 @@
  */
 import { formatCombo } from '../utils/shortcut-helpers.js';
 import { _el, createActionButton } from '../utils/dom.js';
+import { onClickStopped } from '../utils/event-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
@@ -30,8 +31,7 @@ export function createKeyBadge(binding, index, shortcutManager, startRecordingFn
   });
 
   const removeBtn = _el('span', 'keybinding-badge-remove', '×');
-  removeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  onClickStopped(removeBtn, () => {
     binding.keys.splice(index, 1);
     shortcutManager.updateBinding(binding.id, binding.keys);
     renderKeybindingsFn();
