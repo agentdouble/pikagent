@@ -2,7 +2,8 @@
  * Webview tab management for FileViewer.
  * Extracted from file-viewer.js to reduce component size.
  */
-import { _el, setupInlineInput } from '../utils/dom.js';
+import { _el } from '../utils/dom.js';
+import { setupInlineInput } from '../utils/form-helpers.js';
 import { generateId } from '../utils/id.js';
 import { bus, EVENTS } from '../utils/events.js';
 import { parseWebviewUrl } from '../utils/editor-helpers.js';
