@@ -4,16 +4,16 @@
  * Each "resource descriptor" is an object with:
  *   - `ref`    : the object (or owner) holding the resource
  *   - `key`    : the property name on `ref` (e.g. "resizeObserver")
- *   - `action` : how to clean it up — "dispose" | "disconnect" | "call" | "remove" | "clearInterval"
+ *   - `action` : how to clean it up — one of the {@link CleanupAction} values
  *
  * After cleanup the property is set to null so it cannot be double-freed.
  *
- * `disposeResources` does NOT manage a `disposed` flag — callers that need
- * guard semantics keep their own flag (e.g. TerminalInstance).
+ * For classes that need a `disposed` guard, use {@link createGuardedDispose}
+ * to generate a `dispose()` method with built-in idempotency.
  */
 
 /**
- * @typedef {'dispose' | 'disconnect' | 'call' | 'remove' | 'clearInterval'} CleanupAction
+ * @typedef {'dispose' | 'disconnect' | 'call' | 'remove' | 'clearInterval' | 'clearTimeout'} CleanupAction
  * @typedef {{ ref: object, key: string, action: CleanupAction }} ResourceDescriptor
  */
 
@@ -43,8 +43,35 @@ export function disposeResources(resources) {
       case 'clearInterval':
         clearInterval(value);
         break;
+      case 'clearTimeout':
+        clearTimeout(value);
+        break;
     }
 
     ref[key] = null;
   }
+}
+
+/**
+ * Create a guarded dispose function for an object.
+ *
+ * Returns a `dispose()` closure that:
+ *   1. Checks `owner.disposed` — if already true, returns immediately (idempotent).
+ *   2. Sets `owner.disposed = true`.
+ *   3. Calls `disposeResources` with the descriptor list returned by `buildResources(owner)`.
+ *   4. Calls the optional `afterDispose` callback for any cleanup that cannot be
+ *      expressed as a resource descriptor (e.g. method calls with arguments).
+ *
+ * @param {object} owner              — the object that owns the resources
+ * @param {(owner: object) => ResourceDescriptor[]} buildResources — returns the descriptor list
+ * @param {((owner: object) => void)|null} [afterDispose] — extra cleanup after resources are freed
+ * @returns {() => void} a dispose function bound to `owner`
+ */
+export function createGuardedDispose(owner, buildResources, afterDispose = null) {
+  return () => {
+    if (owner.disposed) return;
+    owner.disposed = true;
+    disposeResources(buildResources(owner));
+    if (afterDispose) afterDispose(owner);
+  };
 }

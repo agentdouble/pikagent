@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { disposeResources } from '../../src/utils/disposable.js';
+import { disposeResources, createGuardedDispose } from '../../src/utils/disposable.js';
 
 describe('disposeResources', () => {
   it('calls dispose() on resources with action "dispose"', () => {
@@ -73,7 +73,67 @@ describe('disposeResources', () => {
     expect(ref.b).toBeNull();
   });
 
+  it('calls clearTimeout for action "clearTimeout"', () => {
+    const originalClearTimeout = globalThis.clearTimeout;
+    const mockClear = vi.fn();
+    globalThis.clearTimeout = mockClear;
+    const ref = { timer: 99 };
+    try {
+      disposeResources([{ ref, key: 'timer', action: 'clearTimeout' }]);
+      expect(mockClear).toHaveBeenCalledWith(99);
+    } finally {
+      globalThis.clearTimeout = originalClearTimeout;
+    }
+  });
+
   it('handles an empty resource list without error', () => {
     expect(() => disposeResources([])).not.toThrow();
+  });
+});
+
+describe('createGuardedDispose', () => {
+  it('disposes resources and sets disposed flag', () => {
+    const obj = { disposed: false, res: { dispose: vi.fn() } };
+    obj.dispose = createGuardedDispose(obj, (self) => [
+      { ref: self, key: 'res', action: 'dispose' },
+    ]);
+    obj.dispose();
+    expect(obj.disposed).toBe(true);
+    expect(obj.res).toBeNull();
+  });
+
+  it('is idempotent — second call is a no-op', () => {
+    const res = { dispose: vi.fn() };
+    const obj = { disposed: false, res };
+    obj.dispose = createGuardedDispose(obj, (self) => [
+      { ref: self, key: 'res', action: 'dispose' },
+    ]);
+    obj.dispose();
+    obj.dispose();
+    expect(res.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('calls afterDispose callback after resources are freed', () => {
+    const order = [];
+    const res = { dispose: vi.fn(() => order.push('resource')) };
+    const afterDispose = vi.fn(() => order.push('after'));
+    const obj = { disposed: false, res };
+    obj.dispose = createGuardedDispose(
+      obj,
+      (self) => [{ ref: self, key: 'res', action: 'dispose' }],
+      afterDispose,
+    );
+    obj.dispose();
+    expect(afterDispose).toHaveBeenCalledWith(obj);
+    expect(order).toEqual(['resource', 'after']);
+  });
+
+  it('does not call afterDispose on second invocation', () => {
+    const afterDispose = vi.fn();
+    const obj = { disposed: false };
+    obj.dispose = createGuardedDispose(obj, () => [], afterDispose);
+    obj.dispose();
+    obj.dispose();
+    expect(afterDispose).toHaveBeenCalledOnce();
   });
 });
