@@ -17,7 +17,8 @@ function createRunDots(flow, onShowLog) {
     const dot = createActionButton({
       cls: `flow-dot flow-dot-${run.status}`,
       title: buildDotTooltip(run),
-      onClick: (e) => { e.stopPropagation(); onShowLog(flow, run); },
+      stopPropagation: true,
+      onClick: () => onShowLog(flow, run),
     });
     dots.appendChild(dot);
   }
@@ -60,7 +61,8 @@ export function createCardHeader(flow, isRunning, isExpanded, opts) {
       text: isExpanded ? '▾ Sortie' : '▸ Sortie',
       cls: 'flow-output-toggle',
       title: isExpanded ? 'Masquer la sortie' : 'Afficher la sortie',
-      onClick: (e) => { e.stopPropagation(); opts.onToggleOutput(flow.id); },
+      stopPropagation: true,
+      onClick: () => opts.onToggleOutput(flow.id),
     }));
   }
   info.appendChild(nameRow);

@@ -11,6 +11,7 @@ import { _el, startInlineRename } from './dom.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
 import { setupTabDrag } from './tab-drag.js';
 import { attachContextMenu } from './context-menu.js';
+import { onClickStopped } from './event-helpers.js';
 
 /**
  * Generic tab element factory.
@@ -47,10 +48,7 @@ export function createTabElement(config) {
 
   if (config.close) {
     const closeEl = _el('span', config.close.className, config.close.text);
-    closeEl.addEventListener('click', (e) => {
-      e.stopPropagation();
-      config.close.onClick(e);
-    });
+    onClickStopped(closeEl, (e) => config.close.onClick(e));
     tabEl.appendChild(closeEl);
   }
 

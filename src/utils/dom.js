@@ -1,3 +1,5 @@
+import { onKeyAction } from './event-helpers.js';
+
 /**
  * Lightweight DOM element factory.
  *
@@ -136,17 +138,13 @@ export function createSelect({ options, value, className, onChange } = {}) {
 
 /**
  * Wire up Enter / Escape keyboard shortcuts on an element.
+ * Delegates to onKeyAction from event-helpers.
  * @param {HTMLElement} el
  * @param {{ onEnter?: (e: KeyboardEvent) => void, onEscape?: (e: KeyboardEvent) => void }} handlers
  * @returns {() => void} cleanup — removes the listener
  */
 export function setupKeyboardShortcuts(el, { onEnter, onEscape } = {}) {
-  const handler = (e) => {
-    if (e.key === 'Enter' && onEnter) { onEnter(e); }
-    if (e.key === 'Escape' && onEscape) { onEscape(e); }
-  };
-  el.addEventListener('keydown', handler);
-  return () => el.removeEventListener('keydown', handler);
+  return onKeyAction(el, { onEnter, onEscape });
 }
 
 /**

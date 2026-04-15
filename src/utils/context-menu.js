@@ -1,4 +1,5 @@
 import { _el, positionInViewport, setupKeyboardShortcuts } from './dom.js';
+import { onClickStopped } from './event-helpers.js';
 
 export class ContextMenu {
   constructor() {
@@ -42,10 +43,9 @@ export class ContextMenu {
       children.push(_el('span', { className: 'context-menu-shortcut', textContent: item.shortcut }));
     }
 
-    return _el('div', {
-      className: 'context-menu-item',
-      onClick: (e) => { e.stopPropagation(); this.close(); item.action(); },
-    }, ...children);
+    const itemEl = _el('div', { className: 'context-menu-item' }, ...children);
+    onClickStopped(itemEl, () => { this.close(); item.action(); });
+    return itemEl;
   }
 
   show(x, y, items) {
