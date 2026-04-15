@@ -61,7 +61,7 @@ export async function initTabManager(deps) {
  * Returns the subscription handle for cleanup.
  *
  * @param {BusListenerDeps} deps
- * @returns {Array} subscription handle
+ * @returns {Array<() => void>} subscription handle
  */
 export function setupBusListeners(deps) {
   return subscribeBus([

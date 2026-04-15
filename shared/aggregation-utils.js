@@ -47,7 +47,7 @@ function groupAndAggregate(items, keyFn, aggFn) {
 
 /**
  * Counts occurrences of each key produced by keyFn.
- * @param {Array} items
+ * @param {Array<unknown>} items
  * @param {(item: unknown) => string} keyFn - Returns the key for each item
  * @returns {Record<string, number>} map of key -> count
  */

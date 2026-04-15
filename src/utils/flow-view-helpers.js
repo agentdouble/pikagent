@@ -9,8 +9,8 @@ import { groupAndAggregate, countBy } from './aggregation-utils.js';
 
 /**
  * Toggle a value in a Set (add if absent, delete if present).
- * @param {Set} set
- * @param {*} value
+ * @param {Set<string>} set
+ * @param {string} value
  * @returns {boolean} true if the value is now in the set
  */
 export function toggleInSet(set, value) {
@@ -57,8 +57,8 @@ export function buildDotTooltip(run) {
 
 /**
  * Build a Map keyed by flow.id for fast lookup.
- * @param {Array} flows
- * @returns {Map<string, Object>}
+ * @param {Array<{id: string}>} flows
+ * @returns {Map<string, {id: string}>}
  */
 function buildFlowMap(flows) {
   return new Map(flows.map(f => [f.id, f]));
@@ -67,8 +67,8 @@ function buildFlowMap(flows) {
 /**
  * Resolve an array of flow IDs to flow objects using a flow map.
  * @param {string[]} ids
- * @param {Map<string, Object>} flowMap
- * @returns {Array}
+ * @param {Map<string, {id: string}>} flowMap
+ * @returns {Array<{id: string}>}
  */
 function resolveIds(ids, flowMap) {
   return ids.map(id => flowMap.get(id)).filter(Boolean);
@@ -76,10 +76,10 @@ function resolveIds(ids, flowMap) {
 
 /**
  * Return flows belonging to a given category, ordered by catData.order.
- * @param {Array} flows - all flow objects
+ * @param {Array<{id: string}>} flows - all flow objects
  * @param {Record<string, string[]>} order - catData.order mapping catId → [flowId, …]
  * @param {string} catId - category id
- * @returns {Array} ordered flows for this category
+ * @returns {Array<{id: string}>} ordered flows for this category
  */
 export function getFlowsForCategory(flows, order, catId) {
   return resolveIds(order[catId] || [], buildFlowMap(flows));
@@ -88,9 +88,9 @@ export function getFlowsForCategory(flows, order, catId) {
 /**
  * Return flows not assigned to any named category, respecting the
  * UNCATEGORIZED order when present, and appending any remaining flows.
- * @param {Array} flows - all flow objects
+ * @param {Array<{id: string}>} flows - all flow objects
  * @param {Record<string, string[]>} order - catData.order mapping catId → [flowId, …]
- * @returns {Array} ordered uncategorized flows
+ * @returns {Array<{id: string}>} ordered uncategorized flows
  */
 export function getUncategorizedFlows(flows, order) {
   const assigned = new Set();

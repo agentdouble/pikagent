@@ -45,9 +45,9 @@ const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(A
 /**
  * @internal Exported for testing only — production code uses registerManagerHandlers().
  * Register forward-style handlers on ipcMain for a given target.
- * @param {object} ipc - Electron ipcMain
- * @param {object} target - The object whose methods will be called
- * @param {Array} entries - Array of [channel, method] tuples
+ * @param {Electron.IpcMain} ipc - Electron ipcMain
+ * @param {Record<string, Function>} target - The object whose methods will be called
+ * @param {Array<[string, string]>} entries - Array of [channel, method] tuples
  */
 function registerForward(ipc, target, entries) {
   for (const [channel, method] of entries) {
@@ -58,9 +58,9 @@ function registerForward(ipc, target, entries) {
 /**
  * @internal Exported for testing only — production code uses registerManagerHandlers().
  * Register spread-style handlers on ipcMain for a given target.
- * @param {object} ipc - Electron ipcMain
- * @param {object} target - The object whose methods will be called
- * @param {Array} entries - Array of [channel, method, keys] tuples
+ * @param {Electron.IpcMain} ipc - Electron ipcMain
+ * @param {Record<string, Function>} target - The object whose methods will be called
+ * @param {Array<[string, string, string[]]>} entries - Array of [channel, method, keys] tuples
  */
 function registerSpread(ipc, target, entries) {
   for (const [channel, method, keys] of entries) {
@@ -73,8 +73,8 @@ function registerSpread(ipc, target, entries) {
  * Resolves each domain from the provided targets map.
  * Method name is derived from the channel (domain:method).
  *
- * @param {object} ipc - Electron ipcMain
- * @param {Record<string, object>} targets - Map of domain -> target object
+ * @param {Electron.IpcMain} ipc - Electron ipcMain
+ * @param {Record<string, Record<string, Function>>} targets - Map of domain -> target object
  * @param {Set<string>} [skip] - Channels to skip (registered as custom handlers elsewhere)
  */
 function registerManagerHandlers(ipc, targets, skip = new Set()) {
