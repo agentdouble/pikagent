@@ -148,7 +148,7 @@ export function buildSideBySideRows(hunks) {
 
 /**
  * Count additions and deletions across parsed hunks.
- * @param {Array} hunks - Parsed hunk objects from parseDiff().
+ * @param {Array<{changes: Array<{type: string, content: string}>}>} hunks - Parsed hunk objects from parseDiff().
  * @returns {{ additions: number, deletions: number }}
  */
 export function countDiffStats(hunks) {
