@@ -10,6 +10,11 @@
  *   - setupInlineInput, startInlineRename  → ./form-helpers.js
  *   - setupDropZone                        → ./drop-zone-helpers.js
  *   - setupKeyboardShortcuts               → ./keyboard-helpers.js
+ */
+import { onClickStopped } from './event-helpers.js';
+
+/**
+ * Create a DOM element.
  *
  * Supports two calling conventions:
  *   _el('div', { className: 'c', textContent: 't', onClick: fn }, child…)  — object attrs
@@ -63,9 +68,8 @@ export function createActionButton({ text, label = '', title, cls, className, on
   if (title) btn.title = title;
   if (childNode) btn.appendChild(childNode);
   if (onClick) {
-    btn.addEventListener('click', stopPropagation
-      ? (e) => { e.stopPropagation(); onClick(e); }
-      : onClick);
+    if (stopPropagation) onClickStopped(btn, onClick);
+    else btn.addEventListener('click', onClick);
   }
   return btn;
 }
