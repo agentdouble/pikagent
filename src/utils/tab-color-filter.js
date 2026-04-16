@@ -17,9 +17,9 @@ export function isTabVisible(tab, activeColorFilter, excludedColors) {
 
 /**
  * Build the color filter bar DOM element.
- * @param {Map} tabs
+ * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
  * @param {string|null} activeColorFilter
- * @param {Set} excludedColors
+ * @param {Set<string>} excludedColors
  * @param {{ onClearFilter: () => void, onSetFilter: (colorGroupId: string) => void, onToggleExclude: (colorGroupId: string) => void }} handlers
  * @returns {HTMLElement|null}
  */

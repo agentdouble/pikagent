@@ -15,6 +15,7 @@
 /**
  * @typedef {'dispose' | 'disconnect' | 'call' | 'remove' | 'clearInterval' | 'clearTimeout'} CleanupAction
  * @typedef {{ ref: object, key: string, action: CleanupAction }} ResourceDescriptor
+ * @typedef {{ disposed?: boolean } & Record<string, unknown>} DisposableOwner
  */
 
 /**
@@ -62,9 +63,9 @@ export function disposeResources(resources) {
  *   4. Calls the optional `afterDispose` callback for any cleanup that cannot be
  *      expressed as a resource descriptor (e.g. method calls with arguments).
  *
- * @param {object} owner              — the object that owns the resources
- * @param {(owner: object) => ResourceDescriptor[]} buildResources — returns the descriptor list
- * @param {((owner: object) => void)|null} [afterDispose] — extra cleanup after resources are freed
+ * @param {DisposableOwner} owner              — the object that owns the resources
+ * @param {(owner: DisposableOwner) => ResourceDescriptor[]} buildResources — returns the descriptor list
+ * @param {((owner: DisposableOwner) => void)|null} [afterDispose] — extra cleanup after resources are freed
  * @returns {() => void} a dispose function bound to `owner`
  */
 export function createGuardedDispose(owner, buildResources, afterDispose = null) {
