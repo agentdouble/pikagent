@@ -5,9 +5,13 @@
  */
 
 /**
+ * @typedef {{ date: string, timestamp: string, logTimestamp?: string, status: string }} FlowRun
+ */
+
+/**
  * Return the last run from a flow's runs array, or null if none.
- * @param {{ runs?: Array }} flow
- * @returns {{ date: string, timestamp: string, logTimestamp?: string, status: string }|null}
+ * @param {{ runs?: FlowRun[] }} flow
+ * @returns {FlowRun|null}
  */
 function getLastRun(flow) {
   return flow.runs?.at(-1) ?? null;

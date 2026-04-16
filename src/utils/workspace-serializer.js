@@ -3,6 +3,16 @@
  *
  * Handles tab serialization and config restoration.
  *
+ * @typedef {{
+ *   name: string,
+ *   cwd: string,
+ *   noShortcut: boolean,
+ *   colorGroup: string|null,
+ *   splitTree: unknown,
+ *   panels: Record<string, number>,
+ *   webviewTabs?: unknown[]
+ * }} SerializedTab
+ *
  * @typedef {{ tabs: Map<string, WorkspaceTab>, activeTabId: string|null }} SerializeDeps
  *
  * @typedef {{ tabs: Map<string, WorkspaceTab>, setActiveTabId: (id: string|null) => void, defaultCwd: string, renderTabBar: () => void, switchTo: (id: string) => void, configManager: { isRestoring: boolean }, viewStore: import('./sidebar-manager.js').SideViewStore }} RestoreConfigDeps
@@ -19,7 +29,7 @@ import { disposeAllTabs } from './workspace-cleanup.js';
 /**
  * Serialize all tabs into a config object.
  * @param {SerializeDeps} deps
- * @returns {{ tabs: Array, activeTabIndex: number }}
+ * @returns {{ tabs: SerializedTab[], activeTabIndex: number }}
  */
 export function serialize({ tabs, activeTabId }) {
   const serializedTabs = [];

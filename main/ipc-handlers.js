@@ -9,7 +9,7 @@ const { createSafeHandler } = require('./safe-handler');
  * `manager-init.js`.  This module only cares about IPC dispatching.
  *
  * @param {() => import('electron').BrowserWindow} getWindow
- * @param {{ targets: Record<string, object>, ptyManager: object, sessionManager: object }} deps
+ * @param {{ targets: Record<string, Record<string, unknown>>, ptyManager: Record<string, unknown>, sessionManager: Record<string, unknown> }} deps
  */
 function register(getWindow, { targets, ptyManager, sessionManager }) {
   const { shell, dialog } = require('electron');
