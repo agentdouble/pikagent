@@ -5,6 +5,7 @@
 
 import { formatDateTime } from './date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
+import { countBy } from '../../shared/aggregation-utils.js';
 
 /**
  * Toggle a value in a Set (add if absent, delete if present).
@@ -92,10 +93,9 @@ export function getFlowsForCategory(flows, order, catId) {
  * @returns {Array<{id: string}>} ordered uncategorized flows
  */
 export function getUncategorizedFlows(flows, order) {
-  const assigned = new Set();
-  for (const ids of Object.values(order)) {
-    for (const id of ids) assigned.add(id);
-  }
+  // Count how many categories reference each flow id (shared/countBy).
+  // Any id with a count > 0 is "assigned" to at least one category (including UNCATEGORIZED).
+  const assignedCounts = countBy(Object.values(order).flat(), id => id);
 
   const flowMap = buildFlowMap(flows);
   const orderedIds = order[UNCATEGORIZED] || [];
@@ -103,7 +103,7 @@ export function getUncategorizedFlows(flows, order) {
   const inOrder = new Set(orderedIds);
 
   for (const f of flows) {
-    if (!assigned.has(f.id) && !inOrder.has(f.id)) ordered.push(f);
+    if (!assignedCounts[f.id] && !inOrder.has(f.id)) ordered.push(f);
   }
   return ordered;
 }
