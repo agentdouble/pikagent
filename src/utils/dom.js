@@ -2,15 +2,14 @@
  * Core DOM utilities.
  *
  * This module keeps only the essential DOM factories:
- *   _el, createActionButton, renderButtonBar, buildChevronRow, createModalOverlay
+ *   _el, createActionButton, createSelect, renderButtonBar, buildChevronRow,
+ *   createModalOverlay, positionInViewport, _safeFit
  *
- * The following helpers have been extracted to dedicated modules:
+ * The following helpers have been extracted to dedicated modules — import
+ * them directly from there instead of going through this file:
  *   - setupInlineInput, startInlineRename  → ./form-helpers.js
  *   - setupDropZone                        → ./drop-zone-helpers.js
  *   - setupKeyboardShortcuts               → ./keyboard-helpers.js
- *
- * Re-exports of the extracted helpers are kept here temporarily for
- * backward compatibility while importers are migrated.
  *
  * Supports two calling conventions:
  *   _el('div', { className: 'c', textContent: 't', onClick: fn }, child…)  — object attrs
