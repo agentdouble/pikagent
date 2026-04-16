@@ -3,20 +3,26 @@
  * Extracted from settings-modal.js to reduce component size.
  */
 import { _el, renderButtonBar } from '../utils/dom.js';
+import { asyncStopHandler } from '../utils/event-helpers.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
+  const hasTabManager = () => !!tabManager;
   const handlers = {
-    setDefault: async (e) => { e.stopPropagation(); await window.api.config.setDefault(config.name); renderConfigsFn(); },
-    overwrite: async (e) => {
-      e.stopPropagation();
-      if (!tabManager) return;
-      await window.api.config.save(config.name, tabManager.serialize());
-      renderConfigsFn();
-    },
-    delete: async (e) => { e.stopPropagation(); await window.api.config.delete(config.name); renderConfigsFn(); },
+    setDefault: asyncStopHandler(
+      () => window.api.config.setDefault(config.name),
+      { onSuccess: renderConfigsFn },
+    ),
+    overwrite: asyncStopHandler(
+      () => window.api.config.save(config.name, tabManager.serialize()),
+      { guard: hasTabManager, onSuccess: renderConfigsFn },
+    ),
+    delete: asyncStopHandler(
+      () => window.api.config.delete(config.name),
+      { onSuccess: renderConfigsFn },
+    ),
   };
 
   const configs = CONFIG_ACTIONS

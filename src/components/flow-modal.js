@@ -1,5 +1,6 @@
 import { generateId } from '../utils/id.js';
 import { _el, createActionButton, createModalOverlay } from '../utils/dom.js';
+import { appendListenerButtons } from '../utils/event-helpers.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,
@@ -121,19 +122,16 @@ function _buildIntervalChip(existing) {
 function _buildDaysChip(existing) {
   const selectedDays = new Set(existing?.schedule?.days || WEEKDAY_INDICES);
   const daysChip = _el('div', { className: 'flow-modal-chip flow-modal-days' });
-  for (let d = 0; d < 7; d++) {
-    const dayBtn = createActionButton({
-      text: DAY_NAMES[d],
-      cls: 'flow-day-btn',
-      onClick: (e) => {
-        e.preventDefault();
-        selectedDays.has(d) ? selectedDays.delete(d) : selectedDays.add(d);
-        dayBtn.classList.toggle('active');
-      },
-    });
-    if (selectedDays.has(d)) dayBtn.classList.add('active');
-    daysChip.appendChild(dayBtn);
-  }
+  const dayIndices = [0, 1, 2, 3, 4, 5, 6];
+  appendListenerButtons(daysChip, dayIndices, {
+    renderButton: (d) => createActionButton({ text: DAY_NAMES[d], cls: 'flow-day-btn' }),
+    isActive: (d) => selectedDays.has(d),
+    onClick: (e, d, btn) => {
+      e.preventDefault();
+      selectedDays.has(d) ? selectedDays.delete(d) : selectedDays.add(d);
+      btn.classList.toggle('active');
+    },
+  });
   return { daysChip, selectedDays };
 }
 

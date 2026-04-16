@@ -18,6 +18,7 @@
 
 import { getComponent } from './component-registry.js';
 import { _el } from './dom.js';
+import { appendListenerButtons } from './event-helpers.js';
 import { ACTIVITY_BUTTONS, SIDE_VIEWS } from './tab-manager-helpers.js';
 
 /**
@@ -69,12 +70,11 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
 
   const topSection = _el('div', 'activity-bar-top');
 
-  for (const { label, mode } of ACTIVITY_BUTTONS) {
-    const btn = _el('button', 'activity-btn', label);
-    if (sidebarMode === mode) btn.classList.add('active');
-    btn.addEventListener('click', () => setSidebarMode(mode));
-    topSection.appendChild(btn);
-  }
+  appendListenerButtons(topSection, ACTIVITY_BUTTONS, {
+    renderButton: ({ label }) => _el('button', 'activity-btn', label),
+    isActive: ({ mode }) => sidebarMode === mode,
+    onClick: (_e, { mode }) => setSidebarMode(mode),
+  });
 
   topSection.appendChild(_el('button', 'activity-btn', '\u2026'));
   activityBar.appendChild(topSection);
