@@ -28,13 +28,17 @@ function createLogger(module) {
 }
 
 /**
+ * @typedef {{ info: (msg: string, err?: unknown) => void, warn: (msg: string, err?: unknown) => void, error: (msg: string, err?: unknown) => void }} Logger
+ */
+
+/**
  * Generic safe-execution wrapper.
  * Runs `fn`, returns its result on success or `defaultValue` on error.
  * Optionally logs failures via a logger's `warn` method.
  *
  * @param {() => unknown} fn - async or sync function to execute
  * @param {unknown} defaultValue - value returned when fn throws
- * @param {{ log: object, label: string }} [opts] - optional logger & label
+ * @param {{ log: Logger, label: string }} [opts] - optional logger & label
  * @returns {Promise<unknown>}
  */
 async function trySafe(fn, defaultValue, { log, label } = {}) {

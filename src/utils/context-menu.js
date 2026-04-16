@@ -78,6 +78,17 @@ export class ContextMenu {
 export const contextMenu = new ContextMenu();
 
 /**
+ * @typedef {{
+ *   label?: string,
+ *   action?: () => void,
+ *   separator?: boolean,
+ *   children?: ContextMenuItem[],
+ *   colorDot?: string,
+ *   shortcut?: string
+ * }} ContextMenuItem
+ */
+
+/**
  * Attach a contextmenu listener to `el` that prevents the default behaviour,
  * stops propagation, and – when `buildItems` returns an array of menu items –
  * shows the context menu at the pointer position.
@@ -87,7 +98,7 @@ export const contextMenu = new ContextMenu();
  * colour filter).
  *
  * @param {HTMLElement} el - element to listen on
- * @param {(e: MouseEvent) => Array|void} buildItems - receives the raw event,
+ * @param {(e: MouseEvent) => ContextMenuItem[]|void|Promise<ContextMenuItem[]|void>} buildItems - receives the raw event,
  *   should return an items array (or nothing).
  */
 export function attachContextMenu(el, buildItems) {
