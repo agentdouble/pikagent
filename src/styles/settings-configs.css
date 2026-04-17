@@ -1,0 +1,195 @@
+/* ===== Workspace Configs ===== */
+
+/* Current config bar */
+.config-current-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 18px;
+}
+
+.config-current-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.config-current-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Config list */
+.config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.config-row:hover {
+  background: var(--bg-hover);
+}
+
+.config-row.config-active {
+  background: var(--bg-hover);
+}
+
+.config-row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Radio indicator */
+.config-radio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.config-row.config-active .config-radio {
+  border-color: var(--accent);
+}
+
+.config-row.config-active .config-radio::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.config-radio-default {
+  border-color: var(--accent-dim);
+}
+
+.config-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.config-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-default-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.config-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Row actions (visible on hover) */
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.config-row:hover .config-actions {
+  opacity: 1;
+}
+
+.config-action-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.config-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.config-delete-btn {
+  border: none;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.config-delete-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Bottom actions */
+.config-bottom-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 4px;
+}
+
+.config-bottom-btn {
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.config-bottom-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
