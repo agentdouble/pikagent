@@ -149,7 +149,7 @@ export class BoardView {
       homedir: window.api.fs.homedir,
       openPath: window.api.shell.openPath,
     }));
-    term.onData((data) => window.api.pty.write({ id: termId, data }));
+    term.onData((data) => window.api.pty.write(termId, data));
 
     return { term, fitAddon };
   }

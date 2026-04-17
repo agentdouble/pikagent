@@ -42,7 +42,7 @@ export class TerminalInstance {
         { ref: self, key: 'unsubExit',        action: 'call' },
         { ref: self, key: 'terminal',         action: 'dispose' },
       ],
-      (self) => self._api.ptyKill({ id: self.id }),
+      (self) => self._api.ptyKill(self.id),
     );
   }
 
@@ -82,7 +82,7 @@ export class TerminalInstance {
    */
   _attachPtyBridge() {
     this.terminal.onData((data) => {
-      if (!this.disposed) this._api.ptyWrite({ id: this.id, data });
+      if (!this.disposed) this._api.ptyWrite(this.id, data);
     });
 
     this.unsubData = this._api.ptyOnData(this.id, (data) => {
@@ -103,7 +103,7 @@ export class TerminalInstance {
   startCwdPolling() {
     this.cwdPollTimer = setInterval(async () => {
       if (this.disposed || this.cwdPollingPaused) return;
-      const cwd = await this._api.ptyGetCwd({ id: this.id });
+      const cwd = await this._api.ptyGetCwd(this.id);
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
         /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
@@ -116,7 +116,7 @@ export class TerminalInstance {
     try {
       this.fitAddon.fit();
       const { cols, rows } = this.terminal;
-      this._api.ptyResize({ id: this.id, cols, rows });
+      this._api.ptyResize(this.id, cols, rows);
     } catch {}
   }
 

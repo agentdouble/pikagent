@@ -16,10 +16,10 @@
 const API_SCHEMA = {
   pty: {
     create:      { type: 'fwd' },
-    write:       { type: 'fwd' },
-    resize:      { type: 'fwd' },
-    kill:        { type: 'fwd' },
-    getCwd:      { type: 'fwd', channel: 'pty:getcwd' },
+    write:       { type: 'pack', keys: ['id', 'data'] },
+    resize:      { type: 'pack', keys: ['id', 'cols', 'rows'] },
+    kill:        { type: 'pack', keys: ['id'] },
+    getCwd:      { type: 'pack', keys: ['id'], channel: 'pty:getcwd' },
     checkAgents: { type: 'fwd' },
     // onData + onExit are custom (targeted channels), injected at build time
   },
