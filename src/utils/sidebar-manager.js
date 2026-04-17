@@ -18,8 +18,16 @@
 
 import { getComponent } from './component-registry.js';
 import { _el } from './dom-dialogs.js';
-import { ACTIVITY_BUTTONS, SIDE_VIEWS } from './tab-manager-helpers.js';
+import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-manager-helpers.js';
 import { createAsyncHandler } from './event-helpers.js';
+
+function buildActivityButton(label, iconSvg, extraClass = '') {
+  const btn = _el('button', `activity-btn ${extraClass}`.trim());
+  const iconWrap = _el('span', 'activity-btn-icon');
+  iconWrap.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">${iconSvg}</svg>`;
+  btn.append(iconWrap, _el('span', 'activity-btn-label', label));
+  return btn;
+}
 
 /**
  * Declarative map for sidebar view rendering — single source of truth for
@@ -70,20 +78,19 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
 
   const topSection = _el('div', 'activity-bar-top');
 
-  for (const { label, mode } of ACTIVITY_BUTTONS) {
-    const btn = _el('button', 'activity-btn', label);
+  for (const { label, mode, icon } of ACTIVITY_BUTTONS) {
+    const btn = buildActivityButton(label, icon);
+    btn.dataset.mode = mode;
     if (sidebarMode === mode) btn.classList.add('active');
     btn.addEventListener('click', () => setSidebarMode(mode));
     topSection.appendChild(btn);
   }
 
-  topSection.appendChild(_el('button', 'activity-btn', '\u2026'));
   activityBar.appendChild(topSection);
 
   // Bottom section with settings
   const bottomSection = _el('div', 'activity-bar-bottom');
-  const settingsBtn = _el('button', 'activity-btn activity-btn-settings');
-  settingsBtn.append(_el('span', 'activity-btn-icon', '\u2699'), 'Settings');
+  const settingsBtn = buildActivityButton('SETTINGS', SETTINGS_ICON, 'activity-btn-settings');
   settingsBtn.addEventListener('click', createAsyncHandler(
     { stopProp: false, guard: () => !!onOpenSettings },
     () => onOpenSettings(),

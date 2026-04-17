@@ -3,17 +3,18 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  background: var(--bg-primary);
 }
 
 /* ===== Activity Bar ===== */
 .activity-bar {
   display: flex;
   flex-direction: column;
-  width: 56px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
+  width: 64px;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-subtle);
   flex-shrink: 0;
-  transition: width 0.2s;
+  transition: width var(--duration-base) var(--ease-out);
   overflow: hidden;
 }
 
@@ -25,51 +26,81 @@
 .activity-bar-top {
   display: flex;
   flex-direction: column;
-  padding-top: 6px;
+  padding: 10px 6px 0;
   gap: 2px;
 }
 
 .activity-bar-bottom {
   margin-top: auto;
-  padding-bottom: 8px;
+  padding: 0 6px 10px;
 }
 
 /* ===== Activity Bar Buttons ===== */
 .activity-btn {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   width: 100%;
   padding: 10px 4px;
-  background: none;
+  background: transparent;
   border: none;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
   font-family: var(--font-ui);
-  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
 }
 
 .activity-btn:hover {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   background: var(--bg-hover);
+}
+
+.activity-btn:active {
+  transform: scale(0.96);
 }
 
 .activity-btn.active {
   color: var(--text-primary);
-  border-left-color: var(--accent);
+  background: var(--bg-active);
 }
 
-.activity-btn-settings {
-  font-size: 8px;
-  gap: 4px;
-  flex-direction: column;
+.activity-btn.active::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 22px;
+  background: var(--accent);
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
 }
 
-.activity-btn-settings .activity-btn-icon {
-  font-size: 16px;
+.activity-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  line-height: 0;
+}
+
+.activity-btn-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.activity-btn-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  line-height: 1;
 }
