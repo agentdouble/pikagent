@@ -1,7 +1,7 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
-import { _el, _safeFit, renderButtonBar } from '../utils/dom.js';
+import { _el, _safeFit, renderButtonBar } from '../utils/dom-dialogs.js';
 import { createTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';

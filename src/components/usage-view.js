@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/dom-dialogs.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 

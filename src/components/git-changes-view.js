@@ -1,5 +1,5 @@
 import { bus, EVENTS } from '../utils/events.js';
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/dom-dialogs.js';
 import { onClickStopped } from '../utils/event-helpers.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';

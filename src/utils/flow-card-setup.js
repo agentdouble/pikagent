@@ -3,7 +3,7 @@
  * Extracted from flow-view.js to reduce component size.
  */
 
-import { _el } from './dom.js';
+import { _el } from './dom-dialogs.js';
 import { getLastRun, toggleInSet } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-category-renderer.js';
 import { createCardHeader } from './flow-card-renderer.js';

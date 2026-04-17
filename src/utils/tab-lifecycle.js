@@ -16,8 +16,7 @@
  */
 
 import { generateId } from './id.js';
-import { _el } from './dom.js';
-import { showConfirmDialog } from './dom-dialogs.js';
+import { _el, showConfirmDialog } from './dom-dialogs.js';
 import { bus, EVENTS } from './events.js';
 import { WorkspaceTab } from './tab-manager-helpers.js';
 import { reattachLayout, syncFileTree } from './workspace-layout.js';
