@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-const { safeSend, buildTablesFromSchema, registerForward, registerSpread, registerManagerHandlers } = require('../../main/ipc-helpers');
+const helpers = require('../../main/ipc-helpers');
+const { safeSend, registerManagerHandlers } = helpers;
+const { buildTablesFromSchema, registerForward, registerSpread } = helpers._internals;
 const { API_SCHEMA } = require('../../api-schema');
 
-// Derive tables via public API (no longer exported directly)
+// Derive tables via internal helper (not part of the public API)
 const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(API_SCHEMA);
 
 describe('ipc-helpers', () => {

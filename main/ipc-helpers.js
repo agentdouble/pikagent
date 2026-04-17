@@ -14,7 +14,7 @@ function safeSend(getWindow, channel, payload) {
 }
 
 /**
- * @internal Exported for testing only — production code uses registerManagerHandlers().
+ * @internal
  * Derive FORWARD_TABLE and SPREAD_TABLE from API_SCHEMA.
  *
  * FORWARD_TABLE entries: [channel, domain]
@@ -43,7 +43,7 @@ function buildTablesFromSchema(schema) {
 const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(API_SCHEMA);
 
 /**
- * @internal Exported for testing only — production code uses registerManagerHandlers().
+ * @internal
  * Register forward-style handlers on ipcMain for a given target.
  * @param {Electron.IpcMain} ipc - Electron ipcMain
  * @param {Record<string, Function>} target - The object whose methods will be called
@@ -56,7 +56,7 @@ function registerForward(ipc, target, entries) {
 }
 
 /**
- * @internal Exported for testing only — production code uses registerManagerHandlers().
+ * @internal
  * Register spread-style handlers on ipcMain for a given target.
  * @param {Electron.IpcMain} ipc - Electron ipcMain
  * @param {Record<string, Function>} target - The object whose methods will be called
@@ -95,4 +95,7 @@ function registerManagerHandlers(ipc, targets, skip = new Set()) {
   }
 }
 
-module.exports = { safeSend, buildTablesFromSchema, registerForward, registerSpread, registerManagerHandlers };
+module.exports = { safeSend, registerManagerHandlers };
+
+/** @internal — exposed for unit tests only; not part of the public API. */
+module.exports._internals = { buildTablesFromSchema, registerForward, registerSpread };
