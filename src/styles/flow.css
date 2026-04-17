@@ -22,20 +22,33 @@
 }
 
 .flow-add-btn {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--text-on-accent);
   font-size: 13px;
+  font-weight: 500;
   font-family: var(--font-ui);
-  padding: 8px 20px;
-  border-radius: 6px;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .flow-add-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--text-secondary);
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-soft), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.flow-add-btn:active {
+  transform: scale(0.97);
 }
 
 /* ===== Flow List ===== */
@@ -56,11 +69,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   cursor: pointer;
   user-select: none;
-  border-radius: 6px;
-  transition: background 0.15s;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .flow-category-header:hover {
@@ -81,11 +94,11 @@
 }
 
 .flow-category-name {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -144,7 +157,7 @@
 }
 
 .flow-category-btn-danger:hover {
-  color: #ff6b6b;
+  color: var(--red);
 }
 
 .flow-category-items {
@@ -162,22 +175,25 @@
 }
 
 .flow-add-category-btn {
-  background: none;
+  background: transparent;
   border: 1px dashed var(--border-color);
   color: var(--text-muted);
   font-size: 12px;
+  font-weight: 500;
   font-family: var(--font-ui);
-  padding: 8px;
-  border-radius: 6px;
+  padding: 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
   text-align: center;
 }
 
 .flow-add-category-btn:hover {
-  border-color: var(--text-secondary);
-  color: var(--text-secondary);
-  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-softer);
 }
 
 /* ===== Drag and Drop ===== */
@@ -201,10 +217,10 @@
 .flow-drop-indicator {
   height: 3px;
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
   margin: -2px 0;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast) var(--ease-out);
   pointer-events: none;
 }
 
@@ -214,9 +230,9 @@
 
 .flow-category-items.flow-drop-zone-active {
   border-color: var(--accent);
-  min-height: 40px;
-  background: rgba(var(--accent-rgb, 99, 102, 241), 0.05);
-  border-radius: 4px;
+  min-height: 44px;
+  background: var(--accent-softer);
+  border-radius: var(--radius-md);
 }
 
 .flow-empty {
@@ -232,17 +248,21 @@
   flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.15s;
+  box-shadow: var(--shadow-soft);
+  transition: border-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
 }
 
 .flow-card:hover {
-  border-color: var(--text-secondary);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
 }
 
 .flow-card-running {
-  border-color: #51cf66;
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green-soft), var(--shadow-soft);
 }
 
 .flow-card-disabled {
@@ -286,9 +306,17 @@
 }
 
 .flow-running-badge {
-  font-size: 11px;
-  color: #51cf66;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--green);
+  background: var(--green-soft);
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
   animation: flow-pulse 1.5s ease-in-out infinite;
 }
@@ -299,15 +327,17 @@
 }
 
 .flow-output-toggle {
-  background: none;
+  background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   font-size: 11px;
   font-family: var(--font-ui);
   cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 4px;
-  transition: background 0.15s, color 0.15s;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
   line-height: 1;
   margin-left: 4px;
 }
@@ -353,11 +383,11 @@
 }
 
 .flow-dot-success {
-  background: #51cf66;
+  background: var(--green);
 }
 
 .flow-dot-error {
-  background: #ff6b6b;
+  background: var(--red);
 }
 
 /* ===== Card Terminal (live output) ===== */
@@ -389,32 +419,39 @@
 }
 
 .flow-card-btn {
-  background: none;
+  background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background 0.15s, color 0.15s;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
   line-height: 1;
 }
 
 .flow-card-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 .flow-card-btn-danger:hover {
-  color: #ff6b6b;
-  border-color: #ff6b6b;
+  color: var(--red);
+  border-color: var(--red);
+  background: var(--red-soft);
 }
 
 /* ===== Flow Modal ===== */
 .flow-modal-overlay {
   position: fixed;
   inset: 0;
-  background: var(--shadow-overlay);
+  background: var(--bg-overlay);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -422,15 +459,16 @@
 }
 
 .flow-modal {
-  background: var(--bg-primary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  width: 560px;
+  border-radius: var(--radius-xl);
+  width: 580px;
   max-width: 90vw;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: var(--shadow-lift);
 }
 
 .flow-modal-header {
@@ -467,39 +505,45 @@
 
 .flow-modal-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 14px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 14px;
   font-family: var(--font-ui);
   outline: none;
   box-sizing: border-box;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .flow-modal-input:focus {
   border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
 }
 
 .flow-modal-textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 14px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font-ui);
   outline: none;
   resize: vertical;
-  min-height: 120px;
+  min-height: 130px;
   box-sizing: border-box;
-  line-height: 1.5;
+  line-height: 1.55;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .flow-modal-textarea:focus {
   border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
 }
 
 .flow-modal-textarea::placeholder {
@@ -521,20 +565,21 @@
   gap: 6px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
 .flow-modal-chip-btn {
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .flow-modal-chip-btn:hover {
   background: var(--bg-hover);
-  border-color: var(--text-secondary);
+  border-color: var(--border-strong);
 }
 
 .flow-modal-chip-label {
@@ -579,15 +624,18 @@
 }
 
 .flow-day-btn {
-  background: none;
+  background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   font-size: 10px;
+  font-weight: 600;
   font-family: var(--font-ui);
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .flow-day-btn.active {
@@ -597,8 +645,8 @@
 }
 
 .flow-day-btn:hover:not(.active) {
-  border-color: var(--text-secondary);
-  color: var(--text-secondary);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 /* ===== Modal Actions ===== */
@@ -611,45 +659,56 @@
 }
 
 .flow-modal-btn {
-  padding: 8px 20px;
-  border-radius: 6px;
+  padding: 9px 22px;
+  border-radius: var(--radius-md);
   font-size: 13px;
+  font-weight: 500;
   font-family: var(--font-ui);
   cursor: pointer;
   border: none;
-  transition: background 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.flow-modal-btn:active {
+  transform: scale(0.97);
 }
 
 .flow-modal-btn-cancel {
-  background: none;
-  color: var(--text-muted);
+  background: transparent;
+  color: var(--text-secondary);
 }
 
 .flow-modal-btn-cancel:hover {
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .flow-modal-btn-create {
   background: var(--accent);
   color: var(--text-on-accent);
   font-weight: 600;
+  border-radius: var(--radius-pill);
+  padding: 9px 24px;
 }
 
 .flow-modal-btn-create:hover {
-  background: var(--accent-dim);
+  background: var(--accent-bright);
 }
 
 /* ===== Log Viewer Modal ===== */
 .flow-log-modal {
-  background: var(--bg-primary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  width: 800px;
+  border-radius: var(--radius-xl);
+  width: 820px;
   max-width: 90vw;
-  height: 70vh;
+  height: 72vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: var(--shadow-lift);
 }
 
 .flow-log-header {
@@ -676,13 +735,19 @@
 }
 
 .flow-log-status-success {
-  background: rgba(81, 207, 102, 0.15);
-  color: #51cf66;
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 
 .flow-log-status-error {
-  background: rgba(255, 107, 107, 0.15);
-  color: #ff6b6b;
+  background: var(--red-soft);
+  color: var(--red);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 
 .flow-log-close {

@@ -24,18 +24,22 @@
 .usage-refresh-btn {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 12px;
+  font-weight: 500;
   font-family: var(--font-ui);
   padding: 6px 16px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .usage-refresh-btn:hover {
   background: var(--bg-hover);
-  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 /* ===== Tab Bar ===== */
@@ -43,12 +47,12 @@
   display: flex;
   gap: 0;
   padding: 0 24px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .usage-tab {
-  padding: 10px 20px;
+  padding: 12px 22px;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -57,11 +61,12 @@
   font-family: var(--font-ui);
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .usage-tab:hover {
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .usage-tab-active {
@@ -97,12 +102,15 @@
 }
 
 .usage-section-heading-badge {
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
   color: var(--text-muted);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  padding: 2px 10px;
-  border-radius: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
 }
 
 /* ===== Separator ===== */
@@ -123,19 +131,27 @@
 
 .usage-stat-card {
   background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.usage-stat-card:hover {
+  border-color: var(--border-color);
+  transform: translateY(-1px);
 }
 
 .usage-stat-label {
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.8px;
 }
 
 .usage-stat-value {
@@ -150,7 +166,7 @@
 }
 
 .usage-stat-value-red {
-  color: #ff6b6b;
+  color: var(--red);
 }
 
 .usage-stat-value-blue {
@@ -177,9 +193,9 @@
 /* ===== Bar Chart ===== */
 .usage-chart {
   background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
   overflow-x: auto;
 }
 
@@ -215,7 +231,7 @@
 }
 
 .usage-chart-bar-error {
-  background: #ff6b6b;
+  background: var(--red);
   transition: height 0.3s;
 }
 
@@ -237,16 +253,10 @@
   position: relative;
 }
 
-.usage-chart-col:hover .usage-chart-bar-success {
-  background: #6bd882;
-}
-
-.usage-chart-col:hover .usage-chart-bar-error {
-  background: #ff8585;
-}
-
+.usage-chart-col:hover .usage-chart-bar-success,
+.usage-chart-col:hover .usage-chart-bar-error,
 .usage-chart-col:hover .usage-chart-bar-running {
-  background: #8fd4ff;
+  filter: brightness(1.2);
 }
 
 /* ===== Success Rate Gauge ===== */
@@ -259,9 +269,9 @@
 .usage-rate-card {
   flex: 1;
   background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -287,8 +297,8 @@
 
 .usage-rate-bar {
   height: 6px;
-  background: rgba(255, 107, 107, 0.3);
-  border-radius: 3px;
+  background: var(--red-soft);
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 
