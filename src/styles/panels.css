@@ -26,6 +26,7 @@
   width: 240px;
   min-width: 0;
   background: var(--bg-secondary);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .panel-center {
@@ -38,18 +39,21 @@
   width: 360px;
   min-width: 0;
   background: var(--bg-secondary);
+  border-left: 1px solid var(--border-subtle);
 }
 
 .panel.collapsed {
   width: 0 !important;
   min-width: 0;
   overflow: hidden;
+  border: none;
 }
 
 .panel-header {
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .panel-title {
@@ -79,9 +83,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 8px 14px;
   font-size: 12px;
   color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-primary);
 }
 
@@ -151,6 +156,7 @@
   gap: 6px;
   padding: 6px 10px;
   background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -182,7 +188,7 @@
   font-size: 12px;
   font-family: var(--font-mono);
   background: var(--bg-primary);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   outline: none;
@@ -227,6 +233,7 @@
   height: 180px;
   display: flex;
   flex-direction: column;
+  border-top: 1px solid var(--border-subtle);
   background: var(--bg-primary);
   flex-shrink: 0;
 }
@@ -249,6 +256,7 @@
   gap: 10px;
   padding: 6px 12px;
   background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -309,7 +317,8 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 3px 12px;
+  padding: 2px 12px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .webview-log:hover {
@@ -383,6 +392,7 @@ body.resizing .webview-frame {
 
 .confirm-box {
   background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 24px 28px;
   min-width: 320px;
@@ -403,21 +413,23 @@ body.resizing .webview-frame {
 }
 
 .confirm-buttons button {
-  padding: 9px 22px;
+  padding: 8px 20px;
   border-radius: var(--radius-md);
-  border: none;
+  border: 1px solid var(--border-color);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  background: var(--bg-hover);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-ui);
   transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
               transform var(--duration-fast) var(--ease-out);
 }
 
 .confirm-buttons button:hover {
-  background: var(--bg-active);
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
 }
 
 .confirm-buttons button:active {
@@ -427,9 +439,11 @@ body.resizing .webview-frame {
 .confirm-buttons .confirm-ok {
   background: var(--red);
   color: #fff;
+  border-color: var(--red);
 }
 
 .confirm-buttons .confirm-ok:hover {
   background: var(--red);
   filter: brightness(1.1);
+  border-color: var(--red);
 }

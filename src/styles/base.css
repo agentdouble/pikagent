@@ -15,10 +15,10 @@
   --bg-elevated: #242019;
   --bg-overlay: rgba(20, 17, 16, 0.82);
 
-  /* ── Borders (kept minimal — prefer bg contrast + spacing) ── */
-  --border-color: #24201c;
-  --border-subtle: transparent;
-  --border-strong: #332d27;
+  /* ── Borders ── */
+  --border-color: #2a241f;
+  --border-subtle: #1f1a16;
+  --border-strong: #3a332d;
 
   /* ── Text ── */
   --text-primary: #ece6dc;
@@ -88,9 +88,9 @@
   --bg-elevated: #ffffff;
   --bg-overlay: rgba(251, 250, 248, 0.82);
 
-  --border-color: #e2dcd0;
-  --border-subtle: transparent;
-  --border-strong: #c8bfb2;
+  --border-color: #d9d3c8;
+  --border-subtle: #e8e3d9;
+  --border-strong: #b8b0a3;
 
   --text-primary: #1f1b17;
   --text-secondary: #6a6158;

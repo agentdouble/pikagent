@@ -69,7 +69,11 @@
 
 /* ===== File Tree Sections (one per terminal) ===== */
 .file-tree-section {
-  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.file-tree-section:last-child {
+  border-bottom: none;
 }
 
 .file-tree-section-header {

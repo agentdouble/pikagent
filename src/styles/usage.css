@@ -22,22 +22,24 @@
 }
 
 .usage-refresh-btn {
-  background: var(--bg-hover);
-  border: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
   font-family: var(--font-ui);
-  padding: 7px 16px;
+  padding: 6px 16px;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out);
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .usage-refresh-btn:hover {
-  background: var(--bg-active);
+  background: var(--bg-hover);
   color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 /* ===== Tab Bar ===== */
@@ -45,6 +47,7 @@
   display: flex;
   gap: 0;
   padding: 0 24px;
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -104,15 +107,17 @@
   letter-spacing: 0.6px;
   text-transform: uppercase;
   color: var(--text-muted);
-  background: var(--bg-hover);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   padding: 3px 12px;
   border-radius: var(--radius-pill);
 }
 
 /* ===== Separator ===== */
 .usage-separator {
-  height: 0;
-  margin: 24px 0;
+  height: 1px;
+  background: var(--border-color);
+  margin: 28px 0;
 }
 
 /* ===== Usage Dashboard ===== */
@@ -126,17 +131,18 @@
 
 .usage-stat-card {
   background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: background var(--duration-fast) var(--ease-out),
+  transition: border-color var(--duration-fast) var(--ease-out),
               transform var(--duration-fast) var(--ease-out);
 }
 
 .usage-stat-card:hover {
-  background: var(--bg-tertiary);
+  border-color: var(--border-color);
   transform: translateY(-1px);
 }
 
@@ -187,6 +193,7 @@
 /* ===== Bar Chart ===== */
 .usage-chart {
   background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 18px;
   overflow-x: auto;
@@ -262,6 +269,7 @@
 .usage-rate-card {
   flex: 1;
   background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 18px;
   display: flex;
@@ -357,14 +365,15 @@
   color: var(--text-muted);
   font-weight: 500;
   padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  background: var(--bg-hover);
+  letter-spacing: 0.3px;
 }
 
 .usage-files-table td {
   font-size: 12px;
   padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .usage-files-table tr:hover td {
@@ -413,14 +422,15 @@
   color: var(--text-muted);
   font-weight: 500;
   padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  background: var(--bg-hover);
+  letter-spacing: 0.3px;
 }
 
 .usage-flow-table td {
   font-size: 12px;
   padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
 }
 
@@ -472,7 +482,8 @@
 /* ===== Table wrapper ===== */
 .usage-table-wrap {
   background: var(--bg-secondary);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   overflow: hidden;
 }
 

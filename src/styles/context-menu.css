@@ -5,6 +5,7 @@
   z-index: 2000;
   min-width: 200px;
   background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 6px;
   box-shadow: var(--shadow-lift);
@@ -42,9 +43,8 @@
 
 .context-menu-separator {
   height: 1px;
-  background: var(--border-color);
-  margin: 6px 10px;
-  opacity: 0.5;
+  background: var(--border-subtle);
+  margin: 4px 6px;
 }
 
 /* ===== Submenu ===== */
@@ -95,6 +95,7 @@
   font-size: 12px;
   font-family: var(--font-ui);
   outline: none;
+  box-shadow: var(--shadow-focus);
 }
 
 .file-tree-rename-input {
@@ -108,4 +109,5 @@
   outline: none;
   width: auto;
   min-width: 60px;
+  box-shadow: var(--shadow-focus);
 }

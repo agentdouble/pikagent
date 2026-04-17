@@ -4,6 +4,7 @@
   align-items: center;
   height: var(--tab-height);
   background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
   -webkit-app-region: drag;
   padding-left: 86px; /* space for macOS traffic lights */
   padding-right: 8px;
@@ -178,7 +179,8 @@
   align-items: center;
   gap: 6px;
   padding: 0 12px 0 4px;
-  margin-right: 8px;
+  margin-right: 4px;
+  border-right: 1px solid var(--border-subtle);
   -webkit-app-region: no-drag;
   height: 100%;
 }

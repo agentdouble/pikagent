@@ -30,11 +30,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--bg-surface);
   box-shadow: var(--shadow-soft);
-  transition: box-shadow 0.4s ease,
+  transition: border-color 0.4s ease,
+              box-shadow 0.4s ease,
               transform var(--duration-base) var(--ease-out);
 }
 
@@ -43,11 +45,13 @@
 }
 
 .board-card-running {
-  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.35), var(--shadow-soft);
+  border-color: rgba(234, 179, 8, 0.5);
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.2), var(--shadow-soft);
 }
 
 .board-card-waiting {
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35), var(--shadow-soft);
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2), var(--shadow-soft);
 }
 
 .board-card-running .board-card-header {
@@ -66,8 +70,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -114,8 +119,8 @@
 }
 
 .board-card-btn {
-  background: var(--bg-hover);
-  border: none;
+  background: transparent;
+  border: 1px solid var(--border-color);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -123,13 +128,14 @@
   padding: 5px 12px;
   border-radius: var(--radius-sm);
   transition: background var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out);
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
   line-height: 1;
 }
 
 .board-card-btn:hover {
-  background: var(--bg-active);
-  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
 }
 
 /* ===== Card Terminal (fully interactive) ===== */
@@ -169,6 +175,7 @@
   align-items: center;
   gap: 8px;
   background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -177,11 +184,13 @@
   border-radius: var(--radius-pill);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out);
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .board-hidden-chip:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  border-color: var(--text-secondary);
 }
 
