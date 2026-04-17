@@ -36,7 +36,10 @@ export function createTabElement(config) {
     for (const [k, v] of Object.entries(config.dataset)) tabEl.dataset[k] = v;
   }
   if (config.style) {
-    Object.assign(tabEl.style, config.style);
+    for (const [k, v] of Object.entries(config.style)) {
+      if (k.startsWith('--')) tabEl.style.setProperty(k, v);
+      else tabEl.style[k] = v;
+    }
   }
 
   if (config.prefixEls) {
@@ -72,14 +75,14 @@ export function buildTabElement(deps, id, tab) {
 
   // Build optional prefix elements
   const prefixEls = [];
-  let borderColor = '';
+  let accentColor = '';
   if (tab.colorGroup) {
     const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
     if (cg) {
       const dot = _el('span', 'tab-color-dot');
       dot.style.background = cg.color;
       prefixEls.push(dot);
-      if (isActive) borderColor = cg.color;
+      if (isActive) accentColor = cg.color;
     }
   }
 
@@ -94,7 +97,7 @@ export function buildTabElement(deps, id, tab) {
     extraClasses,
     prefixEls,
     dataset: { tabId: id },
-    style: borderColor ? { borderBottomColor: borderColor } : undefined,
+    style: accentColor ? { '--tab-accent': accentColor } : undefined,
     close: deps.tabs.size > 1
       ? { text: '\u00d7', className: 'tab-close', onClick: () => deps.closeTab(id) }
       : null,
