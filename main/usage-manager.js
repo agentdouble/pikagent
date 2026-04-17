@@ -1,19 +1,19 @@
-const { DEFAULT_DAYS } = require('./stats-helpers');
+const { Cache } = require('./cache');
+const { createLogger } = require('./logger');
 const {
+  getAllFlows,
+  getTokenMetrics,
   getFlowRuns,
   buildFlowMetrics,
   buildAgentMetrics,
   collectUniqueCwds,
-  CACHE_TTL,
-} = require('./usage-helpers');
-const { Cache } = require('./cache');
-const { createLogger } = require('./logger');
-const { getAllFlows, getTokenMetrics } = require('./token-collector');
+} = require('./token-collector');
 const { getMostModifiedFiles } = require('./git-metrics-collector');
 
 const log = createLogger('usage-manager');
 
 let _sessionManager = null;
+const CACHE_TTL = 30_000;
 const _metricsCache = new Cache(CACHE_TTL);
 
 function init(sessionMgr) {
@@ -36,7 +36,7 @@ async function getMetrics() {
   const agentMetrics = buildAgentMetrics(sessions, activeSessions);
 
   const [tokens, mostModifiedFiles] = await Promise.all([
-    getTokenMetrics(DEFAULT_DAYS),
+    getTokenMetrics(),
     getMostModifiedFiles(collectUniqueCwds(flowRuns, allSessions)),
   ]);
 
