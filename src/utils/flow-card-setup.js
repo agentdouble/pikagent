@@ -93,18 +93,7 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
 /**
  * Build a complete flow card element.
  *
- * @typedef {object} CreateFlowCardDeps
- * @property {Record<string, string>} runningMap        - { [flowId]: ptyId }
- * @property {Set<string>} expandedCards
- * @property {{ flowId: string|null, catId: string|null }} drag - mutable drag state
- * @property {{ createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: unknown, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }} termManager - FlowCardTerminalManager instance
- * @property {() => void} onRenderList
- * @property {(flow: { id: string }, run: unknown) => void} onShowLog
- * @property {(flowId: string) => void} onRun
- * @property {(flowId: string) => Promise<void>} onToggle
- * @property {() => void} onRefresh
- * @property {(flow: { id: string }) => void} onOpenModal
- * @property {(flowId: string) => void} onDeleteFlow
+ * @typedef {{ runningMap: Record<string, string>, expandedCards: Set<string>, drag: { flowId: string|null, catId: string|null }, termManager: { createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: unknown, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }, onRenderList: () => void, onShowLog: (flow: { id: string }, run: unknown) => void, onRun: (flowId: string) => void, onToggle: (flowId: string) => Promise<void>, onRefresh: () => void, onOpenModal: (flow: { id: string }) => void, onDeleteFlow: (flowId: string) => void }} CreateFlowCardDeps
  *
  * @param {CreateFlowCardDeps} deps
  * @param {{ id: string, runs?: Array<unknown>, enabled?: boolean }} flow

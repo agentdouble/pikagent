@@ -34,7 +34,7 @@ function createLogger(module) {
  *
  * @param {() => unknown} fn - async or sync function to execute
  * @param {unknown} defaultValue - value returned when fn throws
- * @param {{ log: object, label: string }} [opts] - optional logger & label
+ * @param {{ log: { warn: (msg: string, err?: unknown) => void }, label: string }} [opts] - optional logger & label
  * @returns {Promise<unknown>}
  */
 async function trySafe(fn, defaultValue, { log, label } = {}) {

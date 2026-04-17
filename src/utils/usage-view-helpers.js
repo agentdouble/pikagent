@@ -40,7 +40,7 @@ function _td(text, attrs = {}) {
  *   - A DOM Node (inserted as-is into the row)
  *   - An object { value, className?, style?, title? } → converted via _td()
  *
- * @param {Array<Node | { value: string|number, className?: string, style?: object, title?: string }>} columns
+ * @param {Array<Node | { value: string|number, className?: string, style?: Record<string, string>, title?: string }>} columns
  * @returns {HTMLTableRowElement}
  */
 export function buildTableRow(columns) {

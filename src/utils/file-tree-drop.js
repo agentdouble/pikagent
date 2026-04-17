@@ -14,7 +14,7 @@ import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
  * dropped from the OS file manager are copied into a target directory.
  *
  * @param {HTMLElement} el - element to receive drop events
- * @param {string|Function} getTargetDir - target dir path or a function returning it
+ * @param {string|(() => string)} getTargetDir - target dir path or a function returning it
  * @param {(files: FileList, destDir: string) => Promise<void>} handleFileDrop
  * @param {string} [className='drop-target'] - CSS class toggled during drag
  */

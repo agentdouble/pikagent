@@ -14,7 +14,7 @@
 
 /**
  * @typedef {'dispose' | 'disconnect' | 'call' | 'remove' | 'clearInterval' | 'clearTimeout'} CleanupAction
- * @typedef {{ ref: object, key: string, action: CleanupAction }} ResourceDescriptor
+ * @typedef {{ ref: Record<string, unknown>, key: string, action: CleanupAction }} ResourceDescriptor
  * @typedef {{ disposed?: boolean } & Record<string, unknown>} DisposableOwner
  */
 
