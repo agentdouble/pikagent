@@ -6,17 +6,22 @@ import { _el, renderButtonBar } from '../utils/dom.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { createAsyncHandler } from '../utils/event-helpers.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
   const handlers = {
-    setDefault: async (e) => { e.stopPropagation(); await window.api.config.setDefault(config.name); renderConfigsFn(); },
-    overwrite: async (e) => {
-      e.stopPropagation();
-      if (!tabManager) return;
-      await window.api.config.save(config.name, tabManager.serialize());
-      renderConfigsFn();
-    },
-    delete: async (e) => { e.stopPropagation(); await window.api.config.delete(config.name); renderConfigsFn(); },
+    setDefault: createAsyncHandler(
+      { onSuccess: renderConfigsFn },
+      () => window.api.config.setDefault(config.name),
+    ),
+    overwrite: createAsyncHandler(
+      { guard: () => !!tabManager, onSuccess: renderConfigsFn },
+      () => window.api.config.save(config.name, tabManager.serialize()),
+    ),
+    delete: createAsyncHandler(
+      { onSuccess: renderConfigsFn },
+      () => window.api.config.delete(config.name),
+    ),
   };
 
   const configs = CONFIG_ACTIONS
@@ -47,11 +52,10 @@ function _createConfigRow(config, currentName, tabManager, renderConfigsFn) {
   const row = _el('div', 'config-row');
   if (config.name === currentName) row.classList.add('config-active');
 
-  row.addEventListener('click', async () => {
-    if (!tabManager) return;
-    await tabManager.configManager.switchConfig(config.name);
-    renderConfigsFn();
-  });
+  row.addEventListener('click', createAsyncHandler(
+    { stopProp: false, guard: () => !!tabManager, onSuccess: renderConfigsFn },
+    () => tabManager.configManager.switchConfig(config.name),
+  ));
 
   row.appendChild(_buildConfigRowLeft(config));
   row.appendChild(_createConfigActions(config, tabManager, renderConfigsFn));
