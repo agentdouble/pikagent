@@ -4,7 +4,7 @@
  */
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
-import { _el, createActionButton } from '../utils/dom-dialogs.js';
+import { _el, createActionButton } from '../utils/dom.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';

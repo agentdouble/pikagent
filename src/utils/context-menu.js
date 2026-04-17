@@ -2,7 +2,7 @@
  * @typedef {{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<ContextMenuItem> }} ContextMenuItem
  */
 
-import { _el, positionInViewport } from './dom-dialogs.js';
+import { _el, positionInViewport } from './dom.js';
 import { onClickStopped } from './event-helpers.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 

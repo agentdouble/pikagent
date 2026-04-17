@@ -4,7 +4,7 @@
  */
 
 import { bus, EVENTS } from './events.js';
-import { _el, buildChevronRow } from './dom-dialogs.js';
+import { _el, buildChevronRow } from './dom.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';

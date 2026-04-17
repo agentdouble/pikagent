@@ -7,7 +7,8 @@
  *
  * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
  */
-import { _el, startInlineRename } from './form-helpers.js';
+import { _el } from './dom.js';
+import { startInlineRename } from './form-helpers.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
 import { setupTabDrag } from './tab-drag.js';
 import { attachContextMenu } from './context-menu.js';

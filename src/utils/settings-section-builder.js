@@ -3,7 +3,7 @@
  * Abstracts the heading + content + action buttons pattern
  * shared across settings-appearance, settings-configs, and settings-keybindings.
  */
-import { _el } from './dom-dialogs.js';
+import { _el } from './dom.js';
 
 /**
  * Build a settings section and populate the given container.

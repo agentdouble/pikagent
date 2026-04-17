@@ -6,7 +6,7 @@
  * @typedef {{ tabBar: HTMLElement, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, activeTabId: string|null, activeColorFilter: string|null, excludedColors: Set<string>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, setColorFilter: (colorGroupId: string) => void, toggleExcludeColor: (colorGroupId: string) => void, createTab: () => void, reorderTab: (fromId: string, toId: string, before: boolean) => void, isTabVisible: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => boolean, renderTabBar: () => void, clearColorFilters: () => void }} RenderTabBarDeps
  */
 
-import { _el } from './dom-dialogs.js';
+import { _el } from './dom.js';
 import { buildColorFilters } from './tab-color-filter.js';
 import { buildTabElement } from './tab-renderer.js';
 

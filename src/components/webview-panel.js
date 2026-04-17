@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom-dialogs.js';
+import { _el } from '../utils/dom.js';
 import { setupKeyboardShortcuts } from '../utils/keyboard-helpers.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {

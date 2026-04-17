@@ -4,7 +4,7 @@
  */
 
 import { bus, EVENTS } from './events.js';
-import { _el } from './dom-dialogs.js';
+import { _el } from './dom.js';
 import { onClickStopped } from './event-helpers.js';
 import { SplitNode, DRAG_GRIP, createSplitContainer } from './terminal-panel-helpers.js';
 import { TerminalInstance } from './terminal-instance.js';

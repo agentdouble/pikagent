@@ -1,4 +1,4 @@
-import { _el, createSelect } from './dom-dialogs.js';
+import { _el, createSelect } from './dom.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
 
 // --- Constants ---

@@ -1,4 +1,4 @@
-import { _el, createActionButton } from '../utils/dom-dialogs.js';
+import { _el, createActionButton } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, WATCH_PREFIX,
