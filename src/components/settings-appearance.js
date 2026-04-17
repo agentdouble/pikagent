@@ -8,6 +8,7 @@ import { _el, createActionButton } from '../utils/dom.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { createAsyncHandler } from '../utils/event-helpers.js';
 
 /**
  * Apply the current terminal theme to all terminal panels across tabs.
@@ -55,11 +56,10 @@ function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn)
   card.appendChild(preview);
   card.appendChild(_el('div', 'theme-card-label', name));
 
-  card.addEventListener('click', () => {
-    setTerminalTheme(name);
-    applyThemeToTerminals(tabManager);
-    renderAppearanceFn();
-  });
+  card.addEventListener('click', createAsyncHandler(
+    { stopProp: false, onSuccess: renderAppearanceFn },
+    () => { setTerminalTheme(name); applyThemeToTerminals(tabManager); },
+  ));
 
   return card;
 }
@@ -82,11 +82,10 @@ export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
     const btn = createActionButton({
       text: label,
       cls: 'theme-mode-btn',
-      onClick: () => {
-        setAppTheme(mode);
-        if (switchTerminalForMode(mode)) applyThemeToTerminals(tabManager);
-        renderAppearanceFn();
-      },
+      onClick: createAsyncHandler(
+        { stopProp: false, onSuccess: renderAppearanceFn },
+        () => { setAppTheme(mode); if (switchTerminalForMode(mode)) applyThemeToTerminals(tabManager); },
+      ),
     });
     if (currentMode === mode) btn.classList.add('active');
     modeToggle.appendChild(btn);

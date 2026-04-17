@@ -8,6 +8,26 @@
  */
 
 /**
+ * Create a reusable async handler that optionally stops propagation, checks a
+ * guard predicate, awaits an API call, then invokes an onSuccess callback.
+ *
+ * This extracts the repeated pattern found across settings/flow components:
+ *   stopPropagation → guard check → API call → re-render
+ *
+ * @param {{ guard?: () => boolean, stopProp?: boolean, onSuccess?: () => void }} opts
+ * @param {(...args: unknown[]) => Promise<unknown>} apiCall
+ * @returns {(e: Event, ...args: unknown[]) => Promise<void>}
+ */
+export function createAsyncHandler({ guard, stopProp = true, onSuccess }, apiCall) {
+  return async (e, ...args) => {
+    if (stopProp) e.stopPropagation();
+    if (guard && !guard()) return;
+    await apiCall(...args);
+    if (onSuccess) onSuccess();
+  };
+}
+
+/**
  * Attach a click listener that always calls stopPropagation (and optionally
  * preventDefault) before invoking the handler.
  *

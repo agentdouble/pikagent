@@ -19,6 +19,7 @@
 import { getComponent } from './component-registry.js';
 import { _el } from './dom.js';
 import { ACTIVITY_BUTTONS, SIDE_VIEWS } from './tab-manager-helpers.js';
+import { createAsyncHandler } from './event-helpers.js';
 
 /**
  * Declarative map for sidebar view rendering — single source of truth for
@@ -83,9 +84,10 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
   const bottomSection = _el('div', 'activity-bar-bottom');
   const settingsBtn = _el('button', 'activity-btn activity-btn-settings');
   settingsBtn.append(_el('span', 'activity-btn-icon', '\u2699'), 'Settings');
-  settingsBtn.addEventListener('click', () => {
-    if (onOpenSettings) onOpenSettings();
-  });
+  settingsBtn.addEventListener('click', createAsyncHandler(
+    { stopProp: false, guard: () => !!onOpenSettings },
+    () => onOpenSettings(),
+  ));
   bottomSection.appendChild(settingsBtn);
 
   activityBar.appendChild(bottomSection);

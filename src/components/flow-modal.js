@@ -9,6 +9,7 @@ import {
   _vis, _createSelect, _createChip, _updateScheduleVis,
 } from '../utils/flow-modal-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { createAsyncHandler } from '../utils/event-helpers.js';
 
 // --- Section builders ---
 
@@ -57,15 +58,17 @@ function _buildCwdPicker(state) {
     className: 'flow-modal-chip flow-modal-chip-btn',
     type: 'button',
     title: state.selectedCwd || DEFAULT_CWD_LABEL,
-    onClick: async (e) => {
-      e.preventDefault();
-      const folder = await window.api.dialog.openFolder();
-      if (folder) {
-        state.selectedCwd = folder;
-        cwdLabel.textContent = folder.split('/').pop();
-        cwdChip.title = folder;
-      }
-    },
+    onClick: createAsyncHandler(
+      { stopProp: false },
+      async () => {
+        const folder = await window.api.dialog.openFolder();
+        if (folder) {
+          state.selectedCwd = folder;
+          cwdLabel.textContent = folder.split('/').pop();
+          cwdChip.title = folder;
+        }
+      },
+    ),
   }, _el('span', { textContent: '\u{1F4C2}' }), cwdLabel);
 
   state.cwdLabel = cwdLabel;
