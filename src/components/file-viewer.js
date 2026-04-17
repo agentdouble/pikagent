@@ -24,6 +24,7 @@ export class FileViewer {
       (mode) => this.switchMode(mode),
       () => this._renderModeBar(),
     );
+    this._renderModeBar();
     this._setupListeners();
   }
 
@@ -36,7 +37,6 @@ export class FileViewer {
 
     this.modeBar = _el('div', 'file-viewer-mode-bar');
     this.container.appendChild(this.modeBar);
-    this._renderModeBar();
 
     this.tabsBar = _el('div', 'file-viewer-tabs');
     this.container.appendChild(this.tabsBar);
