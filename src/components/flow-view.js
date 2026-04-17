@@ -1,5 +1,6 @@
 import { startInlineRename } from '../utils/form-helpers.js';
-import { _el, renderButtonBar, showPromptDialog } from '../utils/dom-dialogs.js';
+import { _el, renderButtonBar } from '../utils/dom.js';
+import { showPromptDialog } from '../utils/dom-dialogs.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import {

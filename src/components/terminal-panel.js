@@ -1,5 +1,5 @@
 import { bus, EVENTS } from '../utils/events.js';
-import { _el } from '../utils/dom-dialogs.js';
+import { _el } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {
   SplitNode, RESIZE_CURSOR,

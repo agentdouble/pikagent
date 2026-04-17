@@ -8,10 +8,6 @@ import { _el } from './dom.js';
 import { onClickStopped } from './event-helpers.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 
-// Re-export _el so consumers that need both form helpers and _el can import
-// from a single module instead of dom.js.
-export { _el } from './dom.js';
-
 /**
  * Wire up Enter / Escape / blur / click on an inline <input>.
  * Guarantees onCommit fires at most once.

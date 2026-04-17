@@ -12,7 +12,7 @@
 
 import { getComponent } from './component-registry.js';
 import { bus, EVENTS } from './events.js';
-import { _el } from './dom-dialogs.js';
+import { _el } from './dom.js';
 import { WORKSPACE_PANELS } from './tab-manager-helpers.js';
 import {
   buildSidePanel, buildCenterPanel,

@@ -4,7 +4,8 @@
  */
 
 import { bus, EVENTS } from './events.js';
-import { _el, setupInlineInput, startInlineRename } from './form-helpers.js';
+import { _el } from './dom.js';
+import { setupInlineInput, startInlineRename } from './form-helpers.js';
 import { setupDropZone as _setupDropZone } from './drop-zone-helpers.js';
 import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
 

@@ -1,5 +1,5 @@
 import { generateId } from '../utils/id.js';
-import { _el, createActionButton, createModalOverlay } from '../utils/dom-dialogs.js';
+import { _el, createActionButton, createModalOverlay } from '../utils/dom.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,

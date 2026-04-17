@@ -2,7 +2,7 @@
  * Drop indicator management for terminal panel drag-and-drop.
  * Extracted from terminal-panel.js to reduce component size.
  */
-import { _el } from './dom-dialogs.js';
+import { _el } from './dom.js';
 import { detectDropSide, computeIndicatorRect } from './split-primitives.js';
 
 export class DropIndicatorManager {

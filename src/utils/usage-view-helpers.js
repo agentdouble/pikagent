@@ -3,7 +3,7 @@
  * No side-effect dependencies — safe to unit-test in isolation.
  */
 
-import { _el } from './dom-dialogs.js';
+import { _el } from './dom.js';
 import { formatDuration, formatTokens, runTooltip, rateColor, rateCls } from './usage-formatters.js';
 
 // --- Tab definitions ---
