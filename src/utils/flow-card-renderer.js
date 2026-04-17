@@ -8,8 +8,8 @@ import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flo
 
 /**
  * Create the run-status dots row for a flow card.
- * @param {{ runs?: Array<{ status: string, date?: string, timestamp?: number }> }} flow
- * @param {(flow: { runs?: Array<unknown> }, run: { status: string, date?: string, timestamp?: number }) => void} onShowLog
+ * @param {{ runs?: Array<{ status: string, date?: string, timestamp?: string }> }} flow
+ * @param {(flow: { runs?: Array<{ status: string, date?: string, timestamp?: string }> }, run: { status: string, date?: string, timestamp?: string }) => void} onShowLog
  */
 function createRunDots(flow, onShowLog) {
   const dots = _el('div', 'flow-card-dots');
@@ -44,7 +44,7 @@ function createCardActions(flow, isRunning, handlers) {
 
 /**
  * Create the full header row for a flow card.
- * @param {{ id: string, name: string, enabled?: boolean, schedule?: unknown, runs?: Array<{ status: string, date?: string, timestamp?: number }> }} flow
+ * @param {{ id: string, name: string, enabled?: boolean, schedule?: unknown, runs?: Array<{ status: string, date?: string, timestamp?: string }> }} flow
  * @param {boolean} isRunning
  * @param {boolean} isExpanded
  * @param {{ onToggleOutput: (flowId: string) => void, onShowLog: (flow: unknown, run: unknown) => void, actionHandlers: { run: () => void, toggle: () => void, edit: () => void, delete: () => void } }} opts

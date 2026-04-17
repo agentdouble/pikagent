@@ -71,7 +71,7 @@ export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: bu
 /**
  * Recursively build a split-panel tree from a serialised layout descriptor.
  *
- * @param {{ type: string, cwd?: string, flex?: number, direction?: string, children?: Array<unknown> }} tree - serialized layout node
+ * @param {import('./terminal-serializer.js').SplitTreeNode} tree - serialized layout node
  * @param {{ createTerminalNode: (cwd?: string) => SplitNode, createSplitHandle: (direction: string, splitEl: HTMLElement) => HTMLElement }} callbacks
  * @returns {SplitNode}
  */
