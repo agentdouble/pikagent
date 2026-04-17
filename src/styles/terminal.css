@@ -16,7 +16,9 @@
   flex-direction: column;
   position: relative;
   border: 1px solid transparent;
-  transition: border-color 0.15s, opacity 0.15s;
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-out),
+              opacity var(--duration-fast) var(--ease-out);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -48,13 +50,14 @@
 
 .terminal-drag-handle {
   cursor: grab;
-  padding: 0 4px;
+  padding: 2px 6px;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1;
   user-select: none;
-  border-radius: 3px;
-  transition: color 0.15s, background 0.15s;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
 }
 
 .terminal-drag-handle:hover {
@@ -75,7 +78,7 @@
   width: 22px;
   height: 22px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   font-size: 16px;
@@ -84,7 +87,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
   flex-shrink: 0;
 }
 
@@ -97,16 +101,16 @@
 .drop-indicator {
   position: fixed;
   z-index: 100;
-  background: rgba(116, 192, 252, 0.15);
-  border: 2px solid var(--blue, #74c0fc);
-  border-radius: 6px;
+  background: var(--blue-soft);
+  border: 2px solid var(--blue);
+  border-radius: var(--radius-md);
   pointer-events: none;
   display: none;
   transition: left 0.1s, top 0.1s, width 0.1s, height 0.1s;
 }
 
 .terminal-wrapper.drop-hover {
-  border-color: var(--blue, #74c0fc);
+  border-color: var(--blue);
 }
 
 .terminal-container {
@@ -143,8 +147,8 @@
 
 .split-handle {
   flex-shrink: 0;
-  background: var(--border-color);
-  transition: background 0.15s;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-out);
   z-index: 5;
 }
 
@@ -153,11 +157,11 @@
 }
 
 .split-handle-horizontal {
-  width: 3px;
+  width: 4px;
   cursor: col-resize;
 }
 
 .split-handle-vertical {
-  height: 3px;
+  height: 4px;
   cursor: row-resize;
 }

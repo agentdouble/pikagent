@@ -23,31 +23,32 @@
 .file-viewer-mode-bar {
   display: flex;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
   padding: 0;
   flex-shrink: 0;
 }
 
 .mode-btn {
   flex: 1;
-  padding: 6px 12px;
-  font-size: 11px;
+  padding: 10px 14px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   color: var(--text-muted);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
   font-family: inherit;
   text-align: center;
 }
 
 .mode-btn:hover {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .mode-btn.active {
@@ -116,12 +117,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  font-size: 11px;
+  padding: 10px 14px 8px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-secondary);
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
   position: sticky;
@@ -156,11 +157,11 @@
 }
 
 .git-section-header {
-  padding: 6px 12px;
+  padding: 8px 14px;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   color: var(--text-muted);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
@@ -180,11 +181,11 @@
 .git-file-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
+  gap: 10px;
+  padding: 6px 14px;
   font-size: 11px;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .git-file-item:hover {
@@ -192,19 +193,24 @@
 }
 
 .git-file-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
   font-size: 9px;
   font-weight: 700;
   font-family: var(--font-mono);
-  width: 14px;
-  text-align: center;
   flex-shrink: 0;
+  letter-spacing: 0;
 }
 
-.git-status-M { color: var(--accent); }
-.git-status-A { color: var(--green); }
-.git-status-D { color: #f44; }
-.git-status-R { color: #88f; }
-.git-status-\\? { color: var(--text-muted); }
+.git-status-M { color: var(--yellow); background: var(--yellow-soft); }
+.git-status-A { color: var(--green); background: var(--green-soft); }
+.git-status-D { color: var(--red); background: var(--red-soft); }
+.git-status-R { color: var(--blue); background: var(--blue-soft); }
+.git-status-\\? { color: var(--text-muted); background: var(--bg-active); }
 
 .git-file-name-label {
   flex: 1;
@@ -243,8 +249,8 @@
   display: flex;
   overflow-x: auto;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  min-height: 32px;
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 34px;
 }
 
 .file-viewer-tabs::-webkit-scrollbar {
@@ -252,27 +258,43 @@
 }
 
 .file-tab {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px;
-  height: 32px;
+  gap: 8px;
+  padding: 0 14px;
+  height: 34px;
   font-size: 11px;
+  font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
   white-space: nowrap;
-  border-right: 1px solid var(--border-subtle);
-  transition: background 0.1s;
+  transition: color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.file-tab::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  border-radius: 2px 2px 0 0;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .file-tab:hover {
-  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .file-tab.active {
-  background: var(--bg-primary);
   color: var(--text-primary);
-  border-bottom: 2px solid var(--accent);
+}
+
+.file-tab.active::after {
+  background: var(--accent);
 }
 
 .file-tab-pin {
@@ -303,7 +325,7 @@
 
 /* Breadcrumb */
 .file-viewer-breadcrumb {
-  padding: 4px 12px;
+  padding: 6px 14px;
   font-size: 11px;
   font-family: var(--font-mono);
   color: var(--text-muted);
@@ -312,6 +334,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.1px;
 }
 
 .file-viewer-empty,
@@ -425,7 +448,7 @@
 
 /* Selection must be visible over the transparent textarea text */
 .editor-edit-area .editor-textarea::selection {
-  background: rgba(116, 192, 252, 0.3);
+  background: var(--blue-soft);
 }
 
 .editor-edit-area .editor-highlight-layer code {
@@ -438,18 +461,18 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 3px 12px;
+  padding: 6px 14px;
   background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-subtle);
   font-size: 11px;
   color: var(--text-muted);
-  min-height: 24px;
+  min-height: 28px;
   flex-shrink: 0;
-  transition: background 0.3s;
+  transition: background var(--duration-slow) var(--ease-out);
 }
 
 .editor-status-bar.save-flash {
-  background: rgba(81, 207, 102, 0.15);
+  background: var(--green-soft);
 }
 
 .status-item {

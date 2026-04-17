@@ -3,12 +3,12 @@
   display: none;
   position: fixed;
   z-index: 2000;
-  min-width: 180px;
-  background: var(--bg-secondary);
+  min-width: 200px;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 4px 0;
-  box-shadow: 0 8px 24px var(--shadow-drop);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  box-shadow: var(--shadow-lift);
   font-size: 12px;
 }
 
@@ -16,10 +16,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 14px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
   user-select: none;
 }
 
@@ -29,20 +31,20 @@
 }
 
 .context-menu-shortcut {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-muted);
   margin-left: 20px;
   font-family: var(--font-mono);
 }
 
 .context-menu-item:hover .context-menu-shortcut {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .context-menu-separator {
   height: 1px;
-  background: var(--border-color);
-  margin: 4px 0;
+  background: var(--border-subtle);
+  margin: 4px 6px;
 }
 
 /* ===== Submenu ===== */
@@ -57,15 +59,15 @@
 }
 
 .context-menu-submenu:hover > .context-menu-arrow {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .context-menu-sub {
   display: none;
   position: absolute;
   left: 100%;
-  top: -4px;
-  min-width: 150px;
+  top: -6px;
+  min-width: 170px;
 }
 
 .context-menu-submenu:hover > .context-menu-sub {
@@ -74,36 +76,38 @@
 
 /* ===== Color Dot in Menu ===== */
 .context-menu-color-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-right: 8px;
+  margin-right: 10px;
 }
 
 /* ===== New File Inline Input ===== */
 .file-tree-new-input {
   width: calc(100% - 24px);
   margin: 2px 12px;
-  padding: 3px 6px;
-  background: var(--bg-primary);
+  padding: 5px 8px;
+  background: var(--bg-elevated);
   border: 1px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 12px;
   font-family: var(--font-ui);
   outline: none;
+  box-shadow: var(--shadow-focus);
 }
 
 .file-tree-rename-input {
-  padding: 1px 4px;
-  background: var(--bg-primary);
+  padding: 2px 6px;
+  background: var(--bg-elevated);
   border: 1px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 12px;
   font-family: var(--font-ui);
   outline: none;
   width: auto;
   min-width: 60px;
+  box-shadow: var(--shadow-focus);
 }

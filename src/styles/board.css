@@ -30,29 +30,36 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--bg-surface);
-  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.4s ease,
+              box-shadow 0.4s ease,
+              transform var(--duration-base) var(--ease-out);
+}
+
+.board-card:hover {
+  transform: translateY(-1px);
 }
 
 .board-card-running {
-  border-color: rgba(232, 185, 106, 0.45);
-  box-shadow: 0 0 8px rgba(232, 185, 106, 0.08);
+  border-color: rgba(234, 179, 8, 0.5);
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.2), var(--shadow-soft);
 }
 
 .board-card-waiting {
-  border-color: rgba(123, 200, 164, 0.45);
-  box-shadow: 0 0 8px rgba(123, 200, 164, 0.08);
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2), var(--shadow-soft);
 }
 
 .board-card-running .board-card-header {
-  background: rgba(232, 185, 106, 0.06);
+  background: var(--yellow-soft);
 }
 
 .board-card-waiting .board-card-header {
-  background: rgba(123, 200, 164, 0.06);
+  background: var(--green-soft);
 }
 
 .board-card-hidden {
@@ -89,21 +96,21 @@
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 2px 8px;
-  border-radius: 10px;
+  letter-spacing: 0.8px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
   transition: background 0.4s ease, color 0.4s ease;
 }
 
 .board-status-running {
-  background: rgba(232, 185, 106, 0.1);
-  color: rgba(232, 185, 106, 0.8);
+  background: var(--yellow-soft);
+  color: var(--yellow);
 }
 
 .board-status-waiting {
-  background: rgba(123, 200, 164, 0.1);
-  color: rgba(123, 200, 164, 0.8);
+  background: var(--green-soft);
+  color: var(--green);
 }
 
 .board-card-btns {
@@ -112,14 +119,17 @@
 }
 
 .board-card-btn {
-  background: none;
+  background: transparent;
   border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 4px;
-  transition: background 0.15s, border-color 0.15s;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
   line-height: 1;
 }
 
@@ -163,16 +173,19 @@
 .board-hidden-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   font-size: 12px;
+  font-weight: 500;
   font-family: var(--font-ui);
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .board-hidden-chip:hover {

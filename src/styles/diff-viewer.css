@@ -4,9 +4,9 @@
   flex-direction: column;
   max-height: 500px;
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--bg-surface);
 }
 
 /* Toolbar */
@@ -34,28 +34,30 @@
 }
 
 .diff-stat-del {
-  color: #f55;
+  color: var(--red);
   font-weight: 600;
 }
 
 .diff-toggle-group {
   display: flex;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   margin-left: auto;
 }
 
 .diff-toggle-btn {
-  padding: 2px 10px;
+  padding: 3px 12px;
   font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.3px;
   background: transparent;
   color: var(--text-muted);
   border: none;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
 }
 
 .diff-toggle-btn:not(:last-child) {
@@ -79,18 +81,19 @@
 }
 
 .diff-nav-btn {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
-  transition: background 0.15s, color 0.15s;
+  font-size: 10px;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
 }
 
 .diff-nav-btn:hover {
@@ -198,7 +201,7 @@
 
 .diff-cell-remove .diff-line-no {
   background: rgba(255, 85, 85, 0.12);
-  color: #f55;
+  color: var(--red);
   opacity: 1;
 }
 
@@ -313,11 +316,11 @@
 }
 
 .diff-unified .diff-row-remove .diff-prefix {
-  color: #f55;
+  color: var(--red);
 }
 
 .diff-unified .diff-row-remove .diff-line-no:first-child {
-  color: #f55;
+  color: var(--red);
   opacity: 1;
 }
 
