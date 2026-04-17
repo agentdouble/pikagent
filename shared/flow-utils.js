@@ -6,7 +6,7 @@
 
 /**
  * Return the last run from a flow's runs array, or null if none.
- * @param {{ runs?: Array }} flow
+ * @param {{ runs?: Array<{ date: string, timestamp: string, logTimestamp?: string, status: string }> }} flow
  * @returns {{ date: string, timestamp: string, logTimestamp?: string, status: string }|null}
  */
 function getLastRun(flow) {

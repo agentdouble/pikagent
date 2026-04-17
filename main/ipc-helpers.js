@@ -46,7 +46,7 @@ const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(A
  * @internal
  * Register forward-style handlers on ipcMain for a given target.
  * @param {Electron.IpcMain} ipc - Electron ipcMain
- * @param {Record<string, Function>} target - The object whose methods will be called
+ * @param {Record<string, (...args: unknown[]) => unknown>} target - The object whose methods will be called
  * @param {Array<[string, string]>} entries - Array of [channel, method] tuples
  */
 function registerForward(ipc, target, entries) {
@@ -59,7 +59,7 @@ function registerForward(ipc, target, entries) {
  * @internal
  * Register spread-style handlers on ipcMain for a given target.
  * @param {Electron.IpcMain} ipc - Electron ipcMain
- * @param {Record<string, Function>} target - The object whose methods will be called
+ * @param {Record<string, (...args: unknown[]) => unknown>} target - The object whose methods will be called
  * @param {Array<[string, string, string[]]>} entries - Array of [channel, method, keys] tuples
  */
 function registerSpread(ipc, target, entries) {
@@ -74,7 +74,7 @@ function registerSpread(ipc, target, entries) {
  * Method name is derived from the channel (domain:method).
  *
  * @param {Electron.IpcMain} ipc - Electron ipcMain
- * @param {Record<string, Record<string, Function>>} targets - Map of domain -> target object
+ * @param {Record<string, Record<string, (...args: unknown[]) => unknown>>} targets - Map of domain -> target object
  * @param {Set<string>} [skip] - Channels to skip (registered as custom handlers elsewhere)
  */
 function registerManagerHandlers(ipc, targets, skip = new Set()) {

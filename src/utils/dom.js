@@ -22,7 +22,7 @@ import { onClickStopped } from './event-helpers.js';
  *
  * @param {string} tag
  * @param {Record<string, unknown>|string|null} [attrsOrClass]
- * @param {...(Node|string|Object|null|false)} children
+ * @param {...(Node|string|Record<string, unknown>|null|false)} children
  */
 export function _el(tag, attrsOrClass, ...children) {
   const el = document.createElement(tag);

@@ -19,7 +19,7 @@ import { disposeAllTabs } from './workspace-cleanup.js';
 /**
  * Serialize all tabs into a config object.
  * @param {SerializeDeps} deps
- * @returns {{ tabs: Array, activeTabIndex: number }}
+ * @returns {{ tabs: Array<{ name: string, cwd: string, noShortcut: boolean, colorGroup: string|null, splitTree: unknown, panels: Record<string, unknown>, webviewTabs?: unknown }>, activeTabIndex: number }}
  */
 export function serialize({ tabs, activeTabId }) {
   const serializedTabs = [];

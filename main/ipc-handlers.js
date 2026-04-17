@@ -9,7 +9,7 @@ const { createSafeHandler } = require('./safe-handler');
  * `manager-init.js`.  This module only cares about IPC dispatching.
  *
  * @param {() => import('electron').BrowserWindow} getWindow
- * @param {{ targets: Record<string, object>, ptyManager: object, sessionManager: object }} deps
+ * @param {{ targets: Record<string, Record<string, (...args: unknown[]) => unknown>>, ptyManager: { create: (opts: { id: string, cwd: string, cols: number, rows: number }) => { pid: number, onData: (cb: (data: string) => void) => void, onExit: (cb: (info: { exitCode: number }) => void) => void }, processes: Map<string, unknown> }, sessionManager: { onTerminalExit: (id: string) => void } }} deps
  */
 function register(getWindow, { targets, ptyManager, sessionManager }) {
   const { shell, dialog } = require('electron');
