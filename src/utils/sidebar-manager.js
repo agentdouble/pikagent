@@ -17,7 +17,7 @@
  */
 
 import { getComponent } from './component-registry.js';
-import { _el } from './dom.js';
+import { _el } from './dom-dialogs.js';
 import { ACTIVITY_BUTTONS, SIDE_VIEWS } from './tab-manager-helpers.js';
 import { createAsyncHandler } from './event-helpers.js';
 

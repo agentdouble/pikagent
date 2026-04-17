@@ -1,4 +1,4 @@
-import { _el, positionInViewport } from './dom.js';
+import { _el, positionInViewport } from './dom-dialogs.js';
 import { onClickStopped } from './event-helpers.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 

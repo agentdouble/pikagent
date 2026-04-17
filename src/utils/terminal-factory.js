@@ -1,7 +1,7 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from './terminal-themes.js';
-import { _safeFit } from './dom.js';
+import { _safeFit } from './dom-dialogs.js';
 import { disposeResources } from './disposable.js';
 
 const BASE_FONT_FAMILY =

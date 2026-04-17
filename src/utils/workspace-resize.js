@@ -6,7 +6,7 @@
  * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, scheduleAutoSave: () => void }} PanelInteractionDeps
  */
 
-import { _el } from './dom.js';
+import { _el } from './dom-dialogs.js';
 import { trackMouse } from './drag-helpers.js';
 import {
   PANEL_MIN_WIDTH, FIT_DELAY_MS,

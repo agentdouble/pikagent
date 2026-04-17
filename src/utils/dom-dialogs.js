@@ -1,12 +1,17 @@
 /**
  * Dialog and prompt helpers — extracted from dom.js to reduce file length.
  *
- * Re-uses the low-level DOM factories from dom.js (_el, createActionButton,
- * createModalOverlay, setupKeyboardShortcuts).
+ * Also serves as a facade: re-exports every public symbol from dom.js so that
+ * consumer modules can import from this single module instead of coupling
+ * directly to dom.js.  (See issue #203.)
  */
 
 import { _el, createActionButton, createModalOverlay } from './dom.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+
+// Re-export all dom.js public symbols so consumers can avoid a direct
+// dependency on the dom.js hub module.
+export { _el, createActionButton, createModalOverlay, renderButtonBar, buildChevronRow, _safeFit, createSelect, positionInViewport } from './dom.js';
 
 // ── Private dialog lifecycle ──
 
