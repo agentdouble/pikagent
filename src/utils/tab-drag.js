@@ -166,60 +166,66 @@ function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabI
 // ── Public API ──────────────────────────────────────────────────────
 
 /**
+ * Activate the full drag phase: create ghost, wire trackMouse, and handle end.
+ * @internal
+ */
+function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
+  const { getTabElements, reorderTab } = deps;
+  ctx.ghost = handleDragStart(tabEl);
+  ctx.ghost.style.left = `${ev.clientX - ctx.offsetX}px`;
+  updateTabDropTarget(getTabElements, state, ev.clientX, tabId);
+
+  trackMouse('grabbing',
+    (mv) => {
+      ctx.ghost.style.left = `${mv.clientX - ctx.offsetX}px`;
+      updateTabDropTarget(getTabElements, state, mv.clientX, tabId);
+    },
+    () => {
+      handleDragEnd(deps, tabEl, ctx.ghost, state, tabId);
+      ctx.ghost = null;
+    },
+    { bodyClass: 'dragging' },
+  );
+}
+
+/**
+ * Install threshold listeners that wait for a minimum drag distance
+ * before activating the full drag phase.
+ * @internal
+ */
+function installThresholdListeners(deps, tabEl, tabId, state, ctx) {
+  const onThresholdMove = (ev) => {
+    if (Math.abs(ev.clientX - ctx.startX) <= DRAG_THRESHOLD) return;
+    document.removeEventListener('mousemove', onThresholdMove);
+    document.removeEventListener('mouseup', onThresholdUp);
+    activateDrag(deps, tabEl, tabId, state, ctx, ev);
+  };
+
+  const onThresholdUp = () => {
+    document.removeEventListener('mousemove', onThresholdMove);
+    document.removeEventListener('mouseup', onThresholdUp);
+  };
+
+  document.addEventListener('mousemove', onThresholdMove);
+  document.addEventListener('mouseup', onThresholdUp);
+}
+
+/**
  * Wire drag-to-reorder behaviour on a single tab element.
  *
  * @param {TabDragDeps} deps  — explicit dependency interface
  * @param {HTMLElement} tabEl — the tab DOM element
  * @param {string} tabId     — the tab's unique id
  */
-export function setupTabDrag({ getTabElements, reorderTab }, tabEl, tabId) {
-  let startX = 0;
-  let ghost = null;
-  let offsetX = 0;
-
+export function setupTabDrag(deps, tabEl, tabId) {
   const state = initDragState();
+  const ctx = { startX: 0, ghost: null, offsetX: 0 };
 
   tabEl.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
-    startX = e.clientX;
+    ctx.startX = e.clientX;
     const rect = tabEl.getBoundingClientRect();
-    offsetX = e.clientX - rect.left;
-
-    // Phase 1: detect threshold before activating drag.
-    // Once the threshold is exceeded we hand off to trackMouse() which
-    // manages cursor/userSelect, RAF-throttled moves, and mouseup cleanup.
-    const onThresholdMove = (ev) => {
-      if (Math.abs(ev.clientX - startX) <= DRAG_THRESHOLD) return;
-
-      // Threshold crossed — remove these preliminary listeners
-      document.removeEventListener('mousemove', onThresholdMove);
-      document.removeEventListener('mouseup', onThresholdUp);
-
-      // Phase 2: real drag via trackMouse()
-      ghost = handleDragStart(tabEl);
-      // Process the first move immediately so the ghost starts in the right position
-      ghost.style.left = `${ev.clientX - offsetX}px`;
-      updateTabDropTarget(getTabElements, state, ev.clientX, tabId);
-
-      trackMouse('grabbing',
-        (mv) => {
-          ghost.style.left = `${mv.clientX - offsetX}px`;
-          updateTabDropTarget(getTabElements, state, mv.clientX, tabId);
-        },
-        () => {
-          handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId);
-          ghost = null;
-        },
-        { bodyClass: 'dragging' },
-      );
-    };
-
-    const onThresholdUp = () => {
-      document.removeEventListener('mousemove', onThresholdMove);
-      document.removeEventListener('mouseup', onThresholdUp);
-    };
-
-    document.addEventListener('mousemove', onThresholdMove);
-    document.addEventListener('mouseup', onThresholdUp);
+    ctx.offsetX = e.clientX - rect.left;
+    installThresholdListeners(deps, tabEl, tabId, state, ctx);
   });
 }

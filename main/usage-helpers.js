@@ -86,30 +86,26 @@ function projectShortName(proj) {
   return parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
 }
 
-function aggregateTokenData(labels, projectResults) {
-  // Build the set of valid date keys from labels for filtering
+/** @internal Build aggregated per-day token buckets from project results, filtered to valid label dates. */
+function buildGlobalPerDay(labels, projectResults) {
   const validDates = new Set(labels.map(d => d.date));
 
-  // Flatten all per-day entries from every project into a single stream,
-  // then aggregate via aggregateByKey (replaces the manual nested loop).
   const perDayEntries = projectResults.flatMap(({ perDayMap }) =>
     Object.entries(perDayMap)
       .filter(([dateKey]) => validDates.has(dateKey))
       .map(([dateKey, dayData]) => ({ dateKey, dayData })),
   );
 
-  const globalPerDay = aggregateByKey(
+  return aggregateByKey(
     perDayEntries,
     ({ dateKey }) => dateKey,
     () => newPerDayTotals(),
     (bucket, { dayData }) => addTokens(bucket, dayData, PERDAY_KEYS),
   );
+}
 
-  // Accumulate overall totals across all projects
-  const totals = newTokenTotals();
-  for (const { totals: pt } of projectResults) addTokens(totals, pt);
-
-  // Aggregate per-project token data using aggregateByKey
+/** @internal Aggregate per-project token data, sorted by total descending. */
+function buildPerProjectRanking(projectResults) {
   const perProjectAgg = aggregateByKey(
     projectResults.filter(({ totals: pt }) => PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0) > 0),
     ({ proj }) => projectShortName(proj),
@@ -120,16 +116,23 @@ function aggregateTokenData(labels, projectResults) {
     },
   );
 
-  const tokenPerDay = labels.map((day) => {
+  return Object.entries(perProjectAgg)
+    .map(([project, data]) => ({ project, ...data }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, TOP_PROJECTS_LIMIT);
+}
+
+function aggregateTokenData(labels, projectResults) {
+  const globalPerDay = buildGlobalPerDay(labels, projectResults);
+
+  const totals = newTokenTotals();
+  for (const { totals: pt } of projectResults) addTokens(totals, pt);
+
+  const perDay = labels.map((day) => {
     const g = globalPerDay[day.date] || newPerDayTotals();
     const total = PERDAY_KEYS.reduce((sum, k) => sum + g[k], 0);
     return { ...day, ...g, total };
   });
-
-  const perProject = Object.entries(perProjectAgg)
-    .map(([project, data]) => ({ project, ...data }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, TOP_PROJECTS_LIMIT);
 
   return {
     totalInput: totals.input,
@@ -137,8 +140,8 @@ function aggregateTokenData(labels, projectResults) {
     totalCacheRead: totals.cacheRead,
     totalCacheCreate: totals.cacheCreate,
     total: totals.input + totals.output,
-    perDay: tokenPerDay,
-    perProject,
+    perDay,
+    perProject: buildPerProjectRanking(projectResults),
   };
 }
 
