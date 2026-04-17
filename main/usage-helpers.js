@@ -168,27 +168,47 @@ function getFlowRunDuration(run) {
   return ms > 0 && ms < MAX_RUN_DURATION_MS ? Math.round(ms / 1000) : null;
 }
 
-function buildFlowMetrics(flows, flowRuns) {
+/**
+ * Shared metrics builder — computes rate, duration, and perDay from a list of
+ * items and merges any extra fields supplied by the caller.
+ *
+ * @param {Array} items - The items to compute base metrics for
+ * @param {{ durationMapper: (item: any) => number|null,
+ *           dateExtractor: (item: any) => string,
+ *           extra?: Record<string, unknown> }} opts
+ * @returns {Record<string, unknown>}
+ */
+function buildMetrics(items, { durationMapper, dateExtractor, extra = {} }) {
   return {
-    rate: computeRate(flowRuns),
-    duration: computeDuration(flowRuns.map(getFlowRunDuration)),
-    perDay: perDay(flowRuns, (r) => r.date, DEFAULT_DAYS),
-    flowStats: flows.map((flow) => {
-      const runs = flowRuns.filter((r) => r.flowId === flow.id);
-      const rate = computeRate(runs);
-      const dur = computeDuration(runs.map(getFlowRunDuration));
-      return {
-        id: flow.id,
-        name: flow.name,
-        enabled: flow.enabled,
-        totalRuns: rate.total,
-        successRate: rate.rate,
-        avgDuration: dur.avg,
-      };
-    }),
-    totalFlows: flows.length,
-    activeFlows: flows.filter((f) => f.enabled).length,
+    rate: computeRate(items),
+    duration: computeDuration(items.map(durationMapper)),
+    perDay: perDay(items, dateExtractor, DEFAULT_DAYS),
+    ...extra,
   };
+}
+
+function buildFlowMetrics(flows, flowRuns) {
+  return buildMetrics(flowRuns, {
+    durationMapper: getFlowRunDuration,
+    dateExtractor: (r) => r.date,
+    extra: {
+      flowStats: flows.map((flow) => {
+        const runs = flowRuns.filter((r) => r.flowId === flow.id);
+        const rate = computeRate(runs);
+        const dur = computeDuration(runs.map(getFlowRunDuration));
+        return {
+          id: flow.id,
+          name: flow.name,
+          enabled: flow.enabled,
+          totalRuns: rate.total,
+          successRate: rate.rate,
+          avgDuration: dur.avg,
+        };
+      }),
+      totalFlows: flows.length,
+      activeFlows: flows.filter((f) => f.enabled).length,
+    },
+  });
 }
 
 // ===== Agent helpers =====
@@ -209,14 +229,15 @@ function getByAgent(sessions) {
 
 function buildAgentMetrics(sessions, activeSessions) {
   const allSessions = [...sessions, ...activeSessions];
-  return {
-    rate: computeRate(allSessions),
-    duration: computeDuration(allSessions.map((s) => s.durationSec)),
-    perDay: perDay(allSessions, (s) => extractDateString(s.startedAt), DEFAULT_DAYS),
-    byAgent: getByAgent(allSessions),
-    totalSessions: allSessions.length,
-    activeSessions: activeSessions.length,
-  };
+  return buildMetrics(allSessions, {
+    durationMapper: (s) => s.durationSec,
+    dateExtractor: (s) => extractDateString(s.startedAt),
+    extra: {
+      byAgent: getByAgent(allSessions),
+      totalSessions: allSessions.length,
+      activeSessions: activeSessions.length,
+    },
+  });
 }
 
 function accumulatePerDay(perDayMap, usage) {

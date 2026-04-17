@@ -10,7 +10,7 @@ const {
   shouldRun, buildFlowCommand, createOutputProcessor,
 } = require('./flow-helpers');
 const { safeSend } = require('./ipc-helpers');
-const { PollingTimer } = require('./polling-timer');
+const { createPollingManager } = require('../shared/polling-manager');
 const { buildRecord } = require('./record-helpers');
 const { createLogger, trySafe } = require('./logger');
 
@@ -19,7 +19,9 @@ const ensureDir = ensureDirOnce(LOGS_DIR);
 
 class FlowManager {
   constructor() {
-    this._poller = new PollingTimer(SCHEDULER_INTERVAL_MS, () => this._tick());
+    this._polling = createPollingManager(() => this._tick(), {
+      intervalMs: SCHEDULER_INTERVAL_MS,
+    });
     this._getWindow = null;
     this._ptyManager = null;
     this._runningFlows = new Map();
@@ -28,11 +30,11 @@ class FlowManager {
   start(getWindow, ptyManager) {
     this._getWindow = getWindow;
     this._ptyManager = ptyManager;
-    this._poller.start();
+    this._polling.start();
   }
 
   stop() {
-    this._poller.stop();
+    this._polling.stop();
   }
 
   // --- Window IPC helper ---
