@@ -10,6 +10,10 @@ const {
   parseTokenUsage,
   aggregateTokenData,
   accumulatePerDay,
+  getFlowRuns,
+  buildFlowMetrics,
+  buildAgentMetrics,
+  collectUniqueCwds,
 } = require('./usage-helpers');
 const { createLogger, trySafe } = require('./logger');
 
@@ -67,4 +71,11 @@ async function getTokenMetrics(days = DEFAULT_DAYS) {
   return aggregateTokenData(labels, projectResults);
 }
 
-module.exports = { getAllFlows, getTokenMetrics };
+module.exports = {
+  getAllFlows,
+  getTokenMetrics,
+  getFlowRuns,
+  buildFlowMetrics,
+  buildAgentMetrics,
+  collectUniqueCwds,
+};
