@@ -1,0 +1,70 @@
+/* ===== Confirm close workspace dialog ===== */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.confirm-box {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  min-width: 320px;
+  text-align: center;
+  box-shadow: var(--shadow-lift);
+}
+
+.confirm-box p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.confirm-buttons button {
+  padding: 8px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.confirm-buttons button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.confirm-buttons button:active {
+  transform: scale(0.97);
+}
+
+.confirm-buttons .confirm-ok {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+
+.confirm-buttons .confirm-ok:hover {
+  background: var(--red);
+  filter: brightness(1.1);
+  border-color: var(--red);
+}

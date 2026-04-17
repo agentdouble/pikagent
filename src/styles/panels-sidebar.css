@@ -1,0 +1,234 @@
+/* ===== Webview Area ===== */
+.webview-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.webview-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.webview-nav-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.webview-nav-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.webview-url-input {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.webview-url-input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.webview-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.webview-wrapper.mobile {
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+}
+
+.webview-frame {
+  flex: 1;
+  border: none;
+  background: #fff;
+}
+
+.webview-frame.mobile {
+  flex: none;
+  width: 375px;
+  height: 667px;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 0 0 2px var(--border-color), var(--shadow-lift);
+}
+
+/* ===== Webview Console ===== */
+.webview-console {
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  flex-shrink: 0;
+}
+
+.webview-console-handle {
+  height: 4px;
+  cursor: row-resize;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.webview-console-handle:hover {
+  background: var(--accent);
+}
+
+.webview-console-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.webview-console-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.webview-console-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-on-accent);
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  line-height: 1;
+}
+
+.webview-console-clear {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.webview-console-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.webview-console-list {
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.webview-log {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 2px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.webview-log:hover {
+  background: var(--bg-hover);
+}
+
+.webview-log-time {
+  color: var(--text-subtle);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.webview-log-level {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.webview-log-level-verbose { color: var(--text-muted); }
+.webview-log-level-info { color: var(--blue); }
+.webview-log-level-warn { color: var(--yellow); }
+.webview-log-level-error { color: var(--red); }
+
+.webview-log-error {
+  background: var(--red-soft);
+}
+
+.webview-log-warn {
+  background: var(--yellow-soft);
+}
+
+.webview-log-msg {
+  flex: 1;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-width: 0;
+}
+
+.webview-log-source {
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.webview-nav-btn.active {
+  color: var(--accent);
+}
+
+/* Prevent webview from capturing mouse during resize/drag */
+body.resizing .webview-frame {
+  pointer-events: none;
+}
