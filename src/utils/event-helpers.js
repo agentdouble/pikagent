@@ -41,18 +41,20 @@ export function onKeyAction(el, { onEnter, onEscape } = {}) {
 }
 
 /**
- * Attach dragstart / dragend / dragover / drop listeners to an element in a
- * single call. All callbacks are optional — omit any you don't need.
+ * Attach dragstart / dragend / dragover / dragleave / drop listeners to an
+ * element in a single call. All callbacks are optional — omit any you don't need.
  *
  * @param {HTMLElement} el
  * @param {{ onDragStart?: (e: DragEvent) => void,
  *           onDragEnd?:   (e: DragEvent) => void,
  *           onDragOver?:  (e: DragEvent) => void,
+ *           onDragLeave?: (e: DragEvent) => void,
  *           onDrop?:      (e: DragEvent) => void }} handlers
  */
-export function onDragEvents(el, { onDragStart, onDragEnd, onDragOver, onDrop } = {}) {
+export function onDragEvents(el, { onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop } = {}) {
   if (onDragStart) el.addEventListener('dragstart', onDragStart);
   if (onDragEnd)   el.addEventListener('dragend',   onDragEnd);
   if (onDragOver)  el.addEventListener('dragover',  onDragOver);
+  if (onDragLeave) el.addEventListener('dragleave', onDragLeave);
   if (onDrop)      el.addEventListener('drop',      onDrop);
 }
