@@ -3,6 +3,11 @@
  * Extracted from flow-view.js to reduce component size.
  */
 
+/**
+ * @typedef {{ date: string, timestamp: string, logTimestamp?: string, status: string }} FlowRun
+ * @typedef {{ id: string, runs?: Array<FlowRun>, enabled?: boolean }} FlowDescriptor
+ */
+
 import { _el } from './dom-dialogs.js';
 import { getLastRun, toggleInSet } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-category-renderer.js';
@@ -39,10 +44,10 @@ export function setupCardDrag(card, flowId, catId, dragState) {
  * Build the collapsible body portion of a flow card (terminal or log view).
  * Returns null when nothing should be rendered.
  *
- * @param {{ id: string, runs?: Array<unknown>, enabled?: boolean }} flow
+ * @param {FlowDescriptor} flow
  * @param {boolean} isRunning
  * @param {boolean} isExpanded
- * @param {{ createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: unknown, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }} termManager - FlowCardTerminalManager instance
+ * @param {{ createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: FlowRun, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }} termManager - FlowCardTerminalManager instance
  * @param {Record<string, string>} runningMap - { [flowId]: ptyId }
  * @returns {HTMLElement|null}
  */
@@ -68,9 +73,9 @@ export function buildCardBody(flow, isRunning, isExpanded, termManager, runningM
  * or opens the flow modal when there are no runs.
  *
  * @param {HTMLElement} headerRow
- * @param {{ id: string, runs?: Array<unknown>, enabled?: boolean }} flow
+ * @param {FlowDescriptor} flow
  * @param {boolean} isRunning
- * @param {{ expandedCards: Set<string>, onRenderList: () => void, onOpenModal: (flow: { id: string, runs?: Array<unknown>, enabled?: boolean }) => void, termManager: { disposeLogTerminal: (flowId: string) => void } }} callbacks
+ * @param {{ expandedCards: Set<string>, onRenderList: () => void, onOpenModal: (flow: FlowDescriptor) => void, termManager: { disposeLogTerminal: (flowId: string) => void } }} callbacks
  */
 export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
   headerRow.addEventListener('click', () => {
@@ -93,10 +98,10 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
 /**
  * Build a complete flow card element.
  *
- * @typedef {{ runningMap: Record<string, string>, expandedCards: Set<string>, drag: { flowId: string|null, catId: string|null }, termManager: { createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: unknown, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }, onRenderList: () => void, onShowLog: (flow: { id: string }, run: unknown) => void, onRun: (flowId: string) => void, onToggle: (flowId: string) => Promise<void>, onRefresh: () => void, onOpenModal: (flow: { id: string }) => void, onDeleteFlow: (flowId: string) => void }} CreateFlowCardDeps
+ * @typedef {{ runningMap: Record<string, string>, expandedCards: Set<string>, drag: { flowId: string|null, catId: string|null }, termManager: { createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: FlowRun, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }, onRenderList: () => void, onShowLog: (flow: { id: string }, run: FlowRun) => void, onRun: (flowId: string) => void, onToggle: (flowId: string) => Promise<void>, onRefresh: () => void, onOpenModal: (flow: FlowDescriptor) => void, onDeleteFlow: (flowId: string) => void }} CreateFlowCardDeps
  *
  * @param {CreateFlowCardDeps} deps
- * @param {{ id: string, runs?: Array<unknown>, enabled?: boolean }} flow
+ * @param {FlowDescriptor} flow
  * @param {string} catId
  * @returns {HTMLElement}
  */

@@ -9,7 +9,7 @@ import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flo
 /**
  * Create the run-status dots row for a flow card.
  * @param {{ runs?: Array<{ status: string, date?: string, timestamp?: number }> }} flow
- * @param {(flow: { runs?: Array<unknown> }, run: { status: string, date?: string, timestamp?: number }) => void} onShowLog
+ * @param {(flow: { runs?: Array<{ status: string, date?: string, timestamp?: number }> }, run: { status: string, date?: string, timestamp?: number }) => void} onShowLog
  */
 function createRunDots(flow, onShowLog) {
   const dots = _el('div', 'flow-card-dots');

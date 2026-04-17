@@ -10,7 +10,7 @@ import { computeInsertionIndex } from './drag-helpers.js';
 
 /**
  * Create a category group DOM element with header and flow items.
- * @param {{ cat: { id: string, name: string }, flows: Array<unknown>, isUncategorized: boolean, collapsedCategories: Set<string>, createCard: (flow: unknown, catId: string) => HTMLElement, onToggleCollapse: (catId: string) => void, onRenameCategory: (catId: string, nameEl: HTMLElement) => void, onDeleteCategory: (catId: string) => void, onDropFlow: (flowId: string, catId: string, insertIndex: number) => void, dragState: { getDragFlowId: () => string|null, clearDrag: () => void } }} params
+ * @param {{ cat: { id: string, name: string }, flows: Array<import('./flow-card-setup.js').FlowDescriptor>, isUncategorized: boolean, collapsedCategories: Set<string>, createCard: (flow: import('./flow-card-setup.js').FlowDescriptor, catId: string) => HTMLElement, onToggleCollapse: (catId: string) => void, onRenameCategory: (catId: string, nameEl: HTMLElement) => void, onDeleteCategory: (catId: string) => void, onDropFlow: (flowId: string, catId: string, insertIndex: number) => void, dragState: { getDragFlowId: () => string|null, clearDrag: () => void } }} params
  * @returns {HTMLElement}
  */
 export function createCategoryGroup(params) {

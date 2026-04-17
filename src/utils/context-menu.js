@@ -1,3 +1,7 @@
+/**
+ * @typedef {{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<ContextMenuItem> }} ContextMenuItem
+ */
+
 import { _el, positionInViewport } from './dom-dialogs.js';
 import { onClickStopped } from './event-helpers.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
@@ -87,7 +91,7 @@ export const contextMenu = new ContextMenu();
  * colour filter).
  *
  * @param {HTMLElement} el - element to listen on
- * @param {(e: MouseEvent) => Array<{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<unknown> }>|void} buildItems - receives the raw event,
+ * @param {(e: MouseEvent) => Array<ContextMenuItem>|void} buildItems - receives the raw event,
  *   should return an items array (or nothing).
  */
 export function attachContextMenu(el, buildItems) {
