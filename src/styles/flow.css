@@ -26,25 +26,23 @@
   align-items: center;
   gap: 6px;
   background: var(--accent);
-  border: 1px solid var(--accent);
+  border: none;
   color: var(--text-on-accent);
   font-size: 13px;
   font-weight: 500;
   font-family: var(--font-ui);
-  padding: 8px 18px;
+  padding: 9px 20px;
   border-radius: var(--radius-pill);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-out),
               transform var(--duration-fast) var(--ease-out),
               box-shadow var(--duration-fast) var(--ease-out);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .flow-add-btn:hover {
   background: var(--accent-bright);
-  border-color: var(--accent-bright);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--accent-soft), 0 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 16px var(--accent-soft);
 }
 
 .flow-add-btn:active {
@@ -175,8 +173,8 @@
 }
 
 .flow-add-category-btn {
-  background: transparent;
-  border: 1px dashed var(--border-color);
+  background: var(--bg-hover);
+  border: none;
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
@@ -184,14 +182,12 @@
   padding: 10px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out),
+  transition: color var(--duration-fast) var(--ease-out),
               background var(--duration-fast) var(--ease-out);
   text-align: center;
 }
 
 .flow-add-category-btn:hover {
-  border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-softer);
 }
@@ -247,21 +243,18 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-soft);
-  transition: border-color var(--duration-fast) var(--ease-out),
-              transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .flow-card:hover {
-  border-color: var(--border-strong);
   transform: translateY(-1px);
 }
 
 .flow-card-running {
-  border-color: var(--green);
   box-shadow: 0 0 0 1px var(--green-soft), var(--shadow-soft);
 }
 
@@ -327,23 +320,22 @@
 }
 
 .flow-output-toggle {
-  background: transparent;
-  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border: none;
   color: var(--text-muted);
   font-size: 11px;
   font-family: var(--font-ui);
   cursor: pointer;
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   transition: background var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out),
-              border-color var(--duration-fast) var(--ease-out);
+              color var(--duration-fast) var(--ease-out);
   line-height: 1;
   margin-left: 4px;
 }
 
 .flow-output-toggle:hover {
-  background: var(--bg-hover);
+  background: var(--bg-active);
   color: var(--text-primary);
 }
 
@@ -393,7 +385,6 @@
 /* ===== Card Terminal (live output) ===== */
 .flow-card-terminal {
   height: 300px;
-  border-top: 1px solid var(--border-color);
   overflow: hidden;
 }
 
@@ -419,8 +410,8 @@
 }
 
 .flow-card-btn {
-  background: transparent;
-  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border: none;
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 500;
@@ -428,20 +419,17 @@
   padding: 5px 10px;
   border-radius: var(--radius-sm);
   transition: background var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out),
-              border-color var(--duration-fast) var(--ease-out);
+              color var(--duration-fast) var(--ease-out);
   line-height: 1;
 }
 
 .flow-card-btn:hover {
-  background: var(--bg-hover);
+  background: var(--bg-active);
   color: var(--text-primary);
-  border-color: var(--border-strong);
 }
 
 .flow-card-btn-danger:hover {
   color: var(--red);
-  border-color: var(--red);
   background: var(--red-soft);
 }
 
@@ -460,7 +448,6 @@
 
 .flow-modal {
   background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   width: 580px;
   max-width: 90vw;
@@ -506,8 +493,8 @@
 .flow-modal-input {
   width: 100%;
   padding: 11px 14px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 14px;
@@ -515,19 +502,19 @@
   outline: none;
   box-sizing: border-box;
   transition: border-color var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
+              background var(--duration-fast) var(--ease-out);
 }
 
 .flow-modal-input:focus {
   border-color: var(--accent);
-  box-shadow: var(--shadow-focus);
+  background: var(--bg-surface);
 }
 
 .flow-modal-textarea {
   width: 100%;
   padding: 11px 14px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 13px;
@@ -538,12 +525,12 @@
   box-sizing: border-box;
   line-height: 1.55;
   transition: border-color var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
+              background var(--duration-fast) var(--ease-out);
 }
 
 .flow-modal-textarea:focus {
   border-color: var(--accent);
-  box-shadow: var(--shadow-focus);
+  background: var(--bg-surface);
 }
 
 .flow-modal-textarea::placeholder {
@@ -563,8 +550,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
   border-radius: var(--radius-pill);
   padding: 6px 12px;
   font-size: 12px;
@@ -573,13 +559,11 @@
 
 .flow-modal-chip-btn {
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out),
-              border-color var(--duration-fast) var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .flow-modal-chip-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-strong);
+  background: var(--bg-active);
 }
 
 .flow-modal-chip-label {
@@ -624,28 +608,26 @@
 }
 
 .flow-day-btn {
-  background: transparent;
-  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border: none;
   color: var(--text-muted);
   font-size: 10px;
   font-weight: 600;
   font-family: var(--font-ui);
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out),
-              border-color var(--duration-fast) var(--ease-out);
+              color var(--duration-fast) var(--ease-out);
 }
 
 .flow-day-btn.active {
   background: var(--accent);
-  border-color: var(--accent);
   color: var(--text-on-accent);
 }
 
 .flow-day-btn:hover:not(.active) {
-  border-color: var(--border-strong);
+  background: var(--bg-active);
   color: var(--text-primary);
 }
 
@@ -653,9 +635,8 @@
 .flow-modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 20px 16px;
-  border-top: 1px solid var(--border-color);
+  gap: 10px;
+  padding: 16px 20px 20px;
 }
 
 .flow-modal-btn {
@@ -700,7 +681,6 @@
 /* ===== Log Viewer Modal ===== */
 .flow-log-modal {
   background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   width: 820px;
   max-width: 90vw;
@@ -715,8 +695,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 14px 18px;
   flex-shrink: 0;
 }
 

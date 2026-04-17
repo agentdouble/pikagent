@@ -3,7 +3,6 @@
   display: flex;
   flex-direction: column;
   max-height: 500px;
-  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-surface);
@@ -14,11 +13,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
-  min-height: 30px;
+  min-height: 32px;
 }
 
 .diff-stats {
@@ -40,9 +38,10 @@
 
 .diff-toggle-group {
   display: flex;
-  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   overflow: hidden;
+  padding: 2px;
   margin-left: auto;
 }
 
@@ -54,14 +53,11 @@
   background: transparent;
   color: var(--text-muted);
   border: none;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-family: inherit;
   transition: background var(--duration-fast) var(--ease-out),
               color var(--duration-fast) var(--ease-out);
-}
-
-.diff-toggle-btn:not(:last-child) {
-  border-right: 1px solid var(--border-color);
 }
 
 .diff-toggle-btn:hover {
@@ -87,7 +83,7 @@
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid var(--border-color);
+  border: none;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   cursor: pointer;
@@ -154,7 +150,7 @@
 
 .diff-separator {
   width: 1px;
-  background: var(--border-color);
+  background: var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -237,8 +233,7 @@
 
 /* Hunk separator rows */
 .diff-row-hunk {
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  /* visually distinct via bg color — no borders */
 }
 
 /* Hunk navigation flash */

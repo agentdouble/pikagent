@@ -8,9 +8,8 @@
 
 /* Spacer to align with center panel .path-info row */
 .file-viewer-spacer {
-  padding: 6px 12px;
+  padding: 10px 14px;
   font-size: 14px;
-  border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-secondary);
   flex-shrink: 0;
 }
@@ -23,7 +22,6 @@
 .file-viewer-mode-bar {
   display: flex;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
   padding: 0;
   flex-shrink: 0;
 }
@@ -124,7 +122,6 @@
   letter-spacing: 0.8px;
   color: var(--text-muted);
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -157,14 +154,12 @@
 }
 
 .git-section-header {
-  padding: 8px 14px;
+  padding: 10px 14px 6px;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-muted);
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .git-chevron {
@@ -175,7 +170,7 @@
 }
 
 .git-file-row {
-  border-bottom: 1px solid var(--border-subtle);
+  /* no divider — rely on hover + spacing */
 }
 
 .git-file-item {
@@ -249,7 +244,6 @@
   display: flex;
   overflow-x: auto;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
   min-height: 34px;
 }
 
@@ -330,7 +324,6 @@
   font-family: var(--font-mono);
   color: var(--text-muted);
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -372,7 +365,6 @@
   text-align: right;
   user-select: none;
   overflow: hidden;
-  border-right: 1px solid var(--border-subtle);
   min-width: 48px;
   flex-shrink: 0;
   white-space: pre-wrap;
@@ -463,7 +455,6 @@
   gap: 16px;
   padding: 6px 14px;
   background: var(--bg-secondary);
-  border-top: 1px solid var(--border-subtle);
   font-size: 11px;
   color: var(--text-muted);
   min-height: 28px;
