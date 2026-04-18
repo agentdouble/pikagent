@@ -55,7 +55,7 @@ export class ConfigManager {
     this.currentConfigName = name;
     this.tabManager._disposeSideView('board');
     this.tabManager._disposeAllTabs();
-    this.tabManager.createTab('Workspace 1');
+    this.tabManager.createTab();
     await window.api.config.setDefault(name);
     await this.autoSave();
     this.updateConfigBar();

@@ -39,7 +39,7 @@ export async function initTabManager(deps) {
       await deps.restoreConfig(defaultConfig);
     } else {
       deps.configManager.currentConfigName = 'Default';
-      deps.createTab('Workspace 1');
+      deps.createTab();
     }
   } catch (e) {
     console.warn('Failed to restore config:', e);

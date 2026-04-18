@@ -23,6 +23,7 @@ import { WorkspaceTab } from './tab-manager-helpers.js';
 import { reattachLayout, syncFileTree } from './workspace-layout.js';
 import { capturePanelWidths } from './workspace-resize.js';
 import { disposeTab } from './workspace-cleanup.js';
+import { extractFolderName } from './file-tree-helpers.js';
 
 // ── Tab creation ──
 
@@ -36,8 +37,9 @@ import { disposeTab } from './workspace-cleanup.js';
  */
 export function createTab(deps, switchToFn, name = null, cwd = null) {
   const id = generateId('tab');
-  const tabName = name || `Workspace ${deps.tabs.size + 1}`;
-  const tab = new WorkspaceTab(id, tabName, cwd || deps.defaultCwd || '/');
+  const resolvedCwd = cwd || deps.defaultCwd || '/';
+  const tabName = name || extractFolderName(resolvedCwd) || `Workspace ${deps.tabs.size + 1}`;
+  const tab = new WorkspaceTab(id, tabName, resolvedCwd);
   if (deps.activeColorFilter) tab.colorGroup = deps.activeColorFilter;
   deps.tabs.set(id, tab);
   deps.renderTabBar();
