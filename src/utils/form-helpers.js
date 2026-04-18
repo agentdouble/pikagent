@@ -14,7 +14,7 @@ import { setupKeyboardShortcuts } from './keyboard-helpers.js';
  * @param {(...args: unknown[]) => void} fn
  * @returns {(...args: unknown[]) => void}
  */
-export function createOnceGuard(fn) {
+function createOnceGuard(fn) {
   let called = false;
   return (...args) => { if (called) return; called = true; fn(...args); };
 }
