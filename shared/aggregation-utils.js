@@ -60,4 +60,25 @@ function countBy(items, keyFn) {
   return counts;
 }
 
-module.exports = { aggregateByKey, groupAndAggregate, countBy };
+/**
+ * Build a Map keyed by `keyFn(item)` for O(1) lookup.
+ * @param {Array<unknown>} items
+ * @param {(item: unknown) => string} keyFn - extracts the lookup key from each item
+ * @returns {Map<string, unknown>}
+ */
+function createLookupMap(items, keyFn) {
+  return new Map(items.map(item => [keyFn(item), item]));
+}
+
+/**
+ * Resolve an array of keys to their values using a lookup Map.
+ * Keys not found in the map are silently skipped.
+ * @param {Map<string, unknown>} map
+ * @param {string[]} keys
+ * @returns {Array<unknown>}
+ */
+function resolveFromMap(map, keys) {
+  return keys.map(k => map.get(k)).filter(Boolean);
+}
+
+module.exports = { aggregateByKey, groupAndAggregate, countBy, createLookupMap, resolveFromMap };
