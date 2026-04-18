@@ -2,14 +2,18 @@
  * Core DOM utilities.
  *
  * This module keeps only the essential DOM factories:
- *   _el, createActionButton, createSelect, renderButtonBar, buildChevronRow,
- *   createModalOverlay, positionInViewport, _safeFit
+ *   _el, createActionButton, renderButtonBar, buildChevronRow
  *
  * The following helpers have been extracted to dedicated modules — import
  * them directly from there instead of going through this file:
- *   - setupInlineInput, startInlineRename  → ./form-helpers.js
- *   - setupDropZone                        → ./drop-zone-helpers.js
- *   - setupKeyboardShortcuts               → ./keyboard-helpers.js
+ *   - createModalOverlay, createCustomModal,
+ *     showPromptDialog, showConfirmDialog   → ./dom-dialogs.js
+ *   - setupInlineInput, startInlineRename   → ./form-helpers.js
+ *   - setupDropZone                         → ./drop-zone-helpers.js
+ *   - setupKeyboardShortcuts                → ./keyboard-helpers.js
+ *   - _safeFit                              → ./terminal-factory.js
+ *   - createSelect                          → ./flow-modal-helpers.js (private)
+ *   - positionInViewport                    → ./context-menu.js (private)
  */
 import { onClickStopped } from './event-helpers.js';
 
@@ -104,38 +108,6 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
 }
 
 /**
- * Create a <select> element from an options map.
- * @param {{ options: Record<string, string>, value?: string, className?: string, onChange?: (e: Event) => void }} opts
- * @returns {HTMLSelectElement}
- */
-export function createSelect({ options, value, className, onChange } = {}) {
-  const select = _el('select', { className: className || '' });
-  for (const [val, label] of Object.entries(options)) {
-    select.appendChild(_el('option', { value: val, textContent: label }));
-  }
-  if (value !== undefined) select.value = value;
-  if (onChange) select.addEventListener('change', onChange);
-  return select;
-}
-
-/** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
-export function _safeFit(fitAddon) {
-  try { fitAddon.fit(); } catch {}
-}
-
-/**
- * Create a modal overlay with click-outside-to-close behavior.
- * Returns { overlay, modal } DOM elements. Caller appends children to modal.
- */
-export function createModalOverlay(overlayClass, modalClass, onClose) {
-  const overlay = _el('div', overlayClass);
-  const modal = _el('div', modalClass);
-  overlay.appendChild(modal);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) onClose(); });
-  return { overlay, modal };
-}
-
-/**
  * Build a row containing a chevron span and a name span.
  *
  * Used by file-tree rows and flow-category headers — any place that needs
@@ -150,19 +122,4 @@ export function buildChevronRow(opts) {
   return { chevron, name };
 }
 
-/**
- * Clamp (x, y) so a box of (width, height) stays within the viewport.
- * @param {number} x
- * @param {number} y
- * @param {number} width
- * @param {number} height
- * @param {number} [padding=8]
- * @returns {{ left: number, top: number }}
- */
-export function positionInViewport(x, y, width, height, padding = 8) {
-  return {
-    left: Math.min(x, window.innerWidth  - width  - padding),
-    top:  Math.min(y, window.innerHeight - height - padding),
-  };
-}
 

@@ -1,8 +1,12 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from './terminal-themes.js';
-import { _safeFit } from './dom.js';
 import { disposeResources } from './disposable.js';
+
+/** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
+export function _safeFit(fitAddon) {
+  try { fitAddon.fit(); } catch {}
+}
 
 const BASE_FONT_FAMILY =
   '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace';
