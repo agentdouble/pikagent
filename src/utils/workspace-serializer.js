@@ -15,6 +15,24 @@ import { WorkspaceTab } from './tab-manager-helpers.js';
 import { disposeAllSideViews } from './sidebar-manager.js';
 import { capturePanelWidths } from './workspace-resize.js';
 import { disposeAllTabs } from './workspace-cleanup.js';
+import { extractFolderName } from './file-tree-helpers.js';
+
+/**
+ * Walk a split tree depth-first and return the cwd of the first terminal node.
+ * @param {{ type: string, cwd?: string, children?: Array<unknown> }|null|undefined} tree
+ * @returns {string|null}
+ */
+function firstTerminalCwd(tree) {
+  if (!tree) return null;
+  if (tree.type === 'terminal') return tree.cwd || null;
+  if (Array.isArray(tree.children)) {
+    for (const child of tree.children) {
+      const cwd = firstTerminalCwd(child);
+      if (cwd) return cwd;
+    }
+  }
+  return null;
+}
 
 // ── Serialization ──
 
@@ -81,8 +99,14 @@ export async function restoreConfig({ tabs, setActiveTabId, defaultCwd, renderTa
   // Create tabs from config
   for (const tabData of config.tabs) {
     const id = generateId('tab');
-    const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || defaultCwd || '/');
-    tab.userNamed = tabData.userNamed || false;
+    const firstCwd = firstTerminalCwd(tabData.splitTree);
+    const resolvedCwd = firstCwd || tabData.cwd || defaultCwd || '/';
+    const userNamed = tabData.userNamed || false;
+    const name = userNamed
+      ? tabData.name
+      : extractFolderName(resolvedCwd) || tabData.name;
+    const tab = new WorkspaceTab(id, name, resolvedCwd);
+    tab.userNamed = userNamed;
     tab.noShortcut = tabData.noShortcut || false;
     tab.colorGroup = tabData.colorGroup || null;
     tab._restoreData = tabData;
