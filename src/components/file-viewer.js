@@ -34,7 +34,7 @@ export class FileViewer {
   // ===== Build =====
 
   render() {
-    this.container.replaceChildren(_el('div', 'file-viewer-spacer'));
+    this.container.replaceChildren();
 
     this.modeBar = _el('div', 'file-viewer-mode-bar');
     this.container.appendChild(this.modeBar);
