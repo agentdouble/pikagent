@@ -133,11 +133,3 @@
   font-weight: 500;
 }
 
-.term-label {
-  padding: 6px 14px;
-  font-size: 10px;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}

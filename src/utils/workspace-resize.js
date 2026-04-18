@@ -61,7 +61,6 @@ export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
 
   pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
   header.appendChild(pathInfo);
-  header.appendChild(_el('div', 'term-label', 'Terminal'));
   panel.appendChild(header);
 
   const termContainer = _el('div', 'terminal-area');
