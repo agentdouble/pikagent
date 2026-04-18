@@ -3,6 +3,7 @@ import { bus, subscribeBus, unsubscribeBus, EVENTS } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
 import { EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
+import { createMarkdownPreviewDOM, updatePreviewStatusBar } from '../utils/markdown-preview-renderer.js';
 import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 
@@ -130,13 +131,27 @@ export class FileViewer {
 
     const result = await window.api.fs.readfile(filePath);
     if (result.error) {
-      this.openFiles.set(filePath, { name: fileName, content: '', savedContent: '', lang: 'plaintext', error: result.error });
+      this.openFiles.set(filePath, { name: fileName, content: '', savedContent: '', lang: 'plaintext', error: result.error, viewMode: 'edit' });
     } else {
       const lang = detectLanguage(fileName);
-      this.openFiles.set(filePath, { name: fileName, content: result.content, savedContent: result.content, lang, error: null });
+      const viewMode = lang === 'markdown' ? 'preview' : 'edit';
+      this.openFiles.set(filePath, { name: fileName, content: result.content, savedContent: result.content, lang, error: null, viewMode });
     }
 
     this.setActiveTab(filePath);
+  }
+
+  isMarkdown(filePath) {
+    const file = this.openFiles.get(filePath);
+    return !!file && file.lang === 'markdown';
+  }
+
+  toggleViewMode(filePath) {
+    const file = this.openFiles.get(filePath);
+    if (!file || file.lang !== 'markdown') return;
+    file.viewMode = file.viewMode === 'preview' ? 'edit' : 'preview';
+    if (this.activeFile === filePath) this.renderEditor();
+    this.renderTabs();
   }
 
   setActiveTab(filePath) {
@@ -159,6 +174,9 @@ export class FileViewer {
         onClose: (p) => this.closeFile(p),
         onActivate: (p) => this.setActiveTab(p),
         onTogglePin: (p) => this.togglePin(p),
+        isMarkdown: (p) => this.isMarkdown(p),
+        getViewMode: (p) => this.openFiles.get(p)?.viewMode,
+        onToggleViewMode: (p) => this.toggleViewMode(p),
       },
     );
   }
@@ -174,6 +192,15 @@ export class FileViewer {
 
     if (file.error) {
       this.editorWrapper.replaceChildren(_el('div', 'file-viewer-error', file.error));
+      return;
+    }
+
+    if (file.lang === 'markdown' && file.viewMode === 'preview') {
+      this.lineNumbers = null;
+      this.highlightLayer = null;
+      this.editorEl = null;
+      createMarkdownPreviewDOM(this.editorWrapper, file);
+      updatePreviewStatusBar(this.statusBar, file);
       return;
     }
 

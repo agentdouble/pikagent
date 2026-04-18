@@ -18,9 +18,12 @@ import { createTabElement } from './tab-renderer.js';
  * @param {{ onClose: (filePath: string) => void, onActivate: (filePath: string) => void, onTogglePin: (filePath: string) => void }} callbacks
  * @returns {HTMLElement}
  */
-export function createTabEl(filePath, file, activeFile, isPinned, isModified, { onClose, onActivate, onTogglePin }) {
+export function createTabEl(filePath, file, activeFile, isPinned, isModified, callbacks) {
+  const { onClose, onActivate, onTogglePin, isMarkdown, getViewMode, onToggleViewMode } = callbacks;
   const pinned = isPinned(filePath);
   const modified = isModified(filePath);
+  const markdown = typeof isMarkdown === 'function' ? isMarkdown(filePath) : false;
+  const viewMode = typeof getViewMode === 'function' ? getViewMode(filePath) : null;
 
   // Build prefix elements: optional pin icon + modified indicator
   const prefixEls = [];
@@ -35,11 +38,20 @@ export function createTabEl(filePath, file, activeFile, isPinned, isModified, { 
     close: { text: '\u00D7', className: 'file-tab-close', onClick: () => onClose(filePath) },
     onClick: () => onActivate(filePath),
     setup: (el) => {
-      attachContextMenu(el, () => [
-        { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => onTogglePin(filePath) },
-        { separator: true },
-        { label: 'Close', action: () => onClose(filePath) },
-      ]);
+      attachContextMenu(el, () => {
+        const items = [];
+        if (markdown && onToggleViewMode) {
+          items.push({
+            label: viewMode === 'preview' ? 'Open as text' : 'Open as preview',
+            action: () => onToggleViewMode(filePath),
+          });
+          items.push({ separator: true });
+        }
+        items.push({ label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => onTogglePin(filePath) });
+        items.push({ separator: true });
+        items.push({ label: 'Close', action: () => onClose(filePath) });
+        return items;
+      });
     },
   });
 
