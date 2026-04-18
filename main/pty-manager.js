@@ -74,6 +74,8 @@ class PtyManager {
   kill(id) {
     const proc = this._getProc(id);
     if (!proc) return;
+    // Kill the entire process group to clean up child processes (agents)
+    try { process.kill(-proc.pid, 'SIGTERM'); } catch {}
     proc.kill();
     this.processes.delete(id);
   }
@@ -110,6 +112,7 @@ class PtyManager {
 
   killAll() {
     for (const proc of this.processes.values()) {
+      try { process.kill(-proc.pid, 'SIGTERM'); } catch {}
       proc.kill();
     }
     this.processes.clear();

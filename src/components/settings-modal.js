@@ -11,10 +11,12 @@ export class SettingsModal {
     this.overlay = null;
     this.recording = null; // { actionId, index, el }
     this.activeSection = 'keybindings';
+    this._updateUnsub = null;
     this.sectionRenderers = {
       keybindings: () => this._renderKeybindings(),
       appearance: () => this._renderAppearance(),
       configs: () => this._renderConfigs(),
+      update: () => this._renderUpdate(),
     };
     this.build();
   }
@@ -66,6 +68,7 @@ export class SettingsModal {
   }
 
   showSection(section) {
+    if (this._updateUnsub) { this._updateUnsub(); this._updateUnsub = null; }
     this.activeSection = section;
     for (const [key, el] of Object.entries(this.navItems)) {
       el.classList.toggle('active', key === section);
@@ -114,6 +117,10 @@ export class SettingsModal {
       this.tabManager,
       () => this._renderConfigs(),
     );
+  }
+
+  _renderUpdate() {
+    getComponent('renderUpdate')(this.content);
   }
 
   // ===== Recording (keybinding capture) =====

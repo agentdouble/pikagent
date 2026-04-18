@@ -18,3 +18,4 @@ import './usage-view.js';
 import './settings-appearance.js';
 import './settings-keybindings.js';
 import './settings-configs.js';
+import './settings-update.js';

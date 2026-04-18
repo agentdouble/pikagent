@@ -13,6 +13,8 @@ const gitManager = require('./git-manager');
 const configManager = require('./config-manager');
 const flowManager = require('./flow-manager');
 const usageManager = require('./usage-manager');
+const updateManager = require('./update-manager');
+const { safeSend } = require('./ipc-helpers');
 
 const ptyManager = new PtyManager();
 
@@ -36,12 +38,23 @@ const LIFECYCLE_MODULES = [
  */
 function initManagers(getWindow) {
   // -- Lifecycle: start managers that need runtime context --
+  updateManager.init();
   flowManager.start(getWindow, ptyManager);
   sessionManager.start(ptyManager);
   usageManager.init(sessionManager);
 
   // -- Build target map consumed by IPC dispatching --
   const { shell, clipboard } = require('electron');
+
+  // Adapter: update-manager exposes functional names (checkForUpdates,
+  // getVersion, performUpdate); the IPC schema uses shorter aliases
+  // (check, version, run) and `run` needs a per-call progress callback.
+  const updateTarget = {
+    check:    () => updateManager.checkForUpdates(),
+    version:  () => updateManager.getVersion(),
+    relaunch: () => updateManager.relaunch(),
+    run:      () => updateManager.performUpdate((p) => safeSend(getWindow, 'update:progress', p)),
+  };
 
   const targets = {
     pty: ptyManager,
@@ -50,6 +63,7 @@ function initManagers(getWindow) {
     config: configManager,
     flow: flowManager,
     usage: usageManager,
+    update: updateTarget,
     shell,
     clipboard,
   };

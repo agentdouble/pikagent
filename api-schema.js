@@ -79,6 +79,13 @@ const API_SCHEMA = {
     getDefault:  { type: 'fwd' },
     loadDefault: { type: 'fwd' },
   },
+  update: {
+    check:      { type: 'fwd' },
+    version:    { type: 'fwd' },
+    run:        { type: 'fwd' },
+    relaunch:   { type: 'fwd' },
+    onProgress: { type: 'on', channel: 'update:progress' },
+  },
 };
 
 module.exports = { API_SCHEMA };
