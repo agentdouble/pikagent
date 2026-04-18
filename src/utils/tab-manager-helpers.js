@@ -66,6 +66,7 @@ export class WorkspaceTab {
     this.id = id;
     this.name = name;
     this.cwd = cwd;
+    this.userNamed = false;
     this.noShortcut = false;
     this.colorGroup = null;
     this.fileTree = null;

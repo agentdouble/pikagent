@@ -53,7 +53,7 @@ export async function initTabManager(deps) {
 // ── Bus listeners ──
 
 /**
- * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, getActiveTabId: () => string|null, configManager: { scheduleAutoSave: () => void }, createTab: (name: string, cwd: string) => void, api: { gitBranch: (cwd: string) => Promise<string|null> } }} BusListenerDeps
+ * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, getActiveTabId: () => string|null, configManager: { scheduleAutoSave: () => void }, createTab: (name: string, cwd: string) => void, renderTabBar: () => void, api: { gitBranch: (cwd: string) => Promise<string|null> } }} BusListenerDeps
  */
 
 /**
@@ -67,7 +67,10 @@ export function setupBusListeners(deps) {
   return subscribeBus([
     /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
     [EVENTS.TERMINAL_CWD_CHANGED, ({ id, cwd }) => {
-      onTerminalCwdChanged(deps.tabs, deps.getActiveTabId(), id, cwd, { gitBranch: deps.api.gitBranch });
+      onTerminalCwdChanged(deps.tabs, deps.getActiveTabId(), id, cwd, {
+        gitBranch: deps.api.gitBranch,
+        renderTabBar: deps.renderTabBar,
+      });
       deps.configManager.scheduleAutoSave();
     }],
     /** @listens terminal:created {{ id: string, cwd: string }} */

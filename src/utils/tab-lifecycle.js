@@ -170,14 +170,16 @@ export function findTabForTerminal(tabs, termId) {
 }
 
 /**
- * Handle terminal cwd changes — update file tree and active-tab header.
+ * Handle terminal cwd changes — update file tree, active-tab header, and
+ * auto-rename the tab (to the folder name) when the first terminal's cwd
+ * changes and the user has not explicitly named the tab.
  * @param {Map<string, WorkspaceTab>} tabs
  * @param {string|null} activeTabId
  * @param {string} termId  - Terminal id that changed
  * @param {string} cwd     - New working directory
- * @param {{ gitBranch: (cwd: string) => Promise<string|null> }} api - injected API methods
+ * @param {{ gitBranch: (cwd: string) => Promise<string|null>, renderTabBar?: () => void }} api - injected API methods
  */
-export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch }) {
+export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch, renderTabBar }) {
   const match = findTabForTerminal(tabs, termId);
   if (!match) return;
   const { tab } = match;
@@ -185,6 +187,19 @@ export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch
   // Update file tree (works even for inactive tabs)
   if (tab.fileTree) {
     tab.fileTree.setTerminalRoot(termId, cwd);
+  }
+
+  // Auto-rename tab when the first terminal moves and the user hasn't
+  // defined a custom name.
+  const firstTermId = tab.terminalPanel?.terminals
+    ? Array.from(tab.terminalPanel.terminals.keys())[0]
+    : null;
+  if (!tab.userNamed && firstTermId === termId) {
+    const newName = extractFolderName(cwd);
+    if (newName && newName !== tab.name) {
+      tab.name = newName;
+      renderTabBar?.();
+    }
   }
 
   // Update header path/branch only for the active tab's active terminal

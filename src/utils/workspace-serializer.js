@@ -34,6 +34,7 @@ export function serialize({ tabs, activeTabId }) {
     const tabData = {
       name: tab.name,
       cwd: tab.cwd,
+      userNamed: tab.userNamed || false,
       noShortcut: tab.noShortcut || false,
       colorGroup: tab.colorGroup || null,
       splitTree: null,
@@ -81,6 +82,7 @@ export async function restoreConfig({ tabs, setActiveTabId, defaultCwd, renderTa
   for (const tabData of config.tabs) {
     const id = generateId('tab');
     const tab = new WorkspaceTab(id, tabData.name, tabData.cwd || defaultCwd || '/');
+    tab.userNamed = tabData.userNamed || false;
     tab.noShortcut = tabData.noShortcut || false;
     tab.colorGroup = tabData.colorGroup || null;
     tab._restoreData = tabData;

@@ -68,6 +68,7 @@ export class TabManager {
       getActiveTabId: () => this.activeTabId,
       configManager: this.configManager,
       createTab: (name, cwd) => this.createTab(name, cwd),
+      renderTabBar: () => this.renderTabBar(),
       api: { gitBranch: window.api.git.branch },
     });
   }
