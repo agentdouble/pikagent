@@ -1,33 +1,38 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
-const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
+const { Cache } = require('./cache');
+const { createLogger, trySafe } = require('./logger');
 
+const log = createLogger('config-manager');
 const ensureDir = ensureDirOnce(CONFIG_DIR);
-let _metaCache = null;
+const _metaCache = new Cache();
 
 function configPath(name) {
   return path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
 }
 
 async function readMeta() {
-  if (_metaCache) return _metaCache;
-  _metaCache = (await readJson(META_FILE)) || { ...DEFAULT_META };
-  return _metaCache;
+  const cached = _metaCache.get();
+  if (cached) return cached;
+  const meta = (await readJson(META_FILE)) || { ...DEFAULT_META };
+  _metaCache.set(meta);
+  return meta;
 }
 
 async function writeMeta(meta) {
   await ensureDir();
-  _metaCache = meta;
-  await fsp.writeFile(META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
+  _metaCache.set(meta);
+  await writeJson(META_FILE, meta);
 }
 
 async function save(name, data) {
   await ensureDir();
   const existing = await readJson(configPath(name));
-  const config = buildConfigRecord(name, data, existing, new Date().toISOString());
-  await fsp.writeFile(configPath(name), JSON.stringify(config, null, 2), 'utf-8');
+  const config = buildConfigRecord(name, data, existing);
+  await writeJson(configPath(name), config);
   return config;
 }
 
@@ -38,28 +43,27 @@ async function load(name) {
 async function list() {
   await ensureDir();
   const meta = await readMeta();
-  try {
-    const configs = await readDirJson(CONFIG_DIR);
-    return formatConfigList(configs, meta.defaultConfig);
-  } catch (err) {
-    console.warn('config-manager: list failed:', err.message);
-    return [];
-  }
+  return trySafe(
+    async () => formatConfigList(await readDirJson(CONFIG_DIR), meta.defaultConfig),
+    [],
+    { log, label: 'list' },
+  );
 }
 
 async function remove(name) {
-  try {
-    await fsp.unlink(configPath(name));
-    const meta = await readMeta();
-    if (meta.defaultConfig === name) {
-      meta.defaultConfig = null;
-      await writeMeta(meta);
-    }
-    return true;
-  } catch (err) {
-    console.warn('config-manager: remove failed:', err.message);
-    return false;
-  }
+  return trySafe(
+    async () => {
+      await fsp.unlink(configPath(name));
+      const meta = await readMeta();
+      if (meta.defaultConfig === name) {
+        meta.defaultConfig = null;
+        await writeMeta(meta);
+      }
+      return true;
+    },
+    false,
+    { log, label: 'remove' },
+  );
 }
 
 async function setDefault(name) {
@@ -79,4 +83,8 @@ async function loadDefault() {
   return load(name);
 }
 
-module.exports = { save, load, list, remove, setDefault, getDefault, loadDefault };
+module.exports = {
+  save, load, list, remove, setDefault, getDefault, loadDefault,
+  // Alias matching channel suffix (config:delete → delete)
+  delete: remove,
+};

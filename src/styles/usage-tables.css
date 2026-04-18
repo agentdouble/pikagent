@@ -1,0 +1,137 @@
+/* ===== Files Table ===== */
+.usage-files-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.usage-files-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.usage-files-table td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.usage-files-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.usage-file-name {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.usage-file-count {
+  color: var(--blue);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.usage-file-bar-cell {
+  width: 40%;
+}
+
+.usage-file-bar {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.usage-file-bar-fill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* ===== Flow Stats Table ===== */
+.usage-flow-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.usage-flow-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.usage-flow-table td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.usage-flow-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.usage-flow-name {
+  font-weight: 500;
+}
+
+.usage-flow-disabled {
+  color: var(--text-muted);
+}
+
+.usage-flow-rate {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.usage-flow-duration {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+/* ===== Empty State ===== */
+.usage-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+}
+
+.usage-empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.usage-empty-text {
+  font-size: 13px;
+}
+
+.usage-empty-sub {
+  font-size: 12px;
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+/* ===== Table wrapper ===== */
+.usage-table-wrap {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.usage-table-wrap table {
+  margin: 0;
+}

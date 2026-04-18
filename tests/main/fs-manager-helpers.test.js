@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-const { MAX_FILE_SIZE, safeAsync, dirFirstCompare } = require('../../main/fs-manager-helpers');
+const { MAX_FILE_SIZE, wrapSafe, dirFirstCompare } = require('../../main/fs-manager-helpers');
 
 describe('fs-manager-helpers', () => {
   describe('MAX_FILE_SIZE', () => {
@@ -8,14 +8,16 @@ describe('fs-manager-helpers', () => {
     });
   });
 
-  describe('safeAsync', () => {
-    it('returns the result on success', async () => {
-      const result = await safeAsync(async () => ({ value: 42 }));
+  describe('wrapSafe', () => {
+    it('wraps a function and returns its result on success', async () => {
+      const handler = wrapSafe(async () => ({ value: 42 }));
+      const result = await handler();
       expect(result).toEqual({ value: 42 });
     });
 
-    it('returns { error } on throw', async () => {
-      const result = await safeAsync(async () => { throw new Error('boom'); });
+    it('wraps a function and returns { error } on throw', async () => {
+      const handler = wrapSafe(async () => { throw new Error('boom'); });
+      const result = await handler();
       expect(result).toEqual({ error: 'boom' });
     });
   });

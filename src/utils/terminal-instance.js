@@ -1,21 +1,57 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from './id.js';
-import { bus } from './events.js';
+import { bus, EVENTS } from './events.js';
 import { FilePathLinkProvider } from './file-link-provider.js';
 import { createTerminal } from './terminal-factory.js';
 import { CWD_POLL_MS } from './terminal-panel-helpers.js';
+import { createGuardedDispose } from './disposable.js';
 
 /**
  * Wraps a single xterm instance with PTY integration, cwd polling, and lifecycle management.
  * Self-contained — does not depend on the split-panel layout.
  */
 export class TerminalInstance {
-  constructor(container, cwd) {
+  /**
+   * @param {HTMLElement} container
+   * @param {string} cwd
+   * @param {{ openExternal: (url: string) => void, homedir: () => Promise<string>, openPath: (path: string) => void, ptyWrite: (id: string, data: string) => void, ptyOnData: (id: string, cb: (data: string) => void) => () => void, ptyOnExit: (id: string, cb: (code: number) => void) => () => void, ptyCreate: (opts: { cols: number, rows: number, cwd: string }) => Promise<string>, ptyGetCwd: (id: string) => Promise<string>, ptyResize: (id: string, cols: number, rows: number) => void, ptyKill: (id: string) => void }} api - injected API methods
+   */
+  constructor(container, cwd, { openExternal, homedir, openPath, ptyWrite, ptyOnData, ptyOnExit, ptyCreate, ptyGetCwd, ptyResize, ptyKill }) {
     this.id = generateId('term');
     this.container = container;
     this.cwd = cwd;
     this.disposed = false;
+    this._api = { ptyWrite, ptyOnData, ptyOnExit, ptyCreate, ptyGetCwd, ptyResize, ptyKill };
 
+    this._initTerminal(container, { openExternal, homedir, openPath });
+    this._attachPtyBridge();
+
+    this.resizeObserver = new ResizeObserver(() => this.fit());
+    this.resizeObserver.observe(container);
+
+    this.cwdPollingPaused = false;
+    this.spawn();
+    this.startCwdPolling();
+
+    this.dispose = createGuardedDispose(
+      this,
+      (self) => [
+        { ref: self, key: 'cwdPollTimer',    action: 'clearInterval' },
+        { ref: self, key: 'resizeObserver',   action: 'disconnect' },
+        { ref: self, key: 'unsubData',        action: 'call' },
+        { ref: self, key: 'unsubExit',        action: 'call' },
+        { ref: self, key: 'terminal',         action: 'dispose' },
+      ],
+      (self) => self._api.ptyKill(self.id),
+    );
+  }
+
+  /**
+   * Create the xterm terminal, load addons, and attach custom key handler.
+   * @param {HTMLElement} container
+   * @param {{ openExternal: (url: string) => void, homedir: () => Promise<string>, openPath: (path: string) => void }} linkApi
+   */
+  _initTerminal(container, { openExternal, homedir, openPath }) {
     const { term, fitAddon } = createTerminal(container, {
       fontSize: 13,
       lineHeight: 1.3,
@@ -28,9 +64,9 @@ export class TerminalInstance {
 
     this.terminal.loadAddon(new WebLinksAddon((e, url) => {
       e.preventDefault();
-      window.api.shell.openExternal(url);
+      openExternal(url);
     }));
-    this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd));
+    this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd, { homedir, openPath }));
 
     // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
     this.terminal.attachCustomKeyEventHandler((e) => {
@@ -39,39 +75,39 @@ export class TerminalInstance {
     });
 
     this.fit();
+  }
 
+  /**
+   * Wire up bidirectional data flow between xterm and the PTY process.
+   */
+  _attachPtyBridge() {
     this.terminal.onData((data) => {
-      if (!this.disposed) window.api.pty.write({ id: this.id, data });
+      if (!this.disposed) this._api.ptyWrite(this.id, data);
     });
 
-    this.unsubData = window.api.pty.onData(this.id, (data) => {
+    this.unsubData = this._api.ptyOnData(this.id, (data) => {
       if (!this.disposed) this.terminal.write(data);
     });
 
-    this.unsubExit = window.api.pty.onExit(this.id, () => {
-      bus.emit('terminal:exited', { id: this.id });
+    this.unsubExit = this._api.ptyOnExit(this.id, () => {
+      /** @fires terminal:exited {{ id: string }} — PTY process exited */
+      bus.emit(EVENTS.TERMINAL_EXITED, { id: this.id });
     });
-
-    this.resizeObserver = new ResizeObserver(() => this.fit());
-    this.resizeObserver.observe(container);
-
-    this.cwdPollingPaused = false;
-    this.spawn();
-    this.startCwdPolling();
   }
 
   async spawn() {
     const { cols, rows } = this.terminal;
-    await window.api.pty.create({ id: this.id, cwd: this.cwd, cols, rows });
+    await this._api.ptyCreate({ id: this.id, cwd: this.cwd, cols, rows });
   }
 
   startCwdPolling() {
     this.cwdPollTimer = setInterval(async () => {
       if (this.disposed || this.cwdPollingPaused) return;
-      const cwd = await window.api.pty.getCwd({ id: this.id });
+      const cwd = await this._api.ptyGetCwd(this.id);
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
-        bus.emit('terminal:cwdChanged', { id: this.id, cwd });
+        /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
+        bus.emit(EVENTS.TERMINAL_CWD_CHANGED, { id: this.id, cwd });
       }
     }, CWD_POLL_MS);
   }
@@ -80,7 +116,7 @@ export class TerminalInstance {
     try {
       this.fitAddon.fit();
       const { cols, rows } = this.terminal;
-      window.api.pty.resize({ id: this.id, cols, rows });
+      this._api.ptyResize(this.id, cols, rows);
     } catch {}
   }
 
@@ -88,17 +124,5 @@ export class TerminalInstance {
     this.terminal.focus();
   }
 
-  dispose() {
-    if (this.disposed) return;
-    this.disposed = true;
-    if (this.cwdPollTimer) {
-      clearInterval(this.cwdPollTimer);
-      this.cwdPollTimer = null;
-    }
-    this.resizeObserver.disconnect();
-    if (this.unsubData) { this.unsubData(); this.unsubData = null; }
-    if (this.unsubExit) { this.unsubExit(); this.unsubExit = null; }
-    window.api.pty.kill({ id: this.id });
-    this.terminal.dispose();
-  }
+  // dispose() is created in the constructor via createGuardedDispose
 }

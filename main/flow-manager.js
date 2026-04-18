@@ -2,19 +2,26 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { FLOWS_DIR, LOGS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
-const { readJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
 const {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS, MAX_FLOW_RUNTIME_MS,
   flowPath, logPath,
   shouldRun, buildFlowCommand, createOutputProcessor,
 } = require('./flow-helpers');
+const { safeSend } = require('./ipc-helpers');
+const { createPollingManager } = require('../shared/polling-manager');
+const { buildRecord } = require('./record-helpers');
+const { createLogger, trySafe } = require('./logger');
 
+const log = createLogger('flow-manager');
 const ensureDir = ensureDirOnce(LOGS_DIR);
 
 class FlowManager {
   constructor() {
-    this._timer = null;
+    this._polling = createPollingManager(() => this._tick(), {
+      intervalMs: SCHEDULER_INTERVAL_MS,
+    });
     this._getWindow = null;
     this._ptyManager = null;
     this._runningFlows = new Map();
@@ -23,17 +30,14 @@ class FlowManager {
   start(getWindow, ptyManager) {
     this._getWindow = getWindow;
     this._ptyManager = ptyManager;
-    this._timer = setInterval(() => this._tick(), SCHEDULER_INTERVAL_MS);
-    this._tick();
+    this._polling.start();
   }
 
   stop() {
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = null;
-    }
-    // Kill all running flow PTY processes
-    for (const [flowId, { ptyId, timeout }] of this._runningFlows) {
+    this._polling.stop();
+    // Kill all running flow PTY processes and clear their runtime timeouts
+    // so stopping the manager never leaks children or pending `setTimeout`s.
+    for (const [, { ptyId, timeout }] of this._runningFlows) {
       if (timeout) clearTimeout(timeout);
       this._ptyManager?.kill(ptyId);
     }
@@ -43,10 +47,7 @@ class FlowManager {
   // --- Window IPC helper ---
 
   _sendToWindow(channel, payload) {
-    const win = this._getWindow?.();
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(channel, payload);
-    }
+    if (this._getWindow) safeSend(this._getWindow, channel, payload);
   }
 
   // --- CRUD ---
@@ -54,14 +55,11 @@ class FlowManager {
   async save(flow) {
     await ensureDir();
     const existing = await this.get(flow.id);
-    const data = {
-      ...flow,
-      createdAt: existing?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const now = new Date().toISOString();
+    const data = buildRecord(flow, { createdAt: existing?.createdAt || now, updatedAt: now });
     if (!data.runs) data.runs = [];
     if (data.enabled === undefined) data.enabled = true;
-    await fsp.writeFile(flowPath(flow.id), JSON.stringify(data, null, 2), 'utf-8');
+    await writeJson(flowPath(flow.id), data);
     return data;
   }
 
@@ -75,13 +73,15 @@ class FlowManager {
   }
 
   async remove(id) {
-    try {
-      await fsp.unlink(flowPath(id));
-      await this._cleanLogs(id);
-      return true;
-    } catch {
-      return false;
-    }
+    return trySafe(
+      async () => {
+        await fsp.unlink(flowPath(id));
+        await this._cleanLogs(id);
+        return true;
+      },
+      false,
+      { log, label: 'remove' },
+    );
   }
 
   async toggleEnabled(id) {
@@ -98,11 +98,11 @@ class FlowManager {
   }
 
   async getRunLog(flowId, timestamp) {
-    try {
-      return await fsp.readFile(logPath(flowId, timestamp), 'utf-8');
-    } catch {
-      return null;
-    }
+    return trySafe(
+      () => fsp.readFile(logPath(flowId, timestamp), 'utf-8'),
+      null,
+      { log, label: 'getRunLog' },
+    );
   }
 
   // --- Categories ---
@@ -115,15 +115,19 @@ class FlowManager {
 
   async saveCategories(data) {
     await ensureDir();
-    await fsp.writeFile(FLOW_CATEGORIES_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    await writeJson(FLOW_CATEGORIES_FILE, data);
     return data;
   }
 
   async _cleanLogs(flowId) {
-    try {
-      const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
-      await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
-    } catch {}
+    await trySafe(
+      async () => {
+        const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
+        await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
+      },
+      undefined,
+      { log, label: 'cleanLogs' },
+    );
   }
 
   // --- Scheduling ---
@@ -145,11 +149,11 @@ class FlowManager {
 
   async _saveLog(flowId, runTimestamp, output) {
     await ensureDir();
-    try {
-      await fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8');
-    } catch (e) {
-      console.warn('Failed to save flow log:', e);
-    }
+    await trySafe(
+      () => fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8'),
+      undefined,
+      { log, label: 'saveLog' },
+    );
   }
 
   _setupPtyListeners(proc, flow, ptyId, runTimestamp) {
@@ -215,7 +219,7 @@ class FlowManager {
         this._ptyManager.write(ptyId, cmd);
       }, SHELL_INIT_DELAY_MS);
     } catch (err) {
-      console.error('Flow execution failed:', err);
+      log.error('execution failed', err);
       this._recordRun(flow.id, 'error', runTimestamp);
     }
   }
@@ -241,6 +245,14 @@ class FlowManager {
     });
     flow.runs = runs.length > MAX_RUN_HISTORY ? runs.slice(-MAX_RUN_HISTORY) : runs;
     await this.save(flow);
+  }
+
+  // Aliases matching channel suffixes (flow:delete → delete, flow:toggle → toggle)
+  delete(id) { return this.remove(id); }
+  toggle(id) { return this.toggleEnabled(id); }
+
+  cleanup() {
+    this.stop();
   }
 }
 

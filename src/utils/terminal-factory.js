@@ -1,9 +1,14 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { getTerminalTheme } from './terminal-themes.js';
-import { _safeFit } from './dom.js';
+import { disposeResources } from './disposable.js';
 
-export const BASE_FONT_FAMILY =
+/** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
+export function _safeFit(fitAddon) {
+  try { fitAddon.fit(); } catch {}
+}
+
+const BASE_FONT_FAMILY =
   '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, monospace';
 
 /**
@@ -38,7 +43,33 @@ export function createTerminal(container, opts = {}) {
  * Dispose a terminal entry: unsub data listener, disconnect observer, dispose terminal.
  */
 export function disposeTerminal(data) {
-  if (data.unsubData) data.unsubData();
-  if (data.resizeObs) data.resizeObs.disconnect();
-  data.term.dispose();
+  disposeResources([
+    { ref: data, key: 'unsubData',  action: 'call' },
+    { ref: data, key: 'resizeObs',  action: 'disconnect' },
+    { ref: data, key: 'term',       action: 'dispose' },
+  ]);
+}
+
+/**
+ * Create a readonly terminal (disableStdin, no cursor blink, auto-resize).
+ * Merges caller overrides on top of shared readonly defaults.
+ */
+export function createReadonlyTerminal(container, opts = {}) {
+  return createTerminal(container, {
+    fontSize: 12,
+    lineHeight: 1.3,
+    cursorBlink: false,
+    disableStdin: true,
+    autoResize: true,
+    ...opts,
+  });
+}
+
+/**
+ * Dispose every terminal entry in a Map, then optionally clear it.
+ * Each value must follow the { term, fitAddon, resizeObs?, unsubData? } shape.
+ */
+export function disposeTerminalMap(map) {
+  for (const [, data] of map) disposeTerminal(data);
+  map.clear();
 }

@@ -45,6 +45,9 @@ class PtyManager {
     return proc;
   }
 
+  // Alias matching channel suffix (pty:getcwd → getcwd)
+  getcwd(id) { return this.getCwd(id); }
+
   async getCwd(id) {
     const proc = this._getProc(id);
     if (!proc) return null;
@@ -113,6 +116,10 @@ class PtyManager {
       proc.kill();
     }
     this.processes.clear();
+  }
+
+  cleanup() {
+    this.killAll();
   }
 }
 

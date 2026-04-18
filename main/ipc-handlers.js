@@ -1,39 +1,28 @@
-const { ipcMain, shell, clipboard, dialog } = require('electron');
-const PtyManager = require('./pty-manager');
-const fsManager = require('./fs-manager');
-const gitManager = require('./git-manager');
-const configManager = require('./config-manager');
-const flowManager = require('./flow-manager');
-const sessionManager = require('./session-manager');
-const usageManager = require('./usage-manager');
-const updateManager = require('./update-manager');
-const { safeSend, FORWARD_TABLE, SPREAD_TABLE } = require('./ipc-helpers');
+const { ipcMain } = require('electron');
+const { registerManagerHandlers, safeSend } = require('./ipc-helpers');
+const { createSafeHandler } = require('./safe-handler');
 
-const ptyManager = new PtyManager();
+/**
+ * Register all IPC handlers.
+ *
+ * Manager initialization and dependency wiring are handled externally by
+ * `manager-init.js`.  This module only cares about IPC dispatching.
+ *
+ * @param {() => import('electron').BrowserWindow} getWindow
+ * @param {{ targets: Record<string, Record<string, (...args: unknown[]) => unknown>>, ptyManager: { create: (opts: { id: string, cwd: string, cols: number, rows: number }) => { pid: number, onData: (cb: (data: string) => void) => void, onExit: (cb: (info: { exitCode: number }) => void) => void }, processes: Map<string, unknown> }, sessionManager: { onTerminalExit: (id: string) => void } }} deps
+ */
+function register(getWindow, { targets, ptyManager, sessionManager }) {
+  const { shell, dialog } = require('electron');
 
-const TARGETS = {
-  pty: ptyManager,
-  fs: fsManager,
-  git: gitManager,
-  config: configManager,
-  flow: flowManager,
-  usage: usageManager,
-  update: updateManager,
-  shell,
-  clipboard,
-};
+  // Channels with custom handlers (registered below) — skip declarative registration.
+  const customChannels = new Set(['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder']);
 
-function register(getWindow) {
-  for (const [channel, key, method] of FORWARD_TABLE) {
-    ipcMain.handle(channel, (_, arg) => TARGETS[key][method](arg));
-  }
+  // Register all declarative forward/spread handlers in one pass.
+  registerManagerHandlers(ipcMain, targets, customChannels);
 
-  for (const [channel, key, method, keys] of SPREAD_TABLE) {
-    ipcMain.handle(channel, (_, arg) => TARGETS[key][method](...keys.map(k => arg[k])));
-  }
+  // -- Custom handlers that cannot be expressed declaratively --
 
-  // --- Custom handlers (require special logic) ---
-
+  // PTY: create needs onData/onExit wiring
   ipcMain.handle('pty:create', (_, { id, cwd, cols, rows }) => {
     const proc = ptyManager.create({ id, cwd, cols, rows });
     proc.onData((data) => safeSend(getWindow, 'pty:data', { id, data }));
@@ -45,21 +34,19 @@ function register(getWindow) {
     return { pid: proc.pid };
   });
 
+  // FS: watch needs safeSend callback
   ipcMain.handle('fs:watch', (_, { id, dirPath }) => {
-    fsManager.watchDir(id, dirPath, (change) => {
+    targets.fs.watchDir(id, dirPath, (change) => {
       safeSend(getWindow, 'fs:changed', change);
     });
   });
 
-  ipcMain.handle('fs:trash', async (_, filePath) => {
-    try {
-      await shell.trashItem(filePath);
-      return { success: true };
-    } catch (err) {
-      return { error: err.message };
-    }
-  });
+  // FS: trash needs Electron shell
+  ipcMain.handle('fs:trash', createSafeHandler(async (_, filePath) => {
+    await shell.trashItem(filePath);
+  }));
 
+  // Dialog: needs window reference
   ipcMain.handle('dialog:openFolder', async () => {
     const win = getWindow();
     const result = await dialog.showOpenDialog(win, {
@@ -68,25 +55,6 @@ function register(getWindow) {
     if (result.canceled || !result.filePaths.length) return null;
     return result.filePaths[0];
   });
-
-  ipcMain.handle('update:run', async () => {
-    return updateManager.performUpdate((progress) => {
-      safeSend(getWindow, 'update:progress', progress);
-    });
-  });
-
-  ipcMain.handle('update:relaunch', () => updateManager.relaunch());
-
-  updateManager.init();
-  flowManager.start(getWindow, ptyManager);
-  sessionManager.start(ptyManager);
 }
 
-function cleanup() {
-  sessionManager.stop();
-  flowManager.stop();
-  ptyManager.killAll();
-  fsManager.unwatchAll();
-}
-
-module.exports = { register, cleanup };
+module.exports = { register };

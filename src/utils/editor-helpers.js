@@ -6,7 +6,7 @@
 // ===== Constants =====
 
 export const SAVE_FLASH_MS = 600;
-export const TAB_SIZE = 2;
+const TAB_SIZE = 2;
 export const TAB_SPACES = ' '.repeat(TAB_SIZE);
 export const EMPTY_MESSAGE = 'Click a file to view its content';
 
@@ -24,6 +24,12 @@ export const ALL_STATIC_ELEMENTS = [...new Set(Object.values(MODE_CONFIG).flatMa
 
 /** Global pinned files: path → { name } */
 export const pinnedFiles = new Map();
+
+/** Declarative map for mode activation — drives switchMode behavior per static mode. */
+export const MODE_ACTIVATE = {
+  files: (viewer) => { if (viewer.activeFile) viewer.renderEditor(); },
+  git: (viewer) => viewer.gitChanges.loadChanges(),
+};
 
 // ===== Helpers =====
 

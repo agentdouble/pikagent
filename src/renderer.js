@@ -4,6 +4,9 @@ import { ShortcutManager } from './components/shortcuts.js';
 import { SettingsModal } from './components/settings-modal.js';
 import { applyAppTheme } from './utils/app-theme.js';
 
+// Register all components via the centralized manifest.
+import './components/index.js';
+
 // Expose hljs globally for file-viewer
 window.hljs = hljs;
 

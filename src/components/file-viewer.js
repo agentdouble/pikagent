@@ -1,17 +1,11 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus } from '../utils/events.js';
-import { GitChangesView } from './git-changes-view.js';
-import { WebviewInstance } from './webview-panel.js';
-import { contextMenu } from './context-menu.js';
-import { generateId } from '../utils/id.js';
-import { _el, setupInlineInput } from '../utils/dom.js';
-import { getCursorPosition, insertTab, parseWebviewUrl, SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, pinnedFiles } from '../utils/editor-helpers.js';
-
-/** Declarative map for mode activation — drives switchMode behavior per static mode. */
-const MODE_ACTIVATE = {
-  files: (viewer) => { if (viewer.activeFile) viewer.renderEditor(); },
-  git: (viewer) => viewer.gitChanges.loadChanges(),
-};
+import { bus, subscribeBus, unsubscribeBus, EVENTS } from '../utils/events.js';
+import { _el } from '../utils/dom.js';
+import { EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
+import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
+import { createMarkdownPreviewDOM, updatePreviewStatusBar } from '../utils/markdown-preview-renderer.js';
+import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
+import { registerComponent, getComponent } from '../utils/component-registry.js';
 
 export class FileViewer {
   constructor(container, isActive) {
@@ -24,9 +18,14 @@ export class FileViewer {
     this.highlightLayer = null;
     this.mode = 'files'; // 'files' | 'git' | webview id
     this.gitChanges = null;
-    this.webviewTabs = []; // [{ id, label, url }]
-    this._webviewEls = new Map(); // id -> { container, instance }
     this.render();
+    const WebviewManager = getComponent('WebviewManager');
+    this._webviewMgr = new WebviewManager(
+      this.container, this.statusBar,
+      (mode) => this.switchMode(mode),
+      () => this._renderModeBar(),
+    );
+    this._renderModeBar();
     this._setupListeners();
   }
 
@@ -35,11 +34,10 @@ export class FileViewer {
   // ===== Build =====
 
   render() {
-    this.container.replaceChildren(_el('div', 'file-viewer-spacer'));
+    this.container.replaceChildren();
 
     this.modeBar = _el('div', 'file-viewer-mode-bar');
     this.container.appendChild(this.modeBar);
-    this._renderModeBar();
 
     this.tabsBar = _el('div', 'file-viewer-tabs');
     this.container.appendChild(this.tabsBar);
@@ -53,6 +51,7 @@ export class FileViewer {
     this.gitViewEl = _el('div', 'git-changes-view');
     this.gitViewEl.style.display = 'none';
     this.container.appendChild(this.gitViewEl);
+    const GitChangesView = getComponent('GitChangesView');
     this.gitChanges = new GitChangesView(this.gitViewEl);
 
     this.statusBar = _el('div', 'editor-status-bar');
@@ -63,23 +62,25 @@ export class FileViewer {
 
   _setupListeners() {
     // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = [
-      ['file:open', ({ path, name }) => {
+    this._busListeners = subscribeBus([
+      /** @listens file:open {{ path: string, name: string }} */
+      [EVENTS.FILE_OPEN, ({ path, name }) => {
         if (!this.isActive()) return;
         this.switchMode('files');
         this.openFile(path, name);
       }],
-      ['terminal:cwdChanged', ({ cwd }) => {
+      /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
+      [EVENTS.TERMINAL_CWD_CHANGED, ({ cwd }) => {
         if (!this.isActive()) return;
         this.gitChanges.setCwd(cwd);
         if (this.mode === 'git') this.gitChanges.loadChanges();
       }],
-      ['workspace:activated', () => {
+      /** @listens workspace:activated {undefined} */
+      [EVENTS.WORKSPACE_ACTIVATED, () => {
         if (!this.isActive()) return;
         this.loadPinnedFiles();
       }],
-    ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
+    ]);
   }
 
   async loadPinnedFiles() {
@@ -110,9 +111,7 @@ export class FileViewer {
     for (const key of ALL_STATIC_ELEMENTS) {
       this[key].style.display = visible.has(key) ? '' : 'none';
     }
-    for (const [id, wvData] of this._webviewEls) {
-      wvData.container.style.display = mode === id ? '' : 'none';
-    }
+    this._webviewMgr.setModeVisibility(mode);
   }
 
   switchMode(mode) {
@@ -132,13 +131,27 @@ export class FileViewer {
 
     const result = await window.api.fs.readfile(filePath);
     if (result.error) {
-      this.openFiles.set(filePath, { name: fileName, content: '', savedContent: '', lang: 'plaintext', error: result.error });
+      this.openFiles.set(filePath, { name: fileName, content: '', savedContent: '', lang: 'plaintext', error: result.error, viewMode: 'edit' });
     } else {
       const lang = detectLanguage(fileName);
-      this.openFiles.set(filePath, { name: fileName, content: result.content, savedContent: result.content, lang, error: null });
+      const viewMode = lang === 'markdown' ? 'preview' : 'edit';
+      this.openFiles.set(filePath, { name: fileName, content: result.content, savedContent: result.content, lang, error: null, viewMode });
     }
 
     this.setActiveTab(filePath);
+  }
+
+  isMarkdown(filePath) {
+    const file = this.openFiles.get(filePath);
+    return !!file && file.lang === 'markdown';
+  }
+
+  toggleViewMode(filePath) {
+    const file = this.openFiles.get(filePath);
+    if (!file || file.lang !== 'markdown') return;
+    file.viewMode = file.viewMode === 'preview' ? 'edit' : 'preview';
+    if (this.activeFile === filePath) this.renderEditor();
+    this.renderTabs();
   }
 
   setActiveTab(filePath) {
@@ -153,86 +166,19 @@ export class FileViewer {
     return file.content !== file.savedContent;
   }
 
-  _createTabEl(filePath, file) {
-    const tab = _el('div', 'file-tab');
-    if (filePath === this.activeFile) tab.classList.add('active');
-
-    const pinned = this.isPinned(filePath);
-    const modified = this.isModified(filePath);
-
-    if (pinned) tab.appendChild(_el('span', 'file-tab-pin', '\u{1F4CC}'));
-    tab.appendChild(_el('span', 'file-tab-modified', modified ? '\u25CF' : ''));
-    tab.appendChild(_el('span', null, file.name));
-
-    const close = _el('span', 'file-tab-close', '\u00D7');
-    close.addEventListener('click', (e) => { e.stopPropagation(); this.closeFile(filePath); });
-    tab.appendChild(close);
-
-    tab.addEventListener('click', () => this.setActiveTab(filePath));
-    tab.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      contextMenu.show(e.clientX, e.clientY, [
-        { label: pinned ? 'Unpin from all workspaces' : 'Pin across workspaces', action: () => this.togglePin(filePath) },
-        { separator: true },
-        { label: 'Close', action: () => this.closeFile(filePath) },
-      ]);
-    });
-
-    return tab;
-  }
-
   renderTabs() {
-    this.tabsBar.replaceChildren();
-    for (const [filePath, file] of this.openFiles) {
-      this.tabsBar.appendChild(this._createTabEl(filePath, file));
-    }
-  }
-
-  _createEditorDOM(file) {
-    this.lineNumbers = _el('div', 'editor-line-numbers');
-    this.highlightLayer = _el('pre', 'editor-highlight-layer');
-
-    this.editorEl = _el('textarea', 'editor-textarea');
-    this.editorEl.value = file.content;
-    this.editorEl.spellcheck = false;
-    this.editorEl.setAttribute('autocorrect', 'off');
-    this.editorEl.setAttribute('autocapitalize', 'off');
-
-    const editArea = _el('div', 'editor-edit-area');
-    editArea.append(this.highlightLayer, this.editorEl);
-    this.editorWrapper.append(this.lineNumbers, editArea);
-  }
-
-  _bindEditorEvents(file) {
-    this.editorEl.addEventListener('input', () => {
-      file.content = this.editorEl.value;
-      this.updateLineNumbers();
-      this.updateHighlight();
-      this.renderTabs();
-      this.updateStatusBar();
-    });
-
-    this.editorEl.addEventListener('scroll', () => {
-      this.lineNumbers.scrollTop = this.editorEl.scrollTop;
-      this.highlightLayer.scrollTop = this.editorEl.scrollTop;
-      this.highlightLayer.scrollLeft = this.editorEl.scrollLeft;
-    });
-
-    this.editorEl.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        e.stopPropagation();
-        this.saveActive();
-        return;
-      }
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const result = insertTab(this.editorEl.value, this.editorEl.selectionStart, this.editorEl.selectionEnd, TAB_SPACES);
-        this.editorEl.value = result.text;
-        this.editorEl.selectionStart = this.editorEl.selectionEnd = result.cursorPos;
-        this.editorEl.dispatchEvent(new Event('input'));
-      }
-    });
+    renderTabsHelper(this.tabsBar, this.openFiles, this.activeFile,
+      (p) => this.isPinned(p),
+      (p) => this.isModified(p),
+      {
+        onClose: (p) => this.closeFile(p),
+        onActivate: (p) => this.setActiveTab(p),
+        onTogglePin: (p) => this.togglePin(p),
+        isMarkdown: (p) => this.isMarkdown(p),
+        getViewMode: (p) => this.openFiles.get(p)?.viewMode,
+        onToggleViewMode: (p) => this.toggleViewMode(p),
+      },
+    );
   }
 
   renderEditor() {
@@ -249,8 +195,24 @@ export class FileViewer {
       return;
     }
 
-    this._createEditorDOM(file);
-    this._bindEditorEvents(file);
+    if (file.lang === 'markdown' && file.viewMode === 'preview') {
+      this.lineNumbers = null;
+      this.highlightLayer = null;
+      this.editorEl = null;
+      createMarkdownPreviewDOM(this.editorWrapper, file);
+      updatePreviewStatusBar(this.statusBar, file);
+      return;
+    }
+
+    const { lineNumbers, highlightLayer, editorEl } = createEditorDOM(this.editorWrapper, file);
+    this.lineNumbers = lineNumbers;
+    this.highlightLayer = highlightLayer;
+    this.editorEl = editorEl;
+
+    bindEditorEvents(this.editorEl, this.lineNumbers, this.highlightLayer, file, {
+      onUpdate: () => { this.updateLineNumbers(); this.updateHighlight(); this.renderTabs(); this.updateStatusBar(); },
+      onSave: () => this.saveActive(),
+    });
     this.updateLineNumbers();
     this.updateHighlight();
     this.updateStatusBar();
@@ -258,71 +220,30 @@ export class FileViewer {
   }
 
   updateLineNumbers() {
-    if (!this.lineNumbers || !this.editorEl) return;
-    const count = this.editorEl.value.split('\n').length;
-    const frag = document.createDocumentFragment();
-    for (let i = 1; i <= count; i++) {
-      if (i > 1) frag.appendChild(document.createTextNode('\n'));
-      frag.appendChild(_el('span', null, String(i)));
-    }
-    this.lineNumbers.replaceChildren(frag);
+    updateLineNumbers(this.lineNumbers, this.editorEl);
   }
 
   updateHighlight() {
-    if (!this.highlightLayer || !this.editorEl) return;
     const file = this.openFiles.get(this.activeFile);
     if (!file) return;
-
-    const code = document.createElement('code');
-    code.className = `language-${file.lang}`;
-    // Need trailing newline so the pre sizing matches the textarea
-    code.textContent = this.editorEl.value + '\n';
-
-    this.highlightLayer.replaceChildren(code);
-
-    if (window.hljs) {
-      window.hljs.highlightElement(code);
-    }
-  }
-
-  _getCursorPosition() {
-    return getCursorPosition(this.editorEl.value, this.editorEl.selectionStart);
+    updateHighlight(this.highlightLayer, this.editorEl, file.lang);
   }
 
   updateStatusBar() {
     if (!this.statusBar || !this.editorEl) return;
     const file = this.openFiles.get(this.activeFile);
     if (!file) { this.statusBar.replaceChildren(); return; }
-
-    const { line, col, totalLines } = this._getCursorPosition();
-    const modified = this.isModified(this.activeFile);
-
-    this.statusBar.replaceChildren(
-      _el('span', 'status-item', file.lang),
-      _el('span', 'status-item', `Ln ${line}, Col ${col}`),
-      _el('span', 'status-item', `${totalLines} lines`),
-      _el('span', modified ? 'status-item status-modified' : 'status-item status-saved', modified ? 'Modified' : 'Saved'),
-      _el('span', 'status-save-hint', modified ? '\u2318S to save' : ''),
-    );
+    updateStatusBar(this.statusBar, this.editorEl, file);
   }
 
   async saveActive() {
     const file = this.openFiles.get(this.activeFile);
-    if (!file || file.error) return;
-
-    const result = await window.api.fs.writefile(this.activeFile, file.content);
-    if (result.error) {
-      this.statusBar.replaceChildren(_el('span', 'status-item status-error', `Save failed: ${result.error}`));
-      return;
-    }
-
-    file.savedContent = file.content;
-    this.renderTabs();
-    this.updateStatusBar();
-
-    // Flash save indicator
-    this.statusBar.classList.add('save-flash');
-    setTimeout(() => this.statusBar.classList.remove('save-flash'), SAVE_FLASH_MS);
+    await saveFile(this.activeFile, file, this.statusBar, {
+      onSuccess: () => {
+        this.renderTabs();
+        this.updateStatusBar();
+      },
+    }, { writefile: window.api.fs.writefile });
   }
 
   closeFile(filePath) {
@@ -358,119 +279,46 @@ export class FileViewer {
 
   // ===== Mode Bar =====
 
-  _buildStaticModeBtn({ key, label }) {
-    const btn = _el('button', `mode-btn${this.mode === key ? ' active' : ''}`, label);
-    btn.addEventListener('click', () => this.switchMode(key));
-    return btn;
-  }
-
-  _buildWebviewModeBtn(wt) {
-    const btn = _el('button', `mode-btn mode-btn-webview${this.mode === wt.id ? ' active' : ''}`);
-    btn.appendChild(_el('span', null, wt.label));
-    const closeBtn = _el('span', 'mode-btn-close', { textContent: '\u00d7' });
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.removeWebview(wt.id);
-    });
-    btn.appendChild(closeBtn);
-    btn.addEventListener('click', () => this.switchMode(wt.id));
-    return btn;
-  }
-
-  _buildAddWebviewBtn() {
-    const btn = _el('button', 'mode-btn mode-btn-add', { textContent: '+', title: 'Add browser preview' });
-    btn.addEventListener('click', () => this._showAddWebviewInput(btn));
-    return btn;
-  }
-
   _renderModeBar() {
     this.modeBar.replaceChildren();
-
-    for (const mode of STATIC_MODES) {
-      this.modeBar.appendChild(this._buildStaticModeBtn(mode));
+    for (const { key, label } of STATIC_MODES) {
+      const btn = _el('button', `mode-btn${this.mode === key ? ' active' : ''}`, label);
+      btn.addEventListener('click', () => this.switchMode(key));
+      this.modeBar.appendChild(btn);
     }
-    for (const wt of this.webviewTabs) {
-      this.modeBar.appendChild(this._buildWebviewModeBtn(wt));
+    for (const wt of this._webviewMgr.webviewTabs) {
+      this.modeBar.appendChild(this._webviewMgr.buildWebviewModeBtn(wt, this.mode));
     }
-    this.modeBar.appendChild(this._buildAddWebviewBtn());
+    this.modeBar.appendChild(this._webviewMgr.buildAddWebviewBtn(this.modeBar));
   }
 
-  _showAddWebviewInput(addBtn) {
-    const input = _el('input', 'mode-bar-url-input');
-    input.type = 'text';
-    input.placeholder = 'localhost:3000';
-    this.modeBar.replaceChild(input, addBtn);
-    input.focus();
-
-    setupInlineInput(input, {
-      onCommit: (val) => {
-        if (val) {
-          const { url, label } = parseWebviewUrl(val);
-          this.addWebview(label, url);
-        } else {
-          this._renderModeBar();
-        }
-      },
-      onCancel: () => this._renderModeBar(),
-    });
-  }
-
-  // ===== Webview Management =====
+  // ===== Webview Management (delegated) =====
 
   addWebview(label, url) {
-    const wt = { id: generateId('wv'), label, url };
-    this.webviewTabs.push(wt);
-    this._createWebviewContainer(wt);
-    this.switchMode(wt.id);
-    bus.emit('layout:changed');
+    this._webviewMgr.addWebview(label, url);
   }
 
   removeWebview(webviewId) {
-    const idx = this.webviewTabs.findIndex(wt => wt.id === webviewId);
-    if (idx < 0) return;
-    this.webviewTabs.splice(idx, 1);
-
-    const wvData = this._webviewEls.get(webviewId);
-    if (wvData) {
-      if (wvData.instance) wvData.instance.dispose();
-      wvData.container.remove();
-      this._webviewEls.delete(webviewId);
-    }
-
-    if (this.mode === webviewId) this.switchMode('files');
+    const removedId = this._webviewMgr.removeWebview(webviewId);
+    if (this.mode === removedId) this.switchMode('files');
     else this._renderModeBar();
-    bus.emit('layout:changed');
-  }
-
-  _createWebviewContainer(wt) {
-    const container = _el('div', 'webview-area');
-    container.style.display = 'none';
-    this.container.insertBefore(container, this.statusBar);
-    const instance = new WebviewInstance(container, wt.url);
-    this._webviewEls.set(wt.id, { container, instance });
+    /** @fires layout:changed {undefined} — webview removed from file-viewer */
+    bus.emit(EVENTS.LAYOUT_CHANGED);
   }
 
   getWebviewTabs() {
-    return this.webviewTabs.map(wt => ({ label: wt.label, url: wt.url }));
+    return this._webviewMgr.getWebviewTabs();
   }
 
   setWebviewTabs(tabs) {
-    if (!tabs || !tabs.length) return;
-    for (const t of tabs) {
-      const wt = { id: generateId('wv'), label: t.label, url: t.url };
-      this.webviewTabs.push(wt);
-      this._createWebviewContainer(wt);
-    }
-    this._renderModeBar();
+    this._webviewMgr.setWebviewTabs(tabs);
   }
 
   dispose() {
-    for (const [event, handler] of this._busListeners) bus.off(event, handler);
+    unsubscribeBus(this._busListeners);
     this._busListeners = [];
-
-    for (const [, wvData] of this._webviewEls) {
-      if (wvData.instance) wvData.instance.dispose();
-    }
-    this._webviewEls.clear();
+    this._webviewMgr.dispose();
   }
 }
+
+registerComponent('FileViewer', FileViewer);

@@ -1,13 +1,32 @@
 /**
- * Lightweight DOM element factory.
+ * Core DOM utilities.
+ *
+ * This module keeps only the essential DOM factories:
+ *   _el, createActionButton, renderButtonBar, buildChevronRow
+ *
+ * The following helpers have been extracted to dedicated modules — import
+ * them directly from there instead of going through this file:
+ *   - createModalOverlay, createCustomModal,
+ *     showPromptDialog, showConfirmDialog   → ./dom-dialogs.js
+ *   - setupInlineInput, startInlineRename   → ./form-helpers.js
+ *   - setupDropZone                         → ./drop-zone-helpers.js
+ *   - setupKeyboardShortcuts                → ./keyboard-helpers.js
+ *   - _safeFit                              → ./terminal-factory.js
+ *   - createSelect                          → ./flow-modal-helpers.js (private)
+ *   - positionInViewport                    → ./context-menu.js (private)
+ */
+import { onClickStopped } from './event-helpers.js';
+
+/**
+ * Create a DOM element.
  *
  * Supports two calling conventions:
  *   _el('div', { className: 'c', textContent: 't', onClick: fn }, child…)  — object attrs
  *   _el('div', 'className', 'text' | { prop: v } | child…)               — positional
  *
  * @param {string} tag
- * @param {Object|string|null} [attrsOrClass]
- * @param {...(Node|string|Object|null|false)} children
+ * @param {Record<string, unknown>|string|null} [attrsOrClass]
+ * @param {...(Node|string|Record<string, unknown>|null|false)} children
  */
 export function _el(tag, attrsOrClass, ...children) {
   const el = document.createElement(tag);
@@ -31,96 +50,76 @@ export function _el(tag, attrsOrClass, ...children) {
 }
 
 /**
- * Wire up Enter / Escape / blur / click on an inline <input>.
- * Guarantees onCommit fires at most once.
- * @param {HTMLInputElement} input
- * @param {{ onCommit: (value: string) => void, onCancel?: () => void, blurDelay?: number }} opts
+ * Create a <button> element with common options.
+ *
+ * Unified factory that accepts both legacy (`label`, `className`) and
+ * short-form (`text`, `cls`) parameter names so every call-site can
+ * converge on a single helper.
+ *
+ * Supports text labels, child nodes (e.g. SVG icons), and optional
+ * stopPropagation wrapping on the click handler.
+ *
+ * @param {{ text?: string, label?: string, title?: string,
+ *           cls?: string, className?: string,
+ *           onClick?: (e: MouseEvent) => void, childNode?: Node,
+ *           stopPropagation?: boolean }} opts
+ * @returns {HTMLButtonElement}
  */
-export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
-  let committed = false;
-  const commit = () => {
-    if (committed) return;
-    committed = true;
-    onCommit(input.value.trim());
-  };
-  const cancel = () => {
-    committed = true;
-    if (onCancel) onCancel();
-    else input.remove();
-  };
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); }
-    if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
-  });
-  input.addEventListener('blur', () => {
-    if (blurDelay > 0) setTimeout(() => { if (!committed) commit(); }, blurDelay);
-    else if (!committed) commit();
-  });
-  input.addEventListener('click', (e) => e.stopPropagation());
-}
-
-/** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
-export function _safeFit(fitAddon) {
-  try { fitAddon.fit(); } catch {}
+export function createActionButton({ text, label = '', title, cls, className, onClick, childNode, stopPropagation = false } = {}) {
+  const content = text ?? label;
+  const cssClass = cls ?? className ?? '';
+  const btn = _el('button', cssClass, content);
+  if (title) btn.title = title;
+  if (childNode) btn.appendChild(childNode);
+  if (onClick) {
+    if (stopPropagation) onClickStopped(btn, onClick);
+    else btn.addEventListener('click', onClick);
+  }
+  return btn;
 }
 
 /**
- * Show a prompt dialog for a single text value.
- * @returns {Promise<string|null>} trimmed value or null if cancelled
+ * Render a row of buttons from an array of config descriptors.
+ *
+ * Each entry in `configs` is an object with button properties
+ * (text, label, title, className, childNode, stopPropagation) plus an
+ * `action` key that maps into the `handlers` object.
+ *
+ * @param {{ containerClass: string,
+ *           configs: Array<{ action: string, text?: string, label?: string,
+ *                            title?: string, cls?: string, className?: string,
+ *                            childNode?: Node, stopPropagation?: boolean }>,
+ *           handlers: Record<string, (e: MouseEvent) => void> }} opts
+ * @returns {HTMLElement}
  */
-export function showPromptDialog({ title, placeholder = '', defaultValue = '', confirmLabel = 'Create', cancelLabel = 'Cancel' }) {
-  return new Promise((resolve) => {
-    const overlay = _el('div', 'prompt-dialog-overlay');
-    const close = (val) => { overlay.remove(); resolve(val); };
-    const confirm = () => { const v = input.value.trim(); close(v || null); };
-
-    const input = _el('input', { className: 'prompt-dialog-input', type: 'text', value: defaultValue, placeholder });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') confirm();
-      if (e.key === 'Escape') close(null);
-    });
-
-    const box = _el('div', 'prompt-dialog-box',
-      _el('label', 'prompt-dialog-label', title),
-      input,
-      _el('div', 'prompt-dialog-btns',
-        _el('button', { className: 'prompt-dialog-cancel', textContent: cancelLabel, onClick: () => close(null) }),
-        _el('button', { className: 'prompt-dialog-confirm', textContent: confirmLabel, onClick: confirm }),
-      ),
-    );
-
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-    input.focus();
-    if (defaultValue) input.select();
-  });
+export function renderButtonBar({ containerClass, configs, handlers }) {
+  const bar = _el('div', containerClass);
+  for (const cfg of configs) {
+    bar.appendChild(createActionButton({
+      text: cfg.text || cfg.label || '',
+      title: cfg.title,
+      cls: cfg.className || cfg.cls,
+      childNode: cfg.childNode,
+      stopPropagation: cfg.stopPropagation ?? false,
+      onClick: handlers[cfg.action],
+    }));
+  }
+  return bar;
 }
 
 /**
- * Show a confirm dialog.
- * @param {Node|string} message - text string or DOM node
- * @returns {Promise<boolean>}
+ * Build a row containing a chevron span and a name span.
+ *
+ * Used by file-tree rows and flow-category headers — any place that needs
+ * the common "chevron + label" pattern.
+ *
+ * @param {{ chevronClass: string, nameClass: string, name: string, chevronText?: string }} opts
+ * @returns {{ chevron: HTMLElement, name: HTMLElement }}
  */
-export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 'Cancel' } = {}) {
-  return new Promise((resolve) => {
-    const overlay = _el('div', 'confirm-overlay');
-    const box = _el('div', 'confirm-box');
-
-    if (typeof message === 'string') box.appendChild(_el('p', null, message));
-    else box.appendChild(message);
-
-    const btnRow = _el('div', 'confirm-buttons',
-      _el('button', { className: 'confirm-cancel', textContent: cancelLabel, onClick: () => cleanup(false) }),
-      _el('button', { className: 'confirm-ok', textContent: confirmLabel, onClick: () => cleanup(true) }),
-    );
-    box.appendChild(btnRow);
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-
-    const cleanup = (result) => { overlay.remove(); resolve(result); };
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(false); });
-    btnRow.querySelector('.confirm-ok').focus();
-  });
+export function buildChevronRow(opts) {
+  const chevron = _el('span', { className: opts.chevronClass, textContent: opts.chevronText || '' });
+  const name = _el('span', { className: opts.nameClass, textContent: opts.name });
+  return { chevron, name };
 }
+
+

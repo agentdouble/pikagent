@@ -1,3 +1,5 @@
+const { buildRecord } = require('./record-helpers');
+
 const MAX_SESSIONS = 200;
 const MS_PER_SEC = 1000;
 const FLOW_PREFIX = 'flow-';
@@ -16,24 +18,22 @@ function isFlowTerminal(termId) {
 }
 
 function buildEndedRecord(session, status) {
-  return {
-    ...session,
+  return buildRecord(session, {
     endedAt: new Date().toISOString(),
     durationSec: durationSec(session.startedAt),
     status,
-  };
+  });
 }
 
 function buildActiveRecord(session) {
-  return {
-    ...session,
+  return buildRecord(session, {
     durationSec: durationSec(session.startedAt),
     status: 'running',
-  };
+  });
 }
 
 function trimSessions(sessions, max = MAX_SESSIONS) {
   return sessions.length > max ? sessions.slice(-max) : sessions;
 }
 
-module.exports = { MAX_SESSIONS, generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions };
+module.exports = { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions };

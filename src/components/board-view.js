@@ -1,8 +1,10 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { bus } from '../utils/events.js';
+import { subscribeBus, unsubscribeBus } from '../utils/events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
-import { _el, _safeFit } from '../utils/dom.js';
-import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
+import { _el, renderButtonBar } from '../utils/dom.js';
+import { _safeFit, createTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
+import { registerComponent } from '../utils/component-registry.js';
+import { RendererPollingTimer } from '../utils/polling.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
   STATUS_CONFIG, ALL_CARD_CLASSES, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
@@ -125,14 +127,13 @@ export class BoardView {
       },
     };
 
-    const headerBtns = _el('div', { className: 'board-card-btns' },
-      ...HEADER_BUTTONS.map(btn => _el('button', {
-        className: 'board-card-btn',
-        textContent: btn.text,
-        title: btn.title,
-        onClick: actionHandlers[btn.action],
-      })),
-    );
+    const configs = HEADER_BUTTONS.map(({ text, title, action }) => ({
+      text,
+      title,
+      cls: 'board-card-btn',
+      action,
+    }));
+    const headerBtns = renderButtonBar({ containerClass: 'board-card-btns', configs, handlers: actionHandlers });
 
     return _el('div', { className: 'board-card-header' }, nameGroup, headerBtns);
   }
@@ -144,8 +145,11 @@ export class BoardView {
       e.preventDefault();
       window.api.shell.openExternal(url);
     }));
-    term.registerLinkProvider(new FilePathLinkProvider(term, () => null));
-    term.onData((data) => window.api.pty.write({ id: termId, data }));
+    term.registerLinkProvider(new FilePathLinkProvider(term, () => null, {
+      homedir: window.api.fs.homedir,
+      openPath: window.api.shell.openPath,
+    }));
+    term.onData((data) => window.api.pty.write(termId, data));
 
     return { term, fitAddon };
   }
@@ -213,12 +217,14 @@ export class BoardView {
     const onTerminalGone = ({ id }) => { this.removeCard(id); this._updateEmptyState(); };
 
     // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = [
+    this._busListeners = subscribeBus([
+      /** @listens terminal:created {{ id: string, cwd: string }} */
       [EVT_CREATED, () => { if (!this.disposed) this.scanAgents(); }],
+      /** @listens terminal:removed {{ id: string }} */
       [EVT_REMOVED, onTerminalGone],
+      /** @listens terminal:exited {{ id: string }} */
       [EVT_EXITED, onTerminalGone],
-    ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
+    ]);
   }
 
   focusDirection(dir) {
@@ -234,21 +240,20 @@ export class BoardView {
   }
 
   _startPolling() {
-    if (this._pollTimer || this.disposed) return;
-    this._pollTimer = setInterval(() => {
-      if (!this.disposed) {
-        this.scanAgents();
-        this._checkIdleCards();
-      }
-    }, POLL_INTERVAL_MS);
-    this.scanAgents();
+    if (this.disposed) return;
+    if (!this._pollTimer) {
+      this._pollTimer = new RendererPollingTimer(POLL_INTERVAL_MS, () => {
+        if (!this.disposed) {
+          this.scanAgents();
+          this._checkIdleCards();
+        }
+      });
+    }
+    this._pollTimer.start();
   }
 
   pause() {
-    if (this._pollTimer) {
-      clearInterval(this._pollTimer);
-      this._pollTimer = null;
-    }
+    if (this._pollTimer) this._pollTimer.stop();
   }
 
   resume() {
@@ -259,11 +264,9 @@ export class BoardView {
     this.disposed = true;
     this.pause();
 
-    for (const [event, handler] of this._busListeners) bus.off(event, handler);
-
-    for (const [, data] of this.cards) {
-      disposeTerminal(data);
-    }
-    this.cards.clear();
+    unsubscribeBus(this._busListeners);
+    disposeTerminalMap(this.cards);
   }
 }
+
+registerComponent('BoardView', BoardView);

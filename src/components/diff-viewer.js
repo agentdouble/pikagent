@@ -2,6 +2,7 @@ import { detectLanguage } from '../utils/file-icons.js';
 import { _el } from '../utils/dom.js';
 import { parseDiff, buildSideBySideRows, wordDiff, countDiffStats, UNIFIED_CHANGE_CONFIG, VIEW_MODES, HUNK_FLASH_DURATION_MS } from '../utils/diff-parser.js';
 import { NAV_BUTTONS, WORD_DIFF_CLASS, capitalize } from '../utils/diff-viewer-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 /**
  * DiffViewer component - renders a side-by-side diff with syntax highlighting,
@@ -209,3 +210,5 @@ export class DiffViewer {
     }
   }
 }
+
+registerComponent('DiffViewer', DiffViewer);

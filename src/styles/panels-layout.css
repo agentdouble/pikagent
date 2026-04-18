@@ -1,0 +1,135 @@
+/* ===== Workspace Layout ===== */
+.workspace {
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.workspace-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ===== Panel Base ===== */
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel.animating {
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.panel-left {
+  width: 240px;
+  min-width: 0;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.panel-center {
+  flex: 1;
+  min-width: 200px;
+  background: var(--bg-primary);
+}
+
+.panel-right {
+  width: 360px;
+  min-width: 0;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.panel.collapsed {
+  width: 0 !important;
+  min-width: 0;
+  overflow: hidden;
+  border: none;
+}
+
+.panel-header {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.panel-title {
+  padding: 10px 14px 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ===== Panel Resize ===== */
+.panel-resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.panel-resize-handle:hover {
+  background: var(--accent);
+}
+
+/* ===== Path Info ===== */
+.path-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+}
+
+.path-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  transition: color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+  user-select: none;
+}
+
+.path-arrow:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.path-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1px;
+}
+
+.branch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  color: var(--green);
+  background: var(--green-soft);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+

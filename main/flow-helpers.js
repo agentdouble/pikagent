@@ -1,6 +1,7 @@
 const path = require('path');
 const { FLOWS_DIR, LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
+const { getLastRun } = require('../shared/flow-utils');
 
 const MS_PER_HOUR = 3_600_000;
 const SCHEDULER_INTERVAL_MS = 60_000;
@@ -44,16 +45,7 @@ function _buildAgentCmd(agent, prompt, opts = {}) {
   return parts.join(' ');
 }
 
-const AGENT_COMMANDS = Object.fromEntries(
-  Object.keys(AGENT_CONFIG).map(agent => [
-    agent,
-    (prompt, opts) => _buildAgentCmd(agent, prompt, opts),
-  ]),
-);
-
-function getLastRun(flow) {
-  return flow.runs?.at(-1) ?? null;
-}
+// getLastRun imported from shared/flow-utils.js
 
 /* ── Schedule day filters (single source of truth) ─────────────── */
 
@@ -167,6 +159,6 @@ module.exports = {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS, MAX_FLOW_RUNTIME_MS,
   flowPath, logPath,
-  AGENT_COMMANDS, getLastRun, shouldRun, buildFlowCommand,
+  getLastRun, shouldRun, buildFlowCommand,
   createOutputProcessor,
 };

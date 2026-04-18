@@ -1,61 +1,64 @@
-const fsp = require('fs/promises');
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
-const { readJson, ensureDirOnce } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
+const { createPollingManager } = require('../shared/polling-manager');
+const { Cache } = require('./cache');
+const { createLogger, trySafe } = require('./logger');
 
+const log = createLogger('session-manager');
 const POLL_INTERVAL_MS = 5000;
 
 const ensureDir = ensureDirOnce(BASE_DIR);
 
 class SessionManager {
   constructor() {
-    this._timer = null;
+    this._pollingMgr = createPollingManager(() => this._poll(), {
+      intervalMs: POLL_INTERVAL_MS,
+      onStop: () => {
+        for (const termId of Object.keys(this._activeSessions)) {
+          this._endSession(termId, 'interrupted');
+        }
+      },
+    });
     this._ptyManager = null;
     this._previousAgents = {};
     this._activeSessions = {};
     this._polling = false;
-    this._sessionsCache = null;
+    this._sessionsCache = new Cache();
   }
 
   async start(ptyManager) {
     this._ptyManager = ptyManager;
     await this._loadAll();
-    this._timer = setInterval(() => this._poll(), POLL_INTERVAL_MS);
-    this._poll();
+    this._pollingMgr.start();
   }
 
   stop() {
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = null;
-    }
-    for (const termId of Object.keys(this._activeSessions)) {
-      this._endSession(termId, 'interrupted');
-    }
+    this._pollingMgr.stop();
   }
 
   async _poll() {
     if (!this._ptyManager || this._polling) return;
     this._polling = true;
     try {
-      const currentAgents = await this._ptyManager.checkAgents();
+      await trySafe(async () => {
+        const currentAgents = await this._ptyManager.checkAgents();
 
-      for (const [termId, agentName] of Object.entries(currentAgents)) {
-        if (!this._previousAgents[termId]) {
-          await this._startSession(termId, agentName);
+        for (const [termId, agentName] of Object.entries(currentAgents)) {
+          if (!this._previousAgents[termId]) {
+            await this._startSession(termId, agentName);
+          }
         }
-      }
 
-      for (const termId of Object.keys(this._previousAgents)) {
-        if (!currentAgents[termId]) {
-          this._endSession(termId, 'completed');
+        for (const termId of Object.keys(this._previousAgents)) {
+          if (!currentAgents[termId]) {
+            this._endSession(termId, 'completed');
+          }
         }
-      }
 
-      this._previousAgents = { ...currentAgents };
-    } catch (err) {
-      console.warn('session-manager: poll failed:', err.message);
+        this._previousAgents = { ...currentAgents };
+      }, undefined, { log, label: 'poll' });
     } finally {
       this._polling = false;
     }
@@ -64,12 +67,11 @@ class SessionManager {
   async _startSession(termId, agentName) {
     if (isFlowTerminal(termId)) return;
 
-    let cwd = null;
-    try {
-      cwd = await this._ptyManager.getCwd(termId);
-    } catch (err) {
-      console.warn('session-manager: getCwd failed:', err.message);
-    }
+    const cwd = await trySafe(
+      () => this._ptyManager.getCwd(termId),
+      null,
+      { log, label: 'getCwd' },
+    );
 
     this._activeSessions[termId] = {
       id: generateSessionId(),
@@ -98,22 +100,30 @@ class SessionManager {
   async _saveRecord(record) {
     await ensureDir();
 
-    this._sessionsCache = trimSessions([...(this._sessionsCache || []), record]);
+    const sessions = trimSessions([...(this._sessionsCache.get() || []), record]);
+    this._sessionsCache.set(sessions);
 
-    fsp.writeFile(SESSIONS_FILE, JSON.stringify(this._sessionsCache, null, 2), 'utf-8')
-      .catch((err) => console.warn('session-manager: write failed:', err.message));
+    trySafe(
+      () => writeJson(SESSIONS_FILE, sessions),
+      undefined,
+      { log, label: 'write' },
+    );
   }
 
   async _loadAll() {
-    this._sessionsCache = (await readJson(SESSIONS_FILE)) || [];
+    this._sessionsCache.set((await readJson(SESSIONS_FILE)) || []);
   }
 
   getSessions() {
-    return this._sessionsCache || [];
+    return this._sessionsCache.get() || [];
   }
 
   getActiveSessions() {
     return Object.values(this._activeSessions).map(buildActiveRecord);
+  }
+
+  cleanup() {
+    this.stop();
   }
 }
 

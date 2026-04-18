@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions, MAX_SESSIONS } = require('../../main/session-helpers');
+const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('../../main/session-helpers');
 
 describe('session-helpers', () => {
   describe('generateSessionId', () => {
@@ -65,10 +65,10 @@ describe('session-helpers', () => {
       expect(trimSessions(sessions)).toHaveLength(10);
     });
 
-    it('trims to last max entries', () => {
+    it('trims to last max entries (default 200)', () => {
       const sessions = Array.from({ length: 250 }, (_, i) => ({ id: i }));
       const trimmed = trimSessions(sessions);
-      expect(trimmed).toHaveLength(MAX_SESSIONS);
+      expect(trimmed).toHaveLength(200);
       expect(trimmed[0].id).toBe(50); // 250 - 200 = 50
     });
   });

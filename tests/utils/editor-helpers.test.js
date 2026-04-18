@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getCursorPosition, insertTab, parseWebviewUrl,
-  SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES,
+  SAVE_FLASH_MS, TAB_SPACES, EMPTY_MESSAGE, STATIC_MODES, MODE_ACTIVATE,
 } from '../../src/utils/editor-helpers.js';
 
 describe('editor-helpers', () => {
@@ -23,6 +23,29 @@ describe('editor-helpers', () => {
         { key: 'files', label: 'Files' },
         { key: 'git', label: 'Git Changes' },
       ]);
+    });
+
+    it('MODE_ACTIVATE has entries for files and git', () => {
+      expect(typeof MODE_ACTIVATE.files).toBe('function');
+      expect(typeof MODE_ACTIVATE.git).toBe('function');
+    });
+
+    it('MODE_ACTIVATE.files calls renderEditor when activeFile is set', () => {
+      const viewer = { activeFile: '/test.js', renderEditor: () => { viewer._called = true; }, _called: false };
+      MODE_ACTIVATE.files(viewer);
+      expect(viewer._called).toBe(true);
+    });
+
+    it('MODE_ACTIVATE.files does not call renderEditor when activeFile is null', () => {
+      const viewer = { activeFile: null, renderEditor: () => { viewer._called = true; }, _called: false };
+      MODE_ACTIVATE.files(viewer);
+      expect(viewer._called).toBe(false);
+    });
+
+    it('MODE_ACTIVATE.git calls gitChanges.loadChanges', () => {
+      const viewer = { gitChanges: { loadChanges: () => { viewer._called = true; } }, _called: false };
+      MODE_ACTIVATE.git(viewer);
+      expect(viewer._called).toBe(true);
     });
   });
 

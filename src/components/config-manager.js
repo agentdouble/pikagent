@@ -1,5 +1,5 @@
-import { contextMenu } from './context-menu.js';
-import { showPromptDialog } from '../utils/dom.js';
+import { contextMenu } from '../utils/context-menu.js';
+import { showPromptDialog } from '../utils/dom-dialogs.js';
 import {
   AUTO_SAVE_DELAY,
   MENU_OFFSET,
@@ -7,6 +7,7 @@ import {
   configLabel,
   suggestedDuplicateName,
 } from '../utils/config-manager-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class ConfigManager {
   constructor(tabManager) {
@@ -54,7 +55,7 @@ export class ConfigManager {
     this.currentConfigName = name;
     this.tabManager._disposeSideView('board');
     this.tabManager._disposeAllTabs();
-    this.tabManager.createTab('Workspace 1');
+    this.tabManager.createTab();
     await window.api.config.setDefault(name);
     await this.autoSave();
     this.updateConfigBar();
@@ -124,3 +125,5 @@ export class ConfigManager {
     if (name) callback(name);
   }
 }
+
+registerComponent('ConfigManager', ConfigManager);

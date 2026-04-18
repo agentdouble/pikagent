@@ -1,0 +1,331 @@
+/* ===== Flow Modal ===== */
+.flow-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.flow-modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  width: 580px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+}
+
+.flow-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+}
+
+.flow-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.flow-modal-clear-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+
+.flow-modal-clear-btn:hover {
+  color: var(--text-secondary);
+}
+
+/* ===== Modal Form ===== */
+.flow-modal-group {
+  padding: 0 20px 12px;
+}
+
+.flow-modal-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-ui);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.flow-modal-input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.flow-modal-textarea {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  outline: none;
+  resize: vertical;
+  min-height: 130px;
+  box-sizing: border-box;
+  line-height: 1.55;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.flow-modal-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.flow-modal-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* ===== Modal Bottom Bar ===== */
+.flow-modal-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 20px 16px;
+  align-items: center;
+}
+
+.flow-modal-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.flow-modal-chip-btn {
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.flow-modal-chip-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.flow-modal-chip-label {
+  color: var(--text-primary);
+  font-size: 12px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-modal-select {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  outline: none;
+  cursor: pointer;
+}
+
+.flow-modal-select option {
+  background: var(--bg-primary);
+}
+
+.flow-modal-time {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  outline: none;
+}
+
+.flow-modal-time::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+/* ===== Custom Day Buttons ===== */
+.flow-modal-days {
+  gap: 2px;
+}
+
+.flow-day-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.flow-day-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.flow-day-btn:hover:not(.active) {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+/* ===== Modal Actions ===== */
+.flow-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.flow-modal-btn {
+  padding: 9px 22px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  border: none;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.flow-modal-btn:active {
+  transform: scale(0.97);
+}
+
+.flow-modal-btn-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.flow-modal-btn-cancel:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.flow-modal-btn-create {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  padding: 9px 24px;
+}
+
+.flow-modal-btn-create:hover {
+  background: var(--accent-bright);
+}
+
+/* ===== Log Viewer Modal ===== */
+.flow-log-modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  width: 820px;
+  max-width: 90vw;
+  height: 72vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+}
+
+.flow-log-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.flow-log-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.flow-log-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.flow-log-status-success {
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.flow-log-status-error {
+  background: var(--red-soft);
+  color: var(--red);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.flow-log-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.flow-log-close:hover {
+  color: var(--text-primary);
+}
+
+.flow-log-terminal {
+  flex: 1;
+  overflow: hidden;
+}
+
+.flow-log-terminal .xterm {
+  height: 100%;
+  padding: 4px;
+}
+
+.flow-log-terminal .xterm-cursor-layer {
+  display: none !important;
+}

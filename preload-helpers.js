@@ -22,8 +22,8 @@ const _pack = (ch, keys) => (...args) =>
  * pattern with a single factory.
  *
  * @param {string} channel   IPC channel name (e.g. 'pty:data')
- * @param {function} extract transforms the raw payload into { id, value }
- * @returns {(id: string, cb: function) => () => void} subscribe function
+ * @param {(payload: unknown) => { id: string, value: unknown }} extract transforms the raw payload into { id, value }
+ * @returns {(id: string, cb: (value: unknown) => void) => () => void} subscribe function
  */
 function _createTargetedChannel(channel, extract) {
   const listeners = new Map();
@@ -44,4 +44,28 @@ function _createTargetedChannel(channel, extract) {
   };
 }
 
-module.exports = { _onIpc, _fwd, _pack, _createTargetedChannel };
+/**
+ * Build a flat API object from a schema, merging custom overrides.
+ *
+ * @param {Record<string, Record<string, { type: string, channel?: string, keys?: string[] }>>} schema - domain → method → { type, channel?, keys? }
+ * @param {Record<string, Record<string, (...args: unknown[]) => unknown>>} [overrides] - domain → method → handler (for 'custom' entries)
+ * @returns {Record<string, Record<string, (...args: unknown[]) => unknown>>} flat API: { domain: { method: handler } }
+ */
+function buildApiFromSchema(schema, overrides = {}) {
+  const api = {};
+  for (const [domain, methods] of Object.entries(schema)) {
+    const domainApi = {};
+    for (const [method, def] of Object.entries(methods)) {
+      const ch = def.channel || `${domain}:${method}`;
+      if (def.type === 'fwd')       domainApi[method] = _fwd(ch);
+      else if (def.type === 'pack') domainApi[method] = _pack(ch, def.keys);
+      else if (def.type === 'on')   domainApi[method] = _onIpc(ch);
+    }
+    // Merge custom overrides for this domain
+    if (overrides[domain]) Object.assign(domainApi, overrides[domain]);
+    api[domain] = domainApi;
+  }
+  return api;
+}
+
+module.exports = { _createTargetedChannel, buildApiFromSchema };

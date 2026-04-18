@@ -3,6 +3,10 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
+import { findTabForTerminal } from './tab-lifecycle.js';
+import { EVENTS } from './events.js';
+export { findTabForTerminal };
+
 // Minimum bytes of meaningful output per poll interval to consider agent "working".
 // ANSI escape codes (cursor moves, color resets, status bar refreshes) produce
 // small data bursts even when idle. Real agent output (streaming text, tool
@@ -20,9 +24,9 @@ export const STATUS_CONFIG = {
 /** All card-level CSS classes derived from STATUS_CONFIG — single source of truth for class removal. */
 export const ALL_CARD_CLASSES = Object.values(STATUS_CONFIG).map(c => c.cardClass);
 
-export const EVT_CREATED = 'terminal:created';
-export const EVT_REMOVED = 'terminal:removed';
-export const EVT_EXITED = 'terminal:exited';
+export const EVT_CREATED = EVENTS.TERMINAL_CREATED;
+export const EVT_REMOVED = EVENTS.TERMINAL_REMOVED;
+export const EVT_EXITED = EVENTS.TERMINAL_EXITED;
 
 /** Terminal options used by board card mini-terminals. */
 export const BOARD_TERMINAL_OPTS = {
@@ -60,21 +64,8 @@ export function resolveCardStatus(dataBytes) {
 }
 
 /**
- * Find the tab containing a given terminal ID.
- * @param {Map} tabs - tabManager.tabs
- * @param {string} termId
- * @returns {{ tabId: string, tab: object } | null}
- */
-export function findTabForTerminal(tabs, termId) {
-  for (const [tabId, tab] of tabs) {
-    if (tab.terminalPanel?.terminals?.has(termId)) return { tabId, tab };
-  }
-  return null;
-}
-
-/**
  * Get the tab name for a terminal ID.
- * @param {Map} tabs - tabManager.tabs
+ * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs - tabManager.tabs
  * @param {string} termId
  * @returns {string|null}
  */

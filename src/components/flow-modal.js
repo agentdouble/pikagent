@@ -1,5 +1,6 @@
 import { generateId } from '../utils/id.js';
-import { _el } from '../utils/dom.js';
+import { _el, createActionButton } from '../utils/dom.js';
+import { createModalOverlay } from '../utils/dom-dialogs.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,
@@ -8,14 +9,16 @@ import {
   AGENT_OPTIONS, DEFAULT_CWD_LABEL, SKIP_PERM_CONFIG,
   _vis, _createSelect, _createChip, _updateScheduleVis,
 } from '../utils/flow-modal-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
+import { createAsyncHandler } from '../utils/event-helpers.js';
 
 // --- Section builders ---
 
 function _buildHeader(existing, state) {
   const title = _el('h3', { textContent: existing ? 'Modifier le flow' : 'Nouveau flow' });
-  const clearBtn = _el('button', {
-    className: 'flow-modal-clear-btn',
-    textContent: 'Clear',
+  const clearBtn = createActionButton({
+    text: 'Clear',
+    cls: 'flow-modal-clear-btn',
     onClick: () => {
       state.nameInput.value = '';
       state.promptArea.value = '';
@@ -56,15 +59,17 @@ function _buildCwdPicker(state) {
     className: 'flow-modal-chip flow-modal-chip-btn',
     type: 'button',
     title: state.selectedCwd || DEFAULT_CWD_LABEL,
-    onClick: async (e) => {
-      e.preventDefault();
-      const folder = await window.api.dialog.openFolder();
-      if (folder) {
-        state.selectedCwd = folder;
-        cwdLabel.textContent = folder.split('/').pop();
-        cwdChip.title = folder;
-      }
-    },
+    onClick: createAsyncHandler(
+      { stopProp: false },
+      async () => {
+        const folder = await window.api.dialog.openFolder();
+        if (folder) {
+          state.selectedCwd = folder;
+          cwdLabel.textContent = folder.split('/').pop();
+          cwdChip.title = folder;
+        }
+      },
+    ),
   }, _el('span', { textContent: '\u{1F4C2}' }), cwdLabel);
 
   state.cwdLabel = cwdLabel;
@@ -121,9 +126,9 @@ function _buildDaysChip(existing) {
   const selectedDays = new Set(existing?.schedule?.days || WEEKDAY_INDICES);
   const daysChip = _el('div', { className: 'flow-modal-chip flow-modal-days' });
   for (let d = 0; d < 7; d++) {
-    const dayBtn = _el('button', {
-      className: 'flow-day-btn',
-      textContent: DAY_NAMES[d],
+    const dayBtn = createActionButton({
+      text: DAY_NAMES[d],
+      cls: 'flow-day-btn',
       onClick: (e) => {
         e.preventDefault();
         selectedDays.has(d) ? selectedDays.delete(d) : selectedDays.add(d);
@@ -179,66 +184,79 @@ function _buildCategoryPicker(categories, selectedCatId) {
 
 // --- Main entry ---
 
+function _buildModalDom(existing, categories, state) {
+  const fields = _buildFormFields(existing);
+  state.nameInput = fields.nameInput;
+  state.promptArea = fields.promptArea;
+
+  const header = _buildHeader(existing, state);
+  const bottom = _buildBottomBar(existing, state);
+  const catPicker = categories.length > 0
+    ? _buildCategoryPicker(categories, existing?._category || '')
+    : null;
+
+  const modalChildren = [header, fields.nameGroup, fields.promptGroup];
+  if (catPicker) modalChildren.push(_el('div', { className: 'flow-modal-group', style: { paddingBottom: '8px' } }, catPicker.chip));
+  modalChildren.push(bottom.bar);
+
+  return { fields, bottom, catPicker, modalChildren };
+}
+
+function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef, resolve) {
+  const close = () => { overlayRef.overlay.remove(); resolve(null); };
+
+  const actionBar = _el('div', { className: 'flow-modal-actions' },
+    createActionButton({
+      text: 'Annuler',
+      cls: 'flow-modal-btn flow-modal-btn-cancel',
+      onClick: close,
+    }),
+    createActionButton({
+      text: existing ? 'Enregistrer' : 'Créer',
+      cls: 'flow-modal-btn flow-modal-btn-create',
+      onClick: () => {
+        const name = fields.nameInput.value.trim();
+        const prompt = fields.promptArea.value.trim();
+        if (!name || !prompt) return;
+
+        overlayRef.overlay.remove();
+        const result = {
+          id: existing?.id || generateId(),
+          name,
+          prompt,
+          agent: bottom.agentSelect.value,
+          cwd: state.selectedCwd || undefined,
+          schedule: buildScheduleData(bottom.schedSelect.value, bottom.timeInput.value, bottom.intervalInput.value, bottom.selectedDays),
+          dangerouslySkipPermissions: !!SKIP_PERM_CONFIG[bottom.agentSelect.value] && bottom.skipPermCheckbox.checked,
+          enabled: existing?.enabled ?? true,
+          runs: existing?.runs || [],
+        };
+        if (catPicker) result._category = catPicker.select.value || '';
+        resolve(result);
+      },
+    }),
+  );
+
+  return { actionBar, close };
+}
+
 export function openFlowModal(existing = null, categories = []) {
   return new Promise((resolve) => {
     const state = { selectedCwd: existing?.cwd || '' };
+    const overlayRef = {};
 
-    const fields = _buildFormFields(existing);
-    state.nameInput = fields.nameInput;
-    state.promptArea = fields.promptArea;
+    const { fields, bottom, catPicker, modalChildren } = _buildModalDom(existing, categories, state);
+    const { actionBar, close } = _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef, resolve);
 
-    const header = _buildHeader(existing, state);
-    const bottom = _buildBottomBar(existing, state);
-    const catPicker = categories.length > 0
-      ? _buildCategoryPicker(categories, existing?._category || '')
-      : null;
+    modalChildren.push(actionBar);
 
-    const close = () => { overlay.remove(); resolve(null); };
-
-    const actionBar = _el('div', { className: 'flow-modal-actions' },
-      _el('button', {
-        className: 'flow-modal-btn flow-modal-btn-cancel',
-        textContent: 'Annuler',
-        onClick: close,
-      }),
-      _el('button', {
-        className: 'flow-modal-btn flow-modal-btn-create',
-        textContent: existing ? 'Enregistrer' : 'Créer',
-        onClick: () => {
-          const name = fields.nameInput.value.trim();
-          const prompt = fields.promptArea.value.trim();
-          if (!name || !prompt) return;
-
-          overlay.remove();
-          const result = {
-            id: existing?.id || generateId(),
-            name,
-            prompt,
-            agent: bottom.agentSelect.value,
-            cwd: state.selectedCwd || undefined,
-            schedule: buildScheduleData(bottom.schedSelect.value, bottom.timeInput.value, bottom.intervalInput.value, bottom.selectedDays),
-            dangerouslySkipPermissions: !!SKIP_PERM_CONFIG[bottom.agentSelect.value] && bottom.skipPermCheckbox.checked,
-            enabled: existing?.enabled ?? true,
-            runs: existing?.runs || [],
-          };
-          if (catPicker) result._category = catPicker.select.value || '';
-          resolve(result);
-        },
-      }),
-    );
-
-    const modalChildren = [header, fields.nameGroup, fields.promptGroup];
-    if (catPicker) modalChildren.push(_el('div', { className: 'flow-modal-group', style: { paddingBottom: '8px' } }, catPicker.chip));
-    modalChildren.push(bottom.bar, actionBar);
-
-    const modal = _el('div', { className: 'flow-modal' }, ...modalChildren);
-
-    const overlay = _el('div', { className: 'flow-modal-overlay' },
-      modal,
-    );
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const { overlay, modal } = createModalOverlay('flow-modal-overlay', 'flow-modal', close);
+    overlayRef.overlay = overlay;
+    modal.append(...modalChildren);
 
     document.body.appendChild(overlay);
     fields.nameInput.focus();
   });
 }
+
+registerComponent('openFlowModal', openFlowModal);

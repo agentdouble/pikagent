@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-const { countByStatus, computeRate, computeDuration, dateStr, dayLabels } = require('../../main/stats-helpers');
+const { countByStatus, computeRate, computeDuration } = require('../../main/stats-helpers');
+const { extractDateString, generateDateRange } = require('../../main/date-utils');
 
 describe('stats-helpers', () => {
   describe('countByStatus', () => {
@@ -59,26 +60,26 @@ describe('stats-helpers', () => {
     });
   });
 
-  describe('dateStr', () => {
+  describe('extractDateString (from date-utils)', () => {
     it('extracts YYYY-MM-DD from ISO string', () => {
-      expect(dateStr('2025-03-15T10:30:00.000Z')).toBe('2025-03-15');
+      expect(extractDateString('2025-03-15T10:30:00.000Z')).toBe('2025-03-15');
     });
 
     it('returns null for falsy input', () => {
-      expect(dateStr(null)).toBe(null);
-      expect(dateStr('')).toBe(null);
+      expect(extractDateString(null)).toBe(null);
+      expect(extractDateString('')).toBe(null);
     });
   });
 
-  describe('dayLabels', () => {
+  describe('generateDateRange (from date-utils)', () => {
     it('returns array of N days ending today', () => {
-      const labels = dayLabels(7);
+      const labels = generateDateRange(7);
       expect(labels).toHaveLength(7);
       expect(labels[6].date).toBe(new Date().toISOString().slice(0, 10));
     });
 
     it('each entry has date and label', () => {
-      const labels = dayLabels(1);
+      const labels = generateDateRange(1);
       expect(labels[0]).toHaveProperty('date');
       expect(labels[0]).toHaveProperty('label');
     });

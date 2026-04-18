@@ -3,6 +3,22 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
+import { formatDateTime } from './date-utils.js';
+import { getLastRun } from '../../shared/flow-utils.js';
+import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregation-utils.js';
+
+/**
+ * Toggle a value in a Set (add if absent, delete if present).
+ * @param {Set<string>} set
+ * @param {string} value
+ * @returns {boolean} true if the value is now in the set
+ */
+export function toggleInSet(set, value) {
+  if (set.has(value)) { set.delete(value); return false; }
+  set.add(value);
+  return true;
+}
+
 export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 5000;
 export const LIVE_SCROLLBACK = 3000;
@@ -22,33 +38,14 @@ export const HEADER_BUTTONS = [
 
 // --- Category action button configuration ---
 export const CATEGORY_ACTIONS = [
-  { icon: '✎', title: 'Renommer', action: 'rename' },
-  { icon: '✕', title: 'Supprimer la catégorie', cls: 'flow-category-btn-danger', action: 'delete' },
+  { text: '✎', title: 'Renommer', action: 'rename' },
+  { text: '✕', title: 'Supprimer la catégorie', cls: 'flow-category-btn-danger', action: 'delete' },
 ];
 
-// --- Run time formatting ---
+// --- Run time formatting (delegated to shared date-utils) ---
 
-const TIME_LOCALE = 'fr-FR';
-const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' };
-
-/**
- * Format a run timestamp into a short time string (e.g. "14:32").
- * Returns '' if timestamp is falsy.
- */
-export function formatRunTime(timestamp) {
-  return timestamp
-    ? new Date(timestamp).toLocaleTimeString(TIME_LOCALE, TIME_FORMAT)
-    : '';
-}
-
-/**
- * Build a "date time" label from a run's date and timestamp.
- * e.g. "2025-03-29 14:32" or just "2025-03-29" if no timestamp.
- */
-export function formatRunDateTime(date, timestamp) {
-  const time = formatRunTime(timestamp);
-  return `${date}${time ? ' ' + time : ''}`;
-}
+/** @see formatDateTime from date-utils */
+export const formatRunDateTime = formatDateTime;
 
 /**
  * Build the tooltip text displayed on run-status dots.
@@ -60,43 +57,41 @@ export function buildDotTooltip(run) {
 
 /**
  * Return flows belonging to a given category, ordered by catData.order.
- * @param {Array} flows - all flow objects
- * @param {Object} order - catData.order mapping catId → [flowId, …]
+ * @param {Array<{id: string}>} flows - all flow objects
+ * @param {Record<string, string[]>} order - catData.order mapping catId → [flowId, …]
  * @param {string} catId - category id
- * @returns {Array} ordered flows for this category
+ * @returns {Array<{id: string}>} ordered flows for this category
  */
 export function getFlowsForCategory(flows, order, catId) {
-  const orderedIds = order[catId] || [];
-  const flowMap = new Map(flows.map(f => [f.id, f]));
-  return orderedIds.map(id => flowMap.get(id)).filter(Boolean);
+  return resolveFromMap(createLookupMap(flows, f => f.id), order[catId] || []);
 }
 
 /**
  * Return flows not assigned to any named category, respecting the
  * UNCATEGORIZED order when present, and appending any remaining flows.
- * @param {Array} flows - all flow objects
- * @param {Object} order - catData.order mapping catId → [flowId, …]
- * @returns {Array} ordered uncategorized flows
+ * @param {Array<{id: string}>} flows - all flow objects
+ * @param {Record<string, string[]>} order - catData.order mapping catId → [flowId, …]
+ * @returns {Array<{id: string}>} ordered uncategorized flows
  */
 export function getUncategorizedFlows(flows, order) {
-  const assigned = new Set();
-  for (const ids of Object.values(order)) {
-    for (const id of ids) assigned.add(id);
-  }
-  const unordered = flows.filter(f => !assigned.has(f.id));
+  // Count how many categories reference each flow id (shared/countBy).
+  // Any id with a count > 0 is "assigned" to at least one category (including UNCATEGORIZED).
+  const assignedCounts = countBy(Object.values(order).flat(), id => id);
+
+  const flowMap = createLookupMap(flows, f => f.id);
   const orderedIds = order[UNCATEGORIZED] || [];
-  const flowMap = new Map(flows.map(f => [f.id, f]));
-  const ordered = orderedIds.map(id => flowMap.get(id)).filter(Boolean);
+  const ordered = resolveFromMap(flowMap, orderedIds);
   const inOrder = new Set(orderedIds);
-  for (const f of unordered) {
-    if (!inOrder.has(f.id)) ordered.push(f);
+
+  for (const f of flows) {
+    if (!assignedCounts[f.id] && !inOrder.has(f.id)) ordered.push(f);
   }
   return ordered;
 }
 
 /**
  * Remove a flow id from every category array in order (in-place).
- * @param {Object} order - catData.order
+ * @param {Record<string, string[]>} order - catData.order
  * @param {string} flowId
  */
 export function removeFlowFromOrder(order, flowId) {
@@ -108,7 +103,7 @@ export function removeFlowFromOrder(order, flowId) {
 /**
  * Move a flow into a target category at the given position (in-place).
  * Removes the flow from all categories first, then inserts it.
- * @param {Object} order - catData.order
+ * @param {Record<string, string[]>} order - catData.order
  * @param {string} flowId
  * @param {string} targetCatId
  * @param {number} [insertIndex=-1] - position to insert (-1 = append)
@@ -126,7 +121,7 @@ export function moveFlowInOrder(order, flowId, targetCatId, insertIndex = -1) {
 
 /**
  * Delete a category: move its flows to UNCATEGORIZED, then remove it (in-place).
- * @param {Object} catData - { categories, order }
+ * @param {{ categories: Array<{ id: string, name: string }>, order: Record<string, string[]> }} catData
  * @param {string} catId
  * @returns {boolean} true if category was found and removed
  */
@@ -143,27 +138,24 @@ export function deleteCategoryData(catData, catId) {
   return true;
 }
 
-/**
- * Return the last run from a flow's runs array, or null if none.
- */
-export function getLastRun(flow) {
-  return flow.runs?.at(-1) ?? null;
-}
+// getLastRun imported from shared/flow-utils.js and re-exported
+export { getLastRun };
+
 
 /**
  * Build the list of card action descriptors for a given flow state.
- * Each entry: { icon, title, action, cls? }
+ * Each entry: { text, title, action, cls? }
  * Pure function — no DOM, no side effects.
  */
 export function buildCardActionEntries(flow, isRunning) {
   return [
-    !isRunning && { icon: '▶', title: 'Exécuter maintenant', action: 'run' },
+    !isRunning && { text: '▶', title: 'Exécuter maintenant', action: 'run' },
     {
-      icon: flow.enabled ? '⏸' : '⏵',
+      text: flow.enabled ? '⏸' : '⏵',
       title: flow.enabled ? 'Désactiver' : 'Activer',
       action: 'toggle',
     },
-    { icon: '✎', title: 'Modifier', action: 'edit' },
-    { icon: '✕', title: 'Supprimer', action: 'delete', cls: 'flow-card-btn-danger' },
+    { text: '✎', title: 'Modifier', action: 'edit' },
+    { text: '✕', title: 'Supprimer', action: 'delete', cls: 'flow-card-btn-danger' },
   ].filter(Boolean);
 }

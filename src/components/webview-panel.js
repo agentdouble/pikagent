@@ -1,4 +1,5 @@
 import { _el } from '../utils/dom.js';
+import { setupKeyboardShortcuts } from '../utils/keyboard-helpers.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {
   MAX_LOGS,
@@ -12,6 +13,7 @@ import {
   clampConsoleHeight,
   shortLevelLabel,
 } from '../utils/webview-helpers.js';
+import { registerComponent } from '../utils/component-registry.js';
 
 export class WebviewInstance {
   constructor(container, url) {
@@ -44,11 +46,11 @@ export class WebviewInstance {
     this.urlInput.type = 'text';
     this.urlInput.value = this.url;
     this.urlInput.spellcheck = false;
-    this.urlInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+    setupKeyboardShortcuts(this.urlInput, {
+      onEnter: (e) => {
         e.preventDefault();
         this.navigate(this.urlInput.value.trim());
-      }
+      },
     });
 
     this._mobileBtn = _el('button', 'webview-nav-btn', { textContent: '\u{1F4F1}', title: 'Mobile view' });
@@ -209,3 +211,5 @@ export class WebviewInstance {
     this._consoleHandle = null;
   }
 }
+
+registerComponent('WebviewInstance', WebviewInstance);

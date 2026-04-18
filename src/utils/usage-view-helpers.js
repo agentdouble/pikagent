@@ -16,30 +16,52 @@ export const TABS = [
 
 // --- Chart segment definitions ---
 
-export const RUN_CHART_SEGMENTS = [
+const RUN_CHART_SEGMENTS = [
   { key: 'success', cls: 'usage-chart-bar-success' },
   { key: 'error', cls: 'usage-chart-bar-error' },
   { key: 'running', cls: 'usage-chart-bar-running' },
 ];
 
-export const TOKEN_CHART_SEGMENTS = [
+const TOKEN_CHART_SEGMENTS = [
   { key: 'input', cls: 'usage-chart-bar-running' },
   { key: 'output', cls: 'usage-chart-bar-success' },
 ];
 
 // --- Helpers ---
 
-export function _td(text, attrs = {}) {
+function _td(text, attrs = {}) {
   return _el('td', { ...attrs, textContent: text });
 }
 
-export function tokenTooltip(day) {
+/**
+ * Build a <tr> from an array of column descriptors.
+ *
+ * Each entry can be:
+ *   - A DOM Node (inserted as-is into the row)
+ *   - An object { value, className?, style?, title? } → converted via _td()
+ *
+ * @param {Array<Node | { value: string|number, className?: string, style?: Record<string, string>, title?: string }>} columns
+ * @returns {HTMLTableRowElement}
+ */
+export function buildTableRow(columns) {
+  const cells = columns.map((col) => {
+    if (col instanceof Node) return col;
+    const attrs = {};
+    if (col.className) attrs.className = col.className;
+    if (col.style) attrs.style = col.style;
+    if (col.title) attrs.title = col.title;
+    return _td(col.value, attrs);
+  });
+  return _el('tr', {}, ...cells);
+}
+
+function tokenTooltip(day) {
   return `${day.label}: ${formatTokens(day.total)} (in: ${formatTokens(day.input)}, out: ${formatTokens(day.output)})`;
 }
 
 // --- Pure DOM builders ---
 
-export function createBarCell(pct) {
+function createBarCell(pct) {
   return _el('td', { className: 'usage-file-bar-cell' },
     _el('div', { className: 'usage-file-bar' },
       _el('div', { className: 'usage-file-bar-fill', style: { width: `${pct}%` } }),
@@ -77,24 +99,24 @@ function _agentTabConfig(metrics) {
         headers: ['Agent', 'Sessions', 'Actifs', 'Succès', 'Durée moy.'],
         tableCls: 'usage-flow-table',
         data: m.byAgent,
-        renderRow: (a) => _el('tr', {},
-          _td(a.agent, { className: 'usage-flow-name' }),
-          _td(a.totalSessions),
-          _td(a.active, { style: { color: a.active > 0 ? 'var(--green)' : 'var(--text-muted)' } }),
-          _td(`${a.successRate}%`, { className: 'usage-flow-rate', style: { color: rateColor(a.successRate) } }),
-          _td(a.avgDuration > 0 ? formatDuration(a.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
-        ),
+        renderRow: (a) => buildTableRow([
+          { value: a.agent, className: 'usage-flow-name' },
+          { value: a.totalSessions },
+          { value: a.active, style: { color: a.active > 0 ? 'var(--green)' : 'var(--text-muted)' } },
+          { value: `${a.successRate}%`, className: 'usage-flow-rate', style: { color: rateColor(a.successRate) } },
+          { value: a.avgDuration > 0 ? formatDuration(a.avgDuration) : '\u2014', className: 'usage-flow-duration' },
+        ]),
       },
       {
         title: 'Fichiers les plus modifiés (30 jours)',
         headers: ['Fichier', 'Modifs', ''],
         tableCls: 'usage-files-table',
         data: metrics.mostModifiedFiles,
-        renderRow: (file) => _el('tr', {},
-          _td(file.file, { className: 'usage-file-name', title: file.file }),
-          _td(file.count, { className: 'usage-file-count' }),
+        renderRow: (file) => buildTableRow([
+          { value: file.file, className: 'usage-file-name', title: file.file },
+          { value: file.count, className: 'usage-file-count' },
           createBarCell((file.count / maxFileCount) * 100),
-        ),
+        ]),
       },
     ],
   };
@@ -120,13 +142,13 @@ function _tokenTabConfig(metrics) {
         headers: ['Projet', 'Input', 'Output', 'Total', ''],
         tableCls: 'usage-files-table',
         data: t.perProject,
-        renderRow: (proj) => _el('tr', {},
-          _td(proj.project, { className: 'usage-file-name' }),
-          _td(formatTokens(proj.input), { className: 'usage-file-count', style: { color: 'var(--blue)' } }),
-          _td(formatTokens(proj.output), { className: 'usage-file-count', style: { color: 'var(--green)' } }),
-          _td(formatTokens(proj.total), { className: 'usage-file-count' }),
+        renderRow: (proj) => buildTableRow([
+          { value: proj.project, className: 'usage-file-name' },
+          { value: formatTokens(proj.input), className: 'usage-file-count', style: { color: 'var(--blue)' } },
+          { value: formatTokens(proj.output), className: 'usage-file-count', style: { color: 'var(--green)' } },
+          { value: formatTokens(proj.total), className: 'usage-file-count' },
           createBarCell((proj.total / maxProjectTotal) * 100),
-        ),
+        ]),
       },
     ],
   };
@@ -151,7 +173,7 @@ function _flowTabConfig(metrics) {
         headers: ['Flow', 'Runs', 'Succès', 'Durée moy.'],
         tableCls: 'usage-flow-table',
         data: f.flowStats,
-        renderRow: (flow) => _el('tr', {},
+        renderRow: (flow) => buildTableRow([
           _el('td', {},
             _el('span', {
               className: `usage-flow-name ${!flow.enabled ? 'usage-flow-disabled' : ''}`,
@@ -162,10 +184,10 @@ function _flowTabConfig(metrics) {
               textContent: '(désactivé)',
             }),
           ),
-          _td(flow.totalRuns),
-          _td(`${flow.successRate}%`, { className: 'usage-flow-rate', style: { color: rateColor(flow.successRate) } }),
-          _td(flow.avgDuration > 0 ? formatDuration(flow.avgDuration) : '\u2014', { className: 'usage-flow-duration' }),
-        ),
+          { value: flow.totalRuns },
+          { value: `${flow.successRate}%`, className: 'usage-flow-rate', style: { color: rateColor(flow.successRate) } },
+          { value: flow.avgDuration > 0 ? formatDuration(flow.avgDuration) : '\u2014', className: 'usage-flow-duration' },
+        ]),
       },
     ],
   };

@@ -1,7 +1,8 @@
-import { bus } from '../utils/events.js';
-import { DiffViewer } from './diff-viewer.js';
+import { bus, EVENTS } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
+import { onClickStopped } from '../utils/event-helpers.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
+import { registerComponent, getComponent } from '../utils/component-registry.js';
 
 export class GitChangesView {
   constructor(container) {
@@ -71,6 +72,12 @@ export class GitChangesView {
     const key = buildFileKey(file.path, isStaged);
     const isExpanded = this.expandedFile === key;
 
+    const openBtn = _el('span', { className: 'git-open-btn', textContent: '→', title: 'Open file' });
+    onClickStopped(openBtn, () => {
+      /** @fires file:open {{ path: string, name: string }} */
+      bus.emit(EVENTS.FILE_OPEN, { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
+    });
+
     const row = _el('div', { className: 'git-file-item', onClick: () => {
       this.expandedFile = this.expandedFile === key ? null : key;
       this.loadChanges();
@@ -78,10 +85,7 @@ export class GitChangesView {
       _el('span', 'git-chevron', isExpanded ? CHEVRON.expanded : CHEVRON.collapsed),
       _el('span', `git-file-status git-status-${file.status}`, STATUS_LABELS[file.status] || file.status),
       _el('span', { className: 'git-file-name-label', textContent: file.path, title: file.path }),
-      _el('span', { className: 'git-open-btn', textContent: '→', title: 'Open file', onClick: (e) => {
-        e.stopPropagation();
-        bus.emit('file:open', { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
-      }}),
+      openBtn,
     );
 
     const item = _el('div', 'git-file-row', row);
@@ -117,6 +121,9 @@ export class GitChangesView {
     }
 
     this._setContent(container);
+    const DiffViewer = getComponent('DiffViewer');
     new DiffViewer(container, diff, filePath);
   }
 }
+
+registerComponent('GitChangesView', GitChangesView);

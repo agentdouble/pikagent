@@ -1,0 +1,195 @@
+/* ===== Editor ===== */
+.editor-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-primary);
+  position: relative;
+}
+
+/* Line numbers */
+.editor-line-numbers {
+  padding: 8px 0;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: right;
+  user-select: none;
+  overflow: hidden;
+  border-right: 1px solid var(--border-subtle);
+  min-width: 48px;
+  flex-shrink: 0;
+  white-space: pre-wrap;
+}
+
+.editor-line-numbers span {
+  display: block;
+  padding: 0 10px 0 8px;
+}
+
+/* Edit area: holds the highlight layer and textarea stacked */
+.editor-edit-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Syntax highlight layer (behind) */
+.editor-highlight-layer {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: transparent;
+  background: transparent;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  pointer-events: none;
+  border: none;
+  tab-size: 2;
+}
+
+.editor-highlight-layer code {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  background: none !important;
+  padding: 0 !important;
+}
+
+/* Textarea (front, transparent text so highlight shows through) */
+.editor-textarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  tab-size: 2;
+  caret-color: var(--text-primary);
+}
+
+/* When highlight is active, make textarea text invisible so highlight shows */
+.editor-edit-area .editor-textarea {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Selection must be visible over the transparent textarea text */
+.editor-edit-area .editor-textarea::selection {
+  background: var(--blue-soft);
+}
+
+.editor-edit-area .editor-highlight-layer code {
+  color: var(--text-primary);
+  -webkit-text-fill-color: initial;
+}
+
+/* ===== Status Bar ===== */
+.editor-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 14px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-muted);
+  min-height: 28px;
+  flex-shrink: 0;
+  transition: background var(--duration-slow) var(--ease-out);
+}
+
+.editor-status-bar.save-flash {
+  background: var(--green-soft);
+}
+
+.status-item {
+  white-space: nowrap;
+}
+
+.status-modified {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.status-saved {
+  color: var(--green);
+}
+
+.status-error {
+  color: var(--accent);
+}
+
+.status-save-hint {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* ===== Highlight.js Light Mode Overrides ===== */
+[data-theme="light"] .hljs {
+  background: var(--bg-surface);
+  color: #383a42;
+}
+
+[data-theme="light"] .hljs-comment,
+[data-theme="light"] .hljs-quote {
+  color: #a0a1a7;
+  font-style: italic;
+}
+
+[data-theme="light"] .hljs-keyword,
+[data-theme="light"] .hljs-selector-tag,
+[data-theme="light"] .hljs-subst {
+  color: #a626a4;
+}
+
+[data-theme="light"] .hljs-string,
+[data-theme="light"] .hljs-title,
+[data-theme="light"] .hljs-section,
+[data-theme="light"] .hljs-type,
+[data-theme="light"] .hljs-attr {
+  color: #50a14f;
+}
+
+[data-theme="light"] .hljs-number,
+[data-theme="light"] .hljs-literal,
+[data-theme="light"] .hljs-variable,
+[data-theme="light"] .hljs-template-variable,
+[data-theme="light"] .hljs-tag .hljs-attr {
+  color: #986801;
+}
+
+[data-theme="light"] .hljs-built_in,
+[data-theme="light"] .hljs-builtin-name {
+  color: #c18401;
+}
+
+[data-theme="light"] .hljs-function .hljs-title,
+[data-theme="light"] .hljs-title.function_ {
+  color: #4078f2;
+}
+
+[data-theme="light"] .hljs-name,
+[data-theme="light"] .hljs-tag {
+  color: #e45649;
+}
