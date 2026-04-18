@@ -1,5 +1,20 @@
-import { _el, createSelect } from './dom.js';
+import { _el } from './dom.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
+
+/**
+ * Create a <select> element from an options map.
+ * @param {{ options: Record<string, string>, value?: string, className?: string, onChange?: (e: Event) => void }} opts
+ * @returns {HTMLSelectElement}
+ */
+function createSelect({ options, value, className, onChange } = {}) {
+  const select = _el('select', { className: className || '' });
+  for (const [val, label] of Object.entries(options)) {
+    select.appendChild(_el('option', { value: val, textContent: label }));
+  }
+  if (value !== undefined) select.value = value;
+  if (onChange) select.addEventListener('change', onChange);
+  return select;
+}
 
 // --- Constants ---
 

@@ -1,5 +1,6 @@
 import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
-import { _el, createActionButton, createModalOverlay } from '../utils/dom.js';
+import { _el, createActionButton } from '../utils/dom.js';
+import { createModalOverlay } from '../utils/dom-dialogs.js';
 import { MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS } from '../utils/settings-helpers.js';
 import { getComponent } from '../utils/component-registry.js';
 

@@ -2,9 +2,25 @@
  * @typedef {{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<ContextMenuItem> }} ContextMenuItem
  */
 
-import { _el, positionInViewport } from './dom.js';
+import { _el } from './dom.js';
 import { onClickStopped } from './event-helpers.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+
+/**
+ * Clamp (x, y) so a box of (width, height) stays within the viewport.
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {number} [padding=8]
+ * @returns {{ left: number, top: number }}
+ */
+function positionInViewport(x, y, width, height, padding = 8) {
+  return {
+    left: Math.min(x, window.innerWidth  - width  - padding),
+    top:  Math.min(y, window.innerHeight - height - padding),
+  };
+}
 
 export class ContextMenu {
   constructor() {

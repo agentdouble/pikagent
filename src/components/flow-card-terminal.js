@@ -2,9 +2,10 @@
  * Terminal management for flow cards: live terminals, inline log terminals, and log modal.
  * Extracted from FlowView to reduce component size.
  */
-import { _el, _safeFit, createModalOverlay } from '../utils/dom.js';
+import { _el } from '../utils/dom.js';
+import { createModalOverlay } from '../utils/dom-dialogs.js';
 import { setupKeyboardShortcuts } from '../utils/keyboard-helpers.js';
-import { createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
+import { _safeFit, createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,

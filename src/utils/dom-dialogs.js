@@ -6,8 +6,25 @@
  * buildChevronRow, etc.) import directly from './dom.js'.
  */
 
-import { _el, createActionButton, createModalOverlay } from './dom.js';
+import { _el, createActionButton } from './dom.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+
+/**
+ * Create a modal overlay with click-outside-to-close behavior.
+ * Returns { overlay, modal } DOM elements. Caller appends children to modal.
+ *
+ * @param {string} overlayClass
+ * @param {string} modalClass
+ * @param {() => void} onClose
+ * @returns {{ overlay: HTMLElement, modal: HTMLElement }}
+ */
+export function createModalOverlay(overlayClass, modalClass, onClose) {
+  const overlay = _el('div', overlayClass);
+  const modal = _el('div', modalClass);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) onClose(); });
+  return { overlay, modal };
+}
 
 // ── Private dialog lifecycle ──
 
