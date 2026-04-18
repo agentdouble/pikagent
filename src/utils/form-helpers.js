@@ -9,31 +9,36 @@ import { onClickStopped } from './event-helpers.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 
 /**
+ * Create a guard that ensures `fn` is called at most once.
+ * Subsequent calls are silently ignored.
+ * @param {(...args: unknown[]) => void} fn
+ * @returns {(...args: unknown[]) => void}
+ */
+export function createOnceGuard(fn) {
+  let called = false;
+  return (...args) => { if (called) return; called = true; fn(...args); };
+}
+
+/**
  * Wire up Enter / Escape / blur / click on an inline <input>.
  * Guarantees onCommit fires at most once.
  * @param {HTMLInputElement} input
  * @param {{ onCommit: (value: string) => void, onCancel?: () => void, blurDelay?: number }} opts
  */
 export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
-  let committed = false;
-  const commit = () => {
-    if (committed) return;
-    committed = true;
-    onCommit(input.value.trim());
-  };
-  const cancel = () => {
-    committed = true;
+  const commit = createOnceGuard(() => onCommit(input.value.trim()));
+  const cancel = createOnceGuard(() => {
     if (onCancel) onCancel();
     else input.remove();
-  };
+  });
 
   setupKeyboardShortcuts(input, {
     onEnter: (e) => { e.preventDefault(); e.stopPropagation(); commit(); },
     onEscape: (e) => { e.stopPropagation(); cancel(); },
   });
   input.addEventListener('blur', () => {
-    if (blurDelay > 0) setTimeout(() => { if (!committed) commit(); }, blurDelay);
-    else if (!committed) commit();
+    if (blurDelay > 0) setTimeout(() => commit(), blurDelay);
+    else commit();
   });
   onClickStopped(input, () => {});
 }

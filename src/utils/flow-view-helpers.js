@@ -5,7 +5,7 @@
 
 import { formatDateTime } from './date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
-import { countBy } from '../../shared/aggregation-utils.js';
+import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregation-utils.js';
 
 /**
  * Toggle a value in a Set (add if absent, delete if present).
@@ -56,25 +56,6 @@ export function buildDotTooltip(run) {
 }
 
 /**
- * Build a Map keyed by flow.id for fast lookup.
- * @param {Array<{id: string}>} flows
- * @returns {Map<string, {id: string}>}
- */
-function buildFlowMap(flows) {
-  return new Map(flows.map(f => [f.id, f]));
-}
-
-/**
- * Resolve an array of flow IDs to flow objects using a flow map.
- * @param {string[]} ids
- * @param {Map<string, {id: string}>} flowMap
- * @returns {Array<{id: string}>}
- */
-function resolveIds(ids, flowMap) {
-  return ids.map(id => flowMap.get(id)).filter(Boolean);
-}
-
-/**
  * Return flows belonging to a given category, ordered by catData.order.
  * @param {Array<{id: string}>} flows - all flow objects
  * @param {Record<string, string[]>} order - catData.order mapping catId → [flowId, …]
@@ -82,7 +63,7 @@ function resolveIds(ids, flowMap) {
  * @returns {Array<{id: string}>} ordered flows for this category
  */
 export function getFlowsForCategory(flows, order, catId) {
-  return resolveIds(order[catId] || [], buildFlowMap(flows));
+  return resolveFromMap(createLookupMap(flows, f => f.id), order[catId] || []);
 }
 
 /**
@@ -97,9 +78,9 @@ export function getUncategorizedFlows(flows, order) {
   // Any id with a count > 0 is "assigned" to at least one category (including UNCATEGORIZED).
   const assignedCounts = countBy(Object.values(order).flat(), id => id);
 
-  const flowMap = buildFlowMap(flows);
+  const flowMap = createLookupMap(flows, f => f.id);
   const orderedIds = order[UNCATEGORIZED] || [];
-  const ordered = resolveIds(orderedIds, flowMap);
+  const ordered = resolveFromMap(flowMap, orderedIds);
   const inOrder = new Set(orderedIds);
 
   for (const f of flows) {
