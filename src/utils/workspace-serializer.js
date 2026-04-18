@@ -101,10 +101,17 @@ export async function restoreConfig({ tabs, setActiveTabId, defaultCwd, renderTa
     const id = generateId('tab');
     const firstCwd = firstTerminalCwd(tabData.splitTree);
     const resolvedCwd = firstCwd || tabData.cwd || defaultCwd || '/';
-    const userNamed = tabData.userNamed || false;
+    const derived = extractFolderName(resolvedCwd);
+    const folderName = derived && derived !== '/' ? derived : null;
+    // Legacy configs predate `userNamed`. Infer it: a literal `Workspace N`
+    // name is the old default and is considered auto; anything else is
+    // treated as a name the user explicitly chose and must be preserved.
+    const userNamed = typeof tabData.userNamed === 'boolean'
+      ? tabData.userNamed
+      : !/^Workspace \d+$/.test(tabData.name || '');
     const name = userNamed
       ? tabData.name
-      : extractFolderName(resolvedCwd) || tabData.name;
+      : folderName || tabData.name;
     const tab = new WorkspaceTab(id, name, resolvedCwd);
     tab.userNamed = userNamed;
     tab.noShortcut = tabData.noShortcut || false;

@@ -38,7 +38,9 @@ import { extractFolderName } from './file-tree-helpers.js';
 export function createTab(deps, switchToFn, name = null, cwd = null) {
   const id = generateId('tab');
   const resolvedCwd = cwd || deps.defaultCwd || '/';
-  const tabName = name || extractFolderName(resolvedCwd) || `Workspace ${deps.tabs.size + 1}`;
+  const derived = extractFolderName(resolvedCwd);
+  const folderName = derived && derived !== '/' ? derived : null;
+  const tabName = name || folderName || `Workspace ${deps.tabs.size + 1}`;
   const tab = new WorkspaceTab(id, tabName, resolvedCwd);
   if (deps.activeColorFilter) tab.colorGroup = deps.activeColorFilter;
   deps.tabs.set(id, tab);

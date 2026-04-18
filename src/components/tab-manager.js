@@ -60,6 +60,7 @@ export class TabManager {
       renderActivityBar: () => this.renderActivityBar(),
       restoreConfig: (config) => this.restoreConfig(config),
       createTab: (name) => this.createTab(name),
+      setDefaultCwd: (cwd) => { this.defaultCwd = cwd; },
       api: { homedir: window.api.fs.homedir, getDefault: window.api.config.getDefault, loadDefault: window.api.config.loadDefault },
     });
 

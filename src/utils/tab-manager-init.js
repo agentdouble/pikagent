@@ -16,18 +16,23 @@ export { getComponent } from './component-registry.js';
 // ── Initialization ──
 
 /**
- * @typedef {{ configManager: { scheduleAutoSave: () => void, currentConfigName: string }, renderActivityBar: () => void, restoreConfig: (config: unknown) => Promise<void>, createTab: (name: string) => void, api: { homedir: () => Promise<string>, getDefault: () => Promise<string>, loadDefault: () => Promise<unknown> } }} InitDeps
+ * @typedef {{ configManager: { scheduleAutoSave: () => void, currentConfigName: string }, renderActivityBar: () => void, restoreConfig: (config: unknown) => Promise<void>, createTab: (name: string) => void, setDefaultCwd: (cwd: string) => void, api: { homedir: () => Promise<string>, getDefault: () => Promise<string>, loadDefault: () => Promise<unknown> } }} InitDeps
  */
 
 /**
  * Run startup initialization: resolve home dir, render activity bar,
  * and restore default config (or create a fresh tab).
  *
+ * The default cwd is published via `setDefaultCwd` BEFORE any tab is created
+ * or restored, so downstream code that reads `deps.defaultCwd` (createTab,
+ * restoreConfig) always sees the resolved home dir.
+ *
  * @param {InitDeps} deps
  * @returns {Promise<string>} the resolved default cwd
  */
 export async function initTabManager(deps) {
   const defaultCwd = await deps.api.homedir();
+  deps.setDefaultCwd(defaultCwd);
 
   deps.renderActivityBar();
 
@@ -44,7 +49,7 @@ export async function initTabManager(deps) {
   } catch (e) {
     console.warn('Failed to restore config:', e);
     deps.configManager.currentConfigName = 'Default';
-    deps.createTab('Workspace 1');
+    deps.createTab();
   }
 
   return defaultCwd;
