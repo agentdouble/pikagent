@@ -56,14 +56,15 @@ function getVersion() {
   return app.getVersion();
 }
 
+const UPDATE_BRANCH = 'main';
+
 async function checkForUpdates() {
   const root = _getProjectRoot();
   if (!root) return { available: false, error: 'Source directory not configured. Run the app in dev mode first.' };
 
   try {
     await _run('git fetch origin', root);
-    const branch = await _run('git rev-parse --abbrev-ref HEAD', root);
-    const log = await _run(`git log HEAD..origin/${branch} --oneline`, root);
+    const log = await _run(`git log HEAD..origin/${UPDATE_BRANCH} --oneline`, root);
     const commits = log ? log.split('\n').filter(Boolean) : [];
     return { available: commits.length > 0, commits, count: commits.length };
   } catch (err) {
@@ -75,10 +76,9 @@ async function performUpdate(sendProgress) {
   const root = _getProjectRoot();
   if (!root) throw new Error('Source directory not configured');
 
-  const branch = await _run('git rev-parse --abbrev-ref HEAD', root);
-
   const steps = [
-    { label: 'Pulling latest changes...', cmd: `git pull origin ${branch}` },
+    { label: `Checking out ${UPDATE_BRANCH}...`, cmd: `git checkout ${UPDATE_BRANCH}` },
+    { label: 'Pulling latest changes...', cmd: `git pull origin ${UPDATE_BRANCH}` },
     { label: 'Installing dependencies...', cmd: 'npm install' },
     { label: 'Packaging application...', cmd: 'npm run package' },
   ];
