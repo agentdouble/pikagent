@@ -49,13 +49,27 @@ export class TabManager {
    * matching {@link import('../utils/worktree-flow.js').GitWorktreeApi}.
    * @returns {import('../utils/worktree-flow.js').GitWorktreeApi}
    */
+  /**
+   * Adapter exposing the git + shell surface needed by the open-PR flow.
+   * @returns {import('../utils/open-pr-flow.js').OpenPrApi}
+   */
+  _prApi() {
+    return {
+      branch:       (cwd) => window.api.git.branch(cwd),
+      remoteUrl:    (cwd) => window.api.git.remoteUrl(cwd),
+      pushBranch:   ({ cwd, branch }) => window.api.git.pushBranch(cwd, branch),
+      openExternal: (url) => window.api.shell.openExternal(url),
+    };
+  }
+
   _worktreeApi() {
     return {
       isRepo:       (cwd) => window.api.git.isRepo(cwd),
+      branch:       (cwd) => window.api.git.branch(cwd),
       listBranches: (cwd) => window.api.git.listBranches(cwd),
       worktreeList: (cwd) => window.api.git.worktreeList(cwd),
-      worktreeAdd:  ({ cwd, branch, targetPath, createBranch }) =>
-        window.api.git.worktreeAdd(cwd, branch, targetPath, createBranch),
+      worktreeAdd:  ({ cwd, branch, targetPath, createBranch, baseBranch }) =>
+        window.api.git.worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch),
       worktreeRemove: ({ cwd, worktreePath, force }) =>
         window.api.git.worktreeRemove(cwd, worktreePath, force),
     };
@@ -90,6 +104,7 @@ export class TabManager {
       api: {
         gitBranch: window.api.git.branch,
         worktree: this._worktreeApi(),
+        pr: this._prApi(),
       },
     });
   }

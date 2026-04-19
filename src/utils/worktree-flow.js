@@ -24,9 +24,10 @@ function _availableBranches(allBranches, worktrees) {
 /**
  * @typedef {{
  *   isRepo: (cwd: string) => Promise<boolean>,
+ *   branch: (cwd: string) => Promise<string|null>,
  *   listBranches: (cwd: string) => Promise<string[]>,
  *   worktreeList: (cwd: string) => Promise<Array<{ path: string, branch: string|null }>>,
- *   worktreeAdd: (args: { cwd: string, branch: string, targetPath: string, createBranch: boolean }) => Promise<{ ok: boolean, error?: string }>,
+ *   worktreeAdd: (args: { cwd: string, branch: string, targetPath: string, createBranch: boolean, baseBranch: string|null }) => Promise<{ ok: boolean, error?: string }>,
  *   worktreeRemove: (args: { cwd: string, worktreePath: string, force: boolean }) => Promise<{ ok: boolean, error?: string }>,
  * }} GitWorktreeApi
  */
@@ -47,13 +48,19 @@ export async function createWorktreeFlow({ repoCwd, api, createTab }) {
     return;
   }
 
-  const [branches, worktrees] = await Promise.all([
+  const [branches, worktrees, currentBranch] = await Promise.all([
     api.listBranches(repoCwd),
     api.worktreeList(repoCwd),
+    api.branch(repoCwd),
   ]);
   const existing = _availableBranches(branches, worktrees);
 
-  const choice = await showWorktreeDialog({ repoCwd, existingBranches: existing });
+  const choice = await showWorktreeDialog({
+    repoCwd,
+    allBranches: branches,
+    existingBranches: existing,
+    currentBranch,
+  });
   if (!choice) return;
 
   const result = await api.worktreeAdd({
@@ -61,6 +68,7 @@ export async function createWorktreeFlow({ repoCwd, api, createTab }) {
     branch: choice.branch,
     targetPath: choice.targetPath,
     createBranch: choice.createBranch,
+    baseBranch: choice.baseBranch,
   });
 
   if (!result?.ok) {
@@ -73,7 +81,11 @@ export async function createWorktreeFlow({ repoCwd, api, createTab }) {
 
   const tab = createTab(choice.branch, choice.targetPath);
   if (tab) {
-    tab.worktree = { mainRepoCwd: repoCwd, worktreePath: choice.targetPath };
+    tab.worktree = {
+      mainRepoCwd: repoCwd,
+      worktreePath: choice.targetPath,
+      baseBranch: choice.createBranch ? (choice.baseBranch || currentBranch || null) : null,
+    };
   }
 }
 

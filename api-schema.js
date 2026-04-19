@@ -55,8 +55,10 @@ const API_SCHEMA = {
     isRepo:         { type: 'fwd' },
     listBranches:   { type: 'fwd' },
     worktreeList:   { type: 'fwd' },
-    worktreeAdd:    { type: 'pack', keys: ['cwd', 'branch', 'targetPath', 'createBranch'] },
+    worktreeAdd:    { type: 'pack', keys: ['cwd', 'branch', 'targetPath', 'createBranch', 'baseBranch'] },
     worktreeRemove: { type: 'pack', keys: ['cwd', 'worktreePath', 'force'] },
+    remoteUrl:      { type: 'fwd' },
+    pushBranch:     { type: 'pack', keys: ['cwd', 'branch'] },
   },
   flow: {
     save:           { type: 'fwd' },

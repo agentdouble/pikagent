@@ -50,6 +50,8 @@ export const EVENTS = {
   WORKSPACE_OPEN_FROM_FOLDER: 'workspace:openFromFolder',
   /** @see EVENT_CATALOG['workspace:createWorktree'] */
   WORKSPACE_CREATE_WORKTREE: 'workspace:createWorktree',
+  /** @see EVENT_CATALOG['workspace:openPr'] */
+  WORKSPACE_OPEN_PR: 'workspace:openPr',
   /** @see EVENT_CATALOG['file:open'] */
   FILE_OPEN: 'file:open',
 };
@@ -165,6 +167,20 @@ const EVENT_CATALOG = {
     description: 'User requested to create a git worktree from a folder',
     payload: '{ repoCwd: string }',
     emitters: ['file-tree-context-menu.js'],
+    consumers: ['tab-manager.js'],
+  },
+
+  /**
+   * Fired when the user requests to push the current branch and open a PR
+   * on the hosting provider (GitHub/GitLab/Bitbucket). Consumer drives the
+   * push + confirmation + openExternal flow.
+   * @event workspace:openPr
+   * @type {{ repoCwd: string }}
+   */
+  'workspace:openPr': {
+    description: 'User requested to push current branch and open a PR',
+    payload: '{ repoCwd: string }',
+    emitters: ['file-tree.js'],
     consumers: ['tab-manager.js'],
   },
 

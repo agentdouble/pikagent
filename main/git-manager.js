@@ -103,14 +103,15 @@ function _errorMessage(err) {
 }
 
 /**
- * Add a worktree. When `createBranch` is true, creates a new branch from HEAD
- * at `targetPath`. Otherwise checks out an existing branch.
+ * Add a worktree. When `createBranch` is true, creates a new branch named
+ * `branch` (optionally starting from `baseBranch`, defaulting to HEAD) at
+ * `targetPath`. Otherwise checks out the existing `branch`.
  * Returns { ok: boolean, error?: string }.
  */
-async function worktreeAdd(cwd, branch, targetPath, createBranch) {
+async function worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch) {
   try {
     const args = createBranch
-      ? ['worktree', 'add', '-b', branch, targetPath]
+      ? ['worktree', 'add', '-b', branch, targetPath, ...(baseBranch ? [baseBranch] : [])]
       : ['worktree', 'add', targetPath, branch];
     await execFileAsync('git', args, execOpts(cwd));
     return { ok: true };
@@ -138,6 +139,20 @@ async function worktreeRemove(cwd, worktreePath, force) {
   }
 }
 
+async function getRemoteUrl(cwd) {
+  return runGit(cwd, ['config', '--get', 'remote.origin.url']);
+}
+
+async function pushBranch(cwd, branch) {
+  try {
+    await execFileAsync('git', ['push', '-u', 'origin', branch], execOpts(cwd));
+    return { ok: true };
+  } catch (err) {
+    log.warn(`push ${branch} failed`, err);
+    return { ok: false, error: _errorMessage(err) };
+  }
+}
+
 module.exports = {
   // Method aliases matching channel suffixes (git:branch → branch, etc.)
   branch: getBranch,
@@ -148,4 +163,6 @@ module.exports = {
   worktreeList,
   worktreeAdd,
   worktreeRemove,
+  remoteUrl: getRemoteUrl,
+  pushBranch,
 };

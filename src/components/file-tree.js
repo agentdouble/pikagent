@@ -158,6 +158,7 @@ export class FileTree {
       newFile:     () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'file'),
       newFolder:   () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'folder'),
       newWorktree: () => bus.emit(EVENTS.WORKSPACE_CREATE_WORKTREE, { repoCwd: cwd }),
+      openPr:      () => bus.emit(EVENTS.WORKSPACE_OPEN_PR, { repoCwd: cwd }),
       refresh:     () => this.refreshSection(cwd),
     };
     const actionBtns = HEADER_ACTIONS.map(({ key, title, action }) =>
