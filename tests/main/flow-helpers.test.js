@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-const { getLastRun, shouldRun, buildFlowCommand } = require('../../main/flow-helpers');
+const { shouldRun, buildFlowCommand } = require('../../main/flow-helpers');
+const { getLastRun } = require('../../shared/flow-utils');
 
 describe('flow-helpers', () => {
   describe('getLastRun', () => {
