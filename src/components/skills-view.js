@@ -39,8 +39,18 @@ export class SkillsView {
       _el('div', 'skills-header-right',
         _el('button', {
           className: 'skills-btn skills-btn-secondary',
+          textContent: 'Configurer le chemin…',
+          onClick: () => this._configurePath(),
+        }),
+        _el('button', {
+          className: 'skills-btn skills-btn-secondary',
           textContent: 'Ouvrir le dossier',
           onClick: () => this._openRoot(),
+        }),
+        _el('button', {
+          className: 'skills-btn skills-btn-secondary',
+          textContent: 'Importer',
+          onClick: () => this._importSkill(),
         }),
         _el('button', {
           className: 'skills-btn skills-btn-primary',
@@ -75,9 +85,36 @@ export class SkillsView {
     return this._rootBadgeEl;
   }
 
-  _openRoot() {
+  async _openRoot() {
     if (!this.rootPath) return;
-    window.api.shell.showInFolder(this.rootPath);
+    await window.api.shell.openPath(this.rootPath);
+  }
+
+  async _configurePath() {
+    const picked = await window.api.dialog.openFolder();
+    if (!picked) return;
+    const res = await window.api.skills.setRoot(picked);
+    if (res && res.success) {
+      this.rootPath = res.root;
+      this.selectedId = null;
+      this.editorDirty = false;
+      await this.refresh();
+    }
+  }
+
+  async _importSkill() {
+    const picked = await window.api.dialog.openFolder();
+    if (!picked) return;
+    const res = await window.api.skills.import(picked);
+    if (res && res.success) {
+      this.selectedId = res.id;
+      await this.refresh();
+    } else {
+      await showConfirmDialog(
+        `Import impossible : ${res?.error || 'erreur inconnue'}. Le dossier doit contenir un fichier SKILL.md.`,
+        { confirmLabel: 'OK', cancelLabel: 'Fermer' },
+      );
+    }
   }
 
   async _createSkill() {
