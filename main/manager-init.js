@@ -13,6 +13,7 @@ const gitManager = require('./git-manager');
 const configManager = require('./config-manager');
 const flowManager = require('./flow-manager');
 const usageManager = require('./usage-manager');
+const skillsManager = require('./skills-manager');
 const updateManager = require('./update-manager');
 const { safeSend } = require('./ipc-helpers');
 
@@ -63,6 +64,7 @@ function initManagers(getWindow) {
     config: configManager,
     flow: flowManager,
     usage: usageManager,
+    skills: skillsManager,
     update: updateTarget,
     shell,
     clipboard,

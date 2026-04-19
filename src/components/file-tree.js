@@ -8,6 +8,7 @@ import {
 import { registerComponent } from '../utils/component-registry.js';
 import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
 import { attachContextMenu } from '../utils/context-menu.js';
+import { bus, EVENTS } from '../utils/events.js';
 import { renderDirEntry, renderFileEntry, PARSED_ICONS } from '../utils/file-tree-renderer.js';
 import {
   setupDropZone, handleFileDrop,
@@ -153,18 +154,22 @@ export class FileTree {
   }
 
   _buildSectionHeader(cwd, contentEl, chevron, expandedDirs) {
-    const actionBtns = HEADER_ACTIONS.map(({ key, title, entryType }) => {
-      const action = entryType
-        ? () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, entryType)
-        : () => this.refreshSection(cwd);
-      return createActionButton({
+    const actionDispatcher = {
+      newFile:     () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'file'),
+      newFolder:   () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'folder'),
+      newWorktree: () => bus.emit(EVENTS.WORKSPACE_CREATE_WORKTREE, { repoCwd: cwd }),
+      openPr:      () => bus.emit(EVENTS.WORKSPACE_OPEN_PR, { repoCwd: cwd }),
+      refresh:     () => this.refreshSection(cwd),
+    };
+    const actionBtns = HEADER_ACTIONS.map(({ key, title, action }) =>
+      createActionButton({
         title,
         cls: 'file-tree-action-btn',
         childNode: PARSED_ICONS[key].cloneNode(true),
         stopPropagation: true,
-        onClick: action,
-      });
-    });
+        onClick: actionDispatcher[action],
+      }),
+    );
 
     const header = _el('div', {
       className: 'file-tree-section-header',

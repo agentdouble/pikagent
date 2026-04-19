@@ -1,0 +1,54 @@
+.worktree-dialog-box {
+  width: 420px;
+}
+
+.worktree-dialog-mode-row {
+  display: flex;
+  gap: 6px;
+}
+
+.worktree-dialog-mode-btn {
+  flex: 1;
+  padding: 7px 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.worktree-dialog-mode-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.worktree-dialog-mode-btn.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.worktree-dialog-select {
+  font-family: var(--font-ui);
+}
+
+.worktree-dialog-sub-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: -6px;
+}
+
+.worktree-dialog-path {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  word-break: break-all;
+  min-height: 14px;
+}

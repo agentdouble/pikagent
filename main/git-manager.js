@@ -57,9 +57,172 @@ async function getFileDiff(cwd, filePath, isStaged) {
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// Worktree / branch API
+// ---------------------------------------------------------------------------
+
+async function isGitRepo(cwd) {
+  const out = await runGit(cwd, ['rev-parse', '--is-inside-work-tree']);
+  return out === 'true';
+}
+
+async function listBranches(cwd) {
+  const raw = await runGit(cwd, ['for-each-ref', '--format=%(refname:short)', 'refs/heads'], { fallback: '' });
+  if (!raw) return [];
+  return raw.split('\n').filter(Boolean);
+}
+
+/**
+ * Parse `git worktree list --porcelain` output.
+ * Blocks separated by blank lines; each block has `worktree <path>`,
+ * optional `HEAD <sha>`, `branch <ref>` or `detached`/`bare`.
+ */
+function parseWorktreeList(raw) {
+  if (!raw) return [];
+  return raw.split('\n\n').filter(Boolean).map((block) => {
+    const info = { path: null, branch: null, head: null, bare: false, detached: false };
+    for (const line of block.split('\n')) {
+      if (line.startsWith('worktree ')) info.path = line.slice('worktree '.length);
+      else if (line.startsWith('HEAD ')) info.head = line.slice('HEAD '.length);
+      else if (line.startsWith('branch ')) info.branch = line.slice('branch '.length).replace(/^refs\/heads\//, '');
+      else if (line === 'bare') info.bare = true;
+      else if (line === 'detached') info.detached = true;
+    }
+    return info;
+  }).filter((w) => w.path);
+}
+
+async function worktreeList(cwd) {
+  const raw = await runGit(cwd, ['worktree', 'list', '--porcelain'], { fallback: '' });
+  return parseWorktreeList(raw);
+}
+
+function _errorMessage(err) {
+  const stderr = err?.stderr?.toString().trim();
+  return stderr || err?.message || 'git command failed';
+}
+
+/**
+ * Add a worktree. When `createBranch` is true, creates a new branch named
+ * `branch` (optionally starting from `baseBranch`, defaulting to HEAD) at
+ * `targetPath`. Otherwise checks out the existing `branch`.
+ * Returns { ok: boolean, error?: string }.
+ */
+async function worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch) {
+  try {
+    const args = createBranch
+      ? ['worktree', 'add', '-b', branch, targetPath, ...(baseBranch ? [baseBranch] : [])]
+      : ['worktree', 'add', targetPath, branch];
+    await execFileAsync('git', args, execOpts(cwd));
+    return { ok: true };
+  } catch (err) {
+    log.warn(`worktree add ${branch} → ${targetPath} failed`, err);
+    return { ok: false, error: _errorMessage(err) };
+  }
+}
+
+/**
+ * Remove a worktree. With `force=true`, passes --force (allows removing
+ * worktrees with uncommitted changes).
+ * Returns { ok: boolean, error?: string }.
+ */
+async function worktreeRemove(cwd, worktreePath, force) {
+  try {
+    const args = ['worktree', 'remove'];
+    if (force) args.push('--force');
+    args.push(worktreePath);
+    await execFileAsync('git', args, execOpts(cwd));
+    return { ok: true };
+  } catch (err) {
+    log.warn(`worktree remove ${worktreePath} failed`, err);
+    return { ok: false, error: _errorMessage(err) };
+  }
+}
+
+async function getRemoteUrl(cwd) {
+  return runGit(cwd, ['config', '--get', 'remote.origin.url']);
+}
+
+async function pushBranch(cwd, branch) {
+  try {
+    await execFileAsync('git', ['push', '-u', 'origin', branch], execOpts(cwd));
+    return { ok: true };
+  } catch (err) {
+    log.warn(`push ${branch} failed`, err);
+    return { ok: false, error: _errorMessage(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GitHub CLI (gh) integration — used to create PRs directly from the app
+// ---------------------------------------------------------------------------
+
+/** Probe whether the `gh` binary is available on PATH. */
+async function ghAvailable() {
+  try {
+    await execFileAsync('gh', ['--version'], { timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Extract the first https:// URL appearing in a string — useful for both
+ * success stdout (which ends with the PR URL) and error stderr (which embeds
+ * the existing PR URL when one already exists).
+ */
+function _firstUrl(text) {
+  if (!text) return null;
+  const m = text.match(/https:\/\/\S+/);
+  return m ? m[0] : null;
+}
+
+/**
+ * Create a pull request via the `gh` CLI. Uses `--fill` so gh derives title
+ * and body from the commit log. Also pushes the branch if it isn't on remote
+ * yet (gh handles that automatically).
+ *
+ * Returns:
+ *   { ok: true,  url }                — PR created
+ *   { ok: true,  url, existed: true } — a PR was already open for this branch
+ *   { ok: false, error, code }        — gh missing or failed
+ *     code values: 'gh-not-installed' | 'not-authed' | 'other'
+ */
+async function ghPrCreate(cwd, baseBranch) {
+  const args = ['pr', 'create', '--fill'];
+  if (baseBranch) args.push('--base', baseBranch);
+  try {
+    const { stdout } = await execFileAsync('gh', args, execOpts(cwd));
+    const url = _firstUrl(stdout) || stdout.trim().split('\n').pop();
+    return { ok: true, url };
+  } catch (err) {
+    if (err?.code === 'ENOENT') return { ok: false, code: 'gh-not-installed', error: 'gh CLI not installed' };
+
+    const stderr = err?.stderr?.toString() || '';
+    const existingUrl = _firstUrl(stderr);
+    if (existingUrl && /already exists/i.test(stderr)) {
+      return { ok: true, url: existingUrl, existed: true };
+    }
+
+    const code = /not logged|authentication/i.test(stderr) ? 'not-authed' : 'other';
+    log.warn(`gh pr create failed`, err);
+    return { ok: false, code, error: _errorMessage(err) };
+  }
+}
+
 module.exports = {
   // Method aliases matching channel suffixes (git:branch → branch, etc.)
   branch: getBranch,
   localChanges: getLocalChanges,
   fileDiff: getFileDiff,
+  isRepo: isGitRepo,
+  listBranches,
+  worktreeList,
+  worktreeAdd,
+  worktreeRemove,
+  remoteUrl: getRemoteUrl,
+  pushBranch,
+  ghAvailable,
+  ghPrCreate,
 };
