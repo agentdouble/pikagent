@@ -63,6 +63,14 @@ const SIDE_VIEW_RENDERERS = {
       if (usageView) usageView.refresh();
     },
   },
+  skills: {
+    componentName: 'SkillsView',
+    ctorArgs: () => [],
+    onReattach: (viewStore) => {
+      const skillsView = viewStore.getView('skillsView');
+      if (skillsView) skillsView.refresh();
+    },
+  },
 };
 
 // ── Activity Bar ──

@@ -38,6 +38,11 @@ export const ACTIVITY_BUTTONS = [
     icon: '<path d="M4 17 L9 12 L13 15 L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="12" r="1.5"/><circle cx="13" cy="15" r="1.5"/>',
   },
   {
+    label: 'SKILLS',
+    mode: 'skills',
+    icon: '<path d="M12 2 L3 6 L3 12 C3 16.5 7 20.5 12 22 C17 20.5 21 16.5 21 12 L21 6 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 12 L11 15 L16 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  {
     label: 'USAGE',
     mode: 'usage',
     icon: '<path d="M4 18 L10 12 L14 16 L20 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8 L20 8 L20 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -126,9 +131,10 @@ export function findCycleTarget(tabs, activeTabId, step) {
 // on the TabManager.  `pauseOnDetach` means the view is kept alive (paused)
 // when switching away, instead of being fully disposed.
 export const SIDE_VIEWS = {
-  board: { viewKey: 'boardView', containerKey: '_boardContainerEl', pauseOnDetach: true },
-  flow:  { viewKey: 'flowView',  containerKey: '_flowContainerEl' },
-  usage: { viewKey: 'usageView', containerKey: '_usageContainerEl' },
+  board:  { viewKey: 'boardView',  containerKey: '_boardContainerEl', pauseOnDetach: true },
+  flow:   { viewKey: 'flowView',   containerKey: '_flowContainerEl' },
+  skills: { viewKey: 'skillsView', containerKey: '_skillsContainerEl' },
+  usage:  { viewKey: 'usageView',  containerKey: '_usageContainerEl' },
 };
 
 /** Find the next tab in a given color group (round-robin from current position). */

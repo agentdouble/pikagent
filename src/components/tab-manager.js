@@ -34,6 +34,8 @@ export class TabManager {
     this._flowContainerEl = null;
     this.usageView = null;
     this._usageContainerEl = null;
+    this.skillsView = null;
+    this._skillsContainerEl = null;
     this.sidebarMode = 'work';
     this.activeColorFilter = null; // null = show all, or a COLOR_GROUPS id
     this.excludedColors = new Set(); // COLOR_GROUPS ids to hide

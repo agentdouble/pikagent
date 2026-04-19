@@ -15,6 +15,7 @@ import './flow-card-terminal.js';
 import './flow-modal.js';
 import './flow-view.js';
 import './usage-view.js';
+import './skills-view.js';
 import './settings-appearance.js';
 import './settings-keybindings.js';
 import './settings-configs.js';

@@ -70,6 +70,14 @@ const API_SCHEMA = {
   usage: {
     getMetrics: { type: 'fwd' },
   },
+  skills: {
+    list:    { type: 'fwd' },
+    read:    { type: 'fwd' },
+    write:   { type: 'pack', keys: ['filePath', 'content'] },
+    create:  { type: 'fwd' },
+    delete:  { type: 'fwd' },
+    getRoot: { type: 'fwd' },
+  },
   config: {
     save:        { type: 'pack', keys: ['name', 'data'] },
     load:        { type: 'fwd' },
