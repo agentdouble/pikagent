@@ -47,11 +47,6 @@ export class TabManager {
   }
 
   /**
-   * Adapter exposing the git-worktree IPC surface as an object-style API,
-   * matching {@link import('../utils/worktree-flow.js').GitWorktreeApi}.
-   * @returns {import('../utils/worktree-flow.js').GitWorktreeApi}
-   */
-  /**
    * Adapter exposing the git + shell surface needed by the open-PR flow.
    * @returns {import('../utils/open-pr-flow.js').OpenPrApi}
    */
@@ -66,6 +61,11 @@ export class TabManager {
     };
   }
 
+  /**
+   * Adapter exposing the git-worktree IPC surface as an object-style API,
+   * matching {@link import('../utils/worktree-flow.js').GitWorktreeApi}.
+   * @returns {import('../utils/worktree-flow.js').GitWorktreeApi}
+   */
   _worktreeApi() {
     return {
       isRepo:       (cwd) => window.api.git.isRepo(cwd),

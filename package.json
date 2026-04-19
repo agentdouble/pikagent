@@ -43,6 +43,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "api-schema.js",
       "main/**/*",
       "shared/**/*",
       "src/**/*",
