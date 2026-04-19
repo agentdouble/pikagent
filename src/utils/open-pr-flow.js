@@ -59,6 +59,8 @@ export function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
  *   branch: (cwd: string) => Promise<string|null>,
  *   remoteUrl: (cwd: string) => Promise<string|null>,
  *   pushBranch: (args: { cwd: string, branch: string }) => Promise<{ ok: boolean, error?: string }>,
+ *   ghAvailable: () => Promise<boolean>,
+ *   ghPrCreate: (args: { cwd: string, baseBranch: string|null }) => Promise<{ ok: boolean, url?: string, existed?: boolean, code?: string, error?: string }>,
  *   openExternal: (url: string) => void | Promise<unknown>,
  * }} OpenPrApi
  */
@@ -68,7 +70,59 @@ async function _alert(msg) {
 }
 
 /**
+ * Try to create a PR via the `gh` CLI. Returns true when handled (success
+ * or a clean failure already surfaced to the user); returns false when the
+ * caller should fall back to the browser-based flow.
+ */
+async function _tryGhFlow(cwd, branch, baseBranch, api) {
+  if (!(await api.ghAvailable())) return false;
+
+  const proceed = await showConfirmDialog(
+    _el('div', null,
+      _el('p', null, 'Create a PR for ', _el('code', null, branch),
+        baseBranch ? ' → ' : '', baseBranch ? _el('code', null, baseBranch) : '',
+        ' using ', _el('code', null, 'gh'), '?'),
+      _el('p', { style: { fontSize: '11px', color: 'var(--text-muted)' } },
+        'gh will push the branch if needed and fill the title/body from your commits.'),
+    ),
+    { confirmLabel: 'Create PR', cancelLabel: 'Cancel' },
+  );
+  if (!proceed) return true;
+
+  const result = await api.ghPrCreate({ cwd, baseBranch });
+
+  if (!result?.ok) {
+    if (result?.code === 'gh-not-installed') return false;
+    const retryBrowser = await showConfirmDialog(
+      _el('div', null,
+        _el('p', null, 'gh pr create failed:'),
+        _el('pre', { style: { fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' } },
+          result?.error || 'unknown error'),
+        _el('p', null, 'Open in browser instead?'),
+      ),
+      { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+    );
+    return !retryBrowser;
+  }
+
+  const open = await showConfirmDialog(
+    _el('div', null,
+      _el('p', null, result.existed ? 'PR already open: ' : 'PR created: ',
+        _el('code', null, result.url || '')),
+    ),
+    { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+  );
+  if (open && result.url) await api.openExternal(result.url);
+  return true;
+}
+
+/**
  * Drive the open-PR flow end-to-end for a given repo cwd.
+ *
+ * For GitHub repos, attempts `gh pr create` first (no secret management
+ * required — uses the user's existing gh auth). Falls back to push + open
+ * the compare URL in the browser when gh is unavailable or the host is not
+ * GitHub.
  *
  * @param {{ cwd: string, baseBranch?: string|null, api: OpenPrApi }} opts
  */
@@ -88,6 +142,11 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
   if (!parsed) {
     await _alert(_el('p', null, 'Could not parse remote URL: ', _el('code', null, remote)));
     return;
+  }
+
+  if (parsed.host.endsWith('github.com')) {
+    const handled = await _tryGhFlow(cwd, branch, baseBranch, api);
+    if (handled) return;
   }
 
   const url = buildPrUrl(parsed, branch, baseBranch);

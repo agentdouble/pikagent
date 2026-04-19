@@ -59,6 +59,8 @@ const API_SCHEMA = {
     worktreeRemove: { type: 'pack', keys: ['cwd', 'worktreePath', 'force'] },
     remoteUrl:      { type: 'fwd' },
     pushBranch:     { type: 'pack', keys: ['cwd', 'branch'] },
+    ghAvailable:    { type: 'fwd' },
+    ghPrCreate:     { type: 'pack', keys: ['cwd', 'baseBranch'] },
   },
   flow: {
     save:           { type: 'fwd' },

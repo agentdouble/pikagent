@@ -153,6 +153,64 @@ async function pushBranch(cwd, branch) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// GitHub CLI (gh) integration — used to create PRs directly from the app
+// ---------------------------------------------------------------------------
+
+/** Probe whether the `gh` binary is available on PATH. */
+async function ghAvailable() {
+  try {
+    await execFileAsync('gh', ['--version'], { timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Extract the first https:// URL appearing in a string — useful for both
+ * success stdout (which ends with the PR URL) and error stderr (which embeds
+ * the existing PR URL when one already exists).
+ */
+function _firstUrl(text) {
+  if (!text) return null;
+  const m = text.match(/https:\/\/\S+/);
+  return m ? m[0] : null;
+}
+
+/**
+ * Create a pull request via the `gh` CLI. Uses `--fill` so gh derives title
+ * and body from the commit log. Also pushes the branch if it isn't on remote
+ * yet (gh handles that automatically).
+ *
+ * Returns:
+ *   { ok: true,  url }                — PR created
+ *   { ok: true,  url, existed: true } — a PR was already open for this branch
+ *   { ok: false, error, code }        — gh missing or failed
+ *     code values: 'gh-not-installed' | 'not-authed' | 'other'
+ */
+async function ghPrCreate(cwd, baseBranch) {
+  const args = ['pr', 'create', '--fill'];
+  if (baseBranch) args.push('--base', baseBranch);
+  try {
+    const { stdout } = await execFileAsync('gh', args, execOpts(cwd));
+    const url = _firstUrl(stdout) || stdout.trim().split('\n').pop();
+    return { ok: true, url };
+  } catch (err) {
+    if (err?.code === 'ENOENT') return { ok: false, code: 'gh-not-installed', error: 'gh CLI not installed' };
+
+    const stderr = err?.stderr?.toString() || '';
+    const existingUrl = _firstUrl(stderr);
+    if (existingUrl && /already exists/i.test(stderr)) {
+      return { ok: true, url: existingUrl, existed: true };
+    }
+
+    const code = /not logged|authentication/i.test(stderr) ? 'not-authed' : 'other';
+    log.warn(`gh pr create failed`, err);
+    return { ok: false, code, error: _errorMessage(err) };
+  }
+}
+
 module.exports = {
   // Method aliases matching channel suffixes (git:branch → branch, etc.)
   branch: getBranch,
@@ -165,4 +223,6 @@ module.exports = {
   worktreeRemove,
   remoteUrl: getRemoteUrl,
   pushBranch,
+  ghAvailable,
+  ghPrCreate,
 };

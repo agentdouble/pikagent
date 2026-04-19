@@ -58,6 +58,8 @@ export class TabManager {
       branch:       (cwd) => window.api.git.branch(cwd),
       remoteUrl:    (cwd) => window.api.git.remoteUrl(cwd),
       pushBranch:   ({ cwd, branch }) => window.api.git.pushBranch(cwd, branch),
+      ghAvailable:  () => window.api.git.ghAvailable(),
+      ghPrCreate:   ({ cwd, baseBranch }) => window.api.git.ghPrCreate(cwd, baseBranch),
       openExternal: (url) => window.api.shell.openExternal(url),
     };
   }
