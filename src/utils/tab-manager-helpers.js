@@ -81,6 +81,12 @@ export class WorkspaceTab {
     this.pathTextEl = null;
     this.branchBadgeEl = null;
     this._panelWidths = null;
+    /**
+     * When set, this tab owns a git worktree and should offer cleanup on close.
+     * Shape: { mainRepoCwd: string, worktreePath: string }
+     * @type {{ mainRepoCwd: string, worktreePath: string } | null}
+     */
+    this.worktree = null;
   }
 }
 

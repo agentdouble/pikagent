@@ -46,6 +46,39 @@ export class TabManager {
     this.init();
   }
 
+  /**
+   * Adapter exposing the git-worktree IPC surface as an object-style API,
+   * matching {@link import('../utils/worktree-flow.js').GitWorktreeApi}.
+   * @returns {import('../utils/worktree-flow.js').GitWorktreeApi}
+   */
+  /**
+   * Adapter exposing the git + shell surface needed by the open-PR flow.
+   * @returns {import('../utils/open-pr-flow.js').OpenPrApi}
+   */
+  _prApi() {
+    return {
+      branch:       (cwd) => window.api.git.branch(cwd),
+      remoteUrl:    (cwd) => window.api.git.remoteUrl(cwd),
+      pushBranch:   ({ cwd, branch }) => window.api.git.pushBranch(cwd, branch),
+      ghAvailable:  () => window.api.git.ghAvailable(),
+      ghPrCreate:   ({ cwd, baseBranch }) => window.api.git.ghPrCreate(cwd, baseBranch),
+      openExternal: (url) => window.api.shell.openExternal(url),
+    };
+  }
+
+  _worktreeApi() {
+    return {
+      isRepo:       (cwd) => window.api.git.isRepo(cwd),
+      branch:       (cwd) => window.api.git.branch(cwd),
+      listBranches: (cwd) => window.api.git.listBranches(cwd),
+      worktreeList: (cwd) => window.api.git.worktreeList(cwd),
+      worktreeAdd:  ({ cwd, branch, targetPath, createBranch, baseBranch }) =>
+        window.api.git.worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch),
+      worktreeRemove: ({ cwd, worktreePath, force }) =>
+        window.api.git.worktreeRemove(cwd, worktreePath, force),
+    };
+  }
+
   /** @returns {import('../utils/sidebar-manager.js').SideViewStore} */
   _viewStore() {
     return {
@@ -72,7 +105,11 @@ export class TabManager {
       configManager: this.configManager,
       createTab: (name, cwd) => this.createTab(name, cwd),
       renderTabBar: () => this.renderTabBar(),
-      api: { gitBranch: window.api.git.branch },
+      api: {
+        gitBranch: window.api.git.branch,
+        worktree: this._worktreeApi(),
+        pr: this._prApi(),
+      },
     });
   }
 
@@ -151,6 +188,7 @@ export class TabManager {
       activeTabId: this.activeTabId,
       renderTabBar: () => this.renderTabBar(),
       configManager: this.configManager,
+      worktreeApi: this._worktreeApi(),
     }, () => this.createTab(), (tabId) => this.switchTo(tabId), id);
   }
 

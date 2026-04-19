@@ -48,6 +48,10 @@ export const EVENTS = {
   WORKSPACE_ACTIVATED: 'workspace:activated',
   /** @see EVENT_CATALOG['workspace:openFromFolder'] */
   WORKSPACE_OPEN_FROM_FOLDER: 'workspace:openFromFolder',
+  /** @see EVENT_CATALOG['workspace:createWorktree'] */
+  WORKSPACE_CREATE_WORKTREE: 'workspace:createWorktree',
+  /** @see EVENT_CATALOG['workspace:openPr'] */
+  WORKSPACE_OPEN_PR: 'workspace:openPr',
   /** @see EVENT_CATALOG['file:open'] */
   FILE_OPEN: 'file:open',
 };
@@ -148,6 +152,35 @@ const EVENT_CATALOG = {
     description: 'User requested to open a folder as a new workspace tab',
     payload: '{ cwd: string }',
     emitters: ['file-tree-context-menu.js'],
+    consumers: ['tab-manager.js'],
+  },
+
+  /**
+   * Fired when the user requests to create a git worktree from a repo folder
+   * (from the file-tree directory context menu "New Worktree…").
+   * The consumer drives the branch-picker dialog, invokes `git worktree add`,
+   * and opens the resulting directory as a new workspace tab.
+   * @event workspace:createWorktree
+   * @type {{ repoCwd: string }}
+   */
+  'workspace:createWorktree': {
+    description: 'User requested to create a git worktree from a folder',
+    payload: '{ repoCwd: string }',
+    emitters: ['file-tree-context-menu.js'],
+    consumers: ['tab-manager.js'],
+  },
+
+  /**
+   * Fired when the user requests to push the current branch and open a PR
+   * on the hosting provider (GitHub/GitLab/Bitbucket). Consumer drives the
+   * push + confirmation + openExternal flow.
+   * @event workspace:openPr
+   * @type {{ repoCwd: string }}
+   */
+  'workspace:openPr': {
+    description: 'User requested to push current branch and open a PR',
+    payload: '{ repoCwd: string }',
+    emitters: ['file-tree.js'],
     consumers: ['tab-manager.js'],
   },
 
