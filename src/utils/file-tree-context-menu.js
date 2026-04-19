@@ -73,6 +73,10 @@ export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expande
       /** @fires workspace:openFromFolder {{ cwd: string }} */
       bus.emit(EVENTS.WORKSPACE_OPEN_FROM_FOLDER, { cwd: dirPath });
     } },
+    { label: 'New Worktree…', action: () => {
+      /** @fires workspace:createWorktree {{ repoCwd: string }} */
+      bus.emit(EVENTS.WORKSPACE_CREATE_WORKTREE, { repoCwd: dirPath });
+    } },
     { separator: true },
     ...buildCommonContextItems(dirPath, nameEl, rootCwd, promptRenameFn, `Delete folder "${dirName}" and all its contents?`, api),
   ];

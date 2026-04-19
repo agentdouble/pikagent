@@ -44,6 +44,23 @@ export class TabManager {
     this.init();
   }
 
+  /**
+   * Adapter exposing the git-worktree IPC surface as an object-style API,
+   * matching {@link import('../utils/worktree-flow.js').GitWorktreeApi}.
+   * @returns {import('../utils/worktree-flow.js').GitWorktreeApi}
+   */
+  _worktreeApi() {
+    return {
+      isRepo:       (cwd) => window.api.git.isRepo(cwd),
+      listBranches: (cwd) => window.api.git.listBranches(cwd),
+      worktreeList: (cwd) => window.api.git.worktreeList(cwd),
+      worktreeAdd:  ({ cwd, branch, targetPath, createBranch }) =>
+        window.api.git.worktreeAdd(cwd, branch, targetPath, createBranch),
+      worktreeRemove: ({ cwd, worktreePath, force }) =>
+        window.api.git.worktreeRemove(cwd, worktreePath, force),
+    };
+  }
+
   /** @returns {import('../utils/sidebar-manager.js').SideViewStore} */
   _viewStore() {
     return {
@@ -70,7 +87,10 @@ export class TabManager {
       configManager: this.configManager,
       createTab: (name, cwd) => this.createTab(name, cwd),
       renderTabBar: () => this.renderTabBar(),
-      api: { gitBranch: window.api.git.branch },
+      api: {
+        gitBranch: window.api.git.branch,
+        worktree: this._worktreeApi(),
+      },
     });
   }
 
@@ -149,6 +169,7 @@ export class TabManager {
       activeTabId: this.activeTabId,
       renderTabBar: () => this.renderTabBar(),
       configManager: this.configManager,
+      worktreeApi: this._worktreeApi(),
     }, () => this.createTab(), (tabId) => this.switchTo(tabId), id);
   }
 

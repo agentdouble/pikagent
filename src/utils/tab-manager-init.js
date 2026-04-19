@@ -9,6 +9,7 @@
 import { subscribeBus, EVENTS } from './events.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
+import { createWorktreeFlow } from './worktree-flow.js';
 
 export { unsubscribeBus } from './events.js';
 export { getComponent } from './component-registry.js';
@@ -58,7 +59,7 @@ export async function initTabManager(deps) {
 // ── Bus listeners ──
 
 /**
- * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, getActiveTabId: () => string|null, configManager: { scheduleAutoSave: () => void }, createTab: (name: string, cwd: string) => void, renderTabBar: () => void, api: { gitBranch: (cwd: string) => Promise<string|null> } }} BusListenerDeps
+ * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, getActiveTabId: () => string|null, configManager: { scheduleAutoSave: () => void }, createTab: (name: string, cwd: string) => import('./tab-manager-helpers.js').WorkspaceTab, renderTabBar: () => void, api: { gitBranch: (cwd: string) => Promise<string|null>, worktree: import('./worktree-flow.js').GitWorktreeApi } }} BusListenerDeps
  */
 
 /**
@@ -97,6 +98,14 @@ export function setupBusListeners(deps) {
     [EVENTS.WORKSPACE_OPEN_FROM_FOLDER, ({ cwd }) => {
       const folderName = extractFolderName(cwd);
       deps.createTab(folderName, cwd);
+    }],
+    /** @listens workspace:createWorktree {{ repoCwd: string }} */
+    [EVENTS.WORKSPACE_CREATE_WORKTREE, ({ repoCwd }) => {
+      createWorktreeFlow({
+        repoCwd,
+        api: deps.api.worktree,
+        createTab: deps.createTab,
+      }).catch((e) => console.warn('createWorktreeFlow failed:', e));
     }],
   ]);
 }

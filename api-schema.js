@@ -49,9 +49,14 @@ const API_SCHEMA = {
     openFolder: { type: 'fwd' },
   },
   git: {
-    branch:       { type: 'fwd' },
-    localChanges: { type: 'fwd' },
-    fileDiff:     { type: 'pack', keys: ['cwd', 'filePath', 'isStaged'] },
+    branch:         { type: 'fwd' },
+    localChanges:   { type: 'fwd' },
+    fileDiff:       { type: 'pack', keys: ['cwd', 'filePath', 'isStaged'] },
+    isRepo:         { type: 'fwd' },
+    listBranches:   { type: 'fwd' },
+    worktreeList:   { type: 'fwd' },
+    worktreeAdd:    { type: 'pack', keys: ['cwd', 'branch', 'targetPath', 'createBranch'] },
+    worktreeRemove: { type: 'pack', keys: ['cwd', 'worktreePath', 'force'] },
   },
   flow: {
     save:           { type: 'fwd' },

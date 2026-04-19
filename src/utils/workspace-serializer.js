@@ -55,6 +55,7 @@ export function serialize({ tabs, activeTabId }) {
       userNamed: tab.userNamed || false,
       noShortcut: tab.noShortcut || false,
       colorGroup: tab.colorGroup || null,
+      worktree: tab.worktree || null,
       splitTree: null,
       panels: {},
     };
@@ -116,6 +117,7 @@ export async function restoreConfig({ tabs, setActiveTabId, defaultCwd, renderTa
     tab.userNamed = userNamed;
     tab.noShortcut = tabData.noShortcut || false;
     tab.colorGroup = tabData.colorGroup || null;
+    tab.worktree = tabData.worktree || null;
     tab._restoreData = tabData;
     tabs.set(id, tab);
   }
