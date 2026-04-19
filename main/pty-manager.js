@@ -1,7 +1,23 @@
 const os = require('os');
+const fs = require('fs');
 const pty = require('node-pty');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const { createLogger } = require('./logger');
+
+const log = createLogger('pty-manager');
+
+function safeCwd(cwd) {
+  if (cwd) {
+    try {
+      if (fs.statSync(cwd).isDirectory()) return cwd;
+      log.warn(`cwd is not a directory, falling back to homedir: ${cwd}`);
+    } catch {
+      log.warn(`cwd does not exist, falling back to homedir: ${cwd}`);
+    }
+  }
+  return os.homedir();
+}
 const {
   EXEC_TIMEOUT_MS,
   CWD_TIMEOUT_MS,
@@ -34,13 +50,21 @@ class PtyManager {
   }
 
   create({ id, cwd, cols, rows }) {
-    const proc = pty.spawn(DEFAULT_SHELL, [], {
+    const spawnOpts = {
       name: TERM,
       cols: cols || DEFAULT_COLS,
       rows: rows || DEFAULT_ROWS,
-      cwd: cwd || os.homedir(),
+      cwd: safeCwd(cwd),
       env: { ...process.env, TERM },
-    });
+    };
+    let proc;
+    try {
+      proc = pty.spawn(DEFAULT_SHELL, [], spawnOpts);
+    } catch (err) {
+      log.error(`spawn failed (shell=${DEFAULT_SHELL}, cwd=${spawnOpts.cwd}), retrying from homedir`, err);
+      spawnOpts.cwd = os.homedir();
+      proc = pty.spawn(DEFAULT_SHELL, [], spawnOpts);
+    }
     this.processes.set(id, proc);
     return proc;
   }
