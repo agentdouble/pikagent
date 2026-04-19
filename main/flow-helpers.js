@@ -45,8 +45,6 @@ function _buildAgentCmd(agent, prompt, opts = {}) {
   return parts.join(' ');
 }
 
-// getLastRun imported from shared/flow-utils.js
-
 /* ── Schedule day filters (single source of truth) ─────────────── */
 
 const SCHEDULE_DAY_FILTER = {
@@ -159,6 +157,6 @@ module.exports = {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS, MAX_FLOW_RUNTIME_MS,
   flowPath, logPath,
-  getLastRun, shouldRun, buildFlowCommand,
+  shouldRun, buildFlowCommand,
   createOutputProcessor,
 };

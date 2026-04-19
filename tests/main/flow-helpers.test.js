@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-const { getLastRun, shouldRun, buildFlowCommand } = require('../../main/flow-helpers');
+const { shouldRun, buildFlowCommand } = require('../../main/flow-helpers');
+const { getLastRun } = require('../../shared/flow-utils');
 
 describe('flow-helpers', () => {
-  describe('getLastRun', () => {
+  describe('getLastRun (from shared/flow-utils)', () => {
     it('returns last run from array', () => {
       const flow = { runs: [{ id: 1 }, { id: 2 }] };
       expect(getLastRun(flow)).toEqual({ id: 2 });
