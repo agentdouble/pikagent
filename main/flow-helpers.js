@@ -143,7 +143,7 @@ function createOutputProcessor(agent) {
     },
 
     getOutput() {
-      if (output.isTruncated()) return output.get() + '\n[output truncated at 10 MB]';
+      if (output.isTruncated() || raw.isTruncated()) return output.get() + '\n[output truncated at 10 MB]';
       return output.get();
     },
   };
