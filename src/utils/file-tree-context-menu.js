@@ -3,7 +3,7 @@
  * Extracted from FileTree to reduce component size.
  */
 import { bus, EVENTS } from './events.js';
-import { getRelativePath } from './file-tree-helpers.js';
+import { getRelativePath, getBaseName } from './file-tree-helpers.js';
 
 /**
  * Build the common context menu items shared between files and directories.
@@ -16,7 +16,7 @@ import { getRelativePath } from './file-tree-helpers.js';
  * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
 export function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, deleteLabel, { clipboardWrite, fsCopy, showInFolder, fsTrash }) {
-  const displayName = entryPath.split('/').pop();
+  const displayName = getBaseName(entryPath);
   return [
     { label: 'Rename', action: () => promptRenameFn(entryPath, nameEl) },
     { separator: true },
@@ -64,7 +64,7 @@ export function buildFileContextItems(entryPath, nameEl, rootCwd, promptRenameFn
  * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
 export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl, promptRenameFn, promptNewEntryFn, api) {
-  const dirName = dirPath.split('/').pop();
+  const dirName = getBaseName(dirPath);
   return [
     { label: 'New File', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'file') },
     { label: 'New Folder', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'folder') },

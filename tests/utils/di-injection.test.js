@@ -36,6 +36,8 @@ describe('DI: file-tree-context-menu', () => {
     vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
     vi.doMock('../../src/utils/file-tree-helpers.js', () => ({
       getRelativePath: (p, root) => p.replace(root + '/', ''),
+      getBaseName: (p) => p.split('/').filter(Boolean).pop() || '/',
+      extractFolderName: (p) => p.split('/').filter(Boolean).pop() || '/',
       INPUT_BLUR_DELAY: 100,
       computeIndent: () => 0,
     }));
@@ -121,6 +123,8 @@ describe('DI: file-tree-drop handleFileDrop', () => {
     }));
     vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
     vi.doMock('../../src/utils/file-tree-helpers.js', () => ({
+      getBaseName: (p) => p.split('/').filter(Boolean).pop() || '/',
+      extractFolderName: (p) => p.split('/').filter(Boolean).pop() || '/',
       INPUT_BLUR_DELAY: 100,
       computeIndent: () => 0,
     }));
