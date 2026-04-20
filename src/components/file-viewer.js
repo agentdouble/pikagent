@@ -1,10 +1,12 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus, subscribeBus, unsubscribeBus, EVENTS } from '../utils/events.js';
+import { bus, unsubscribeBus, EVENTS } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
-import { EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
+import { EMPTY_MESSAGE, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
 import { createMarkdownPreviewDOM, updatePreviewStatusBar } from '../utils/markdown-preview-renderer.js';
 import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
+import { renderModeBar } from '../utils/file-viewer-mode-bar.js';
+import { setupFileViewerListeners } from '../utils/file-viewer-listeners.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 
 export class FileViewer {
@@ -26,12 +28,19 @@ export class FileViewer {
       () => this._renderModeBar(),
     );
     this._renderModeBar();
-    this._setupListeners();
+    this._busListeners = setupFileViewerListeners(
+      { isActive: () => this.isActive() },
+      {
+        switchMode: (m) => this.switchMode(m),
+        openFile: (p, n) => this.openFile(p, n),
+        gitChanges: this.gitChanges,
+        getMode: () => this.mode,
+        loadPinnedFiles: () => this.loadPinnedFiles(),
+      },
+    );
   }
 
   static get pinnedFiles() { return pinnedFiles; }
-
-  // ===== Build =====
 
   render() {
     this.container.replaceChildren();
@@ -58,29 +67,6 @@ export class FileViewer {
     this.container.appendChild(this.statusBar);
 
     this.showEmpty();
-  }
-
-  _setupListeners() {
-    // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = subscribeBus([
-      /** @listens file:open {{ path: string, name: string }} */
-      [EVENTS.FILE_OPEN, ({ path, name }) => {
-        if (!this.isActive()) return;
-        this.switchMode('files');
-        this.openFile(path, name);
-      }],
-      /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
-      [EVENTS.TERMINAL_CWD_CHANGED, ({ cwd }) => {
-        if (!this.isActive()) return;
-        this.gitChanges.setCwd(cwd);
-        if (this.mode === 'git') this.gitChanges.loadChanges();
-      }],
-      /** @listens workspace:activated {undefined} */
-      [EVENTS.WORKSPACE_ACTIVATED, () => {
-        if (!this.isActive()) return;
-        this.loadPinnedFiles();
-      }],
-    ]);
   }
 
   async loadPinnedFiles() {
@@ -277,19 +263,8 @@ export class FileViewer {
     this.statusBar.replaceChildren();
   }
 
-  // ===== Mode Bar =====
-
   _renderModeBar() {
-    this.modeBar.replaceChildren();
-    for (const { key, label } of STATIC_MODES) {
-      const btn = _el('button', `mode-btn${this.mode === key ? ' active' : ''}`, label);
-      btn.addEventListener('click', () => this.switchMode(key));
-      this.modeBar.appendChild(btn);
-    }
-    for (const wt of this._webviewMgr.webviewTabs) {
-      this.modeBar.appendChild(this._webviewMgr.buildWebviewModeBtn(wt, this.mode));
-    }
-    this.modeBar.appendChild(this._webviewMgr.buildAddWebviewBtn(this.modeBar));
+    renderModeBar(this.modeBar, this.mode, { switchMode: (m) => this.switchMode(m) }, this._webviewMgr);
   }
 
   // ===== Webview Management (delegated) =====
