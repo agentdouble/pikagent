@@ -1,5 +1,5 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus, unsubscribeBus, EVENTS } from '../utils/events.js';
+import { bus, EVENTS } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
 import { EMPTY_MESSAGE, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
@@ -290,7 +290,7 @@ export class FileViewer {
   }
 
   dispose() {
-    unsubscribeBus(this._busListeners);
+    for (const unsub of this._busListeners) unsub();
     this._busListeners = [];
     this._webviewMgr.dispose();
   }
