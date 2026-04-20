@@ -196,12 +196,12 @@ export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch
     tab.fileTree.setTerminalRoot(termId, cwd);
   }
 
-  // Auto-rename tab when the first terminal moves and the user hasn't
-  // defined a custom name.
-  const firstTermId = tab.terminalPanel?.terminals
-    ? Array.from(tab.terminalPanel.terminals.keys())[0]
-    : null;
-  if (!tab.userNamed && firstTermId === termId) {
+  // Auto-rename tab when the active terminal moves and the user hasn't
+  // defined a custom name. Tracking the active terminal (rather than the
+  // first one) keeps the name in sync with the split the user is actually
+  // working in — only one terminal polls cwd at a time anyway.
+  const activeTermId = tab.terminalPanel?.activeTerminal?.terminal?.id ?? null;
+  if (!tab.userNamed && activeTermId === termId) {
     const newName = extractFolderName(cwd);
     if (newName && newName !== tab.name) {
       tab.name = newName;
