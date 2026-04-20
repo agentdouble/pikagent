@@ -9,8 +9,15 @@
 
 export { inlineRenameTab } from './tab-renderer.js';
 export { renderTabBar } from './tab-bar-renderer.js';
-export { isTabVisible } from './tab-color-filter.js';
+export {
+  isTabVisible, setColorFilter, toggleExcludeColor, ensureVisibleTabActive,
+} from './tab-color-filter.js';
 export { createTab, closeTab, switchTo } from './tab-lifecycle.js';
 export {
-  reorderEntries, findCycleTarget, findColorGroupTarget,
+  reorderEntries,
 } from './tab-manager-helpers.js';
+export {
+  nextTab, prevTab, goToColorGroup, focusDirection,
+  setTabColorGroup, toggleNoShortcut,
+} from './tab-navigation.js';
+export { buildPrApi, buildWorktreeApi, buildViewStore } from './tab-manager-api.js';

@@ -15,7 +15,15 @@ import {
   isTabVisible,
   createTab as doCreateTab, closeTab as doCloseTab,
   switchTo as doSwitchTo,
-  reorderEntries, findCycleTarget, findColorGroupTarget,
+  reorderEntries,
+  setColorFilter as doSetColorFilter,
+  toggleExcludeColor as doToggleExcludeColor,
+  ensureVisibleTabActive as doEnsureVisibleTabActive,
+  nextTab as doNextTab, prevTab as doPrevTab,
+  goToColorGroup as doGoToColorGroup, focusDirection as doFocusDirection,
+  setTabColorGroup as doSetTabColorGroup,
+  toggleNoShortcut as doToggleNoShortcut,
+  buildPrApi, buildWorktreeApi, buildViewStore,
 } from '../utils/tab-facade.js';
 
 export class TabManager {
@@ -46,48 +54,9 @@ export class TabManager {
     this.init();
   }
 
-  /**
-   * Adapter exposing the git + shell surface needed by the open-PR flow.
-   * @returns {import('../utils/open-pr-flow.js').OpenPrApi}
-   */
-  _prApi() {
-    return {
-      branch:       (cwd) => window.api.git.branch(cwd),
-      remoteUrl:    (cwd) => window.api.git.remoteUrl(cwd),
-      pushBranch:   ({ cwd, branch }) => window.api.git.pushBranch(cwd, branch),
-      ghAvailable:  () => window.api.git.ghAvailable(),
-      ghPrCreate:   ({ cwd, baseBranch }) => window.api.git.ghPrCreate(cwd, baseBranch),
-      openExternal: (url) => window.api.shell.openExternal(url),
-    };
-  }
-
-  /**
-   * Adapter exposing the git-worktree IPC surface as an object-style API,
-   * matching {@link import('../utils/worktree-flow.js').GitWorktreeApi}.
-   * @returns {import('../utils/worktree-flow.js').GitWorktreeApi}
-   */
-  _worktreeApi() {
-    return {
-      isRepo:       (cwd) => window.api.git.isRepo(cwd),
-      branch:       (cwd) => window.api.git.branch(cwd),
-      listBranches: (cwd) => window.api.git.listBranches(cwd),
-      worktreeList: (cwd) => window.api.git.worktreeList(cwd),
-      worktreeAdd:  ({ cwd, branch, targetPath, createBranch, baseBranch }) =>
-        window.api.git.worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch),
-      worktreeRemove: ({ cwd, worktreePath, force }) =>
-        window.api.git.worktreeRemove(cwd, worktreePath, force),
-    };
-  }
-
-  /** @returns {import('../utils/sidebar-manager.js').SideViewStore} */
-  _viewStore() {
-    return {
-      getView: (key) => this[key],
-      setView: (key, val) => { this[key] = val; },
-      getContainer: (key) => this[key],
-      setContainer: (key, val) => { this[key] = val; },
-    };
-  }
+  _prApi() { return buildPrApi(window.api); }
+  _worktreeApi() { return buildWorktreeApi(window.api); }
+  _viewStore() { return buildViewStore(this); }
 
   async init() {
     this.defaultCwd = await initTabManager({
@@ -143,6 +112,7 @@ export class TabManager {
   }
 
   switchToBoard() { this.setSidebarMode('board'); }
+
   async renderWorkspace(tab) {
     return doRenderWorkspace({
       workspaceContainer: this.workspaceContainer,
@@ -172,6 +142,7 @@ export class TabManager {
   }
 
   autoSave() { return this.configManager.autoSave(); }
+
   createTab(name = null, cwd = null) {
     return doCreateTab({
       tabs: this.tabs,
@@ -212,18 +183,11 @@ export class TabManager {
   }
 
   setColorFilter(colorGroupId) {
-    this.excludedColors.clear();
-    this.activeColorFilter = this.activeColorFilter === colorGroupId ? null : colorGroupId;
-    this.renderTabBar();
-    this._ensureVisibleTabActive();
+    doSetColorFilter(this, colorGroupId, () => this.renderTabBar(), () => this._ensureVisibleTabActive());
   }
 
   toggleExcludeColor(colorGroupId) {
-    this.activeColorFilter = null;
-    if (this.excludedColors.has(colorGroupId)) this.excludedColors.delete(colorGroupId);
-    else this.excludedColors.add(colorGroupId);
-    this.renderTabBar();
-    this._ensureVisibleTabActive();
+    doToggleExcludeColor(this, colorGroupId, () => this.renderTabBar(), () => this._ensureVisibleTabActive());
   }
 
   _isTabVisible(tab) {
@@ -231,11 +195,7 @@ export class TabManager {
   }
 
   _ensureVisibleTabActive() {
-    const active = this._activeTab();
-    if (active && this._isTabVisible(active)) return;
-    for (const [id, tab] of this.tabs) {
-      if (this._isTabVisible(tab)) { this.switchTo(id); return; }
-    }
+    doEnsureVisibleTabActive(this.tabs, () => this._activeTab(), this.activeColorFilter, this.excludedColors, (id) => this.switchTo(id));
   }
 
   renderTabBar() {
@@ -288,24 +248,15 @@ export class TabManager {
   }
 
   setTabColorGroup(id, colorGroupId) {
-    const tab = this.tabs.get(id);
-    if (!tab) return;
-    tab.colorGroup = colorGroupId;
-    this.renderTabBar();
-    this.configManager.scheduleAutoSave();
+    doSetTabColorGroup(this.tabs, id, colorGroupId, () => this.renderTabBar(), this.configManager);
   }
 
   goToColorGroup(colorGroupId) {
-    const target = findColorGroupTarget(this.tabs, this.activeTabId, colorGroupId);
-    if (target) this.switchTo(target);
+    doGoToColorGroup(this.tabs, this.activeTabId, colorGroupId, (id) => this.switchTo(id));
   }
 
   toggleNoShortcut(id) {
-    const tab = this.tabs.get(id);
-    if (!tab) return;
-    tab.noShortcut = !tab.noShortcut;
-    this.renderTabBar();
-    this.configManager.scheduleAutoSave();
+    doToggleNoShortcut(this.tabs, id, () => this.renderTabBar(), this.configManager);
   }
 
   isActiveNoShortcut() { return this._activeTab()?.noShortcut ?? false; }
@@ -313,20 +264,14 @@ export class TabManager {
   splitVertical() { this._activeTab()?.terminalPanel?.splitActive('vertical'); }
 
   focusDirection(direction) {
-    if (this.sidebarMode === 'board' && this.boardView) {
-      this.boardView.focusDirection(direction);
-      return;
-    }
-    this._activeTab()?.terminalPanel?.focusDirection(direction);
+    doFocusDirection(direction, this.sidebarMode, this.boardView, () => this._activeTab());
   }
 
   nextTab() {
-    const target = findCycleTarget(this.tabs, this.activeTabId, 1);
-    if (target) this.switchTo(target);
+    doNextTab(this.tabs, this.activeTabId, (id) => this.switchTo(id));
   }
 
   prevTab() {
-    const target = findCycleTarget(this.tabs, this.activeTabId, -1);
-    if (target) this.switchTo(target);
+    doPrevTab(this.tabs, this.activeTabId, (id) => this.switchTo(id));
   }
 }
