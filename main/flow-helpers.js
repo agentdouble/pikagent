@@ -91,41 +91,39 @@ const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB cap per flow
  * buffering, and raw-fallback logic for a flow's PTY output.
  * Caps buffer size at MAX_OUTPUT_BYTES to prevent unbounded memory growth.
  */
+function _createSafeAppender(maxBytes) {
+  let buffer = '';
+  let truncated = false;
+  return {
+    append(str) {
+      if (truncated) return;
+      if (buffer.length + str.length > maxBytes) {
+        buffer = buffer.slice(0, maxBytes);
+        truncated = true;
+        return;
+      }
+      buffer += str;
+    },
+    get() { return buffer; },
+    set(val) { buffer = val; },
+    isTruncated() { return truncated; },
+  };
+}
+
 function createOutputProcessor(agent) {
   const parser = (agent || 'claude') === 'claude' ? createStreamParser() : null;
-  let outputBuffer = '';
-  let rawBuffer = '';
-  let truncated = false;
-
-  function _appendOutput(str) {
-    if (truncated) return;
-    if (outputBuffer.length + str.length > MAX_OUTPUT_BYTES) {
-      outputBuffer = outputBuffer.slice(0, MAX_OUTPUT_BYTES);
-      truncated = true;
-      return;
-    }
-    outputBuffer += str;
-  }
-
-  function _appendRaw(str) {
-    if (truncated) return;
-    if (rawBuffer.length + str.length > MAX_OUTPUT_BYTES) {
-      rawBuffer = rawBuffer.slice(0, MAX_OUTPUT_BYTES);
-      truncated = true;
-      return;
-    }
-    rawBuffer += str;
-  }
+  const output = _createSafeAppender(MAX_OUTPUT_BYTES);
+  const raw = _createSafeAppender(MAX_OUTPUT_BYTES);
 
   return {
     processData(data) {
       if (!parser) {
-        _appendOutput(data);
+        output.append(data);
         return data;
       }
-      _appendRaw(data);
+      raw.append(data);
       const formatted = parser.push(data);
-      if (formatted) _appendOutput(formatted);
+      if (formatted) output.append(formatted);
       return formatted || '';
     },
 
@@ -133,20 +131,20 @@ function createOutputProcessor(agent) {
       if (!parser) return '';
       const remaining = parser.flush();
       if (remaining) {
-        _appendOutput(remaining);
+        output.append(remaining);
         return remaining;
       }
       // If no JSON events were parsed, fall back to raw output (claude not found, etc.)
-      if (!parser.hasEvents() && rawBuffer) {
-        outputBuffer = rawBuffer;
-        return rawBuffer;
+      if (!parser.hasEvents() && raw.get()) {
+        output.set(raw.get());
+        return raw.get();
       }
       return '';
     },
 
     getOutput() {
-      if (truncated) return outputBuffer + '\n[output truncated at 10 MB]';
-      return outputBuffer;
+      if (output.isTruncated()) return output.get() + '\n[output truncated at 10 MB]';
+      return output.get();
     },
   };
 }
