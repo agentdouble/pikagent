@@ -35,13 +35,17 @@ export function getRelativePath(fullPath, rootCwd) {
 }
 
 /**
- * Extract the folder display name from a cwd path.
- * @param {string} cwd
+ * Return the last segment (base name) of a path string.
+ * Works for both file and directory paths.
+ * @param {string} path
  * @returns {string}
  */
-export function extractFolderName(cwd) {
-  return cwd.split('/').filter(Boolean).pop() || '/';
+export function getBaseName(path) {
+  return path.split('/').filter(Boolean).pop() || '/';
 }
+
+/** @deprecated Use {@link getBaseName} instead. */
+export const extractFolderName = getBaseName;
 
 /**
  * Strip the watch prefix from a watchId to get the original cwd.

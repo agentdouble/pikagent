@@ -7,7 +7,7 @@ import { bus, EVENTS } from './events.js';
 import { _el } from './dom.js';
 import { setupInlineInput, startInlineRename } from './form-helpers.js';
 import { setupDropZone as _setupDropZone } from './drop-zone-helpers.js';
-import { INPUT_BLUR_DELAY, computeIndent } from './file-tree-helpers.js';
+import { INPUT_BLUR_DELAY, computeIndent, getBaseName } from './file-tree-helpers.js';
 
 /**
  * Attach dragover / dragleave / drop listeners to an element so that files
@@ -64,7 +64,7 @@ export async function handleFileDrop(files, destDir, { copyTo }) {
  * @param {{ rename: (entryPath: string, newName: string) => Promise<unknown> }} api - injected API methods
  */
 export function promptRename(entryPath, nameEl, { rename }) {
-  const oldName = entryPath.split('/').pop();
+  const oldName = getBaseName(entryPath);
   const dotIndex = oldName.lastIndexOf('.');
 
   startInlineRename(nameEl, {
