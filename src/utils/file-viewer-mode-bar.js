@@ -12,7 +12,7 @@ import { STATIC_MODES } from './editor-helpers.js';
  * @param {HTMLElement} modeBar - the mode bar container element
  * @param {string} currentMode - the currently active mode key
  * @param {{ switchMode: (mode: string) => void }} callbacks
- * @param {{ webviewTabs: Array, buildWebviewModeBtn: Function, buildAddWebviewBtn: Function }} webviewMgr
+ * @param {{ webviewTabs: Array<{ id: string, label: string, url: string }>, buildWebviewModeBtn: (wt: { id: string, label: string, url: string }, currentMode: string) => HTMLElement, buildAddWebviewBtn: (modeBar: HTMLElement) => HTMLElement }} webviewMgr
  */
 export function renderModeBar(modeBar, currentMode, { switchMode }, webviewMgr) {
   modeBar.replaceChildren();
