@@ -10,8 +10,8 @@
  */
 
 /**
- * @typedef {{ branch: Function, remoteUrl: Function, pushBranch: Function, ghAvailable: Function, ghPrCreate: Function }} GitApi
- * @typedef {{ openExternal: Function }} ShellApi
+ * @typedef {{ branch: (cwd: string) => Promise<string|null>, remoteUrl: (cwd: string) => Promise<string|null>, pushBranch: (cwd: string, branch: string) => Promise<{ ok: boolean, error?: string }>, ghAvailable: () => Promise<boolean>, ghPrCreate: (cwd: string, baseBranch: string|null) => Promise<{ ok: boolean, url?: string, existed?: boolean, code?: string, error?: string }> }} GitApi
+ * @typedef {{ openExternal: (url: string) => void | Promise<unknown> }} ShellApi
  */
 
 /**
@@ -31,7 +31,7 @@ export function buildPrApi(api) {
 }
 
 /**
- * @typedef {{ isRepo: Function, branch: Function, listBranches: Function, worktreeList: Function, worktreeAdd: Function, worktreeRemove: Function }} GitWorktreeIpc
+ * @typedef {{ isRepo: (cwd: string) => Promise<boolean>, branch: (cwd: string) => Promise<string|null>, listBranches: (cwd: string) => Promise<string[]>, worktreeList: (cwd: string) => Promise<Array<{ path: string, branch: string|null }>>, worktreeAdd: (cwd: string, branch: string, targetPath: string, createBranch: boolean, baseBranch: string|null) => Promise<{ ok: boolean, error?: string }>, worktreeRemove: (cwd: string, worktreePath: string, force: boolean) => Promise<{ ok: boolean, error?: string }> }} GitWorktreeIpc
  */
 
 /**
@@ -55,7 +55,7 @@ export function buildWorktreeApi(api) {
 
 /**
  * Build a view store adapter for sidebar-manager.
- * @param {object} self — the TabManager instance (or any object holding side-view properties)
+ * @param {{ [key: string]: unknown }} self — the TabManager instance (or any object holding side-view properties)
  * @returns {import('./sidebar-manager.js').SideViewStore}
  */
 export function buildViewStore(self) {

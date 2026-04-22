@@ -172,9 +172,9 @@ function getFlowRunDuration(run) {
  * Shared metrics builder — computes rate, duration, and perDay from a list of
  * items and merges any extra fields supplied by the caller.
  *
- * @param {Array} items - The items to compute base metrics for
- * @param {{ durationMapper: (item: any) => number|null,
- *           dateExtractor: (item: any) => string,
+ * @param {Array<{ status?: string, [key: string]: unknown }>} items - The items to compute base metrics for
+ * @param {{ durationMapper: (item: { status?: string, [key: string]: unknown }) => number|null,
+ *           dateExtractor: (item: { status?: string, [key: string]: unknown }) => string,
  *           extra?: Record<string, unknown> }} opts
  * @returns {Record<string, unknown>}
  */
