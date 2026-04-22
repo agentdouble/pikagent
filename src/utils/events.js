@@ -250,29 +250,8 @@ export function unsubscribeBus(listeners) {
 /** @param {(data: { id: string, cwd: string }) => void} cb */
 export const onTerminalCwdChanged = (cb) => bus.on(EVENTS.TERMINAL_CWD_CHANGED, cb);
 
-/** @param {(data: { id: string, cwd: string }) => void} cb */
-export const onTerminalCreated = (cb) => bus.on(EVENTS.TERMINAL_CREATED, cb);
-
-/** @param {(data: { id: string }) => void} cb */
-export const onTerminalRemoved = (cb) => bus.on(EVENTS.TERMINAL_REMOVED, cb);
-
-/** @param {(data: { id: string }) => void} cb */
-export const onTerminalExited = (cb) => bus.on(EVENTS.TERMINAL_EXITED, cb);
-
-/** @param {(data: undefined) => void} cb */
-export const onLayoutChanged = (cb) => bus.on(EVENTS.LAYOUT_CHANGED, cb);
-
 /** @param {(data: undefined) => void} cb */
 export const onWorkspaceActivated = (cb) => bus.on(EVENTS.WORKSPACE_ACTIVATED, cb);
-
-/** @param {(data: { cwd: string }) => void} cb */
-export const onWorkspaceOpenFromFolder = (cb) => bus.on(EVENTS.WORKSPACE_OPEN_FROM_FOLDER, cb);
-
-/** @param {(data: { repoCwd: string }) => void} cb */
-export const onWorkspaceCreateWorktree = (cb) => bus.on(EVENTS.WORKSPACE_CREATE_WORKTREE, cb);
-
-/** @param {(data: { repoCwd: string }) => void} cb */
-export const onWorkspaceOpenPr = (cb) => bus.on(EVENTS.WORKSPACE_OPEN_PR, cb);
 
 /** @param {(data: { path: string, name: string }) => void} cb */
 export const onFileOpen = (cb) => bus.on(EVENTS.FILE_OPEN, cb);

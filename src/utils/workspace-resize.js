@@ -81,7 +81,7 @@ export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
  * @param {HTMLElement} panel
  * @param {string} side
  */
-export function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, panel, side) {
+function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, panel, side) {
   let startX = 0;
   let startWidth = 0;
 
@@ -109,7 +109,7 @@ export function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, pan
  * @param {string} side
  * @param {HTMLElement} [arrowEl]
  */
-export function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arrowEl) {
+function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arrowEl) {
   panel.classList.add('animating');
   panel.classList.toggle('collapsed');
   const isCollapsed = panel.classList.contains('collapsed');

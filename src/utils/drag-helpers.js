@@ -6,13 +6,13 @@
  */
 
 /** Set cursor and disable text selection on document.body during a drag. */
-export function setDragBodyState(cursor) {
+function setDragBodyState(cursor) {
   document.body.style.cursor = cursor;
   document.body.style.userSelect = 'none';
 }
 
 /** Clear cursor and re-enable text selection on document.body after a drag. */
-export function clearDragBodyState() {
+function clearDragBodyState() {
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
 }

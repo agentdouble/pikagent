@@ -17,7 +17,7 @@ import { registerComponent } from '../utils/component-registry.js';
  * @param {() => void} renderKeybindingsFn - callback to re-render
  * @returns {HTMLElement}
  */
-export function createKeyBadge(binding, index, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+function createKeyBadge(binding, index, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const wrapper = _el('div', 'keybinding-badge-wrapper');
 
   const badge = _el('span', 'keybinding-badge');

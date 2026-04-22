@@ -18,7 +18,7 @@ import { createTabElement } from './tab-renderer.js';
  * @param {{ onClose: (filePath: string) => void, onActivate: (filePath: string) => void, onTogglePin: (filePath: string) => void }} callbacks
  * @returns {HTMLElement}
  */
-export function createTabEl(filePath, file, activeFile, isPinned, isModified, callbacks) {
+function createTabEl(filePath, file, activeFile, isPinned, isModified, callbacks) {
   const { onClose, onActivate, onTogglePin, isMarkdown, getViewMode, onToggleViewMode } = callbacks;
   const pinned = isPinned(filePath);
   const modified = isModified(filePath);
