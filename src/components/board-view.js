@@ -1,8 +1,6 @@
-import { WebLinksAddon } from '@xterm/addon-web-links';
 import { subscribeBus, unsubscribeBus } from '../utils/events.js';
-import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el, renderButtonBar } from '../utils/dom.js';
-import { _safeFit, createTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
+import { _safeFit, createTerminal, disposeTerminal, disposeTerminalMap, setupTerminalAddons } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
 import {
@@ -141,14 +139,12 @@ export class BoardView {
   _createBoardTerminal(termContainer, termId) {
     const { term, fitAddon } = createTerminal(termContainer, BOARD_TERMINAL_OPTS);
 
-    term.loadAddon(new WebLinksAddon((e, url) => {
-      e.preventDefault();
-      window.api.shell.openExternal(url);
-    }));
-    term.registerLinkProvider(new FilePathLinkProvider(term, () => null, {
+    setupTerminalAddons(term, {
+      openExternal: (url) => window.api.shell.openExternal(url),
+      getCwd: () => null,
       homedir: window.api.fs.homedir,
       openPath: window.api.shell.openPath,
-    }));
+    });
     term.onData((data) => window.api.pty.write(termId, data));
 
     return { term, fitAddon };
