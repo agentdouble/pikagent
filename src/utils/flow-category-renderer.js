@@ -46,16 +46,15 @@ export function createCategoryGroup(params) {
 }
 
 function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, onToggleCollapse, onRenameCategory, onDeleteCategory) {
-  const header = _el('div', 'flow-category-header');
-
-  const { chevron, name } = buildChevronRow({
+  const count = _el('span', 'flow-category-count', `${flows.length}`);
+  const { chevron, name, row: header } = buildChevronRow({
     chevronClass: 'flow-category-chevron',
     nameClass: 'flow-category-name',
     name: cat.name,
     chevronText: '▼',
+    containerClass: 'flow-category-header',
+    extraChildren: [count],
   });
-  const count = _el('span', 'flow-category-count', `${flows.length}`);
-  header.append(chevron, name, count);
 
   if (!isUncategorized) {
     const catHandlers = {
