@@ -26,10 +26,10 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
   return { overlay, modal };
 }
 
-// ── Private dialog lifecycle ──
+// ── Dialog lifecycle ──
 
 /**
- * Private dialog lifecycle helper.
+ * Reusable dialog lifecycle helper.
  * Creates overlay + modal via createModalOverlay, calls builder to populate
  * content, appends to document.body, and wraps everything in a Promise.
  *
@@ -45,7 +45,7 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
  *   (useful for focusing elements).
  * @returns {Promise<unknown>}
  */
-function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCancel, builder }) {
+export function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCancel, builder }) {
   return new Promise((resolve) => {
     let overlay;
     const cleanup = (value) => { overlay.remove(); resolve(value); };

@@ -10,7 +10,7 @@
  */
 
 import { _el, createActionButton } from './dom.js';
-import { createModalOverlay } from './dom-dialogs.js';
+import { createDialogBase } from './dom-dialogs.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 
 /** Sanitize a branch name into a filesystem-safe segment. */
@@ -37,98 +37,96 @@ function defaultWorktreePath(repoCwd, branch) {
  * @returns {Promise<{ branch: string, createBranch: boolean, targetPath: string, baseBranch: string|null } | null>}
  */
 export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, currentBranch }) {
-  return new Promise((resolve) => {
-    let overlay;
-    const cleanup = (value) => { overlay.remove(); resolve(value); };
-    const cancel = () => cleanup(null);
+  return createDialogBase({
+    overlayClass: 'prompt-dialog-overlay',
+    modalClass: 'prompt-dialog-box worktree-dialog-box',
+    builder({ modal, cleanup, cancel }) {
+      let mode = 'new';
 
-    ({ overlay } = createModalOverlay('prompt-dialog-overlay', 'prompt-dialog-box worktree-dialog-box', cancel));
-    const modal = overlay.firstChild;
-
-    let mode = 'new';
-
-    const newInput = _el('input', {
-      className: 'prompt-dialog-input', type: 'text', placeholder: 'feat/my-branch',
-    });
-
-    const baseSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-    for (const b of allBranches) {
-      const opt = _el('option', null, b);
-      opt.value = b;
-      if (b === currentBranch) opt.selected = true;
-      baseSelect.appendChild(opt);
-    }
-    const baseLabel = _el('label', 'worktree-dialog-sub-label', 'Base branch');
-
-    const existingSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-    for (const b of existingBranches) existingSelect.appendChild(_el('option', null, b));
-    if (!existingBranches.length) existingSelect.appendChild(_el('option', { disabled: true }, 'No other branches'));
-
-    const pathEl = _el('div', 'worktree-dialog-path');
-
-    const updatePath = () => {
-      const branch = mode === 'new' ? newInput.value.trim() : existingSelect.value;
-      pathEl.textContent = branch ? defaultWorktreePath(repoCwd, branch) : '';
-    };
-
-    const btnNew = createActionButton({
-      text: 'New branch', cls: 'worktree-dialog-mode-btn active',
-      onClick: () => setMode('new'),
-    });
-    const btnExisting = createActionButton({
-      text: 'Existing branch', cls: 'worktree-dialog-mode-btn',
-      onClick: () => setMode('existing'),
-    });
-
-    function setMode(next) {
-      mode = next;
-      btnNew.classList.toggle('active', mode === 'new');
-      btnExisting.classList.toggle('active', mode === 'existing');
-      const isNew = mode === 'new';
-      newInput.style.display = isNew ? '' : 'none';
-      baseSelect.style.display = isNew ? '' : 'none';
-      baseLabel.style.display = isNew ? '' : 'none';
-      existingSelect.style.display = isNew ? 'none' : '';
-      updatePath();
-      (isNew ? newInput : existingSelect).focus();
-    }
-
-    newInput.addEventListener('input', updatePath);
-    existingSelect.addEventListener('change', updatePath);
-
-    const confirm = () => {
-      const branch = mode === 'new' ? newInput.value.trim() : existingSelect.value;
-      if (!branch) return;
-      cleanup({
-        branch,
-        createBranch: mode === 'new',
-        targetPath: defaultWorktreePath(repoCwd, branch),
-        baseBranch: mode === 'new' ? (baseSelect.value || null) : null,
+      const newInput = _el('input', {
+        className: 'prompt-dialog-input', type: 'text', placeholder: 'feat/my-branch',
       });
-    };
 
-    setupKeyboardShortcuts(newInput, { onEnter: confirm, onEscape: cancel });
-    setupKeyboardShortcuts(existingSelect, { onEnter: confirm, onEscape: cancel });
-    setupKeyboardShortcuts(baseSelect, { onEnter: confirm, onEscape: cancel });
+      const baseSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
+      for (const b of allBranches) {
+        const opt = _el('option', null, b);
+        opt.value = b;
+        if (b === currentBranch) opt.selected = true;
+        baseSelect.appendChild(opt);
+      }
+      const baseLabel = _el('label', 'worktree-dialog-sub-label', 'Base branch');
 
-    existingSelect.style.display = 'none';
+      const existingSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
+      for (const b of existingBranches) existingSelect.appendChild(_el('option', null, b));
+      if (!existingBranches.length) existingSelect.appendChild(_el('option', { disabled: true }, 'No other branches'));
 
-    modal.append(
-      _el('label', 'prompt-dialog-label', 'New worktree'),
-      _el('div', 'worktree-dialog-mode-row', btnNew, btnExisting),
-      newInput,
-      baseLabel,
-      baseSelect,
-      existingSelect,
-      pathEl,
-      _el('div', 'prompt-dialog-btns',
-        createActionButton({ text: 'Cancel', cls: 'prompt-dialog-cancel', onClick: cancel }),
-        createActionButton({ text: 'Create', cls: 'prompt-dialog-confirm', onClick: confirm }),
-      ),
-    );
+      const pathEl = _el('div', 'worktree-dialog-path');
 
-    document.body.appendChild(overlay);
-    updatePath();
-    newInput.focus();
+      const updatePath = () => {
+        const branch = mode === 'new' ? newInput.value.trim() : existingSelect.value;
+        pathEl.textContent = branch ? defaultWorktreePath(repoCwd, branch) : '';
+      };
+
+      const btnNew = createActionButton({
+        text: 'New branch', cls: 'worktree-dialog-mode-btn active',
+        onClick: () => setMode('new'),
+      });
+      const btnExisting = createActionButton({
+        text: 'Existing branch', cls: 'worktree-dialog-mode-btn',
+        onClick: () => setMode('existing'),
+      });
+
+      function setMode(next) {
+        mode = next;
+        btnNew.classList.toggle('active', mode === 'new');
+        btnExisting.classList.toggle('active', mode === 'existing');
+        const isNew = mode === 'new';
+        newInput.style.display = isNew ? '' : 'none';
+        baseSelect.style.display = isNew ? '' : 'none';
+        baseLabel.style.display = isNew ? '' : 'none';
+        existingSelect.style.display = isNew ? 'none' : '';
+        updatePath();
+        (isNew ? newInput : existingSelect).focus();
+      }
+
+      newInput.addEventListener('input', updatePath);
+      existingSelect.addEventListener('change', updatePath);
+
+      const confirm = () => {
+        const branch = mode === 'new' ? newInput.value.trim() : existingSelect.value;
+        if (!branch) return;
+        cleanup({
+          branch,
+          createBranch: mode === 'new',
+          targetPath: defaultWorktreePath(repoCwd, branch),
+          baseBranch: mode === 'new' ? (baseSelect.value || null) : null,
+        });
+      };
+
+      setupKeyboardShortcuts(newInput, { onEnter: confirm, onEscape: cancel });
+      setupKeyboardShortcuts(existingSelect, { onEnter: confirm, onEscape: cancel });
+      setupKeyboardShortcuts(baseSelect, { onEnter: confirm, onEscape: cancel });
+
+      existingSelect.style.display = 'none';
+
+      modal.append(
+        _el('label', 'prompt-dialog-label', 'New worktree'),
+        _el('div', 'worktree-dialog-mode-row', btnNew, btnExisting),
+        newInput,
+        baseLabel,
+        baseSelect,
+        existingSelect,
+        pathEl,
+        _el('div', 'prompt-dialog-btns',
+          createActionButton({ text: 'Cancel', cls: 'prompt-dialog-cancel', onClick: cancel }),
+          createActionButton({ text: 'Create', cls: 'prompt-dialog-confirm', onClick: confirm }),
+        ),
+      );
+
+      return () => {
+        updatePath();
+        newInput.focus();
+      };
+    },
   });
 }
