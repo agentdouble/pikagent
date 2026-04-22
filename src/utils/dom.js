@@ -113,12 +113,31 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
  * Used by file-tree rows and flow-category headers — any place that needs
  * the common "chevron + label" pattern.
  *
- * @param {{ chevronClass: string, nameClass: string, name: string, chevronText?: string }} opts
- * @returns {{ chevron: HTMLElement, name: HTMLElement }}
+ * When `containerClass` is provided, a wrapper `<div>` is returned as `row`.
+ * An optional `depth` + `computeIndent` pair applies padding-left for
+ * tree-style indentation.
+ *
+ * @param {{ chevronClass: string, nameClass: string, name: string,
+ *           chevronText?: string, containerClass?: string,
+ *           depth?: number, computeIndent?: (depth: number) => number,
+ *           extraChildren?: HTMLElement[] }} opts
+ * @returns {{ chevron: HTMLElement, name: HTMLElement, row?: HTMLElement }}
  */
 export function buildChevronRow(opts) {
   const chevron = _el('span', { className: opts.chevronClass, textContent: opts.chevronText || '' });
   const name = _el('span', { className: opts.nameClass, textContent: opts.name });
+
+  if (opts.containerClass) {
+    const style = (opts.depth != null && opts.computeIndent)
+      ? { paddingLeft: `${opts.computeIndent(opts.depth)}px` }
+      : undefined;
+    const row = _el('div', {
+      className: opts.containerClass,
+      ...(style && { style }),
+    }, chevron, name, ...(opts.extraChildren || []));
+    return { chevron, name, row };
+  }
+
   return { chevron, name };
 }
 

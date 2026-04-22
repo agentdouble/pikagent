@@ -29,16 +29,14 @@ export const PARSED_ICONS = Object.fromEntries(
  * @returns {{ row: HTMLElement, chevron: HTMLElement, name: HTMLElement }}
  */
 function buildRow(entry, depth) {
-  const { chevron, name } = buildChevronRow({
+  return buildChevronRow({
     chevronClass: 'file-tree-chevron',
     nameClass: 'file-tree-name',
     name: entry.name,
+    containerClass: 'file-tree-item',
+    depth,
+    computeIndent,
   });
-  const row = _el('div', {
-    className: 'file-tree-item',
-    style: { paddingLeft: `${computeIndent(depth)}px` },
-  }, chevron, name);
-  return { row, chevron, name };
 }
 
 /**
