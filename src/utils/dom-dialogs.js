@@ -1,8 +1,8 @@
 /**
  * Dialog and prompt helpers — extracted from dom.js to reduce file length.
  *
- * This module provides high-level dialog builders (prompt, confirm, custom
- * modal).  For core DOM primitives (_el, createActionButton, renderButtonBar,
+ * This module provides high-level dialog builders (prompt, confirm) and a
+ * reusable modal overlay factory.  For core DOM primitives (_el, createActionButton, renderButtonBar,
  * buildChevronRow, etc.) import directly from './dom.js'.
  */
 
@@ -59,43 +59,6 @@ function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCanc
 }
 
 // ── Exported dialog builders ──
-
-/**
- * High-level modal builder: creates overlay + modal with a title bar,
- * content area, and optional close button. Appends to document.body and
- * returns a Promise that resolves when the modal is closed.
- *
- * @param {{ title?: string, content?: Node|Node[], onClose?: () => void,
- *           overlayClass?: string, modalClass?: string }} opts
- * @returns {Promise<null>}
- */
-export function createCustomModal({ title, content, onClose, overlayClass = 'modal-overlay', modalClass = 'modal' } = {}) {
-  return createDialogBase({
-    overlayClass,
-    modalClass,
-    onCancel: onClose,
-    builder({ modal, cancel }) {
-      if (title) {
-        const header = _el('div', `${modalClass}-header`,
-          _el('span', `${modalClass}-title`, title),
-          createActionButton({ text: '\u00D7', cls: `${modalClass}-close-btn`, onClick: cancel }),
-        );
-        modal.appendChild(header);
-      }
-
-      const body = _el('div', `${modalClass}-body`);
-      if (content) {
-        const nodes = Array.isArray(content) ? content : [content];
-        for (const node of nodes) {
-          if (node) body.appendChild(node);
-        }
-      }
-      modal.appendChild(body);
-
-      setupKeyboardShortcuts(modal, { onEscape: cancel });
-    },
-  });
-}
 
 /**
  * Show a prompt dialog for a single text value.

@@ -6,8 +6,8 @@
  *
  * The following helpers have been extracted to dedicated modules — import
  * them directly from there instead of going through this file:
- *   - createModalOverlay, createCustomModal,
- *     showPromptDialog, showConfirmDialog   → ./dom-dialogs.js
+ *   - createModalOverlay, showPromptDialog,
+ *     showConfirmDialog                     → ./dom-dialogs.js
  *   - setupInlineInput, startInlineRename   → ./form-helpers.js
  *   - setupDropZone                         → ./drop-zone-helpers.js
  *   - setupKeyboardShortcuts                → ./keyboard-helpers.js
