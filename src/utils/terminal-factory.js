@@ -4,7 +4,6 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { getTerminalTheme } from './terminal-themes.js';
 import { FilePathLinkProvider } from './file-link-provider.js';
 import { disposeResources } from './disposable.js';
-import { FilePathLinkProvider } from './file-link-provider.js';
 
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
