@@ -1,8 +1,8 @@
 /**
  * Dialog and prompt helpers — extracted from dom.js to reduce file length.
  *
- * This module provides high-level dialog builders (prompt, confirm) and a
- * reusable modal overlay factory.  For core DOM primitives (_el, createActionButton, renderButtonBar,
+ * This module provides high-level dialog builders (prompt, confirm) and the
+ * createModalOverlay primitive.  For core DOM primitives (_el, createActionButton, renderButtonBar,
  * buildChevronRow, etc.) import directly from './dom.js'.
  */
 
