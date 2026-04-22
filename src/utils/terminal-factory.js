@@ -1,6 +1,8 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
 import { getTerminalTheme } from './terminal-themes.js';
+import { FilePathLinkProvider } from './file-link-provider.js';
 import { disposeResources } from './disposable.js';
 
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
@@ -72,4 +74,19 @@ export function createReadonlyTerminal(container, opts = {}) {
 export function disposeTerminalMap(map) {
   for (const [, data] of map) disposeTerminal(data);
   map.clear();
+}
+
+/**
+ * Load the WebLinksAddon and register the FilePathLinkProvider on a terminal.
+ * Centralises the addon wiring shared by BoardView and TerminalInstance.
+ *
+ * @param {Terminal} term
+ * @param {{ openExternal: (url: string) => void, getCwd: () => string|null, homedir: () => Promise<string>, openPath: (path: string) => void }} opts
+ */
+export function setupTerminalAddons(term, { openExternal, getCwd, homedir, openPath }) {
+  term.loadAddon(new WebLinksAddon((e, url) => {
+    e.preventDefault();
+    openExternal(url);
+  }));
+  term.registerLinkProvider(new FilePathLinkProvider(term, getCwd, { homedir, openPath }));
 }

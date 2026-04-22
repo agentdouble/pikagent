@@ -1,8 +1,6 @@
-import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from './id.js';
 import { bus, EVENTS } from './events.js';
-import { FilePathLinkProvider } from './file-link-provider.js';
-import { createTerminal } from './terminal-factory.js';
+import { createTerminal, setupTerminalAddons } from './terminal-factory.js';
 import { CWD_POLL_MS } from './terminal-panel-helpers.js';
 import { createGuardedDispose } from './disposable.js';
 
@@ -62,11 +60,12 @@ export class TerminalInstance {
     this.terminal = term;
     this.fitAddon = fitAddon;
 
-    this.terminal.loadAddon(new WebLinksAddon((e, url) => {
-      e.preventDefault();
-      openExternal(url);
-    }));
-    this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd, { homedir, openPath }));
+    setupTerminalAddons(this.terminal, {
+      openExternal,
+      getCwd: () => this.cwd,
+      homedir,
+      openPath,
+    });
 
     // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
     this.terminal.attachCustomKeyEventHandler((e) => {
