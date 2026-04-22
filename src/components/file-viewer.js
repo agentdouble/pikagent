@@ -1,5 +1,5 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus, EVENTS } from '../utils/events.js';
+import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/dom.js';
 import { EMPTY_MESSAGE, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
@@ -278,7 +278,7 @@ export class FileViewer {
     if (this.mode === removedId) this.switchMode('files');
     else this._renderModeBar();
     /** @fires layout:changed {undefined} — webview removed from file-viewer */
-    bus.emit(EVENTS.LAYOUT_CHANGED);
+    emitLayoutChanged();
   }
 
   getWebviewTabs() {

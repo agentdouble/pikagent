@@ -6,7 +6,9 @@
  * it can import from fewer modules (issue #130).
  */
 
-import { subscribeBus, EVENTS } from './events.js';
+import { subscribeBus } from './events.js';
+import { LIFECYCLE_EVENTS } from './lifecycle-events.js';
+import { WORKSPACE_EVENTS } from './workspace-events.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
 import { createWorktreeFlow } from './worktree-flow.js';
@@ -73,7 +75,7 @@ export async function initTabManager(deps) {
 export function setupBusListeners(deps) {
   return subscribeBus([
     /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
-    [EVENTS.TERMINAL_CWD_CHANGED, ({ id, cwd }) => {
+    [LIFECYCLE_EVENTS.TERMINAL_CWD_CHANGED, ({ id, cwd }) => {
       onTerminalCwdChanged(deps.tabs, deps.getActiveTabId(), id, cwd, {
         gitBranch: deps.api.gitBranch,
         renderTabBar: deps.renderTabBar,
@@ -81,27 +83,27 @@ export function setupBusListeners(deps) {
       deps.configManager.scheduleAutoSave();
     }],
     /** @listens terminal:created {{ id: string, cwd: string }} */
-    [EVENTS.TERMINAL_CREATED, ({ id, cwd }) => {
+    [LIFECYCLE_EVENTS.TERMINAL_CREATED, ({ id, cwd }) => {
       const tab = findTabForTerminal(deps.tabs, id)?.tab ?? deps.tabs.get(deps.getActiveTabId());
       if (tab?.fileTree) tab.fileTree.setTerminalRoot(id, cwd);
       deps.configManager.scheduleAutoSave();
     }],
     /** @listens terminal:removed {{ id: string }} */
-    [EVENTS.TERMINAL_REMOVED, ({ id }) => {
+    [LIFECYCLE_EVENTS.TERMINAL_REMOVED, ({ id }) => {
       for (const [, tab] of deps.tabs) {
         if (tab.fileTree) tab.fileTree.removeTerminal(id);
       }
       deps.configManager.scheduleAutoSave();
     }],
     /** @listens layout:changed {undefined} */
-    [EVENTS.LAYOUT_CHANGED, () => deps.configManager.scheduleAutoSave()],
+    [WORKSPACE_EVENTS.LAYOUT_CHANGED, () => deps.configManager.scheduleAutoSave()],
     /** @listens workspace:openFromFolder {{ cwd: string }} */
-    [EVENTS.WORKSPACE_OPEN_FROM_FOLDER, ({ cwd }) => {
+    [WORKSPACE_EVENTS.WORKSPACE_OPEN_FROM_FOLDER, ({ cwd }) => {
       const folderName = extractFolderName(cwd);
       deps.createTab(folderName, cwd);
     }],
     /** @listens workspace:createWorktree {{ repoCwd: string }} */
-    [EVENTS.WORKSPACE_CREATE_WORKTREE, ({ repoCwd }) => {
+    [WORKSPACE_EVENTS.WORKSPACE_CREATE_WORKTREE, ({ repoCwd }) => {
       createWorktreeFlow({
         repoCwd,
         api: deps.api.worktree,
@@ -109,7 +111,7 @@ export function setupBusListeners(deps) {
       }).catch((e) => console.warn('createWorktreeFlow failed:', e));
     }],
     /** @listens workspace:openPr {{ repoCwd: string }} */
-    [EVENTS.WORKSPACE_OPEN_PR, ({ repoCwd }) => {
+    [WORKSPACE_EVENTS.WORKSPACE_OPEN_PR, ({ repoCwd }) => {
       const tab = _findTabByCwd(deps.tabs, repoCwd);
       const baseBranch = tab?.worktree?.baseBranch ?? null;
       openPrFlow({ cwd: repoCwd, baseBranch, api: deps.api.pr })
