@@ -3,7 +3,7 @@
  * Extracted from file-tree.js to reduce component size.
  */
 
-import { bus, EVENTS } from './events.js';
+import { emitFileOpen } from './workspace-events.js';
 import { _el } from './dom.js';
 import { setupInlineInput, startInlineRename } from './form-helpers.js';
 import { setupDropZone as _setupDropZone } from './drop-zone-helpers.js';
@@ -114,7 +114,7 @@ export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, ty
       } else {
         await writefile(newPath, '');
         /** @fires file:open {{ path: string, name: string }} — newly created file */
-        bus.emit(EVENTS.FILE_OPEN, { path: newPath, name });
+        emitFileOpen({ path: newPath, name });
       }
     },
   });

@@ -3,7 +3,7 @@
  * Extracted from file-tree.js to reduce component size.
  */
 
-import { bus, EVENTS } from './events.js';
+import { emitFileOpen } from './workspace-events.js';
 import { _el, buildChevronRow } from './dom.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
@@ -108,7 +108,7 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
     row.classList.add('active');
     activeRowRef.current = row;
     /** @fires file:open {{ path: string, name: string }} */
-    bus.emit(EVENTS.FILE_OPEN, { path: entry.path, name: entry.name });
+    emitFileOpen({ path: entry.path, name: entry.name });
   });
 
   attachContextMenu(row, () => buildFileContextItems(

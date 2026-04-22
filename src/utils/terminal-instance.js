@@ -1,6 +1,6 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from './id.js';
-import { bus, EVENTS } from './events.js';
+import { emitTerminalExited, emitTerminalCwdChanged } from './lifecycle-events.js';
 import { FilePathLinkProvider } from './file-link-provider.js';
 import { createTerminal } from './terminal-factory.js';
 import { CWD_POLL_MS } from './terminal-panel-helpers.js';
@@ -91,7 +91,7 @@ export class TerminalInstance {
 
     this.unsubExit = this._api.ptyOnExit(this.id, () => {
       /** @fires terminal:exited {{ id: string }} — PTY process exited */
-      bus.emit(EVENTS.TERMINAL_EXITED, { id: this.id });
+      emitTerminalExited({ id: this.id });
     });
   }
 
@@ -107,7 +107,7 @@ export class TerminalInstance {
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
         /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
-        bus.emit(EVENTS.TERMINAL_CWD_CHANGED, { id: this.id, cwd });
+        emitTerminalCwdChanged({ id: this.id, cwd });
       }
     }, CWD_POLL_MS);
   }
