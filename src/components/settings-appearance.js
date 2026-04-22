@@ -14,7 +14,7 @@ import { createAsyncHandler } from '../utils/event-helpers.js';
  * Apply the current terminal theme to all terminal panels across tabs.
  * @param {import('../components/tab-manager.js').TabManager|null} tabManager
  */
-export function applyThemeToTerminals(tabManager) {
+function applyThemeToTerminals(tabManager) {
   if (!tabManager) return;
   const theme = getTerminalTheme();
   for (const [, tab] of tabManager.tabs) {

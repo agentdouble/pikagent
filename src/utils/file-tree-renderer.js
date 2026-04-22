@@ -28,7 +28,7 @@ export const PARSED_ICONS = Object.fromEntries(
  * @param {number} depth
  * @returns {{ row: HTMLElement, chevron: HTMLElement, name: HTMLElement }}
  */
-export function buildRow(entry, depth) {
+function buildRow(entry, depth) {
   const { chevron, name } = buildChevronRow({
     chevronClass: 'file-tree-chevron',
     nameClass: 'file-tree-name',

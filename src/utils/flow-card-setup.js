@@ -51,7 +51,7 @@ export function setupCardDrag(card, flowId, catId, dragState) {
  * @param {Record<string, string>} runningMap - { [flowId]: ptyId }
  * @returns {HTMLElement|null}
  */
-export function buildCardBody(flow, isRunning, isExpanded, termManager, runningMap) {
+function buildCardBody(flow, isRunning, isExpanded, termManager, runningMap) {
   if (isRunning) {
     const container = termManager.createLiveTerminal(flow.id, runningMap[flow.id]);
     container.style.display = isExpanded ? '' : 'none';
@@ -77,7 +77,7 @@ export function buildCardBody(flow, isRunning, isExpanded, termManager, runningM
  * @param {boolean} isRunning
  * @param {{ expandedCards: Set<string>, onRenderList: () => void, onOpenModal: (flow: FlowDescriptor) => void, termManager: { disposeLogTerminal: (flowId: string) => void } }} callbacks
  */
-export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
+function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
   headerRow.addEventListener('click', () => {
     if (isRunning) {
       toggleInSet(expandedCards, flow.id);

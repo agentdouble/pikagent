@@ -22,7 +22,7 @@ function positionInViewport(x, y, width, height, padding = 8) {
   };
 }
 
-export class ContextMenu {
+class ContextMenu {
   constructor() {
     this.el = _el('div', { className: 'context-menu' });
     document.body.appendChild(this.el);
