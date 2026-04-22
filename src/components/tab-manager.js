@@ -4,11 +4,16 @@ import {
 } from '../utils/tab-manager-init.js';
 import {
   renderWorkspace as doRenderWorkspace, reattachLayout,
-  capturePanelWidths, disposeAllTabs,
+} from '../utils/workspace-layout.js';
+import { capturePanelWidths } from '../utils/workspace-resize.js';
+import { disposeAllTabs } from '../utils/workspace-cleanup.js';
+import {
   serialize as doSerialize, restoreConfig as doRestoreConfig,
+} from '../utils/workspace-serializer.js';
+import {
   renderActivityBar, detachSidebarView, changeSidebarMode,
   disposeSideView, disposeAllSideViews,
-} from '../utils/workspace-facade.js';
+} from '../utils/sidebar-manager.js';
 import {
   inlineRenameTab,
   renderTabBar as doRenderTabBar,
