@@ -1,4 +1,4 @@
-import { bus, EVENTS } from '../utils/events.js';
+import { emitFileOpen } from '../utils/workspace-events.js';
 import { _el } from '../utils/dom.js';
 import { onClickStopped } from '../utils/event-helpers.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
@@ -75,7 +75,7 @@ export class GitChangesView {
     const openBtn = _el('span', { className: 'git-open-btn', textContent: '→', title: 'Open file' });
     onClickStopped(openBtn, () => {
       /** @fires file:open {{ path: string, name: string }} */
-      bus.emit(EVENTS.FILE_OPEN, { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
+      emitFileOpen({ path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
     });
 
     const row = _el('div', { className: 'git-file-item', onClick: () => {

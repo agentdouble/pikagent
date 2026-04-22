@@ -3,7 +3,7 @@
  * Extracted from terminal-panel.js to reduce component size.
  */
 
-import { bus, EVENTS } from './events.js';
+import { emitTerminalCreated } from './terminal-events.js';
 import { _el } from './dom.js';
 import { onClickStopped } from './event-helpers.js';
 import { SplitNode, DRAG_GRIP, createSplitContainer } from './terminal-panel-helpers.js';
@@ -61,7 +61,7 @@ export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: bu
   terminals.set(node.terminal.id, node);
 
   /** @fires terminal:created {{ id: string, cwd: string }} */
-  bus.emit(EVENTS.TERMINAL_CREATED, { id: node.terminal.id, cwd: spawnCwd });
+  emitTerminalCreated({ id: node.terminal.id, cwd: spawnCwd });
 
   wrapper.addEventListener('mousedown', () => onMousedown(node));
 

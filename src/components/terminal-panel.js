@@ -1,4 +1,5 @@
-import { bus, EVENTS } from '../utils/events.js';
+import { emitTerminalRemoved } from '../utils/terminal-events.js';
+import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {
@@ -189,7 +190,7 @@ export class TerminalPanel {
       trackMouse(RESIZE_CURSOR[direction],
         (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
         /** @fires layout:changed {undefined} — resize complete */
-        () => bus.emit(EVENTS.LAYOUT_CHANGED),
+        () => emitLayoutChanged(),
       );
     });
   }
@@ -211,7 +212,7 @@ export class TerminalPanel {
     node.terminal.dispose();
     this.terminals.delete(termId);
     /** @fires terminal:removed {{ id: string }} */
-    bus.emit(EVENTS.TERMINAL_REMOVED, { id: termId });
+    emitTerminalRemoved({ id: termId });
 
     if (this.terminals.size === 0) {
       this.init();

@@ -11,7 +11,7 @@
  */
 
 import { getComponent } from './component-registry.js';
-import { bus, EVENTS } from './events.js';
+import { emitWorkspaceActivated } from './workspace-events.js';
 import { _el } from './dom.js';
 import { WORKSPACE_PANELS } from './tab-manager-helpers.js';
 import {
@@ -91,7 +91,7 @@ export async function renderWorkspace({ workspaceContainer, getActiveTabId, getA
   if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
 
   /** @fires workspace:activated {undefined} — initial workspace render complete */
-  bus.emit(EVENTS.WORKSPACE_ACTIVATED);
+  emitWorkspaceActivated();
 }
 
 // ── Layout helpers ──
