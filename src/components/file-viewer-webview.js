@@ -6,7 +6,7 @@ import { onClickStopped } from '../utils/event-helpers.js';
 import { _el } from '../utils/dom.js';
 import { setupInlineInput } from '../utils/form-helpers.js';
 import { generateId } from '../utils/id.js';
-import { bus, EVENTS } from '../utils/events.js';
+import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { parseWebviewUrl } from '../utils/editor-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 
@@ -32,7 +32,7 @@ export class WebviewManager {
     this._createWebviewContainer(wt);
     this._switchMode(wt.id);
     /** @fires layout:changed {undefined} — webview added */
-    bus.emit(EVENTS.LAYOUT_CHANGED);
+    emitLayoutChanged();
   }
 
   removeWebview(webviewId) {
@@ -91,7 +91,7 @@ export class WebviewManager {
       if (currentMode === removedId) this._switchMode('files');
       else this._renderModeBar();
       /** @fires layout:changed {undefined} — webview removed */
-      bus.emit(EVENTS.LAYOUT_CHANGED);
+      emitLayoutChanged();
     });
     btn.appendChild(closeBtn);
     btn.addEventListener('click', () => this._switchMode(wt.id));

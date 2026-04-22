@@ -3,7 +3,8 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 
-import { onFileOpen, onTerminalCwdChanged, onWorkspaceActivated } from './events.js';
+import { onTerminalCwdChanged } from './terminal-events.js';
+import { onFileOpen, onWorkspaceActivated } from './workspace-events.js';
 
 /**
  * Subscribe to bus events that drive file-viewer behaviour.
