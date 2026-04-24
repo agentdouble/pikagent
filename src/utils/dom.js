@@ -108,33 +108,45 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
 }
 
 /**
- * Build a row containing a chevron span and a name span.
+ * Build a row containing an optional chevron span and a name span.
  *
- * Used by file-tree rows and flow-category headers — any place that needs
- * the common "chevron + label" pattern.
+ * Used by file-tree rows, flow-category headers, and tab elements — any
+ * place that needs the common "chevron + label" or "label-only" pattern.
  *
  * When `containerClass` is provided, a wrapper `<div>` is returned as `row`.
  * An optional `depth` + `computeIndent` pair applies padding-left for
  * tree-style indentation.
  *
- * @param {{ chevronClass: string, nameClass: string, name: string,
- *           chevronText?: string, containerClass?: string,
+ * When `chevronClass` is omitted or null, no chevron element is created and
+ * the returned `chevron` field is `null`.
+ *
+ * @param {{ chevronClass?: string|null, nameClass?: string|null,
+ *           name: string, chevronText?: string, containerClass?: string,
  *           depth?: number, computeIndent?: (depth: number) => number,
+ *           prefixChildren?: HTMLElement[],
  *           extraChildren?: HTMLElement[] }} opts
- * @returns {{ chevron: HTMLElement, name: HTMLElement, row?: HTMLElement }}
+ * @returns {{ chevron: HTMLElement|null, name: HTMLElement, row?: HTMLElement }}
  */
 export function buildChevronRow(opts) {
-  const chevron = _el('span', { className: opts.chevronClass, textContent: opts.chevronText || '' });
-  const name = _el('span', { className: opts.nameClass, textContent: opts.name });
+  const chevron = opts.chevronClass
+    ? _el('span', { className: opts.chevronClass, textContent: opts.chevronText || '' })
+    : null;
+  const name = _el('span', { className: opts.nameClass || '', textContent: opts.name });
 
   if (opts.containerClass) {
     const style = (opts.depth != null && opts.computeIndent)
       ? { paddingLeft: `${opts.computeIndent(opts.depth)}px` }
       : undefined;
+    const parts = [
+      ...(opts.prefixChildren || []),
+      ...(chevron ? [chevron] : []),
+      name,
+      ...(opts.extraChildren || []),
+    ];
     const row = _el('div', {
       className: opts.containerClass,
       ...(style && { style }),
-    }, chevron, name, ...(opts.extraChildren || []));
+    }, ...parts);
     return { chevron, name, row };
   }
 

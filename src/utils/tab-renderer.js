@@ -7,7 +7,7 @@
  *
  * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
  */
-import { _el } from './dom.js';
+import { _el, buildChevronRow } from './dom.js';
 import { startInlineRename } from './form-helpers.js';
 import { COLOR_GROUPS } from './tab-manager-helpers.js';
 import { setupTabDrag } from './tab-drag.js';
@@ -28,7 +28,22 @@ import { onClickStopped } from './event-helpers.js';
  * @returns {{ tabEl: HTMLElement, nameEl: HTMLElement }}
  */
 export function createTabElement(config) {
-  const tabEl = _el('div', config.className);
+  // Build close button (appended after name via extraChildren)
+  const closeChildren = [];
+  if (config.close) {
+    const closeEl = _el('span', config.close.className, config.close.text);
+    onClickStopped(closeEl, (e) => config.close.onClick(e));
+    closeChildren.push(closeEl);
+  }
+
+  const { name: nameEl, row: tabEl } = buildChevronRow({
+    containerClass: config.className,
+    nameClass: config.nameClass || '',
+    name: config.name,
+    prefixChildren: config.prefixEls || [],
+    extraChildren: closeChildren,
+  });
+
   if (config.isActive) tabEl.classList.add('active');
   if (config.extraClasses) {
     for (const cls of config.extraClasses) tabEl.classList.add(cls);
@@ -41,19 +56,6 @@ export function createTabElement(config) {
       if (k.startsWith('--')) tabEl.style.setProperty(k, v);
       else tabEl.style[k] = v;
     }
-  }
-
-  if (config.prefixEls) {
-    for (const el of config.prefixEls) tabEl.appendChild(el);
-  }
-
-  const nameEl = _el('span', config.nameClass || null, config.name);
-  tabEl.appendChild(nameEl);
-
-  if (config.close) {
-    const closeEl = _el('span', config.close.className, config.close.text);
-    onClickStopped(closeEl, (e) => config.close.onClick(e));
-    tabEl.appendChild(closeEl);
   }
 
   tabEl.addEventListener('click', () => config.onClick(tabEl));
