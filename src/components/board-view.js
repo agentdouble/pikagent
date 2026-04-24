@@ -1,11 +1,11 @@
-import { subscribeBus, unsubscribeBus } from '../utils/events.js';
+import { onTerminalCreated, onTerminalRemoved, onTerminalExited } from '../utils/terminal-events.js';
 import { _el, renderButtonBar } from '../utils/dom.js';
 import { _safeFit, createTerminal, disposeTerminal, disposeTerminalMap, setupTerminalAddons } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
-  STATUS_CONFIG, ALL_CARD_CLASSES, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
+  STATUS_CONFIG, ALL_CARD_CLASSES,
   BOARD_TERMINAL_OPTS, HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
   formatCardLabel,
@@ -212,15 +212,10 @@ export class BoardView {
   _setupListeners() {
     const onTerminalGone = ({ id }) => { this.removeCard(id); this._updateEmptyState(); };
 
-    // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = subscribeBus([
-      /** @listens terminal:created {{ id: string, cwd: string }} */
-      [EVT_CREATED, () => { if (!this.disposed) this.scanAgents(); }],
-      /** @listens terminal:removed {{ id: string }} */
-      [EVT_REMOVED, onTerminalGone],
-      /** @listens terminal:exited {{ id: string }} */
-      [EVT_EXITED, onTerminalGone],
-    ]);
+    // Typed subscription helpers — each returns an unsubscribe function
+    this._unsubCreated = onTerminalCreated(() => { if (!this.disposed) this.scanAgents(); });
+    this._unsubRemoved = onTerminalRemoved(onTerminalGone);
+    this._unsubExited  = onTerminalExited(onTerminalGone);
   }
 
   focusDirection(dir) {
@@ -260,7 +255,9 @@ export class BoardView {
     this.disposed = true;
     this.pause();
 
-    unsubscribeBus(this._busListeners);
+    this._unsubCreated();
+    this._unsubRemoved();
+    this._unsubExited();
     disposeTerminalMap(this.cards);
   }
 }

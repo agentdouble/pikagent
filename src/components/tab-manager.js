@@ -1,6 +1,6 @@
 import {
   initTabManager, setupBusListeners,
-  unsubscribeBus, getComponent,
+  getComponent,
 } from '../utils/tab-manager-init.js';
 import {
   renderWorkspace as doRenderWorkspace, reattachLayout,
@@ -246,7 +246,7 @@ export class TabManager {
   }
 
   dispose() {
-    unsubscribeBus(this._busListeners);
+    for (const unsub of this._busListeners) unsub();
     this._busListeners = [];
     disposeAllSideViews(this._viewStore());
     disposeAllTabs({ tabs: this.tabs, setActiveTabId: (id) => { this.activeTabId = id; } });
