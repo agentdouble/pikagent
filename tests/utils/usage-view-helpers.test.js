@@ -2,7 +2,9 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect } from 'vitest';
-import { buildTableRow } from '../../src/utils/usage-view-helpers.js';
+import { _internals } from '../../src/utils/usage-view-helpers.js';
+
+const { buildTableRow } = _internals;
 
 describe('buildTableRow', () => {
   it('creates a <tr> with one <td> for a single column descriptor', () => {

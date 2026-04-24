@@ -15,7 +15,7 @@ import { getRelativePath, getBaseName } from './file-tree-helpers.js';
  * @param {{ clipboardWrite: (text: string) => void, fsCopy: (path: string) => void, showInFolder: (path: string) => void, fsTrash: (path: string) => void }} api - injected API methods
  * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
-export function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, deleteLabel, { clipboardWrite, fsCopy, showInFolder, fsTrash }) {
+function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, deleteLabel, { clipboardWrite, fsCopy, showInFolder, fsTrash }) {
   const displayName = getBaseName(entryPath);
   return [
     { label: 'Rename', action: () => promptRenameFn(entryPath, nameEl) },
@@ -81,3 +81,6 @@ export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expande
     ...buildCommonContextItems(dirPath, nameEl, rootCwd, promptRenameFn, `Delete folder "${dirName}" and all its contents?`, api),
   ];
 }
+
+/** @internal Exposed for unit tests only. */
+export const _internals = { buildCommonContextItems };

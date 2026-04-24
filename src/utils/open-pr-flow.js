@@ -17,7 +17,7 @@ import { _el } from './dom.js';
  *   git@github.com:owner/repo.git      → same
  *   ssh://git@github.com/owner/repo    → same
  */
-export function parseRemoteUrl(url) {
+function parseRemoteUrl(url) {
   if (!url) return null;
   const trimmed = url.trim().replace(/\.git$/, '');
   const patterns = [
@@ -33,7 +33,7 @@ export function parseRemoteUrl(url) {
 }
 
 /** Build a provider-specific URL for opening a new PR/MR from `branch`. */
-export function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
+function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
   const b = encodeURIComponent(branch);
   if (host.endsWith('github.com')) {
     const base = baseBranch ? `${encodeURIComponent(baseBranch)}...${b}` : b;
@@ -172,3 +172,6 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
 
   await api.openExternal(url);
 }
+
+/** @internal Exposed for unit tests only. */
+export const _internals = { parseRemoteUrl, buildPrUrl };

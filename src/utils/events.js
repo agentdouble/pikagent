@@ -64,8 +64,8 @@ export { TERMINAL_EVENTS } from './terminal-events.js';
 export { WORKSPACE_EVENTS } from './workspace-events.js';
 
 // Re-export typed subscription helpers
-export { onTerminalCwdChanged, onTerminalCreated, onTerminalRemoved, onTerminalExited } from './terminal-events.js';
-export { onLayoutChanged, onWorkspaceActivated, onWorkspaceOpenFromFolder, onWorkspaceCreateWorktree, onWorkspaceOpenPr, onFileOpen } from './workspace-events.js';
+export { onTerminalCwdChanged } from './terminal-events.js';
+export { onWorkspaceActivated, onFileOpen } from './workspace-events.js';
 
 // Re-export typed emission helpers
 export { emitTerminalCwdChanged, emitTerminalCreated, emitTerminalRemoved, emitTerminalExited } from './terminal-events.js';

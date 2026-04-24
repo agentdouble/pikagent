@@ -43,7 +43,7 @@ describe('DI: file-tree-context-menu', () => {
     }));
 
     const mod = await import('../../src/utils/file-tree-context-menu.js');
-    buildCommonContextItems = mod.buildCommonContextItems;
+    buildCommonContextItems = mod._internals.buildCommonContextItems;
     buildFileContextItems = mod.buildFileContextItems;
     buildDirContextItems = mod.buildDirContextItems;
   });
