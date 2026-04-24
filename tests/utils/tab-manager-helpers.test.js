@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH,
-  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, WorkspaceTab,
+  ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS,
+} from '../../src/utils/tab-constants.js';
+import { WorkspaceTab } from '../../src/utils/tab-types.js';
+import {
   clampPanelWidth, panelArrowState, reorderEntries,
   findCycleTarget, findColorGroupTarget,
 } from '../../src/utils/tab-manager-helpers.js';
