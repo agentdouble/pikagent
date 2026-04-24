@@ -1,4 +1,4 @@
-import { _el, createActionButton } from '../utils/dom.js';
+import { _el, createActionButton, buildChevronRow } from '../utils/dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, WATCH_PREFIX,
@@ -131,12 +131,8 @@ export class FileTree {
     section.sectionEl.replaceChildren();
 
     const contentEl = _el('div', { className: `file-tree-section-content${wasCollapsed ? ' collapsed' : ''}` });
-    const chevron = _el('span', {
-      className: 'file-tree-section-chevron',
-      textContent: wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED,
-    });
 
-    const header = this._buildSectionHeader(cwd, contentEl, chevron, section.expandedDirs);
+    const { header } = this._buildSectionHeader(cwd, contentEl, wasCollapsed, section.expandedDirs);
     section.sectionEl.append(header, contentEl);
 
     this._setupDropZone(header, cwd);
@@ -153,7 +149,7 @@ export class FileTree {
     }
   }
 
-  _buildSectionHeader(cwd, contentEl, chevron, expandedDirs) {
+  _buildSectionHeader(cwd, contentEl, wasCollapsed, expandedDirs) {
     const actionDispatcher = {
       newFile:     () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'file'),
       newFolder:   () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'folder'),
@@ -171,17 +167,22 @@ export class FileTree {
       }),
     );
 
-    const header = _el('div', {
-      className: 'file-tree-section-header',
-      onClick: () => {
-        const collapsed = contentEl.classList.toggle('collapsed');
-        chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
-      },
-    },
-      chevron,
-      _el('span', { className: 'file-tree-section-label', textContent: extractFolderName(cwd), title: cwd }),
-      _el('div', { className: 'file-tree-section-actions' }, ...actionBtns),
-    );
+    const actionsContainer = _el('div', { className: 'file-tree-section-actions' }, ...actionBtns);
+
+    const { chevron, name: labelEl, row: header } = buildChevronRow({
+      chevronClass: 'file-tree-section-chevron',
+      chevronText: wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED,
+      nameClass: 'file-tree-section-label',
+      name: extractFolderName(cwd),
+      containerClass: 'file-tree-section-header',
+      extraChildren: [actionsContainer],
+    });
+    labelEl.title = cwd;
+
+    header.addEventListener('click', () => {
+      const collapsed = contentEl.classList.toggle('collapsed');
+      chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
+    });
 
     attachContextMenu(header, () => buildDirContextItems(
       cwd, cwd, contentEl, 0, expandedDirs, null,
@@ -190,7 +191,7 @@ export class FileTree {
       this._contextMenuApi,
     ));
 
-    return header;
+    return { chevron, header };
   }
 
   // --- Context menu helpers ---
