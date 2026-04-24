@@ -24,6 +24,55 @@ function defaultWorktreePath(repoCwd, branch) {
   return `${repoCwd.replace(/\/$/, '')}/.worktrees/${segment}`;
 }
 
+/** Build the "new branch" text input. */
+function buildBranchInput() {
+  return _el('input', {
+    className: 'prompt-dialog-input', type: 'text', placeholder: 'feat/my-branch',
+  });
+}
+
+/** Build the base-branch <select> for "new branch" mode. */
+function buildBaseSelect(allBranches, currentBranch) {
+  const baseSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
+  for (const b of allBranches) {
+    const opt = _el('option', null, b);
+    opt.value = b;
+    if (b === currentBranch) opt.selected = true;
+    baseSelect.appendChild(opt);
+  }
+  return baseSelect;
+}
+
+/** Build the existing-branch <select> for "existing branch" mode. */
+function buildExistingSelect(existingBranches) {
+  const existingSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
+  for (const b of existingBranches) existingSelect.appendChild(_el('option', null, b));
+  if (!existingBranches.length) existingSelect.appendChild(_el('option', { disabled: true }, 'No other branches'));
+  existingSelect.style.display = 'none';
+  return existingSelect;
+}
+
+/** Build the mode-toggle buttons ("New branch" / "Existing branch"). */
+function buildModeButtons(onNew, onExisting) {
+  const btnNew = createActionButton({
+    text: 'New branch', cls: 'worktree-dialog-mode-btn active',
+    onClick: onNew,
+  });
+  const btnExisting = createActionButton({
+    text: 'Existing branch', cls: 'worktree-dialog-mode-btn',
+    onClick: onExisting,
+  });
+  return { btnNew, btnExisting };
+}
+
+/** Build the Cancel / Create action buttons row. */
+function buildActionButtons(cancel, confirm) {
+  return _el('div', 'prompt-dialog-btns',
+    createActionButton({ text: 'Cancel', cls: 'prompt-dialog-cancel', onClick: cancel }),
+    createActionButton({ text: 'Create', cls: 'prompt-dialog-confirm', onClick: confirm }),
+  );
+}
+
 /**
  * Show the worktree creation dialog.
  *
@@ -43,23 +92,10 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
     builder({ modal, cleanup, cancel }) {
       let mode = 'new';
 
-      const newInput = _el('input', {
-        className: 'prompt-dialog-input', type: 'text', placeholder: 'feat/my-branch',
-      });
-
-      const baseSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-      for (const b of allBranches) {
-        const opt = _el('option', null, b);
-        opt.value = b;
-        if (b === currentBranch) opt.selected = true;
-        baseSelect.appendChild(opt);
-      }
+      const newInput = buildBranchInput();
+      const baseSelect = buildBaseSelect(allBranches, currentBranch);
       const baseLabel = _el('label', 'worktree-dialog-sub-label', 'Base branch');
-
-      const existingSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-      for (const b of existingBranches) existingSelect.appendChild(_el('option', null, b));
-      if (!existingBranches.length) existingSelect.appendChild(_el('option', { disabled: true }, 'No other branches'));
-
+      const existingSelect = buildExistingSelect(existingBranches);
       const pathEl = _el('div', 'worktree-dialog-path');
 
       const updatePath = () => {
@@ -67,14 +103,10 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
         pathEl.textContent = branch ? defaultWorktreePath(repoCwd, branch) : '';
       };
 
-      const btnNew = createActionButton({
-        text: 'New branch', cls: 'worktree-dialog-mode-btn active',
-        onClick: () => setMode('new'),
-      });
-      const btnExisting = createActionButton({
-        text: 'Existing branch', cls: 'worktree-dialog-mode-btn',
-        onClick: () => setMode('existing'),
-      });
+      const { btnNew, btnExisting } = buildModeButtons(
+        () => setMode('new'),
+        () => setMode('existing'),
+      );
 
       function setMode(next) {
         mode = next;
@@ -107,8 +139,6 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
       setupKeyboardShortcuts(existingSelect, { onEnter: confirm, onEscape: cancel });
       setupKeyboardShortcuts(baseSelect, { onEnter: confirm, onEscape: cancel });
 
-      existingSelect.style.display = 'none';
-
       modal.append(
         _el('label', 'prompt-dialog-label', 'New worktree'),
         _el('div', 'worktree-dialog-mode-row', btnNew, btnExisting),
@@ -117,10 +147,7 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
         baseSelect,
         existingSelect,
         pathEl,
-        _el('div', 'prompt-dialog-btns',
-          createActionButton({ text: 'Cancel', cls: 'prompt-dialog-cancel', onClick: cancel }),
-          createActionButton({ text: 'Create', cls: 'prompt-dialog-confirm', onClick: confirm }),
-        ),
+        buildActionButtons(cancel, confirm),
       );
 
       return () => {
