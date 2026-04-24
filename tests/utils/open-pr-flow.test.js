@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseRemoteUrl, buildPrUrl } from '../../src/utils/open-pr-flow.js';
+import { _internals } from '../../src/utils/open-pr-flow.js';
+
+const { parseRemoteUrl, buildPrUrl } = _internals;
 
 describe('parseRemoteUrl', () => {
   it('parses HTTPS github URLs (with and without .git)', () => {

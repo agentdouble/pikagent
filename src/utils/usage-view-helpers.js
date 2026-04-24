@@ -43,7 +43,7 @@ function _td(text, attrs = {}) {
  * @param {Array<Node | { value: string|number, className?: string, style?: Record<string, string>, title?: string }>} columns
  * @returns {HTMLTableRowElement}
  */
-export function buildTableRow(columns) {
+function buildTableRow(columns) {
   const cells = columns.map((col) => {
     if (col instanceof Node) return col;
     const attrs = {};
@@ -153,6 +153,9 @@ function _tokenTabConfig(metrics) {
     ],
   };
 }
+
+/** @internal Exposed for unit tests only. */
+export const _internals = { buildTableRow };
 
 function _flowTabConfig(metrics) {
   const f = metrics.flow;
