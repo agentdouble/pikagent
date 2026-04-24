@@ -62,7 +62,7 @@ export async function initTabManager(deps) {
 // ── Bus listeners ──
 
 /**
- * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, getActiveTabId: () => string|null, configManager: { scheduleAutoSave: () => void }, createTab: (name: string, cwd: string) => import('./tab-manager-helpers.js').WorkspaceTab, renderTabBar: () => void, api: { gitBranch: (cwd: string) => Promise<string|null>, worktree: import('./worktree-flow.js').GitWorktreeApi, pr: import('./open-pr-flow.js').OpenPrApi } }} BusListenerDeps
+ * @typedef {{ tabs: Map<string, import('./tab-types.js').WorkspaceTab>, getActiveTabId: () => string|null, configManager: { scheduleAutoSave: () => void }, createTab: (name: string, cwd: string) => import('./tab-types.js').WorkspaceTab, renderTabBar: () => void, api: { gitBranch: (cwd: string) => Promise<string|null>, worktree: import('./worktree-flow.js').GitWorktreeApi, pr: import('./open-pr-flow.js').OpenPrApi } }} BusListenerDeps
  */
 
 /**

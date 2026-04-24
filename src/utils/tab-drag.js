@@ -8,7 +8,7 @@
  * @typedef {{ getTabElements: () => Map<string, HTMLElement>, reorderTab: (fromId: string, toId: string, before: boolean) => void }} TabDragDeps
  */
 
-import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
+import { DRAG_THRESHOLD } from './tab-constants.js';
 import { trackMouse, computeInsertionIndex } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────

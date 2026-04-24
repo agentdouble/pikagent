@@ -9,7 +9,7 @@ import { findCycleTarget, findColorGroupTarget } from './tab-manager-helpers.js'
 
 /**
  * Switch to the next tab in the cycle.
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
  * @param {string|null} activeTabId
  * @param {(id: string) => void} switchTo
  */
@@ -20,7 +20,7 @@ export function nextTab(tabs, activeTabId, switchTo) {
 
 /**
  * Switch to the previous tab in the cycle.
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
  * @param {string|null} activeTabId
  * @param {(id: string) => void} switchTo
  */
@@ -31,7 +31,7 @@ export function prevTab(tabs, activeTabId, switchTo) {
 
 /**
  * Navigate to the next tab in a given color group (round-robin).
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
  * @param {string|null} activeTabId
  * @param {string} colorGroupId
  * @param {(id: string) => void} switchTo
@@ -46,7 +46,7 @@ export function goToColorGroup(tabs, activeTabId, colorGroupId, switchTo) {
  * @param {string} direction
  * @param {string} sidebarMode
  * @param {object|null} boardView
- * @param {() => import('./tab-manager-helpers.js').WorkspaceTab|undefined} getActiveTab
+ * @param {() => import('./tab-types.js').WorkspaceTab|undefined} getActiveTab
  */
 export function focusDirection(direction, sidebarMode, boardView, getActiveTab) {
   if (sidebarMode === 'board' && boardView) {
@@ -58,7 +58,7 @@ export function focusDirection(direction, sidebarMode, boardView, getActiveTab) 
 
 /**
  * Set or clear a tab's color group.
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
  * @param {string} id
  * @param {string|null} colorGroupId
  * @param {() => void} renderTabBar
@@ -74,7 +74,7 @@ export function setTabColorGroup(tabs, id, colorGroupId, renderTabBar, configMan
 
 /**
  * Toggle the noShortcut flag on a tab.
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
  * @param {string} id
  * @param {() => void} renderTabBar
  * @param {{ scheduleAutoSave: () => void }} configManager

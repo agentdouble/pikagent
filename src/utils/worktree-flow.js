@@ -35,7 +35,7 @@ function _availableBranches(allBranches, worktrees) {
 /**
  * Drive the "create a worktree from a repo folder" flow end-to-end.
  *
- * @param {{ repoCwd: string, api: GitWorktreeApi, createTab: (name: string, cwd: string) => import('./tab-manager-helpers.js').WorkspaceTab }} opts
+ * @param {{ repoCwd: string, api: GitWorktreeApi, createTab: (name: string, cwd: string) => import('./tab-types.js').WorkspaceTab }} opts
  * @returns {Promise<void>}
  */
 export async function createWorktreeFlow({ repoCwd, api, createTab }) {

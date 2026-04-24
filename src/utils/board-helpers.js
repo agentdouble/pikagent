@@ -65,7 +65,7 @@ export function resolveCardStatus(dataBytes) {
 
 /**
  * Get the tab name for a terminal ID.
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs - tabManager.tabs
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs - tabManager.tabs
  * @param {string} termId
  * @returns {string|null}
  */

@@ -5,7 +5,7 @@
  * Resize logic lives in workspace-resize.js.
  * Serialization logic lives in workspace-serializer.js.
  *
- * @typedef {{ workspaceContainer: HTMLElement, getActiveTabId: () => string|null, getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, scheduleAutoSave: () => void }} RenderWorkspaceDeps
+ * @typedef {{ workspaceContainer: HTMLElement, getActiveTabId: () => string|null, getActiveTab: () => import('./tab-types.js').WorkspaceTab|null, scheduleAutoSave: () => void }} RenderWorkspaceDeps
  *
  * Tab disposal logic lives in workspace-cleanup.js.
  */
@@ -13,7 +13,7 @@
 import { getComponent } from './component-registry.js';
 import { emitWorkspaceActivated } from './workspace-events.js';
 import { _el } from './dom.js';
-import { WORKSPACE_PANELS } from './tab-manager-helpers.js';
+import { WORKSPACE_PANELS } from './tab-constants.js';
 import {
   buildSidePanel, buildCenterPanel,
   capturePanelWidths, restorePanelSizes,
@@ -27,7 +27,7 @@ import {
 /**
  * Instantiate tab sub-components and restore saved state if present.
  *
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} layout
  * @param {{ left: { content: HTMLElement, panel: HTMLElement }, right: { content: HTMLElement, panel: HTMLElement } }} sides
  * @param {HTMLElement} termContainer
@@ -61,7 +61,7 @@ function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId) {
 /**
  * Render the full workspace layout for a tab.
  * @param {RenderWorkspaceDeps} deps
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {{ gitBranch: (cwd: string) => Promise<string> }} api - injected API methods
  */
 export async function renderWorkspace({ workspaceContainer, getActiveTabId, getActiveTab, scheduleAutoSave }, tab, { gitBranch }) {
@@ -99,7 +99,7 @@ export async function renderWorkspace({ workspaceContainer, getActiveTabId, getA
 /**
  * Re-attach a tab's existing layout element to the workspace container.
  * @param {{ workspaceContainer: HTMLElement }} deps
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  */
 export function reattachLayout({ workspaceContainer }, tab) {
   workspaceContainer.replaceChildren();
@@ -115,7 +115,7 @@ export function reattachLayout({ workspaceContainer }, tab) {
 /**
  * Synchronize a tab's file tree with its terminal panel, removing stale
  * entries and updating roots for all active terminals.
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  */
 export function syncFileTree(tab) {
   if (tab.fileTree && tab.terminalPanel) {

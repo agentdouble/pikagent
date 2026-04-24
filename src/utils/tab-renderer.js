@@ -5,11 +5,11 @@
  * Functions receive explicit dependency objects instead of the full
  * TabManager instance.
  *
- * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
+ * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-types.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
  */
 import { _el, buildChevronRow } from './dom.js';
 import { startInlineRename } from './form-helpers.js';
-import { COLOR_GROUPS } from './tab-manager-helpers.js';
+import { COLOR_GROUPS } from './tab-constants.js';
 import { setupTabDrag } from './tab-drag.js';
 import { attachContextMenu } from './context-menu.js';
 import { onClickStopped } from './event-helpers.js';
@@ -71,7 +71,7 @@ export function createTabElement(config) {
  * Build a single tab DOM element.
  * @param {TabElementDeps} deps
  * @param {string} id
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  */
 export function buildTabElement(deps, id, tab) {
   const isActive = id === deps.activeTabId;
@@ -120,7 +120,7 @@ export function buildTabElement(deps, id, tab) {
  * @param {TabElementDeps} deps
  * @param {HTMLElement} tabEl
  * @param {string} id
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} nameEl
  */
 function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
@@ -149,7 +149,7 @@ function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
 
 /**
  * Inline rename a tab.
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} nameEl
  * @param {() => void} onCommit - callback after successful rename (re-render + save)
  * @param {() => void} onCancel - callback on cancel (re-render only, no save)
