@@ -9,7 +9,7 @@
  * @see events.js (backward-compat re-exports)
  */
 
-import { bus } from './events.js';
+import { bus } from './event-bus.js';
 
 // ── Event constants ─────────────────────────────────────────────────
 
