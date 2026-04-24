@@ -33,7 +33,6 @@ describe('DI: file-tree-context-menu', () => {
   let buildCommonContextItems, buildFileContextItems, buildDirContextItems;
 
   beforeAll(async () => {
-    vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
     vi.doMock('../../src/utils/file-tree-helpers.js', () => ({
       getRelativePath: (p, root) => p.replace(root + '/', ''),
       getBaseName: (p) => p.split('/').filter(Boolean).pop() || '/',
@@ -121,7 +120,6 @@ describe('DI: file-tree-drop handleFileDrop', () => {
       _el: () => ({}),
       setupInlineInput: vi.fn(),
     }));
-    vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
     vi.doMock('../../src/utils/file-tree-helpers.js', () => ({
       getBaseName: (p) => p.split('/').filter(Boolean).pop() || '/',
       extractFolderName: (p) => p.split('/').filter(Boolean).pop() || '/',
