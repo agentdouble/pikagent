@@ -1,45 +1,23 @@
 /**
- * Centralized event bus and backward-compatible re-exports.
+ * Backward-compatible re-exports and generic helpers.
  *
- * Domain-specific events now live in their own modules:
+ * The EventBus class and singleton instance now live in event-bus.js
+ * to break the circular dependency between this module and the domain
+ * event modules (terminal-events.js, workspace-events.js).
+ *
+ * Domain-specific events live in their own modules:
  * - terminal-events.js  — terminal lifecycle & state
  * - workspace-events.js — layout, workspace lifecycle, file & user actions
  *
- * This file keeps the EventBus class, the generic subscribe/unsubscribe
- * helpers, and re-exports all constants and typed helpers so that existing
- * imports from './events.js' continue to work.
+ * This file re-exports the bus, the generic subscribe/unsubscribe helpers,
+ * and all constants and typed helpers so that existing imports from
+ * './events.js' continue to work.
  *
  * New code should import directly from the domain module instead.
  */
 
-/** @internal */
-class EventBus {
-  constructor() {
-    this.listeners = new Map();
-  }
-
-  on(event, callback) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event).add(callback);
-    return () => this.off(event, callback);
-  }
-
-  off(event, callback) {
-    const set = this.listeners.get(event);
-    if (set) set.delete(callback);
-  }
-
-  emit(event, data) {
-    const set = this.listeners.get(event);
-    if (set) {
-      for (const cb of set) cb(data);
-    }
-  }
-}
-
-export const bus = new EventBus();
+import { bus } from './event-bus.js';
+export { bus };
 
 /**
  * Register an array of [event, handler] pairs on the bus.
