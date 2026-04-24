@@ -1,18 +1,15 @@
-const fsp = require('fs/promises');
-const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
-const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { readJson, writeJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
 const { Cache } = require('./cache');
-const { createLogger, trySafe } = require('./logger');
+const { trySafe } = require('./logger');
+const { JsonStore } = require('./json-store');
 
-const log = createLogger('config-manager');
-const ensureDir = ensureDirOnce(CONFIG_DIR);
+const store = new JsonStore(CONFIG_DIR, 'config-manager');
 const _metaCache = new Cache();
 
-function configPath(name) {
-  return path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
-}
+// Override the default path builder to apply sanitizeName
+store.path = (name) => require('path').join(CONFIG_DIR, `${sanitizeName(name)}.json`);
 
 async function readMeta() {
   const cached = _metaCache.get();
@@ -23,37 +20,36 @@ async function readMeta() {
 }
 
 async function writeMeta(meta) {
-  await ensureDir();
+  await store.ensureDir();
   _metaCache.set(meta);
   await writeJson(META_FILE, meta);
 }
 
 async function save(name, data) {
-  await ensureDir();
-  const existing = await readJson(configPath(name));
+  await store.ensureDir();
+  const existing = await store.get(name);
   const config = buildConfigRecord(name, data, existing);
-  await writeJson(configPath(name), config);
+  await store.save(name, config);
   return config;
 }
 
 async function load(name) {
-  return readJson(configPath(name));
+  return store.get(name);
 }
 
 async function list() {
-  await ensureDir();
   const meta = await readMeta();
   return trySafe(
-    async () => formatConfigList(await readDirJson(CONFIG_DIR), meta.defaultConfig),
+    async () => formatConfigList(await store.list(), meta.defaultConfig),
     [],
-    { log, label: 'list' },
+    { log: store.log, label: 'list' },
   );
 }
 
 async function remove(name) {
   return trySafe(
     async () => {
-      await fsp.unlink(configPath(name));
+      await require('fs/promises').unlink(store.path(name));
       const meta = await readMeta();
       if (meta.defaultConfig === name) {
         meta.defaultConfig = null;
@@ -62,7 +58,7 @@ async function remove(name) {
       return true;
     },
     false,
-    { log, label: 'remove' },
+    { log: store.log, label: 'remove' },
   );
 }
 
