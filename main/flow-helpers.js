@@ -2,6 +2,7 @@ const path = require('path');
 const { FLOWS_DIR, LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
 const { getLastRun } = require('../shared/flow-utils');
+const { AGENT_IDS } = require('../shared/agent-registry');
 
 const MS_PER_HOUR = 3_600_000;
 const SCHEDULER_INTERVAL_MS = 60_000;
@@ -18,9 +19,9 @@ function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
 }
 
-/* ── Agent command config (single source of truth) ─────────────── */
+/* ── Agent command config ───────────────────────────────────────── */
 
-const AGENT_CONFIG = {
+const _AGENT_CMD_OVERRIDES = {
   claude: {
     permModes: ['--permission-mode auto', '--dangerously-skip-permissions'],
     flags: '--output-format stream-json',
@@ -34,6 +35,11 @@ const AGENT_CONFIG = {
     promptPrefix: '-p',
   },
 };
+
+/** Derived from the shared agent registry + per-agent command overrides. */
+const AGENT_CONFIG = Object.fromEntries(
+  AGENT_IDS.map((id) => [id, _AGENT_CMD_OVERRIDES[id] || {}]),
+);
 
 function _buildAgentCmd(agent, prompt, opts = {}) {
   const cfg = AGENT_CONFIG[agent] || AGENT_CONFIG.claude;
