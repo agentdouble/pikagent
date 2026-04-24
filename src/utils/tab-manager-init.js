@@ -6,15 +6,13 @@
  * it can import from fewer modules (issue #130).
  */
 
-import { subscribeBus } from './events.js';
-import { TERMINAL_EVENTS } from './terminal-events.js';
-import { WORKSPACE_EVENTS } from './workspace-events.js';
+import { onTerminalCwdChanged as onTermCwdEvent, onTerminalCreated, onTerminalRemoved } from './terminal-events.js';
+import { onLayoutChanged, onWorkspaceOpenFromFolder, onWorkspaceCreateWorktree, onWorkspaceOpenPr } from './workspace-events.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
 import { createWorktreeFlow } from './worktree-flow.js';
 import { openPrFlow } from './open-pr-flow.js';
 
-export { unsubscribeBus } from './events.js';
 export { getComponent } from './component-registry.js';
 
 // ── Initialization ──
@@ -67,57 +65,50 @@ export async function initTabManager(deps) {
 
 /**
  * Register bus event listeners for the tab manager.
- * Returns the subscription handle for cleanup.
+ * Returns an array of unsubscribe functions for cleanup.
  *
  * @param {BusListenerDeps} deps
- * @returns {Array<() => void>} subscription handle
+ * @returns {Array<() => void>} unsubscribe functions
  */
 export function setupBusListeners(deps) {
-  return subscribeBus([
-    /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
-    [TERMINAL_EVENTS.CWD_CHANGED, ({ id, cwd }) => {
+  return [
+    onTermCwdEvent(({ id, cwd }) => {
       onTerminalCwdChanged(deps.tabs, deps.getActiveTabId(), id, cwd, {
         gitBranch: deps.api.gitBranch,
         renderTabBar: deps.renderTabBar,
       });
       deps.configManager.scheduleAutoSave();
-    }],
-    /** @listens terminal:created {{ id: string, cwd: string }} */
-    [TERMINAL_EVENTS.CREATED, ({ id, cwd }) => {
+    }),
+    onTerminalCreated(({ id, cwd }) => {
       const tab = findTabForTerminal(deps.tabs, id)?.tab ?? deps.tabs.get(deps.getActiveTabId());
       if (tab?.fileTree) tab.fileTree.setTerminalRoot(id, cwd);
       deps.configManager.scheduleAutoSave();
-    }],
-    /** @listens terminal:removed {{ id: string }} */
-    [TERMINAL_EVENTS.REMOVED, ({ id }) => {
+    }),
+    onTerminalRemoved(({ id }) => {
       for (const [, tab] of deps.tabs) {
         if (tab.fileTree) tab.fileTree.removeTerminal(id);
       }
       deps.configManager.scheduleAutoSave();
-    }],
-    /** @listens layout:changed {undefined} */
-    [WORKSPACE_EVENTS.LAYOUT_CHANGED, () => deps.configManager.scheduleAutoSave()],
-    /** @listens workspace:openFromFolder {{ cwd: string }} */
-    [WORKSPACE_EVENTS.OPEN_FROM_FOLDER, ({ cwd }) => {
+    }),
+    onLayoutChanged(() => deps.configManager.scheduleAutoSave()),
+    onWorkspaceOpenFromFolder(({ cwd }) => {
       const folderName = extractFolderName(cwd);
       deps.createTab(folderName, cwd);
-    }],
-    /** @listens workspace:createWorktree {{ repoCwd: string }} */
-    [WORKSPACE_EVENTS.CREATE_WORKTREE, ({ repoCwd }) => {
+    }),
+    onWorkspaceCreateWorktree(({ repoCwd }) => {
       createWorktreeFlow({
         repoCwd,
         api: deps.api.worktree,
         createTab: deps.createTab,
       }).catch((e) => console.warn('createWorktreeFlow failed:', e));
-    }],
-    /** @listens workspace:openPr {{ repoCwd: string }} */
-    [WORKSPACE_EVENTS.OPEN_PR, ({ repoCwd }) => {
+    }),
+    onWorkspaceOpenPr(({ repoCwd }) => {
       const tab = _findTabByCwd(deps.tabs, repoCwd);
       const baseBranch = tab?.worktree?.baseBranch ?? null;
       openPrFlow({ cwd: repoCwd, baseBranch, api: deps.api.pr })
         .catch((e) => console.warn('openPrFlow failed:', e));
-    }],
-  ]);
+    }),
+  ];
 }
 
 function _findTabByCwd(tabs, cwd) {

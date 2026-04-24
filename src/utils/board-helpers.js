@@ -4,7 +4,6 @@
  */
 
 import { findTabForTerminal } from './tab-lifecycle.js';
-import { TERMINAL_EVENTS } from './terminal-events.js';
 export { findTabForTerminal };
 
 // Minimum bytes of meaningful output per poll interval to consider agent "working".
@@ -23,10 +22,6 @@ export const STATUS_CONFIG = {
 
 /** All card-level CSS classes derived from STATUS_CONFIG — single source of truth for class removal. */
 export const ALL_CARD_CLASSES = Object.values(STATUS_CONFIG).map(c => c.cardClass);
-
-export const EVT_CREATED = TERMINAL_EVENTS.CREATED;
-export const EVT_REMOVED = TERMINAL_EVENTS.REMOVED;
-export const EVT_EXITED = TERMINAL_EVENTS.EXITED;
 
 /** Terminal options used by board card mini-terminals. */
 export const BOARD_TERMINAL_OPTS = {
