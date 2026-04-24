@@ -1,4 +1,4 @@
-import { COLOR_GROUPS } from './tab-manager-helpers.js';
+import { COLOR_GROUPS } from './tab-constants.js';
 
 // Derive color-group shortcut metadata once from COLOR_GROUPS
 const COLOR_SHORTCUTS = COLOR_GROUPS.map((cg) => ({

@@ -3,16 +3,13 @@
  *
  * Handles panel resize interactions and panel toggle (collapse/expand).
  *
- * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, scheduleAutoSave: () => void }} PanelInteractionDeps
+ * @typedef {{ getActiveTab: () => import('./tab-types.js').WorkspaceTab|null, scheduleAutoSave: () => void }} PanelInteractionDeps
  */
 
 import { _el } from './dom.js';
 import { trackMouse } from './drag-helpers.js';
-import {
-  PANEL_MIN_WIDTH, FIT_DELAY_MS,
-  WORKSPACE_PANELS,
-  clampPanelWidth, panelArrowState,
-} from './tab-manager-helpers.js';
+import { PANEL_MIN_WIDTH, FIT_DELAY_MS, WORKSPACE_PANELS } from './tab-constants.js';
+import { clampPanelWidth, panelArrowState } from './tab-manager-helpers.js';
 
 // ── Panel building ──
 
@@ -38,7 +35,7 @@ export function buildSidePanel(deps, { side, contentCls, title }) {
 /**
  * Build the center panel with path info, branch badge, and terminal area.
  * @param {PanelInteractionDeps} deps
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} leftPanel
  * @param {HTMLElement} rightPanel
  */
@@ -131,7 +128,7 @@ function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arrowEl) {
 
 /**
  * Snapshot current panel widths and collapsed state into `tab._panelWidths`.
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  */
 export function capturePanelWidths(tab) {
   if (!tab.layoutElement) return;
