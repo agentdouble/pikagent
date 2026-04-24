@@ -39,30 +39,48 @@ export function reorderEntries(entries, fromId, toId, before) {
   return copy;
 }
 
+/**
+ * Walk an array starting from `startIdx`, stepping by `step` (wrapping around),
+ * and return the first element that satisfies `predicate`.
+ *
+ * Shared by findCycleTarget and findColorGroupTarget to eliminate the duplicated
+ * round-robin loop pattern.
+ *
+ * @template T
+ * @param {T[]} items      — the array to walk
+ * @param {number} startIdx — starting index (the current / active position)
+ * @param {number} step     — direction: +1 or -1
+ * @param {(item: T) => boolean} predicate — return true for a match
+ * @returns {T|null} the first matching item, or null if none found
+ */
+export function findCycleMatch(items, startIdx, step, predicate) {
+  const len = items.length;
+  for (let i = 1; i < len; i++) {
+    const item = items[(startIdx + step * i + len) % len];
+    if (predicate(item)) return item;
+  }
+  return null;
+}
+
 /** Find the next tab id to cycle to (skipping noShortcut and mismatched color groups). */
 export function findCycleTarget(tabs, activeTabId, step) {
   const ids = Array.from(tabs.keys());
   if (ids.length < 2) return null;
   const idx = ids.indexOf(activeTabId);
   const activeColor = tabs.get(activeTabId)?.colorGroup ?? null;
-  for (let i = 1; i < ids.length; i++) {
-    const candidate = ids[(idx + step * i + ids.length) % ids.length];
+  return findCycleMatch(ids, idx, step, (candidate) => {
     const tab = tabs.get(candidate);
-    if (tab.noShortcut) continue;
-    if ((tab.colorGroup ?? null) !== activeColor) continue;
-    return candidate;
-  }
-  return null;
+    if (tab.noShortcut) return false;
+    return (tab.colorGroup ?? null) === activeColor;
+  });
 }
 
 /** Find the next tab in a given color group (round-robin from current position). */
 export function findColorGroupTarget(tabs, activeTabId, colorGroupId) {
   const ids = Array.from(tabs.keys());
   const currentIdx = ids.indexOf(activeTabId);
-  for (let i = 1; i <= ids.length; i++) {
-    const candidate = ids[(currentIdx + i) % ids.length];
+  return findCycleMatch(ids, currentIdx, 1, (candidate) => {
     const tab = tabs.get(candidate);
-    if (tab.colorGroup === colorGroupId && !tab.noShortcut) return candidate;
-  }
-  return null;
+    return tab.colorGroup === colorGroupId && !tab.noShortcut;
+  });
 }

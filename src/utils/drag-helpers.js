@@ -45,6 +45,37 @@ export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = 
 }
 
 /**
+ * Build dragstart / dragend handlers that toggle a CSS class on the element
+ * and set / clear a key on a shared state object.
+ *
+ * This extracts the repeated pattern found in flow-card-setup and tab-drag:
+ *   dragstart → element.classList.add(dragClass), stateObj[stateKey] = value
+ *   dragend   → element.classList.remove(dragClass), stateObj[stateKey] = null
+ *
+ * @param {HTMLElement} element   — the draggable element
+ * @param {string} dragClass     — CSS class toggled during the drag
+ * @param {Record<string, unknown>} stateObj — mutable state object
+ * @param {string} stateKey      — key to set on stateObj
+ * @param {unknown} value        — value written at dragstart (cleared to null at dragend)
+ * @param {{ onStart?: (e: DragEvent) => void, onEnd?: (e: DragEvent) => void }} [extras]
+ *        — optional extra work to run after the class/state bookkeeping
+ * @returns {{ onDragStart: (e: DragEvent) => void, onDragEnd: (e: DragEvent) => void }}
+ */
+export function setupSimpleDragState(element, dragClass, stateObj, stateKey, value, { onStart, onEnd } = {}) {
+  const onDragStart = (e) => {
+    stateObj[stateKey] = value;
+    element.classList.add(dragClass);
+    if (onStart) onStart(e);
+  };
+  const onDragEnd = (e) => {
+    element.classList.remove(dragClass);
+    stateObj[stateKey] = null;
+    if (onEnd) onEnd(e);
+  };
+  return { onDragStart, onDragEnd };
+}
+
+/**
  * Compute the insertion index for a drag-and-drop operation by comparing
  * the cursor position to the midpoints of the container's child elements.
  *

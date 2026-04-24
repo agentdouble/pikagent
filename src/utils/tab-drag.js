@@ -9,7 +9,7 @@
  */
 
 import { DRAG_THRESHOLD } from './tab-constants.js';
-import { trackMouse, computeInsertionIndex } from './drag-helpers.js';
+import { trackMouse, computeInsertionIndex, setupSimpleDragState } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
@@ -116,17 +116,10 @@ function initDragState() {
 }
 
 /**
- * Apply visual drag-start effects: add CSS class and create a floating
- * ghost clone of the tab element.
- *
- * Body cursor/userSelect are managed by trackMouse() — not set here.
- *
+ * Create a floating ghost clone of the tab element.
  * @returns {HTMLElement} the ghost element appended to document.body
  */
-function handleDragStart(tabEl) {
-  tabEl.classList.add('tab-dragging');
-
-  // Create floating ghost clone
+function createTabGhost(tabEl) {
   const ghost = tabEl.cloneNode(true);
   ghost.className = 'tab tab-ghost';
   if (tabEl.classList.contains('active')) ghost.classList.add('active');
@@ -135,32 +128,45 @@ function handleDragStart(tabEl) {
   ghost.style.height = `${r.height}px`;
   ghost.style.top = `${r.top}px`;
   document.body.appendChild(ghost);
-
   return ghost;
 }
 
 /**
- * Clean up after a drag operation: remove visual effects, commit the
- * reorder if the tab was dropped on a valid target, and reset state.
+ * Build the paired start / end helpers for a tab drag using the shared
+ * setupSimpleDragState pattern (class toggle + state bookkeeping).
  *
- * Body cursor/userSelect are cleared by trackMouse() — not here.
+ * Body cursor/userSelect are managed by trackMouse() — not set here.
  *
  * @param {TabDragDeps} deps
  * @param {HTMLElement} tabEl
- * @param {HTMLElement|null} ghost
  * @param {{ dropTargetId: string|null, dropBefore: boolean|null }} state
  * @param {string} tabId
+ * @returns {{ startDrag: () => HTMLElement, endDrag: (ghost: HTMLElement|null) => void }}
  */
-function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId) {
-  tabEl.classList.remove('tab-dragging');
-  if (ghost) { ghost.remove(); }
-  clearTabShifts(getTabElements);
+function buildTabDragHandlers(deps, tabEl, state, tabId) {
+  const { getTabElements, reorderTab } = deps;
 
-  if (state.dropTargetId && state.dropTargetId !== tabId) {
-    reorderTab(tabId, state.dropTargetId, state.dropBefore);
-  }
-  state.dropTargetId = null;
-  state.dropBefore = null;
+  const { onDragStart, onDragEnd } = setupSimpleDragState(
+    tabEl, 'tab-dragging', state, 'dropTargetId', null, {
+      onEnd: () => { state.dropBefore = null; },
+    },
+  );
+
+  return {
+    startDrag() {
+      onDragStart(/** @type {any} */ ({}));
+      return createTabGhost(tabEl);
+    },
+    endDrag(ghost) {
+      if (ghost) { ghost.remove(); }
+      clearTabShifts(getTabElements);
+
+      if (state.dropTargetId && state.dropTargetId !== tabId) {
+        reorderTab(tabId, state.dropTargetId, state.dropBefore);
+      }
+      onDragEnd(/** @type {any} */ ({}));
+    },
+  };
 }
 
 // ── Public API ──────────────────────────────────────────────────────
@@ -170,8 +176,9 @@ function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabI
  * @internal
  */
 function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
-  const { getTabElements, reorderTab } = deps;
-  ctx.ghost = handleDragStart(tabEl);
+  const { getTabElements } = deps;
+  const { startDrag, endDrag } = buildTabDragHandlers(deps, tabEl, state, tabId);
+  ctx.ghost = startDrag();
   ctx.ghost.style.left = `${ev.clientX - ctx.offsetX}px`;
   updateTabDropTarget(getTabElements, state, ev.clientX, tabId);
 
@@ -181,7 +188,7 @@ function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
       updateTabDropTarget(getTabElements, state, mv.clientX, tabId);
     },
     () => {
-      handleDragEnd(deps, tabEl, ctx.ghost, state, tabId);
+      endDrag(ctx.ghost);
       ctx.ghost = null;
     },
     { bodyClass: 'dragging' },
