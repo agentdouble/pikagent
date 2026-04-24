@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs/promises');
 const { CONFIG_DIR, META_FILE } = require('./paths');
 const { readJson, writeJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
@@ -9,7 +11,7 @@ const store = new JsonStore(CONFIG_DIR, 'config-manager');
 const _metaCache = new Cache();
 
 // Override the default path builder to apply sanitizeName
-store.path = (name) => require('path').join(CONFIG_DIR, `${sanitizeName(name)}.json`);
+store.path = (name) => path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
 
 async function readMeta() {
   const cached = _metaCache.get();
@@ -49,7 +51,7 @@ async function list() {
 async function remove(name) {
   return trySafe(
     async () => {
-      await require('fs/promises').unlink(store.path(name));
+      await fs.unlink(store.path(name));
       const meta = await readMeta();
       if (meta.defaultConfig === name) {
         meta.defaultConfig = null;
