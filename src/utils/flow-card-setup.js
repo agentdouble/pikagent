@@ -13,6 +13,7 @@ import { getLastRun, toggleInSet } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-category-renderer.js';
 import { createCardHeader } from './flow-card-renderer.js';
 import { onDragEvents } from './event-helpers.js';
+import { setupSimpleDragState } from './drag-helpers.js';
 
 /**
  * Attach dragstart / dragend handlers to a flow card element.
@@ -23,21 +24,20 @@ import { onDragEvents } from './event-helpers.js';
  * @param {{ flowId: string|null, catId: string|null }} dragState - mutable drag state object
  */
 export function setupCardDrag(card, flowId, catId, dragState) {
-  onDragEvents(card, {
-    onDragStart: (e) => {
-      dragState.flowId = flowId;
-      dragState.catId = catId;
-      card.classList.add('flow-dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', flowId);
+  const { onDragStart: startFlow, onDragEnd: endFlow } = setupSimpleDragState(
+    card, 'flow-dragging', dragState, 'flowId', flowId, {
+      onStart: (e) => {
+        dragState.catId = catId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', flowId);
+      },
+      onEnd: () => {
+        dragState.catId = null;
+        cleanupAllDragState();
+      },
     },
-    onDragEnd: () => {
-      card.classList.remove('flow-dragging');
-      dragState.flowId = null;
-      dragState.catId = null;
-      cleanupAllDragState();
-    },
-  });
+  );
+  onDragEvents(card, { onDragStart: startFlow, onDragEnd: endFlow });
 }
 
 /**
