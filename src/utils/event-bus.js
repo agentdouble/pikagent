@@ -1,10 +1,6 @@
 /**
  * Singleton event bus instance.
  *
- * Extracted from events.js to break the circular dependency:
- *   events.js → terminal-events.js → events.js
- *   events.js → workspace-events.js → events.js
- *
  * This module has zero imports and can safely be consumed by any event module.
  *
  * @module event-bus

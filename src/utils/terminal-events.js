@@ -5,7 +5,6 @@
  * so that the implicit event contracts are discoverable and traceable.
  *
  * @module terminal-events
- * @see events.js (backward-compat re-exports)
  */
 
 import { bus } from './event-bus.js';
