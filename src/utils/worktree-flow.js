@@ -8,7 +8,7 @@
  */
 
 import { showWorktreeDialog } from './worktree-dialog.js';
-import { showConfirmDialog } from './dom-dialogs.js';
+import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
 import { _el } from './dom.js';
 
 /**
@@ -41,10 +41,7 @@ function _availableBranches(allBranches, worktrees) {
 export async function createWorktreeFlow({ repoCwd, api, createTab }) {
   const isRepo = await api.isRepo(repoCwd);
   if (!isRepo) {
-    await showConfirmDialog(
-      _el('p', null, 'This folder is not a git repository. Initialize it with ', _el('code', null, 'git init'), ' first.'),
-      { confirmLabel: 'OK', cancelLabel: 'Close' },
-    );
+    await showErrorAlert('This folder is not a git repository. Run ', 'git init');
     return;
   }
 
@@ -72,10 +69,7 @@ export async function createWorktreeFlow({ repoCwd, api, createTab }) {
   });
 
   if (!result?.ok) {
-    await showConfirmDialog(
-      _el('p', null, 'Worktree creation failed: ', _el('code', null, result?.error || 'unknown error')),
-      { confirmLabel: 'OK', cancelLabel: 'Close' },
-    );
+    await showErrorAlert('Worktree creation failed: ', result?.error || 'unknown error');
     return;
   }
 
@@ -134,9 +128,6 @@ export async function maybeRemoveWorktree(worktree, tabName, api) {
   }
 
   if (!result?.ok) {
-    await showConfirmDialog(
-      _el('p', null, 'Could not remove worktree: ', _el('code', null, result?.error || 'unknown error')),
-      { confirmLabel: 'OK', cancelLabel: 'Close' },
-    );
+    await showErrorAlert('Could not remove worktree: ', result?.error || 'unknown error');
   }
 }
