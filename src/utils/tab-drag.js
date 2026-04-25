@@ -154,7 +154,7 @@ function buildTabDragHandlers(deps, tabEl, state, tabId) {
 
   return {
     startDrag() {
-      onDragStart(/** @type {unknown} */ ({}));
+      onDragStart();
       return createTabGhost(tabEl);
     },
     endDrag(ghost) {
@@ -164,7 +164,7 @@ function buildTabDragHandlers(deps, tabEl, state, tabId) {
       if (state.dropTargetId && state.dropTargetId !== tabId) {
         reorderTab(tabId, state.dropTargetId, state.dropBefore);
       }
-      onDragEnd(/** @type {unknown} */ ({}));
+      onDragEnd();
     },
   };
 }
