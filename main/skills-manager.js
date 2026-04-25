@@ -3,14 +3,14 @@ const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { BASE_DIR } = require('./paths');
-const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
-const { createLogger, trySafe } = require('./logger');
+const { readJson, writeJson } = require('./fs-utils');
+const { trySafe } = require('./logger');
+const { JsonStore } = require('./json-store');
 
-const log = createLogger('skills-manager');
+const store = new JsonStore(BASE_DIR, 'skills-manager');
 
 const DEFAULT_SKILLS_DIR = path.join(os.homedir(), '.claude', 'skills');
 const SETTINGS_FILE = path.join(BASE_DIR, 'skills-settings.json');
-const ensureBaseDir = ensureDirOnce(BASE_DIR);
 
 let _rootCache = null;
 
@@ -35,7 +35,7 @@ async function _loadRoot() {
 }
 
 async function _saveRoot(newRoot) {
-  await ensureBaseDir();
+  await store.ensureDir();
   await writeJson(SETTINGS_FILE, { root: newRoot });
   _rootCache = newRoot;
 }
@@ -56,7 +56,7 @@ async function _readSkillDir(rootDir, skillName) {
       path: skillPath,
       source: 'user',
     };
-  }, null, { log, label: 'readSkillDir' });
+  }, null, { log: store.log, label: 'readSkillDir' });
 }
 
 async function list() {
@@ -66,7 +66,7 @@ async function list() {
     const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     const skills = await Promise.all(dirs.map((name) => _readSkillDir(root, name)));
     return skills.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
-  }, [], { log, label: 'list' });
+  }, [], { log: store.log, label: 'list' });
 }
 
 async function read(filePath) {
@@ -74,7 +74,7 @@ async function read(filePath) {
   return trySafe(
     () => fsp.readFile(filePath, 'utf-8'),
     null,
-    { log, label: 'read' },
+    { log: store.log, label: 'read' },
   );
 }
 
@@ -84,7 +84,7 @@ async function write({ filePath, content }) {
     await fsp.mkdir(path.dirname(filePath), { recursive: true });
     await fsp.writeFile(filePath, content, 'utf-8');
     return { success: true };
-  }, { success: false }, { log, label: 'write' });
+  }, { success: false }, { log: store.log, label: 'write' });
 }
 
 async function create({ id, description }) {
@@ -103,7 +103,7 @@ async function create({ id, description }) {
     const body = `---\nname: ${safeId}\ndescription: ${desc}\n---\n\n# ${safeId}\n\nDécris ici ce que fait ce skill.\n`;
     await fsp.writeFile(filePath, body, 'utf-8');
     return { success: true, id: safeId, path: filePath };
-  }, { success: false }, { log, label: 'create' });
+  }, { success: false }, { log: store.log, label: 'create' });
 }
 
 async function remove(id) {
@@ -115,7 +115,7 @@ async function remove(id) {
   return trySafe(async () => {
     await fsp.rm(dir, { recursive: true, force: true });
     return true;
-  }, false, { log, label: 'remove' });
+  }, false, { log: store.log, label: 'remove' });
 }
 
 async function importFrom(srcDir) {
@@ -141,7 +141,7 @@ async function importFrom(srcDir) {
     }
     await _copyRecursive(srcDir, destDir);
     return { success: true, id: destName, path: path.join(destDir, 'SKILL.md') };
-  }, { success: false, error: 'Import failed' }, { log, label: 'importFrom' });
+  }, { success: false, error: 'Import failed' }, { log: store.log, label: 'importFrom' });
 }
 
 async function getRoot() {
@@ -155,7 +155,7 @@ async function setRoot(newRoot) {
     await fsp.mkdir(resolved, { recursive: true });
     await _saveRoot(resolved);
     return { success: true, root: resolved };
-  }, { success: false, error: 'Could not set path' }, { log, label: 'setRoot' });
+  }, { success: false, error: 'Could not set path' }, { log: store.log, label: 'setRoot' });
 }
 
 async function resetRoot() {
@@ -164,7 +164,7 @@ async function resetRoot() {
     _rootCache = null;
     const root = await _loadRoot();
     return { success: true, root };
-  }, { success: false }, { log, label: 'resetRoot' });
+  }, { success: false }, { log: store.log, label: 'resetRoot' });
 }
 
 async function _isAllowedPath(p) {
