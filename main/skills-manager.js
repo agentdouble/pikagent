@@ -5,6 +5,7 @@ const os = require('os');
 const { BASE_DIR } = require('./paths');
 const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { createLogger, trySafe } = require('./logger');
+const { pathExists } = require('./fs-manager-helpers');
 
 const log = createLogger('skills-manager');
 
@@ -135,11 +136,11 @@ async function importFrom(srcDir) {
     let destName = baseName;
     let destDir = path.join(root, destName);
     let i = 1;
-    while (await _exists(destDir)) {
+    while (await pathExists(destDir)) {
       destName = `${baseName}-${i++}`;
       destDir = path.join(root, destName);
     }
-    await _copyRecursive(srcDir, destDir);
+    await fsp.cp(srcDir, destDir, { recursive: true });
     return { success: true, id: destName, path: path.join(destDir, 'SKILL.md') };
   }, { success: false, error: 'Import failed' }, { log, label: 'importFrom' });
 }
@@ -172,20 +173,6 @@ async function _isAllowedPath(p) {
   const root = path.resolve(await _loadRoot());
   const resolved = path.resolve(p);
   return resolved === root || resolved.startsWith(root + path.sep);
-}
-
-async function _exists(p) {
-  try { await fsp.access(p); return true; } catch { return false; }
-}
-
-async function _copyRecursive(src, dest) {
-  await fsp.mkdir(dest, { recursive: true });
-  for (const entry of await fsp.readdir(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) await _copyRecursive(srcPath, destPath);
-    else if (entry.isFile()) await fsp.copyFile(srcPath, destPath);
-  }
 }
 
 module.exports = {
