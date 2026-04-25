@@ -2,8 +2,8 @@ const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
-const { countBy } = require('./collection-helpers');
 const { aggregateByKey, groupAndAggregate } = require('./aggregation-utils');
+const { countBy } = require('../shared/aggregation-utils');
 
 // ===== Declarative configs =====
 
