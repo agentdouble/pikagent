@@ -1,17 +1,14 @@
 /**
  * Tab manager helpers — pure helper functions for tab management.
  *
- * Constants have been extracted to ./tab-constants.js
- * The WorkspaceTab class has been extracted to ./tab-types.js
+ * Constants live in ./tab-constants.js
+ * The WorkspaceTab class lives in ./tab-types.js
  *
- * This file re-exports everything from both modules for backward compatibility.
+ * This file contains ONLY the pure helpers (clampPanelWidth, panelArrowState,
+ * reorderEntries, findCycleMatch, findCycleTarget, findColorGroupTarget).
  */
 
 import { PANEL_MIN_WIDTH, SIDE_CONFIG } from './tab-constants.js';
-
-// ── Re-exports for backward compatibility ──
-export * from './tab-constants.js';
-export * from './tab-types.js';
 
 // ── Pure helpers ──
 

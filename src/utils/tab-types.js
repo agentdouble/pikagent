@@ -1,5 +1,5 @@
 /**
- * Tab type definitions — JSDoc typedefs extracted from tab-manager-helpers.js.
+ * Tab type definitions — canonical home of the WorkspaceTab class.
  *
  * This file is the canonical home of the WorkspaceTab class.
  */
