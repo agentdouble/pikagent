@@ -120,3 +120,18 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
     },
   });
 }
+
+/**
+ * Show a simple error alert with a prefix message and an error value in a <code> block.
+ * Factorises the common pattern found in worktree and PR flows.
+ *
+ * @param {string} prefix - human-readable context, e.g. "Push failed: "
+ * @param {string|null|undefined} error - error detail shown inside <code>
+ * @returns {Promise<boolean>}
+ */
+export async function showErrorAlert(prefix, error) {
+  return showConfirmDialog(
+    _el('p', null, prefix, _el('code', null, error || 'unknown error')),
+    { confirmLabel: 'OK', cancelLabel: 'Close' },
+  );
+}

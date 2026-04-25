@@ -6,7 +6,7 @@
  * directly on the "Create pull request" form.
  */
 
-import { showConfirmDialog } from './dom-dialogs.js';
+import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
 import { _el } from './dom.js';
 
 /**
@@ -130,7 +130,7 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
   const [branch, remote] = await Promise.all([api.branch(cwd), api.remoteUrl(cwd)]);
 
   if (!branch) {
-    await _alert(_el('p', null, 'No git branch detected in ', _el('code', null, cwd)));
+    await showErrorAlert('No git branch detected in ', cwd);
     return;
   }
   if (!remote) {
@@ -140,7 +140,7 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
 
   const parsed = parseRemoteUrl(remote);
   if (!parsed) {
-    await _alert(_el('p', null, 'Could not parse remote URL: ', _el('code', null, remote)));
+    await showErrorAlert('Could not parse remote URL: ', remote);
     return;
   }
 
@@ -151,7 +151,7 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
 
   const url = buildPrUrl(parsed, branch, baseBranch);
   if (!url) {
-    await _alert(_el('p', null, 'Unsupported git provider: ', _el('code', null, parsed.host)));
+    await showErrorAlert('Unsupported git provider: ', parsed.host);
     return;
   }
 
@@ -166,7 +166,7 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
 
   const push = await api.pushBranch({ cwd, branch });
   if (!push?.ok) {
-    await _alert(_el('p', null, 'Push failed: ', _el('code', null, push?.error || 'unknown error')));
+    await showErrorAlert('Push failed: ', push?.error);
     return;
   }
 
