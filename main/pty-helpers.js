@@ -1,10 +1,7 @@
 const os = require('os');
+const { AGENTS } = require('../shared/agent-registry');
 
-const KNOWN_AGENTS = [
-  ['claude', 'Claude'],
-  ['codex', 'Codex'],
-  ['opencode', 'OpenCode'],
-];
+const KNOWN_AGENTS = AGENTS.map((a) => [a.id, a.label]);
 
 const EXEC_TIMEOUT_MS = 1000;
 const CWD_TIMEOUT_MS = 2000;
