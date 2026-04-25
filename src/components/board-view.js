@@ -1,11 +1,11 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { bus } from '../utils/events.js';
+import { onTerminalCreated, onTerminalRemoved, onTerminalExited } from '../utils/terminal-events.js';
 import { FilePathLinkProvider } from '../utils/file-link-provider.js';
 import { _el, _safeFit } from '../utils/dom.js';
 import { createTerminal, disposeTerminal } from '../utils/terminal-factory.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
-  STATUS_CONFIG, ALL_CARD_CLASSES, EVT_CREATED, EVT_REMOVED, EVT_EXITED,
+  STATUS_CONFIG, ALL_CARD_CLASSES,
   BOARD_TERMINAL_OPTS, HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
   formatCardLabel,
@@ -212,13 +212,10 @@ export class BoardView {
   _setupListeners() {
     const onTerminalGone = ({ id }) => { this.removeCard(id); this._updateEmptyState(); };
 
-    // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = [
-      [EVT_CREATED, () => { if (!this.disposed) this.scanAgents(); }],
-      [EVT_REMOVED, onTerminalGone],
-      [EVT_EXITED, onTerminalGone],
-    ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
+    // Typed subscription helpers -- each returns an unsubscribe function
+    this._unsubCreated = onTerminalCreated(() => { if (!this.disposed) this.scanAgents(); });
+    this._unsubRemoved = onTerminalRemoved(onTerminalGone);
+    this._unsubExited  = onTerminalExited(onTerminalGone);
   }
 
   focusDirection(dir) {
@@ -259,7 +256,9 @@ export class BoardView {
     this.disposed = true;
     this.pause();
 
-    for (const [event, handler] of this._busListeners) bus.off(event, handler);
+    this._unsubCreated();
+    this._unsubRemoved();
+    this._unsubExited();
 
     for (const [, data] of this.cards) {
       disposeTerminal(data);

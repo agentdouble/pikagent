@@ -1,4 +1,4 @@
-import { bus } from '../utils/events.js';
+import { emitWorkspaceOpenFromFolder, emitFileOpen } from '../utils/workspace-events.js';
 import { contextMenu } from './context-menu.js';
 import { _el, setupInlineInput } from '../utils/dom.js';
 import {
@@ -215,7 +215,7 @@ export class FileTree {
       { label: 'New File', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'file') },
       { label: 'New Folder', action: () => this.promptNewEntry(dirPath, contentEl, depth, expandedDirs, 'folder') },
       { separator: true },
-      { label: 'Open as Workspace', action: () => bus.emit('workspace:openFromFolder', { cwd: dirPath }) },
+      { label: 'Open as Workspace', action: () => emitWorkspaceOpenFromFolder({ cwd: dirPath }) },
       { separator: true },
       ...this._commonContextItems(dirPath, nameEl, `Delete folder "${dirName}" and all its contents?`),
     ]);
@@ -271,7 +271,7 @@ export class FileTree {
           await window.api.fs.mkdir(newPath);
         } else {
           await window.api.fs.writefile(newPath, '');
-          bus.emit('file:open', { path: newPath, name });
+          emitFileOpen({ path: newPath, name });
         }
       },
     });
@@ -380,7 +380,7 @@ export class FileTree {
       if (this._activeRow) this._activeRow.classList.remove('active');
       row.classList.add('active');
       this._activeRow = row;
-      bus.emit('file:open', { path: entry.path, name: entry.name });
+      emitFileOpen({ path: entry.path, name: entry.name });
     });
 
     row.addEventListener('contextmenu', (e) => {

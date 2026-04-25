@@ -1,6 +1,6 @@
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from './id.js';
-import { bus } from './events.js';
+import { emitTerminalExited, emitTerminalCwdChanged } from './terminal-events.js';
 import { FilePathLinkProvider } from './file-link-provider.js';
 import { createTerminal } from './terminal-factory.js';
 import { CWD_POLL_MS } from './terminal-panel-helpers.js';
@@ -49,7 +49,7 @@ export class TerminalInstance {
     });
 
     this.unsubExit = window.api.pty.onExit(this.id, () => {
-      bus.emit('terminal:exited', { id: this.id });
+      emitTerminalExited({ id: this.id });
     });
 
     this.resizeObserver = new ResizeObserver(() => this.fit());
@@ -71,7 +71,7 @@ export class TerminalInstance {
       const cwd = await window.api.pty.getCwd({ id: this.id });
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
-        bus.emit('terminal:cwdChanged', { id: this.id, cwd });
+        emitTerminalCwdChanged({ id: this.id, cwd });
       }
     }, CWD_POLL_MS);
   }

@@ -1,5 +1,6 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus } from '../utils/events.js';
+import { onTerminalCwdChanged } from '../utils/terminal-events.js';
+import { onFileOpen, onWorkspaceActivated, emitLayoutChanged } from '../utils/workspace-events.js';
 import { GitChangesView } from './git-changes-view.js';
 import { WebviewInstance } from './webview-panel.js';
 import { contextMenu } from './context-menu.js';
@@ -62,24 +63,23 @@ export class FileViewer {
   }
 
   _setupListeners() {
-    // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = [
-      ['file:open', ({ path, name }) => {
+    // Typed subscription helpers -- each returns an unsubscribe function
+    this._unsubs = [
+      onFileOpen(({ path, name }) => {
         if (!this.isActive()) return;
         this.switchMode('files');
         this.openFile(path, name);
-      }],
-      ['terminal:cwdChanged', ({ cwd }) => {
+      }),
+      onTerminalCwdChanged(({ cwd }) => {
         if (!this.isActive()) return;
         this.gitChanges.setCwd(cwd);
         if (this.mode === 'git') this.gitChanges.loadChanges();
-      }],
-      ['workspace:activated', () => {
+      }),
+      onWorkspaceActivated(() => {
         if (!this.isActive()) return;
         this.loadPinnedFiles();
-      }],
+      }),
     ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
   }
 
   async loadPinnedFiles() {
@@ -422,7 +422,7 @@ export class FileViewer {
     this.webviewTabs.push(wt);
     this._createWebviewContainer(wt);
     this.switchMode(wt.id);
-    bus.emit('layout:changed');
+    emitLayoutChanged();
   }
 
   removeWebview(webviewId) {
@@ -439,7 +439,7 @@ export class FileViewer {
 
     if (this.mode === webviewId) this.switchMode('files');
     else this._renderModeBar();
-    bus.emit('layout:changed');
+    emitLayoutChanged();
   }
 
   _createWebviewContainer(wt) {
@@ -465,8 +465,8 @@ export class FileViewer {
   }
 
   dispose() {
-    for (const [event, handler] of this._busListeners) bus.off(event, handler);
-    this._busListeners = [];
+    for (const unsub of this._unsubs) unsub();
+    this._unsubs = [];
 
     for (const [, wvData] of this._webviewEls) {
       if (wvData.instance) wvData.instance.dispose();

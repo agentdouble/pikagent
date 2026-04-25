@@ -20,10 +20,6 @@ export const STATUS_CONFIG = {
 /** All card-level CSS classes derived from STATUS_CONFIG — single source of truth for class removal. */
 export const ALL_CARD_CLASSES = Object.values(STATUS_CONFIG).map(c => c.cardClass);
 
-export const EVT_CREATED = 'terminal:created';
-export const EVT_REMOVED = 'terminal:removed';
-export const EVT_EXITED = 'terminal:exited';
-
 /** Terminal options used by board card mini-terminals. */
 export const BOARD_TERMINAL_OPTS = {
   fontSize: 11,

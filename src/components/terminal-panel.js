@@ -1,4 +1,5 @@
-import { bus } from '../utils/events.js';
+import { emitTerminalCreated, emitTerminalRemoved } from '../utils/terminal-events.js';
+import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import { TerminalInstance } from '../utils/terminal-instance.js';
@@ -173,7 +174,7 @@ export class TerminalPanel {
     node.terminal = new TerminalInstance(termContainer, spawnCwd);
     this.terminals.set(node.terminal.id, node);
 
-    bus.emit('terminal:created', { id: node.terminal.id, cwd: spawnCwd });
+    emitTerminalCreated({ id: node.terminal.id, cwd: spawnCwd });
 
     wrapper.addEventListener('mousedown', () => {
       this.setActive(node);
@@ -287,7 +288,7 @@ export class TerminalPanel {
 
     this.fitAll();
     this.setActive(sourceNode);
-    bus.emit('layout:changed');
+    emitLayoutChanged();
   }
 
   _moveToCenter(sourceEl, targetEl) {
@@ -446,7 +447,7 @@ export class TerminalPanel {
       e.preventDefault();
       trackMouse(RESIZE_CURSOR[direction],
         (ev) => this._doResize(ev, handle, splitEl, direction),
-        () => bus.emit('layout:changed'),
+        () => emitLayoutChanged(),
       );
     });
   }
@@ -485,7 +486,7 @@ export class TerminalPanel {
 
     node.terminal.dispose();
     this.terminals.delete(termId);
-    bus.emit('terminal:removed', { id: termId });
+    emitTerminalRemoved({ id: termId });
 
     if (this.terminals.size === 0) {
       this.init();

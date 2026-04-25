@@ -1,4 +1,4 @@
-import { bus } from '../utils/events.js';
+import { emitFileOpen } from '../utils/workspace-events.js';
 import { DiffViewer } from './diff-viewer.js';
 import { _el } from '../utils/dom.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
@@ -80,7 +80,7 @@ export class GitChangesView {
       _el('span', { className: 'git-file-name-label', textContent: file.path, title: file.path }),
       _el('span', { className: 'git-open-btn', textContent: '→', title: 'Open file', onClick: (e) => {
         e.stopPropagation();
-        bus.emit('file:open', { path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
+        emitFileOpen({ path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
       }}),
     );
 

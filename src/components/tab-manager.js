@@ -5,7 +5,8 @@ import { FileViewer } from './file-viewer.js';
 import { BoardView } from './board-view.js';
 import { FlowView } from './flow-view.js';
 import { UsageView } from './usage-view.js';
-import { bus } from '../utils/events.js';
+import { onTerminalCwdChanged, onTerminalCreated, onTerminalRemoved } from '../utils/terminal-events.js';
+import { onLayoutChanged, onWorkspaceOpenFromFolder, emitWorkspaceActivated } from '../utils/workspace-events.js';
 import { contextMenu } from './context-menu.js';
 import { ConfigManager } from './config-manager.js';
 import { _el, showConfirmDialog, setupInlineInput } from '../utils/dom.js';
@@ -92,30 +93,29 @@ export class TabManager {
       this.createTab('Workspace 1');
     }
 
-    // Bus event listeners — single declaration drives both registration and cleanup
-    this._busListeners = [
-      ['terminal:cwdChanged', ({ id, cwd }) => {
+    // Typed subscription helpers -- each returns an unsubscribe function
+    this._unsubs = [
+      onTerminalCwdChanged(({ id, cwd }) => {
         this._onTerminalCwdChanged(id, cwd);
         this.configManager.scheduleAutoSave();
-      }],
-      ['terminal:created', ({ id, cwd }) => {
+      }),
+      onTerminalCreated(({ id, cwd }) => {
         const tab = this._findTabForTerminal(id) || this.tabs.get(this.activeTabId);
         if (tab?.fileTree) tab.fileTree.setTerminalRoot(id, cwd);
         this.configManager.scheduleAutoSave();
-      }],
-      ['terminal:removed', ({ id }) => {
+      }),
+      onTerminalRemoved(({ id }) => {
         for (const [, tab] of this.tabs) {
           if (tab.fileTree) tab.fileTree.removeTerminal(id);
         }
         this.configManager.scheduleAutoSave();
-      }],
-      ['layout:changed', () => this.configManager.scheduleAutoSave()],
-      ['workspace:openFromFolder', ({ cwd }) => {
+      }),
+      onLayoutChanged(() => this.configManager.scheduleAutoSave()),
+      onWorkspaceOpenFromFolder(({ cwd }) => {
         const folderName = cwd.split('/').filter(Boolean).pop() || '/';
         this.createTab(folderName, cwd);
-      }],
+      }),
     ];
-    for (const [event, handler] of this._busListeners) bus.on(event, handler);
   }
 
   // Find which tab owns a terminal
@@ -337,7 +337,7 @@ export class TabManager {
         if (tab.layoutElement) {
           this._reattachLayout(tab);
           this._syncFileTree(tab);
-          bus.emit('workspace:activated');
+          emitWorkspaceActivated();
         }
         this.renderTabBar();
         return;
@@ -362,7 +362,7 @@ export class TabManager {
     if (tab.layoutElement) {
       this._reattachLayout(tab);
       this._syncFileTree(tab);
-      bus.emit('workspace:activated');
+      emitWorkspaceActivated();
     } else {
       // First time rendering this tab
       this.renderWorkspace(tab);
@@ -785,7 +785,7 @@ export class TabManager {
     const branch = await window.api.git.branch(tab.cwd);
     if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
 
-    bus.emit('workspace:activated');
+    emitWorkspaceActivated();
   }
 
   togglePanel(panel, side, arrowEl) {
@@ -910,10 +910,8 @@ export class TabManager {
   }
 
   dispose() {
-    for (const [event, handler] of this._busListeners) {
-      bus.off(event, handler);
-    }
-    this._busListeners = [];
+    for (const unsub of this._unsubs) unsub();
+    this._unsubs = [];
     this._disposeAllSideViews();
     this._disposeAllTabs();
   }
