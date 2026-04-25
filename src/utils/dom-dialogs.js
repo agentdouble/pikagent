@@ -92,6 +92,24 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
 }
 
 /**
+ * Show a one-button alert whose body is `<p>prefix <code>detail</code></p>`.
+ *
+ * This is the standard pattern used by worktree and PR flows to surface
+ * errors or informational messages that include a machine-readable fragment
+ * (an error string, a path, a branch name, etc.).
+ *
+ * @param {string} prefix  - human-readable leading text (e.g. "Push failed: ")
+ * @param {string} detail  - value shown inside `<code>` (e.g. the error message)
+ * @returns {Promise<boolean>}
+ */
+export function showErrorAlert(prefix, detail) {
+  return showConfirmDialog(
+    _el('p', null, prefix, _el('code', null, detail)),
+    { confirmLabel: 'OK', cancelLabel: 'Close' },
+  );
+}
+
+/**
  * Show a confirm dialog.
  * @param {Node|string} message - text string or DOM node
  * @returns {Promise<boolean>}

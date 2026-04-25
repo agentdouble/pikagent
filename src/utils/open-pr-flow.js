@@ -6,7 +6,7 @@
  * directly on the "Create pull request" form.
  */
 
-import { showConfirmDialog } from './dom-dialogs.js';
+import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
 import { _el } from './dom.js';
 
 /**
@@ -64,10 +64,6 @@ function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
  *   openExternal: (url: string) => void | Promise<unknown>,
  * }} OpenPrApi
  */
-
-async function _alert(msg) {
-  await showConfirmDialog(msg, { confirmLabel: 'OK', cancelLabel: 'Close' });
-}
 
 /**
  * Try to create a PR via the `gh` CLI. Returns true when handled (success
@@ -130,17 +126,17 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
   const [branch, remote] = await Promise.all([api.branch(cwd), api.remoteUrl(cwd)]);
 
   if (!branch) {
-    await _alert(_el('p', null, 'No git branch detected in ', _el('code', null, cwd)));
+    await showErrorAlert('No git branch detected in ', cwd);
     return;
   }
   if (!remote) {
-    await _alert(_el('p', null, 'No ', _el('code', null, 'origin'), ' remote configured.'));
+    await showErrorAlert('No remote configured: ', 'origin');
     return;
   }
 
   const parsed = parseRemoteUrl(remote);
   if (!parsed) {
-    await _alert(_el('p', null, 'Could not parse remote URL: ', _el('code', null, remote)));
+    await showErrorAlert('Could not parse remote URL: ', remote);
     return;
   }
 
@@ -151,7 +147,7 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
 
   const url = buildPrUrl(parsed, branch, baseBranch);
   if (!url) {
-    await _alert(_el('p', null, 'Unsupported git provider: ', _el('code', null, parsed.host)));
+    await showErrorAlert('Unsupported git provider: ', parsed.host);
     return;
   }
 
@@ -166,7 +162,7 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
 
   const push = await api.pushBranch({ cwd, branch });
   if (!push?.ok) {
-    await _alert(_el('p', null, 'Push failed: ', _el('code', null, push?.error || 'unknown error')));
+    await showErrorAlert('Push failed: ', push?.error || 'unknown error');
     return;
   }
 
