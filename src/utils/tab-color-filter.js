@@ -3,7 +3,7 @@
  * Extracted from tab-manager.js to reduce component size.
  */
 import { _el } from './dom.js';
-import { COLOR_GROUPS } from './tab-manager-helpers.js';
+import { COLOR_GROUPS } from './tab-constants.js';
 import { attachContextMenu } from './context-menu.js';
 
 /**
@@ -17,7 +17,7 @@ export function isTabVisible(tab, activeColorFilter, excludedColors) {
 
 /**
  * Build the color filter bar DOM element.
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {Map<string, import('./tab-constants.js').WorkspaceTab>} tabs
  * @param {string|null} activeColorFilter
  * @param {Set<string>} excludedColors
  * @param {{ onClearFilter: () => void, onSetFilter: (colorGroupId: string) => void, onToggleExclude: (colorGroupId: string) => void }} handlers

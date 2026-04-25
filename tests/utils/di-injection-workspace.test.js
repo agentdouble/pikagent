@@ -18,7 +18,7 @@ describe('DI: tab-lifecycle onTerminalCwdChanged', () => {
     }));
     vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
     vi.doMock('../../src/utils/id.js', () => ({ generateId: (prefix) => prefix + '-1' }));
-    vi.doMock('../../src/utils/tab-manager-helpers.js', () => ({
+    vi.doMock('../../src/utils/tab-constants.js', () => ({
       WorkspaceTab: class { constructor(id, name, cwd) { this.id = id; this.name = name; this.cwd = cwd; } },
     }));
     vi.doMock('../../src/utils/workspace-layout.js', () => ({

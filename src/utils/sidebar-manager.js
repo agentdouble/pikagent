@@ -13,12 +13,12 @@
  *
  * @typedef {{ workspaceContainer: HTMLElement, viewStore: SideViewStore }} SideViewDeps
  *
- * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, viewStore: SideViewStore }} DetachDeps
+ * @typedef {{ getActiveTab: () => import('./tab-constants.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-constants.js').WorkspaceTab) => void, viewStore: SideViewStore }} DetachDeps
  */
 
 import { getComponent } from './component-registry.js';
 import { _el } from './dom.js';
-import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-manager-helpers.js';
+import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-constants.js';
 import { createAsyncHandler } from './event-helpers.js';
 
 function buildActivityButton(label, iconSvg, extraClass = '') {
@@ -158,7 +158,7 @@ export function activateSideView(deps, mode, extraArgs = {}) {
 /**
  * Switch sidebar mode: detach current view, activate new view (or re-attach work layout).
  *
- * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, viewStore: SideViewStore, workspaceContainer: HTMLElement, reattachLayout: (deps: { workspaceContainer: HTMLElement }, tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, renderWorkspace: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, tabManager: unknown }} ChangeSidebarModeDeps
+ * @typedef {{ getActiveTab: () => import('./tab-constants.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-constants.js').WorkspaceTab) => void, viewStore: SideViewStore, workspaceContainer: HTMLElement, reattachLayout: (deps: { workspaceContainer: HTMLElement }, tab: import('./tab-constants.js').WorkspaceTab) => void, renderWorkspace: (tab: import('./tab-constants.js').WorkspaceTab) => void, tabManager: unknown }} ChangeSidebarModeDeps
  */
 
 /**

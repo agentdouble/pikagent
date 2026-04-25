@@ -11,7 +11,7 @@
  */
 
 import { generateId } from './id.js';
-import { WorkspaceTab } from './tab-manager-helpers.js';
+import { WorkspaceTab } from './tab-constants.js';
 import { disposeAllSideViews } from './sidebar-manager.js';
 import { capturePanelWidths } from './workspace-resize.js';
 import { disposeAllTabs } from './workspace-cleanup.js';

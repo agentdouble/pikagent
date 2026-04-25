@@ -19,7 +19,7 @@ import { generateId } from './id.js';
 import { _el } from './dom.js';
 import { showConfirmDialog } from './dom-dialogs.js';
 import { bus, EVENTS } from './events.js';
-import { WorkspaceTab } from './tab-manager-helpers.js';
+import { WorkspaceTab } from './tab-constants.js';
 import { reattachLayout, syncFileTree } from './workspace-layout.js';
 import { capturePanelWidths } from './workspace-resize.js';
 import { disposeTab } from './workspace-cleanup.js';
