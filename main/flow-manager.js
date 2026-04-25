@@ -2,20 +2,21 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { FLOWS_DIR, LOGS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
-const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS, MAX_FLOW_RUNTIME_MS,
-  flowPath, logPath,
+  logPath,
   shouldRun, buildFlowCommand, createOutputProcessor,
 } = require('./flow-helpers');
 const { safeSend } = require('./ipc-helpers');
 const { createPollingManager } = require('../shared/polling-manager');
 const { buildRecord } = require('./record-helpers');
-const { createLogger, trySafe } = require('./logger');
+const { trySafe } = require('./logger');
+const { JsonStore } = require('./json-store');
 
-const log = createLogger('flow-manager');
-const ensureDir = ensureDirOnce(LOGS_DIR);
+const store = new JsonStore(FLOWS_DIR, 'flow-manager');
+const ensureLogsDir = ensureDirOnce(LOGS_DIR);
 
 class FlowManager {
   constructor() {
@@ -53,34 +54,32 @@ class FlowManager {
   // --- CRUD ---
 
   async save(flow) {
-    await ensureDir();
     const existing = await this.get(flow.id);
     const now = new Date().toISOString();
     const data = buildRecord(flow, { createdAt: existing?.createdAt || now, updatedAt: now });
     if (!data.runs) data.runs = [];
     if (data.enabled === undefined) data.enabled = true;
-    await writeJson(flowPath(flow.id), data);
+    await store.save(flow.id, data);
     return data;
   }
 
   async get(id) {
-    return readJson(flowPath(id));
+    return store.get(id);
   }
 
   async list() {
-    await ensureDir();
-    return readDirJson(FLOWS_DIR);
+    return store.list();
   }
 
   async remove(id) {
     return trySafe(
       async () => {
-        await fsp.unlink(flowPath(id));
+        await fsp.unlink(store.filePath(id));
         await this._cleanLogs(id);
         return true;
       },
       false,
-      { log, label: 'remove' },
+      { log: store.log, label: 'remove' },
     );
   }
 
@@ -101,20 +100,20 @@ class FlowManager {
     return trySafe(
       () => fsp.readFile(logPath(flowId, timestamp), 'utf-8'),
       null,
-      { log, label: 'getRunLog' },
+      { log: store.log, label: 'getRunLog' },
     );
   }
 
   // --- Categories ---
 
   async getCategories() {
-    await ensureDir();
+    await store.ensureDir();
     const data = await readJson(FLOW_CATEGORIES_FILE);
     return data || { categories: [], order: {} };
   }
 
   async saveCategories(data) {
-    await ensureDir();
+    await store.ensureDir();
     await writeJson(FLOW_CATEGORIES_FILE, data);
     return data;
   }
@@ -126,7 +125,7 @@ class FlowManager {
         await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
       },
       undefined,
-      { log, label: 'cleanLogs' },
+      { log: store.log, label: 'cleanLogs' },
     );
   }
 
@@ -148,11 +147,11 @@ class FlowManager {
   // --- Execution ---
 
   async _saveLog(flowId, runTimestamp, output) {
-    await ensureDir();
+    await ensureLogsDir();
     await trySafe(
       () => fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8'),
       undefined,
-      { log, label: 'saveLog' },
+      { log: store.log, label: 'saveLog' },
     );
   }
 
@@ -219,7 +218,7 @@ class FlowManager {
         this._ptyManager.write(ptyId, cmd);
       }, SHELL_INIT_DELAY_MS);
     } catch (err) {
-      log.error('execution failed', err);
+      store.log.error('execution failed', err);
       this._recordRun(flow.id, 'error', runTimestamp);
     }
   }
@@ -247,7 +246,7 @@ class FlowManager {
     await this.save(flow);
   }
 
-  // Aliases matching channel suffixes (flow:delete → delete, flow:toggle → toggle)
+  // Aliases matching channel suffixes (flow:delete -> delete, flow:toggle -> toggle)
   delete(id) { return this.remove(id); }
   toggle(id) { return this.toggleEnabled(id); }
 
