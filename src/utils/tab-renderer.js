@@ -121,7 +121,7 @@ export function buildTabElement(deps, id, tab) {
  * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
  * @param {HTMLElement} nameEl
  */
-export function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
+function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
   attachContextMenu(tabEl, () => {
     const colorItems = COLOR_GROUPS.map((cg) => ({
       label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,

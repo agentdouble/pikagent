@@ -19,7 +19,7 @@ function sanitizeSegment(name) {
 }
 
 /** Build the default target path for a worktree given the host repo cwd. */
-export function defaultWorktreePath(repoCwd, branch) {
+function defaultWorktreePath(repoCwd, branch) {
   const segment = sanitizeSegment(branch) || 'worktree';
   return `${repoCwd.replace(/\/$/, '')}/.worktrees/${segment}`;
 }
