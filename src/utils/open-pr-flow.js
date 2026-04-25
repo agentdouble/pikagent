@@ -65,10 +65,6 @@ function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
  * }} OpenPrApi
  */
 
-async function _alert(msg) {
-  await showConfirmDialog(msg, { confirmLabel: 'OK', cancelLabel: 'Close' });
-}
-
 /**
  * Try to create a PR via the `gh` CLI. Returns true when handled (success
  * or a clean failure already surfaced to the user); returns false when the
@@ -134,7 +130,10 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
     return;
   }
   if (!remote) {
-    await _alert(_el('p', null, 'No ', _el('code', null, 'origin'), ' remote configured.'));
+    await showConfirmDialog(
+      _el('p', null, 'No ', _el('code', null, 'origin'), ' remote configured.'),
+      { confirmLabel: 'OK', cancelLabel: 'Close' },
+    );
     return;
   }
 
