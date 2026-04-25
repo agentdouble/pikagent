@@ -1,6 +1,12 @@
 const { ipcMain } = require('electron');
-const { registerManagerHandlers, safeSend } = require('./ipc-helpers');
+const { registerManagerHandlers, safeSend, getRegisteredChannels } = require('./ipc-helpers');
 const { createSafeHandler } = require('./safe-handler');
+
+/**
+ * Channels with custom handlers (registered manually in `register()`).
+ * Kept at module scope so `cleanup()` can reference them.
+ */
+const CUSTOM_CHANNELS = ['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder'];
 
 /**
  * Register all IPC handlers.
@@ -14,11 +20,10 @@ const { createSafeHandler } = require('./safe-handler');
 function register(getWindow, { targets, ptyManager, sessionManager }) {
   const { shell, dialog } = require('electron');
 
-  // Channels with custom handlers (registered below) — skip declarative registration.
-  const customChannels = new Set(['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder']);
+  const customSet = new Set(CUSTOM_CHANNELS);
 
   // Register all declarative forward/spread handlers in one pass.
-  registerManagerHandlers(ipcMain, targets, customChannels);
+  registerManagerHandlers(ipcMain, targets, customSet);
 
   // -- Custom handlers that cannot be expressed declaratively --
 
@@ -57,4 +62,22 @@ function register(getWindow, { targets, ptyManager, sessionManager }) {
   });
 }
 
-module.exports = { register };
+/**
+ * Remove all IPC handlers registered by `register()`.
+ *
+ * Called during `before-quit` to ensure a clean shutdown and avoid
+ * stale handler references.
+ */
+function cleanup() {
+  // Remove custom handlers
+  for (const channel of CUSTOM_CHANNELS) {
+    ipcMain.removeHandler(channel);
+  }
+
+  // Remove declaratively registered handlers
+  for (const channel of getRegisteredChannels()) {
+    ipcMain.removeHandler(channel);
+  }
+}
+
+module.exports = { register, cleanup };

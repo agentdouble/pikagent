@@ -43,6 +43,24 @@ function buildTablesFromSchema(schema) {
 const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(API_SCHEMA);
 
 /**
+ * Return the list of all declaratively registered IPC channel names.
+ * Used by `ipc-handlers.cleanup()` to remove handlers on shutdown.
+ *
+ * @param {Set<string>} [skip] - Channels to exclude (custom handlers managed separately)
+ * @returns {string[]}
+ */
+function getRegisteredChannels(skip = new Set()) {
+  const channels = [];
+  for (const [channel] of FORWARD_TABLE) {
+    if (!skip.has(channel)) channels.push(channel);
+  }
+  for (const [channel] of SPREAD_TABLE) {
+    if (!skip.has(channel)) channels.push(channel);
+  }
+  return channels;
+}
+
+/**
  * @internal
  * Register forward-style handlers on ipcMain for a given target.
  * @param {Electron.IpcMain} ipc - Electron ipcMain
@@ -95,7 +113,7 @@ function registerManagerHandlers(ipc, targets, skip = new Set()) {
   }
 }
 
-module.exports = { safeSend, registerManagerHandlers };
+module.exports = { safeSend, registerManagerHandlers, getRegisteredChannels };
 
 /** @internal — exposed for unit tests only; not part of the public API. */
 module.exports._internals = { buildTablesFromSchema, registerForward, registerSpread };
