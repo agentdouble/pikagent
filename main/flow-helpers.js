@@ -153,7 +153,7 @@ function createOutputProcessor(agent) {
       return _flushParser(parser, outputBuf, rawBuf);
     },
     getOutput() {
-      if (outputBuf.truncated) return outputBuf.value + '\n[output truncated at 10 MB]';
+      if (outputBuf.truncated || rawBuf.truncated) return outputBuf.value + '\n[output truncated at 10 MB]';
       return outputBuf.value;
     },
   };
