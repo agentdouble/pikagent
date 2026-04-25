@@ -57,9 +57,9 @@ export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = 
  * @param {Record<string, unknown>} stateObj — mutable state object
  * @param {string} stateKey      — key to set on stateObj
  * @param {unknown} value        — value written at dragstart (cleared to null at dragend)
- * @param {{ onStart?: (e: DragEvent) => void, onEnd?: (e: DragEvent) => void }} [extras]
+ * @param {{ onStart?: (e?: DragEvent) => void, onEnd?: (e?: DragEvent) => void }} [extras]
  *        — optional extra work to run after the class/state bookkeeping
- * @returns {{ onDragStart: (e: DragEvent) => void, onDragEnd: (e: DragEvent) => void }}
+ * @returns {{ onDragStart: (e?: DragEvent) => void, onDragEnd: (e?: DragEvent) => void }}
  */
 export function setupSimpleDragState(element, dragClass, stateObj, stateKey, value, { onStart, onEnd } = {}) {
   const onDragStart = (e) => {
