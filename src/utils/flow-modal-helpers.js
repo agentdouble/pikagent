@@ -1,5 +1,6 @@
 import { _el } from './dom.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
+import { AGENT_OPTIONS, SKIP_PERM_CONFIG } from '../../shared/agent-registry.js';
 
 /**
  * Create a <select> element from an options map.
@@ -18,18 +19,9 @@ function createSelect({ options, value, className, onChange } = {}) {
 
 // --- Constants ---
 
-export const AGENT_OPTIONS = {
-  claude: 'Claude',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-};
+export { AGENT_OPTIONS, SKIP_PERM_CONFIG };
 
 export const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
-
-export const SKIP_PERM_CONFIG = {
-  claude: { label: 'Skip permissions', title: 'Lance Claude avec --dangerously-skip-permissions' },
-  codex: { label: 'Full auto', title: 'Lance Codex avec --approval-mode full-auto au lieu de auto-edit' },
-};
 
 // --- Pure helpers ---
 
