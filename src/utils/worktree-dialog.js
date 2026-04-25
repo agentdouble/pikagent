@@ -73,6 +73,37 @@ function buildActionButtons(cancel, confirm) {
   );
 }
 
+/** Apply visibility for the given mode to the form elements. */
+function applyModeVisibility(mode, { newInput, baseSelect, baseLabel, existingSelect }) {
+  const isNew = mode === 'new';
+  newInput.style.display = isNew ? '' : 'none';
+  baseSelect.style.display = isNew ? '' : 'none';
+  baseLabel.style.display = isNew ? '' : 'none';
+  existingSelect.style.display = isNew ? 'none' : '';
+  return isNew;
+}
+
+/** Read the current branch value from the active input for the given mode. */
+function readBranchValue(mode, newInput, existingSelect) {
+  return mode === 'new' ? newInput.value.trim() : existingSelect.value;
+}
+
+/** Wire Enter/Escape keyboard shortcuts on multiple elements. */
+function wireKeyboardShortcuts(elements, actions) {
+  for (const el of elements) setupKeyboardShortcuts(el, actions);
+}
+
+/** Assemble modal children (title, mode row, inputs, path, action buttons). */
+function populateModal(modal, { btnNew, btnExisting, els, pathEl, cancel, confirm }) {
+  modal.append(
+    _el('label', 'prompt-dialog-label', 'New worktree'),
+    _el('div', 'worktree-dialog-mode-row', btnNew, btnExisting),
+    els.newInput, els.baseLabel, els.baseSelect, els.existingSelect,
+    pathEl,
+    buildActionButtons(cancel, confirm),
+  );
+}
+
 /**
  * Show the worktree creation dialog.
  *
@@ -91,15 +122,16 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
     modalClass: 'prompt-dialog-box worktree-dialog-box',
     builder({ modal, cleanup, cancel }) {
       let mode = 'new';
-
-      const newInput = buildBranchInput();
-      const baseSelect = buildBaseSelect(allBranches, currentBranch);
-      const baseLabel = _el('label', 'worktree-dialog-sub-label', 'Base branch');
-      const existingSelect = buildExistingSelect(existingBranches);
+      const els = {
+        newInput: buildBranchInput(),
+        baseSelect: buildBaseSelect(allBranches, currentBranch),
+        baseLabel: _el('label', 'worktree-dialog-sub-label', 'Base branch'),
+        existingSelect: buildExistingSelect(existingBranches),
+      };
       const pathEl = _el('div', 'worktree-dialog-path');
 
       const updatePath = () => {
-        const branch = mode === 'new' ? newInput.value.trim() : existingSelect.value;
+        const branch = readBranchValue(mode, els.newInput, els.existingSelect);
         pathEl.textContent = branch ? defaultWorktreePath(repoCwd, branch) : '';
       };
 
@@ -112,48 +144,29 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
         mode = next;
         btnNew.classList.toggle('active', mode === 'new');
         btnExisting.classList.toggle('active', mode === 'existing');
-        const isNew = mode === 'new';
-        newInput.style.display = isNew ? '' : 'none';
-        baseSelect.style.display = isNew ? '' : 'none';
-        baseLabel.style.display = isNew ? '' : 'none';
-        existingSelect.style.display = isNew ? 'none' : '';
+        const isNew = applyModeVisibility(mode, els);
         updatePath();
-        (isNew ? newInput : existingSelect).focus();
+        (isNew ? els.newInput : els.existingSelect).focus();
       }
 
-      newInput.addEventListener('input', updatePath);
-      existingSelect.addEventListener('change', updatePath);
+      els.newInput.addEventListener('input', updatePath);
+      els.existingSelect.addEventListener('change', updatePath);
 
       const confirm = () => {
-        const branch = mode === 'new' ? newInput.value.trim() : existingSelect.value;
+        const branch = readBranchValue(mode, els.newInput, els.existingSelect);
         if (!branch) return;
         cleanup({
           branch,
           createBranch: mode === 'new',
           targetPath: defaultWorktreePath(repoCwd, branch),
-          baseBranch: mode === 'new' ? (baseSelect.value || null) : null,
+          baseBranch: mode === 'new' ? (els.baseSelect.value || null) : null,
         });
       };
 
-      setupKeyboardShortcuts(newInput, { onEnter: confirm, onEscape: cancel });
-      setupKeyboardShortcuts(existingSelect, { onEnter: confirm, onEscape: cancel });
-      setupKeyboardShortcuts(baseSelect, { onEnter: confirm, onEscape: cancel });
+      wireKeyboardShortcuts([els.newInput, els.existingSelect, els.baseSelect], { onEnter: confirm, onEscape: cancel });
+      populateModal(modal, { btnNew, btnExisting, els, pathEl, cancel, confirm });
 
-      modal.append(
-        _el('label', 'prompt-dialog-label', 'New worktree'),
-        _el('div', 'worktree-dialog-mode-row', btnNew, btnExisting),
-        newInput,
-        baseLabel,
-        baseSelect,
-        existingSelect,
-        pathEl,
-        buildActionButtons(cancel, confirm),
-      );
-
-      return () => {
-        updatePath();
-        newInput.focus();
-      };
+      return () => { updatePath(); els.newInput.focus(); };
     },
   });
 }
