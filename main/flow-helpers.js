@@ -2,6 +2,7 @@ const path = require('path');
 const { FLOWS_DIR, LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
 const { getLastRun } = require('../shared/flow-utils');
+const { AGENT_CONFIG } = require('../shared/agent-registry');
 
 const MS_PER_HOUR = 3_600_000;
 const SCHEDULER_INTERVAL_MS = 60_000;
@@ -17,23 +18,6 @@ function flowPath(id) {
 function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
 }
-
-/* ── Agent command config (single source of truth) ─────────────── */
-
-const AGENT_CONFIG = {
-  claude: {
-    permModes: ['--permission-mode auto', '--dangerously-skip-permissions'],
-    flags: '--output-format stream-json',
-    promptPrefix: '-p',
-  },
-  codex: {
-    permModes: ['--approval-mode auto-edit', '--approval-mode full-auto'],
-    flags: '--quiet',
-  },
-  opencode: {
-    promptPrefix: '-p',
-  },
-};
 
 function _buildAgentCmd(agent, prompt, opts = {}) {
   const cfg = AGENT_CONFIG[agent] || AGENT_CONFIG.claude;
