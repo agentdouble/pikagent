@@ -89,66 +89,72 @@ function buildFlowCommand(flow) {
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB cap per flow
 
 /**
+ * Create a size-capped string buffer.
+ * Appended data is silently dropped once the cap is reached.
+ */
+function createCappedBuffer(cap) {
+  let buf = '';
+  let truncated = false;
+  return {
+    append(str) {
+      if (truncated) return;
+      if (buf.length + str.length > cap) {
+        buf = buf.slice(0, cap);
+        truncated = true;
+        return;
+      }
+      buf += str;
+    },
+    get value() { return buf; },
+    set value(v) { buf = v; },
+    get truncated() { return truncated; },
+  };
+}
+
+/** Handle processData for a parser-backed (Claude) flow. */
+function _processWithParser(parser, outputBuf, rawBuf, data) {
+  rawBuf.append(data);
+  const formatted = parser.push(data);
+  if (formatted) outputBuf.append(formatted);
+  return formatted || '';
+}
+
+/** Flush remaining parser output; fall back to raw buffer if no events parsed. */
+function _flushParser(parser, outputBuf, rawBuf) {
+  const remaining = parser.flush();
+  if (remaining) {
+    outputBuf.append(remaining);
+    return remaining;
+  }
+  if (!parser.hasEvents() && rawBuf.value) {
+    outputBuf.value = rawBuf.value;
+    return rawBuf.value;
+  }
+  return '';
+}
+
+/**
  * Creates an output processor that encapsulates parser selection,
  * buffering, and raw-fallback logic for a flow's PTY output.
  * Caps buffer size at MAX_OUTPUT_BYTES to prevent unbounded memory growth.
  */
 function createOutputProcessor(agent) {
   const parser = (agent || 'claude') === 'claude' ? createStreamParser() : null;
-  let outputBuffer = '';
-  let rawBuffer = '';
-  let truncated = false;
-
-  function _appendOutput(str) {
-    if (truncated) return;
-    if (outputBuffer.length + str.length > MAX_OUTPUT_BYTES) {
-      outputBuffer = outputBuffer.slice(0, MAX_OUTPUT_BYTES);
-      truncated = true;
-      return;
-    }
-    outputBuffer += str;
-  }
-
-  function _appendRaw(str) {
-    if (truncated) return;
-    if (rawBuffer.length + str.length > MAX_OUTPUT_BYTES) {
-      rawBuffer = rawBuffer.slice(0, MAX_OUTPUT_BYTES);
-      truncated = true;
-      return;
-    }
-    rawBuffer += str;
-  }
+  const outputBuf = createCappedBuffer(MAX_OUTPUT_BYTES);
+  const rawBuf = createCappedBuffer(MAX_OUTPUT_BYTES);
 
   return {
     processData(data) {
-      if (!parser) {
-        _appendOutput(data);
-        return data;
-      }
-      _appendRaw(data);
-      const formatted = parser.push(data);
-      if (formatted) _appendOutput(formatted);
-      return formatted || '';
+      if (!parser) { outputBuf.append(data); return data; }
+      return _processWithParser(parser, outputBuf, rawBuf, data);
     },
-
     flush() {
       if (!parser) return '';
-      const remaining = parser.flush();
-      if (remaining) {
-        _appendOutput(remaining);
-        return remaining;
-      }
-      // If no JSON events were parsed, fall back to raw output (claude not found, etc.)
-      if (!parser.hasEvents() && rawBuffer) {
-        outputBuffer = rawBuffer;
-        return rawBuffer;
-      }
-      return '';
+      return _flushParser(parser, outputBuf, rawBuf);
     },
-
     getOutput() {
-      if (truncated) return outputBuffer + '\n[output truncated at 10 MB]';
-      return outputBuffer;
+      if (outputBuf.truncated) return outputBuf.value + '\n[output truncated at 10 MB]';
+      return outputBuf.value;
     },
   };
 }

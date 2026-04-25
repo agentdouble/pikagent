@@ -27,7 +27,7 @@ const {
   DEFAULT_SHELL,
   matchAgent,
   parseChildPids,
-  parseCwdFromLsof,
+  buildCwdStrategies,
 } = require('./pty-helpers');
 
 const execFileAsync = promisify(execFile);
@@ -75,16 +75,22 @@ class PtyManager {
   async getCwd(id) {
     const proc = this._getProc(id);
     if (!proc) return null;
-    try {
-      const out = await this._exec(
-        'lsof',
-        ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'],
-        CWD_TIMEOUT_MS,
-      );
-      return parseCwdFromLsof(out);
-    } catch {
-      return null;
+    return this._detectCwd(proc.pid);
+  }
+
+  /** Try each cwd-detection strategy in order until one succeeds. */
+  async _detectCwd(pid) {
+    for (const strategy of buildCwdStrategies()) {
+      try {
+        const [cmd, args] = strategy.args(pid);
+        const out = await this._exec(cmd, args, CWD_TIMEOUT_MS);
+        const cwd = strategy.parse(out);
+        if (cwd) return cwd;
+      } catch {
+        // strategy failed, try next
+      }
     }
+    return null;
   }
 
   write(id, data) {

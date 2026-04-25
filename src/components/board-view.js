@@ -213,18 +213,18 @@ export class BoardView {
     }
   }
 
-  _setupListeners() {
+  /** Terminal lifecycle handlers: created, removed, exited. */
+  _terminalLifecycleListeners() {
     const onTerminalGone = ({ id }) => { this.removeCard(id); this._updateEmptyState(); };
-
-    // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = subscribeBus([
-      /** @listens terminal:created {{ id: string, cwd: string }} */
+    return [
       [EVT_CREATED, () => { if (!this.disposed) this.scanAgents(); }],
-      /** @listens terminal:removed {{ id: string }} */
       [EVT_REMOVED, onTerminalGone],
-      /** @listens terminal:exited {{ id: string }} */
       [EVT_EXITED, onTerminalGone],
-    ]);
+    ];
+  }
+
+  _setupListeners() {
+    this._busListeners = subscribeBus(this._terminalLifecycleListeners());
   }
 
   focusDirection(dir) {

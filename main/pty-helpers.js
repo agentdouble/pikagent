@@ -31,6 +31,41 @@ function parseCwdFromLsof(lsofOutput) {
   return match ? match[1] : null;
 }
 
+function parseCwdFromPwdx(pwdxOutput) {
+  const match = pwdxOutput.match(/:\s*(.+)/);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Build the ordered list of cwd-detection strategies for the current platform.
+ * Each strategy is `{ name, args(pid), parse(stdout) }`.
+ */
+function buildCwdStrategies() {
+  const strategies = [
+    {
+      name: 'lsof',
+      args: (pid) => ['lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn']],
+      parse: parseCwdFromLsof,
+    },
+  ];
+
+  if (os.platform() === 'linux') {
+    strategies.push({
+      name: 'proc',
+      args: (pid) => ['readlink', [`/proc/${pid}/cwd`]],
+      parse: (out) => out.trim() || null,
+    });
+  }
+
+  strategies.push({
+    name: 'pwdx',
+    args: (pid) => ['pwdx', [String(pid)]],
+    parse: parseCwdFromPwdx,
+  });
+
+  return strategies;
+}
+
 module.exports = {
   EXEC_TIMEOUT_MS,
   CWD_TIMEOUT_MS,
@@ -41,4 +76,6 @@ module.exports = {
   matchAgent,
   parseChildPids,
   parseCwdFromLsof,
+  parseCwdFromPwdx,
+  buildCwdStrategies,
 };
