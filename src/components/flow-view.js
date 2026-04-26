@@ -3,6 +3,7 @@ import { _el, renderButtonBar } from '../utils/flow-dom.js';
 import { showPromptDialog } from '../utils/dom-dialogs.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
+import { ComponentBase } from '../utils/component-base.js';
 import {
   EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
   getFlowsForCategory, getUncategorizedFlows,
@@ -12,13 +13,12 @@ import { createCategoryGroup } from '../utils/flow-category-renderer.js';
 import { createFlowCard } from '../utils/flow-card-setup.js';
 
 
-export class FlowView {
+export class FlowView extends ComponentBase {
   constructor(container, tabManager) {
-    this.container = container;
+    super(container);
     this.tabManager = tabManager;
     this.flows = [];
     this.catData = { categories: [], order: {} };
-    this.disposed = false;
     const FlowCardTerminalManager = getComponent('FlowCardTerminalManager');
     this._termManager = new FlowCardTerminalManager();
     this._expandedCards = new Set();
@@ -28,17 +28,17 @@ export class FlowView {
     // Drag state (shared mutable object for use with setupCardDrag)
     this._drag = { flowId: null, catId: null };
 
-    this._unsubStarted = window.api.flow.onRunStarted(({ flowId, ptyId }) => {
+    this._track(window.api.flow.onRunStarted(({ flowId, ptyId }) => {
       this._runningMap[flowId] = ptyId;
       this._expandedCards.add(flowId);
       this.refresh();
-    });
+    }));
 
-    this._unsubComplete = window.api.flow.onRunComplete(({ flowId }) => {
+    this._track(window.api.flow.onRunComplete(({ flowId }) => {
       this._termManager.disposeLiveTerminal(flowId);
       delete this._runningMap[flowId];
       this.refresh();
-    });
+    }));
 
     this.render();
     this._initRunning();
@@ -265,9 +265,7 @@ export class FlowView {
   }
 
   dispose() {
-    this.disposed = true;
-    if (this._unsubStarted) this._unsubStarted();
-    if (this._unsubComplete) this._unsubComplete();
+    super.dispose();
     this._termManager.disposeAll();
   }
 }

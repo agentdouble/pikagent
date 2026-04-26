@@ -3,10 +3,11 @@ import { _el } from '../utils/dom.js';
 import { onClickStopped } from '../utils/event-helpers.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
+import { ComponentBase } from '../utils/component-base.js';
 
-export class GitChangesView {
+export class GitChangesView extends ComponentBase {
   constructor(container) {
-    this.container = container;
+    super(container);
     this.gitCwd = null;
     this.expandedFile = null;
   }
@@ -16,6 +17,7 @@ export class GitChangesView {
   }
 
   dispose() {
+    super.dispose();
     this.container.replaceChildren();
   }
 

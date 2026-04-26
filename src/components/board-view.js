@@ -3,6 +3,7 @@ import { _el, renderButtonBar } from '../utils/dom.js';
 import { _safeFit, createTerminal, disposeTerminal, disposeTerminalMap, setupTerminalAddons } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
+import { ComponentBase } from '../utils/component-base.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS, FIT_SETTLE_DELAY_MS, FIT_UNHIDE_DELAY_MS,
   STATUS_CONFIG, ALL_CARD_CLASSES,
@@ -11,12 +12,11 @@ import {
   formatCardLabel,
 } from '../utils/board-helpers.js';
 
-export class BoardView {
+export class BoardView extends ComponentBase {
   constructor(container, tabManager) {
-    this.container = container;
+    super(container);
     this.tabManager = tabManager;
     this.cards = new Map();
-    this.disposed = false;
     this._hiddenTerms = new Set();
 
     this.render();
@@ -213,9 +213,9 @@ export class BoardView {
     const onTerminalGone = ({ id }) => { this.removeCard(id); this._updateEmptyState(); };
 
     // Typed subscription helpers — each returns an unsubscribe function
-    this._unsubCreated = onTerminalCreated(() => { if (!this.disposed) this.scanAgents(); });
-    this._unsubRemoved = onTerminalRemoved(onTerminalGone);
-    this._unsubExited  = onTerminalExited(onTerminalGone);
+    this._track(onTerminalCreated(() => { if (!this.disposed) this.scanAgents(); }));
+    this._track(onTerminalRemoved(onTerminalGone));
+    this._track(onTerminalExited(onTerminalGone));
   }
 
   focusDirection(dir) {
@@ -252,12 +252,8 @@ export class BoardView {
   }
 
   dispose() {
-    this.disposed = true;
+    super.dispose();
     this.pause();
-
-    this._unsubCreated();
-    this._unsubRemoved();
-    this._unsubExited();
     disposeTerminalMap(this.cards);
   }
 }
