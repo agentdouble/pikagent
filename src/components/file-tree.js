@@ -1,5 +1,5 @@
 import { _el, createActionButton } from '../utils/file-dom.js';
-import { buildChevronRow } from '../utils/dom.js';
+import { buildChevronRow } from '../utils/chevron-row.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, WATCH_PREFIX,

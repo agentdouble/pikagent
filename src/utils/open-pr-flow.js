@@ -7,7 +7,7 @@
  */
 
 import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
-import { _el } from './dom.js';
+import { _el } from './git-dom.js';
 
 /**
  * Parse a remote URL (HTTPS or SSH) into { host, owner, repo }.
