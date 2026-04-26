@@ -3,15 +3,16 @@ const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { BASE_DIR } = require('./paths');
-const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
-const { createLogger, trySafe } = require('./logger');
+const { readJson, writeJson } = require('./fs-utils');
+const { trySafe } = require('./logger');
 const { pathExists } = require('./fs-manager-helpers');
+const { JsonStore } = require('./json-store');
 
-const log = createLogger('skills-manager');
+const store = new JsonStore(BASE_DIR, 'skills-manager');
+const log = store.log;
 
 const DEFAULT_SKILLS_DIR = path.join(os.homedir(), '.claude', 'skills');
 const SETTINGS_FILE = path.join(BASE_DIR, 'skills-settings.json');
-const ensureBaseDir = ensureDirOnce(BASE_DIR);
 
 let _rootCache = null;
 
@@ -36,7 +37,7 @@ async function _loadRoot() {
 }
 
 async function _saveRoot(newRoot) {
-  await ensureBaseDir();
+  await store.ensureDir();
   await writeJson(SETTINGS_FILE, { root: newRoot });
   _rootCache = newRoot;
 }
