@@ -57,6 +57,17 @@ class JsonStore {
     );
   }
 
+  /**
+   * Delete the file for the given id, throwing on error.
+   *
+   * Use this instead of `remove()` when the caller wraps the call in its own
+   * `trySafe` and needs errors to propagate (e.g. to skip follow-up cleanup
+   * when the file deletion fails).
+   */
+  async removeOrThrow(id) {
+    await fsp.unlink(this._path(id));
+  }
+
   /** Ensure the backing directory exists (idempotent). */
   async ensureDir() {
     return this._ensureDir();

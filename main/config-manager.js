@@ -48,7 +48,7 @@ async function list() {
 async function remove(name) {
   return trySafe(
     async () => {
-      await store.remove(name);
+      await store.removeOrThrow(name);
       const meta = await readMeta();
       if (meta.defaultConfig === name) {
         meta.defaultConfig = null;

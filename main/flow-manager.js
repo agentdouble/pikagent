@@ -75,7 +75,7 @@ class FlowManager {
   async remove(id) {
     return trySafe(
       async () => {
-        await store.remove(id);
+        await store.removeOrThrow(id);
         await this._cleanLogs(id);
         return true;
       },
