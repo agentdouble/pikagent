@@ -129,6 +129,24 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
 }
 
 /**
+ * Shorthand for displaying a one-off error/info alert whose body is:
+ *   <p>{prefix}<code>{error || 'unknown error'}</code></p>
+ *
+ * Used across several flows (worktree creation/removal, open-PR, etc.) where
+ * the same pattern was previously copy-pasted.
+ *
+ * @param {string} prefix  Human-readable text before the code span.
+ * @param {string|null|undefined} error  Machine-readable detail shown in <code>.
+ * @returns {Promise<boolean>}
+ */
+export async function showErrorAlert(prefix, error) {
+  return showConfirmDialog(
+    _el('p', null, prefix, _el('code', null, error || 'unknown error')),
+    { confirmLabel: 'OK', cancelLabel: 'Close' },
+  );
+}
+
+/**
  * Show a confirm dialog.
  * @param {Node|string} message - text string or DOM node
  * @returns {Promise<boolean>}
