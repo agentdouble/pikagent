@@ -1,7 +1,7 @@
 const { CONFIG_DIR, META_FILE } = require('./paths');
 const { readJson, writeJson } = require('./fs-utils');
 const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
-const { Cache } = require('./cache');
+const { Cache, cachedAsync } = require('./cache');
 const { trySafe } = require('./logger');
 const { JsonStore } = require('./json-store');
 
@@ -10,13 +10,7 @@ const store = new JsonStore(CONFIG_DIR, 'config-manager', {
 });
 const _metaCache = new Cache();
 
-async function readMeta() {
-  const cached = _metaCache.get();
-  if (cached) return cached;
-  const meta = (await readJson(META_FILE)) || { ...DEFAULT_META };
-  _metaCache.set(meta);
-  return meta;
-}
+const readMeta = cachedAsync(_metaCache, async () => (await readJson(META_FILE)) || { ...DEFAULT_META });
 
 async function writeMeta(meta) {
   await store.ensureDir();

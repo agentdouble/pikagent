@@ -1,4 +1,4 @@
-const { Cache } = require('./cache');
+const { Cache, cachedAsync } = require('./cache');
 const { createLogger } = require('./logger');
 const {
   getAllFlows,
@@ -22,10 +22,7 @@ function init(sessionMgr) {
 
 // ===== Aggregation =====
 
-async function getMetrics() {
-  const cached = _metricsCache.get();
-  if (cached) return cached;
-
+const getMetrics = cachedAsync(_metricsCache, async () => {
   const flows = await getAllFlows();
   const flowRuns = getFlowRuns(flows);
 
@@ -40,17 +37,13 @@ async function getMetrics() {
     getMostModifiedFiles(collectUniqueCwds(flowRuns, allSessions)),
   ]);
 
-  const result = {
+  return {
     tokens,
     flow: buildFlowMetrics(flows, flowRuns),
     agent: agentMetrics,
     mostModifiedFiles,
     hasData: flows.length > 0 || allSessions.length > 0 || tokens.total > 0,
   };
-
-  _metricsCache.set(result);
-
-  return result;
-}
+});
 
 module.exports = { init, getMetrics };
