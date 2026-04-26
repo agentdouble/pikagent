@@ -3,7 +3,7 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 
-import { _el } from './dom.js';
+import { _el } from './file-dom.js';
 import { STATIC_MODES } from './editor-helpers.js';
 
 /**

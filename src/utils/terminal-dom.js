@@ -2,7 +2,7 @@
  * DOM re-exports for the terminal domain.
  *
  * Terminal-related modules (terminal-node-builder, terminal-drop-indicator,
- * terminal-panel-helpers) import _el through this facade instead of reaching
- * into the core dom.js hub directly.  This reduces dom.js fan-in.
+ * terminal-panel-helpers, board-view) import DOM primitives through this facade
+ * instead of reaching into the core dom.js hub directly.
  */
-export { _el } from './dom.js';
+export { _el, renderButtonBar } from './dom.js';

@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/workspace-dom.js';
 import { showPromptDialog, showConfirmDialog } from '../utils/dom-dialogs.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';

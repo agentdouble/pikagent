@@ -9,7 +9,7 @@
  * Returns a Promise<{ branch, createBranch, targetPath } | null>.
  */
 
-import { _el, createActionButton } from './dom.js';
+import { _el, createActionButton } from './git-dom.js';
 import { createDialogBase } from './dom-dialogs.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
 

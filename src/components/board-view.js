@@ -1,5 +1,5 @@
 import { onTerminalCreated, onTerminalRemoved, onTerminalExited } from '../utils/terminal-events.js';
-import { _el, renderButtonBar } from '../utils/dom.js';
+import { _el, renderButtonBar } from '../utils/terminal-dom.js';
 import { _safeFit, createTerminal, disposeTerminal, disposeTerminalMap, setupTerminalAddons } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
