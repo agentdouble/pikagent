@@ -16,10 +16,11 @@ import {
   promptRename as doPromptRename,
   promptNewEntry as doPromptNewEntry,
 } from '../utils/file-tree-drop.js';
+import { ComponentBase } from '../utils/component-base.js';
 
-export class FileTree {
+export class FileTree extends ComponentBase {
   constructor(container) {
-    this.container = container;
+    super(container);
     this.termCwds = new Map();
     this.sections = new Map();
     this.debounceTimers = new Map();
@@ -55,7 +56,7 @@ export class FileTree {
   }
 
   listenForChanges() {
-    this.unsubFs = window.api.fs.onChanged(({ id }) => {
+    this._track(window.api.fs.onChanged(({ id }) => {
       if (this.debounceTimers.has(id)) {
         clearTimeout(this.debounceTimers.get(id));
       }
@@ -66,7 +67,7 @@ export class FileTree {
           this.refreshSection(id).catch(() => {});
         }, DEBOUNCE_DELAY)
       );
-    });
+    }));
   }
 
   async setTerminalRoot(termId, dirPath) {
@@ -288,7 +289,7 @@ export class FileTree {
   }
 
   dispose() {
-    if (this.unsubFs) this.unsubFs();
+    super.dispose();
     for (const [, section] of this.sections) {
       window.api.fs.unwatch(section.watchId);
     }

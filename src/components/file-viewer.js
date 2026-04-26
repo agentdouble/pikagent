@@ -8,10 +8,11 @@ import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
 import { renderModeBar } from '../utils/file-viewer-mode-bar.js';
 import { setupFileViewerListeners } from '../utils/file-viewer-listeners.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
+import { ComponentBase } from '../utils/component-base.js';
 
-export class FileViewer {
+export class FileViewer extends ComponentBase {
   constructor(container, isActive) {
-    this.container = container;
+    super(container);
     this.isActive = isActive || (() => true);
     this.openFiles = new Map(); // path -> { name, content, savedContent, lang }
     this.activeFile = null;
@@ -28,7 +29,7 @@ export class FileViewer {
       () => this._renderModeBar(),
     );
     this._renderModeBar();
-    this._busListeners = setupFileViewerListeners(
+    const busListeners = setupFileViewerListeners(
       { isActive: () => this.isActive() },
       {
         switchMode: (m) => this.switchMode(m),
@@ -38,6 +39,7 @@ export class FileViewer {
         loadPinnedFiles: () => this.loadPinnedFiles(),
       },
     );
+    for (const unsub of busListeners) this._track(unsub);
   }
 
   static get pinnedFiles() { return pinnedFiles; }
@@ -290,8 +292,7 @@ export class FileViewer {
   }
 
   dispose() {
-    for (const unsub of this._busListeners) unsub();
-    this._busListeners = [];
+    super.dispose();
     this._webviewMgr.dispose();
   }
 }

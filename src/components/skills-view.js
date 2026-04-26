@@ -1,16 +1,16 @@
 import { _el } from '../utils/dom.js';
 import { showPromptDialog, showConfirmDialog } from '../utils/dom-dialogs.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { ComponentBase } from '../utils/component-base.js';
 
-export class SkillsView {
+export class SkillsView extends ComponentBase {
   constructor(container) {
-    this.container = container;
+    super(container);
     this.skills = [];
     this.selectedId = null;
     this.rootPath = '';
     this.editorDirty = false;
     this.editorValue = '';
-    this.disposed = false;
 
     this.el = _el('div', 'skills-container');
     container.appendChild(this.el);
@@ -278,7 +278,7 @@ export class SkillsView {
   }
 
   dispose() {
-    this.disposed = true;
+    super.dispose();
     this.el.remove();
   }
 }

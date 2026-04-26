@@ -1,12 +1,13 @@
 import { _el } from '../utils/dom.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { ComponentBase } from '../utils/component-base.js';
 
 // --- Component ---
 
-export class UsageView {
+export class UsageView extends ComponentBase {
   constructor(container) {
-    this.container = container;
+    super(container);
     this.el = _el('div', { className: 'usage-container' });
     container.appendChild(this.el);
     this.activeTab = 'agents';
@@ -79,6 +80,7 @@ export class UsageView {
   }
 
   dispose() {
+    super.dispose();
     this.el.remove();
   }
 
