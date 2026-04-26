@@ -16,7 +16,7 @@
  */
 
 import { generateId } from './id.js';
-import { _el } from './dom.js';
+import { _el } from './tab-dom.js';
 import { showConfirmDialog } from './dom-dialogs.js';
 import { emitWorkspaceActivated } from './workspace-events.js';
 import { WorkspaceTab } from './tab-types.js';

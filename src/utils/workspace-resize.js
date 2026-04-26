@@ -6,7 +6,7 @@
  * @typedef {{ getActiveTab: () => import('./tab-types.js').WorkspaceTab|null, scheduleAutoSave: () => void }} PanelInteractionDeps
  */
 
-import { _el } from './dom.js';
+import { _el } from './workspace-dom.js';
 import { trackMouse } from './drag-helpers.js';
 import { PANEL_MIN_WIDTH, FIT_DELAY_MS, WORKSPACE_PANELS } from './tab-constants.js';
 import { clampPanelWidth, panelArrowState } from './tab-manager-helpers.js';

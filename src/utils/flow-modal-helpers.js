@@ -1,4 +1,4 @@
-import { _el } from './dom.js';
+import { _el } from './flow-dom.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
 import { AGENT_OPTIONS } from '../../shared/agent-registry.js';
 
