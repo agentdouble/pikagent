@@ -6,7 +6,7 @@ import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalThe
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 import { _el, createActionButton } from '../utils/dom.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
-import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { buildSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
 
@@ -95,16 +95,14 @@ export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
 
   // Terminal theme grid
   const subHeading = _el('h4', 'theme-sub-heading', 'Terminal Theme');
-
   const currentThemeName = getTerminalThemeName();
-  const grid = _el('div', 'theme-grid');
-  for (const [name, theme] of Object.entries(TERMINAL_THEMES)) {
-    grid.appendChild(_createThemeCard(name, theme, name === currentThemeName, tabManager, renderAppearanceFn));
-  }
 
-  createSettingsSection(contentEl, {
+  buildSettingsSection(contentEl, {
     heading: 'Appearance',
-    content: [modeRow, subHeading, grid],
+    items: Object.entries(TERMINAL_THEMES),
+    renderItem: ([name, theme]) => _createThemeCard(name, theme, name === currentThemeName, tabManager, renderAppearanceFn),
+    listClass: 'theme-grid',
+    before: [modeRow, subHeading],
   });
 }
 

@@ -2,31 +2,24 @@
  * Workspace Configs section renderer for SettingsModal.
  * Extracted from settings-modal.js to reduce component size.
  */
-import { _el, renderButtonBar } from '../utils/dom.js';
+import { _el } from '../utils/dom.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
-import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createActionBar } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
-  const handlers = {
-    setDefault: createAsyncHandler(
-      { onSuccess: renderConfigsFn },
-      () => window.api.config.setDefault(config.name),
-    ),
-    overwrite: createAsyncHandler(
-      { guard: () => !!tabManager, onSuccess: renderConfigsFn },
-      () => window.api.config.save(config.name, tabManager.serialize()),
-    ),
-    delete: createAsyncHandler(
-      { onSuccess: renderConfigsFn },
-      () => window.api.config.delete(config.name),
-    ),
-  };
-
-  const configs = CONFIG_ACTIONS
-    .filter(desc => !(desc.hideWhen && config[desc.hideWhen]));
-  return renderButtonBar({ containerClass: 'config-actions', configs, handlers });
+  return createActionBar({
+    containerClass: 'config-actions',
+    actions: CONFIG_ACTIONS,
+    handlerDefs: {
+      setDefault: { apiCall: () => window.api.config.setDefault(config.name) },
+      overwrite: { apiCall: () => window.api.config.save(config.name, tabManager.serialize()), guard: () => !!tabManager },
+      delete: { apiCall: () => window.api.config.delete(config.name) },
+    },
+    onSuccess: renderConfigsFn,
+    filter: (desc) => !(desc.hideWhen && config[desc.hideWhen]),
+  });
 }
 
 function _buildConfigRowLeft(config) {
@@ -63,24 +56,26 @@ function _createConfigRow(config, currentName, tabManager, renderConfigsFn) {
 }
 
 function _createBottomActions(currentName, tabManager, renderConfigsFn) {
-  const handlers = {
-    new: () => {
-      if (!tabManager) return;
-      tabManager.configManager.promptConfigName('', async (name) => {
-        await tabManager.configManager.newConfig(name);
-        renderConfigsFn();
-      });
+  return createActionBar({
+    containerClass: 'config-bottom-actions',
+    actions: BOTTOM_CONFIG_BUTTONS.map(({ label, action }) => ({ label, action, cls: 'config-bottom-btn' })),
+    handlerDefs: {
+      new: () => {
+        if (!tabManager) return;
+        tabManager.configManager.promptConfigName('', async (name) => {
+          await tabManager.configManager.newConfig(name);
+          renderConfigsFn();
+        });
+      },
+      duplicate: () => {
+        if (!tabManager) return;
+        tabManager.configManager.promptConfigName(`${currentName} (copy)`, async (name) => {
+          await tabManager.configManager.duplicateConfig(name);
+          renderConfigsFn();
+        });
+      },
     },
-    duplicate: () => {
-      if (!tabManager) return;
-      tabManager.configManager.promptConfigName(`${currentName} (copy)`, async (name) => {
-        await tabManager.configManager.duplicateConfig(name);
-        renderConfigsFn();
-      });
-    },
-  };
-  const configs = BOTTOM_CONFIG_BUTTONS.map(({ label, action }) => ({ label, action, cls: 'config-bottom-btn' }));
-  return renderButtonBar({ containerClass: 'config-bottom-actions', configs, handlers });
+  });
 }
 
 /**
@@ -99,14 +94,14 @@ export async function renderConfigs(contentEl, tabManager, renderConfigsFn) {
 
   // Config list
   const configs = await window.api.config.list();
-  const list = _el('div', 'config-list');
-  for (const config of configs) {
-    list.appendChild(_createConfigRow(config, currentName, tabManager, renderConfigsFn));
-  }
 
-  createSettingsSection(contentEl, {
+  buildSettingsSection(contentEl, {
     heading: 'Workspace Configs',
-    content: [currentBar, list, _createBottomActions(currentName, tabManager, renderConfigsFn)],
+    items: configs,
+    renderItem: (config) => _createConfigRow(config, currentName, tabManager, renderConfigsFn),
+    listClass: 'config-list',
+    before: [currentBar],
+    after: [_createBottomActions(currentName, tabManager, renderConfigsFn)],
   });
 }
 

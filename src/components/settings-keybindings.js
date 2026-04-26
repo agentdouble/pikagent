@@ -5,7 +5,7 @@
 import { formatCombo } from '../utils/shortcut-helpers.js';
 import { _el, createActionButton } from '../utils/dom.js';
 import { onClickStopped } from '../utils/event-helpers.js';
-import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { buildSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
 /**
@@ -44,6 +44,34 @@ function createKeyBadge(binding, index, shortcutManager, startRecordingFn, rende
 }
 
 /**
+ * Build a single keybinding row with badge elements and an add button.
+ */
+function _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+  const row = _el('div', 'keybinding-row');
+  row.appendChild(_el('div', 'keybinding-label', binding.label));
+
+  const keysContainer = _el('div', 'keybinding-keys');
+  for (let i = 0; i < binding.keys.length; i++) {
+    keysContainer.appendChild(createKeyBadge(binding, i, shortcutManager, startRecordingFn, renderKeybindingsFn));
+  }
+
+  const addBtn = createActionButton({
+    text: '+',
+    title: 'Add keybinding',
+    cls: 'keybinding-add-btn',
+    onClick: () => {
+      binding.keys.push('');
+      shortcutManager.updateBinding(binding.id, binding.keys);
+      renderKeybindingsFn();
+    },
+  });
+  keysContainer.appendChild(addBtn);
+
+  row.appendChild(keysContainer);
+  return row;
+}
+
+/**
  * Render the Keybindings section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
  * @param {{ updateBinding: (id: string, keys: string[]) => void, getBindingsList: () => Array<{ id: string, label: string, keys: string[] }>, resetToDefaults: () => void }} shortcutManager
@@ -60,37 +88,12 @@ export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, 
     },
   });
 
-  const list = _el('div', 'keybinding-list');
-
-  for (const binding of shortcutManager.getBindingsList()) {
-    const row = _el('div', 'keybinding-row');
-    row.appendChild(_el('div', 'keybinding-label', binding.label));
-
-    const keysContainer = _el('div', 'keybinding-keys');
-    for (let i = 0; i < binding.keys.length; i++) {
-      keysContainer.appendChild(createKeyBadge(binding, i, shortcutManager, startRecordingFn, renderKeybindingsFn));
-    }
-
-    const addBtn = createActionButton({
-      text: '+',
-      title: 'Add keybinding',
-      cls: 'keybinding-add-btn',
-      onClick: () => {
-        binding.keys.push('');
-        shortcutManager.updateBinding(binding.id, binding.keys);
-        renderKeybindingsFn();
-      },
-    });
-    keysContainer.appendChild(addBtn);
-
-    row.appendChild(keysContainer);
-    list.appendChild(row);
-  }
-
-  createSettingsSection(contentEl, {
+  buildSettingsSection(contentEl, {
     heading: 'Keyboard Shortcuts',
+    items: shortcutManager.getBindingsList(),
+    renderItem: (binding) => _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKeybindingsFn),
+    listClass: 'keybinding-list',
     actions: [resetBtn],
-    content: [list],
   });
 }
 
