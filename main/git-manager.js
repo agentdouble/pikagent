@@ -103,22 +103,36 @@ function _errorMessage(err) {
 }
 
 /**
+ * Execute a git command and return { ok: true } on success or
+ * { ok: false, error } on failure. Centralises the try/catch + log.warn
+ * pattern shared by worktreeAdd, worktreeRemove and pushBranch.
+ *
+ * @param {string} cwd  - working directory
+ * @param {string[]} args - arguments passed to `git`
+ * @param {string} label - human-readable label for the log message
+ * @returns {Promise<{ok: boolean, error?: string}>}
+ */
+async function executeGitCommand(cwd, args, label) {
+  try {
+    await execFileAsync('git', args, execOpts(cwd));
+    return { ok: true };
+  } catch (err) {
+    log.warn(`${label} failed`, err);
+    return { ok: false, error: _errorMessage(err) };
+  }
+}
+
+/**
  * Add a worktree. When `createBranch` is true, creates a new branch named
  * `branch` (optionally starting from `baseBranch`, defaulting to HEAD) at
  * `targetPath`. Otherwise checks out the existing `branch`.
  * Returns { ok: boolean, error?: string }.
  */
 async function worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch) {
-  try {
-    const args = createBranch
-      ? ['worktree', 'add', '-b', branch, targetPath, ...(baseBranch ? [baseBranch] : [])]
-      : ['worktree', 'add', targetPath, branch];
-    await execFileAsync('git', args, execOpts(cwd));
-    return { ok: true };
-  } catch (err) {
-    log.warn(`worktree add ${branch} → ${targetPath} failed`, err);
-    return { ok: false, error: _errorMessage(err) };
-  }
+  const args = createBranch
+    ? ['worktree', 'add', '-b', branch, targetPath, ...(baseBranch ? [baseBranch] : [])]
+    : ['worktree', 'add', targetPath, branch];
+  return executeGitCommand(cwd, args, `worktree add ${branch} → ${targetPath}`);
 }
 
 /**
@@ -127,16 +141,10 @@ async function worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch) {
  * Returns { ok: boolean, error?: string }.
  */
 async function worktreeRemove(cwd, worktreePath, force) {
-  try {
-    const args = ['worktree', 'remove'];
-    if (force) args.push('--force');
-    args.push(worktreePath);
-    await execFileAsync('git', args, execOpts(cwd));
-    return { ok: true };
-  } catch (err) {
-    log.warn(`worktree remove ${worktreePath} failed`, err);
-    return { ok: false, error: _errorMessage(err) };
-  }
+  const args = ['worktree', 'remove'];
+  if (force) args.push('--force');
+  args.push(worktreePath);
+  return executeGitCommand(cwd, args, `worktree remove ${worktreePath}`);
 }
 
 async function getRemoteUrl(cwd) {
@@ -144,13 +152,7 @@ async function getRemoteUrl(cwd) {
 }
 
 async function pushBranch(cwd, branch) {
-  try {
-    await execFileAsync('git', ['push', '-u', 'origin', branch], execOpts(cwd));
-    return { ok: true };
-  } catch (err) {
-    log.warn(`push ${branch} failed`, err);
-    return { ok: false, error: _errorMessage(err) };
-  }
+  return executeGitCommand(cwd, ['push', '-u', 'origin', branch], `push ${branch}`);
 }
 
 // ---------------------------------------------------------------------------

@@ -62,28 +62,33 @@ function getRegisteredChannels(skip = new Set()) {
 
 /**
  * @internal
- * Register forward-style handlers on ipcMain for a given target.
- * @param {Electron.IpcMain} ipc - Electron ipcMain
- * @param {Record<string, (...args: unknown[]) => unknown>} target - The object whose methods will be called
- * @param {Array<[string, string]>} entries - Array of [channel, method] tuples
+ * Generic handler registration — loops over entries and registers an
+ * `ipc.handle` for each one, using `buildCallback` to create the handler.
+ *
+ * @param {Electron.IpcMain} ipc
+ * @param {Record<string, (...args: unknown[]) => unknown>} target
+ * @param {Array} entries
+ * @param {(target: object, entry: Array) => (event: any, arg: any) => any} buildCallback
  */
-function registerForward(ipc, target, entries) {
-  for (const [channel, method] of entries) {
-    ipc.handle(channel, (_, arg) => target[method](arg));
+function registerHandlers(ipc, target, entries, buildCallback) {
+  for (const entry of entries) {
+    const [channel] = entry;
+    ipc.handle(channel, buildCallback(target, entry));
   }
 }
 
-/**
- * @internal
- * Register spread-style handlers on ipcMain for a given target.
- * @param {Electron.IpcMain} ipc - Electron ipcMain
- * @param {Record<string, (...args: unknown[]) => unknown>} target - The object whose methods will be called
- * @param {Array<[string, string, string[]]>} entries - Array of [channel, method, keys] tuples
- */
+/** @internal Forward-style: single arg forwarded directly. */
+function registerForward(ipc, target, entries) {
+  registerHandlers(ipc, target, entries, (t, [, method]) =>
+    (_, arg) => t[method](arg),
+  );
+}
+
+/** @internal Spread-style: keyed args destructured and spread. */
 function registerSpread(ipc, target, entries) {
-  for (const [channel, method, keys] of entries) {
-    ipc.handle(channel, (_, arg) => target[method](...keys.map(k => arg[k])));
-  }
+  registerHandlers(ipc, target, entries, (t, [, method, keys]) =>
+    (_, arg) => t[method](...keys.map(k => arg[k])),
+  );
 }
 
 /**
@@ -96,21 +101,28 @@ function registerSpread(ipc, target, entries) {
  * @param {Set<string>} [skip] - Channels to skip (registered as custom handlers elsewhere)
  */
 function registerManagerHandlers(ipc, targets, skip = new Set()) {
-  for (const [channel, domain] of FORWARD_TABLE) {
-    if (skip.has(channel)) continue;
-    const target = targets[domain];
-    if (!target) continue;
-    const method = channel.split(':')[1];
-    ipc.handle(channel, (_, arg) => target[method](arg));
+  /**
+   * Shared iteration: resolve domain → target, derive method name from
+   * channel, then delegate to `buildCallback` for the handler shape.
+   */
+  function registerFromTable(entries, buildCallback) {
+    for (const entry of entries) {
+      const [channel, domain] = entry;
+      if (skip.has(channel)) continue;
+      const target = targets[domain];
+      if (!target) continue;
+      const method = channel.split(':')[1];
+      ipc.handle(channel, buildCallback(target, method, entry));
+    }
   }
 
-  for (const [channel, domain, keys] of SPREAD_TABLE) {
-    if (skip.has(channel)) continue;
-    const target = targets[domain];
-    if (!target) continue;
-    const method = channel.split(':')[1];
-    ipc.handle(channel, (_, arg) => target[method](...keys.map(k => arg[k])));
-  }
+  registerFromTable(FORWARD_TABLE, (target, method) =>
+    (_, arg) => target[method](arg),
+  );
+
+  registerFromTable(SPREAD_TABLE, (target, method, [,, keys]) =>
+    (_, arg) => target[method](...keys.map(k => arg[k])),
+  );
 }
 
 module.exports = { safeSend, registerManagerHandlers, getRegisteredChannels };
