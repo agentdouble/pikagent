@@ -12,7 +12,7 @@
 
 import { getComponent } from './component-registry.js';
 import { emitWorkspaceActivated } from './workspace-events.js';
-import { _el } from './dom.js';
+import { _el } from './workspace-dom.js';
 import { WORKSPACE_PANELS } from './tab-constants.js';
 import {
   buildSidePanel, buildCenterPanel,

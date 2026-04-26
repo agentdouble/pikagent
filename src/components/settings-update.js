@@ -2,7 +2,7 @@
  * Update section renderer for SettingsModal.
  * Handles version display, update check, diff preview, install, and relaunch.
  */
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/settings-dom.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 

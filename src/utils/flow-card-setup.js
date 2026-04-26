@@ -8,7 +8,7 @@
  * @typedef {{ id: string, runs?: Array<FlowRun>, enabled?: boolean }} FlowDescriptor
  */
 
-import { _el } from './dom.js';
+import { _el } from './flow-dom.js';
 import { getLastRun, toggleInSet } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-category-renderer.js';
 import { createCardHeader } from './flow-card-renderer.js';

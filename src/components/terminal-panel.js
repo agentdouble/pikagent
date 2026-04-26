@@ -1,6 +1,6 @@
 import { emitTerminalRemoved } from '../utils/terminal-events.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/terminal-dom.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import {

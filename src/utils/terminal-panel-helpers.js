@@ -1,5 +1,5 @@
 /* Pure helpers and constants for terminal-panel. */
-import { _el } from './dom.js';
+import { _el } from './terminal-dom.js';
 import { computeResizeRatio } from './split-primitives.js';
 import { getPanels } from './split-layout.js';
 

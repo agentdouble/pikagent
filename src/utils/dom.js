@@ -2,7 +2,7 @@
  * Core DOM utilities.
  *
  * This module keeps only the essential DOM factories:
- *   _el, createActionButton, renderButtonBar, buildChevronRow
+ *   _el, createActionButton, renderButtonBar
  *
  * The following helpers have been extracted to dedicated modules — import
  * them directly from there instead of going through this file:
@@ -14,6 +14,13 @@
  *   - _safeFit                              → ./terminal-factory.js
  *   - createSelect                          → ./flow-modal-helpers.js (private)
  *   - positionInViewport                    → ./context-menu.js (private)
+ *
+ * Domain facades reduce fan-in — prefer importing from these where applicable:
+ *   - terminal-dom.js   (terminal-node-builder, terminal-drop-indicator, …)
+ *   - tab-dom.js        (tab-bar-renderer, tab-renderer, tab-lifecycle, …)
+ *   - workspace-dom.js  (workspace-layout, workspace-resize, sidebar-manager)
+ *   - flow-dom.js       (flow-card-renderer, flow-card-setup, …)
+ *   - file-dom.js       (file-tree-renderer, file-tree-drop, …)
  */
 import { onClickStopped } from './event-helpers.js';
 

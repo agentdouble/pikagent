@@ -3,7 +3,7 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 import { onClickStopped } from '../utils/event-helpers.js';
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/file-dom.js';
 import { setupInlineInput } from '../utils/form-helpers.js';
 import { generateId } from '../utils/id.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
