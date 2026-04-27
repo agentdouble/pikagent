@@ -25,7 +25,6 @@ const PERDAY_KEYS = TOKEN_FIELD_MAP.filter(f => f.perDay).map(f => f.key);
 
 const MAX_RUN_DURATION_MS = 24 * 60 * 60 * 1000;
 const TOP_PROJECTS_LIMIT = 10;
-const CACHE_TTL = 30000;
 const TOP_FILES_LIMIT = 15;
 const GIT_TIMEOUT_MS = 5000;
 
@@ -267,7 +266,6 @@ function collectUniqueCwds(flowRuns, sessions) {
 }
 
 module.exports = {
-  CACHE_TTL,
   TOP_FILES_LIMIT,
   GIT_TIMEOUT_MS,
   newTokenTotals,
