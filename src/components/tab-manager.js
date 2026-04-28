@@ -124,7 +124,13 @@ export class TabManager {
       getActiveTabId: () => this.activeTabId,
       getActiveTab: () => this._activeTab(),
       scheduleAutoSave: () => this.configManager.scheduleAutoSave(),
-    }, tab, this._api);
+    }, tab, this._api, {
+      FileTree: getComponent('FileTree'),
+      FileViewer: getComponent('FileViewer'),
+      TerminalPanel: getComponent('TerminalPanel'),
+      WebviewManager: getComponent('WebviewManager'),
+      GitChangesView: getComponent('GitChangesView'),
+    });
   }
 
   serialize() {
