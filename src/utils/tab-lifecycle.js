@@ -20,9 +20,7 @@ import { _el } from './tab-dom.js';
 import { showConfirmDialog } from './dom-dialogs.js';
 import { emitWorkspaceActivated } from './workspace-events.js';
 import { WorkspaceTab } from './tab-types.js';
-import { reattachLayout, syncFileTree } from './workspace-layout.js';
-import { capturePanelWidths } from './workspace-resize.js';
-import { disposeTab } from './workspace-cleanup.js';
+import { reattachLayout, syncFileTree, capturePanelWidths, disposeTab } from './workspace-ops.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { maybeRemoveWorktree } from './worktree-flow.js';
 
