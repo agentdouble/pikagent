@@ -5,4 +5,4 @@
  * terminal-panel-helpers, board-view) import DOM primitives through this facade
  * instead of reaching into the core dom.js hub directly.
  */
-export { _el, renderButtonBar } from './dom.js';
+export { _el, renderButtonBar, renderList } from './dom.js';

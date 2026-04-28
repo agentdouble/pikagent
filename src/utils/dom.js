@@ -2,7 +2,7 @@
  * Core DOM utilities.
  *
  * This module keeps only the essential DOM factories:
- *   _el, createActionButton, renderButtonBar
+ *   _el, createActionButton, renderButtonBar, renderList
  *
  * The following helpers have been extracted to dedicated modules — import
  * them directly from there instead of going through this file:
@@ -113,6 +113,20 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
     }));
   }
   return bar;
+}
+
+/**
+ * Clear a container and populate it by calling `renderItem` for each item.
+ * @param {HTMLElement} container
+ * @param {Array} items
+ * @param {(item: *, index: number) => HTMLElement|null} renderItem
+ */
+export function renderList(container, items, renderItem) {
+  container.replaceChildren();
+  for (let i = 0; i < items.length; i++) {
+    const el = renderItem(items[i], i);
+    if (el) container.appendChild(el);
+  }
 }
 
 /**

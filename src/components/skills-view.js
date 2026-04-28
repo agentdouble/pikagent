@@ -1,4 +1,4 @@
-import { _el } from '../utils/workspace-dom.js';
+import { _el, renderList } from '../utils/workspace-dom.js';
 import { showPromptDialog, showConfirmDialog } from '../utils/dom-dialogs.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
@@ -153,33 +153,27 @@ export class SkillsView extends ComponentBase {
     if (!this.listEl) return;
     if (this._rootBadgeEl) this._rootBadgeEl.textContent = this.rootPath;
 
-    this.listEl.replaceChildren();
+    renderList(this.listEl, this.skills, (skill) => _el('div', {
+      className: `skills-item ${this.selectedId === skill.id ? 'skills-item-active' : ''}`,
+      onClick: () => this._selectSkill(skill.id),
+    },
+      _el('div', 'skills-item-main',
+        _el('div', 'skills-item-name', skill.name),
+        skill.description && _el('div', 'skills-item-desc', skill.description),
+      ),
+      _el('div', 'skills-item-meta',
+        _el('div', 'skills-item-source', skill.source),
+      ),
+      _el('button', {
+        className: 'skills-item-delete',
+        title: 'Supprimer',
+        textContent: '✕',
+        onClick: (e) => { e.stopPropagation(); this._deleteSkill(skill.id); },
+      }),
+    ));
 
     if (this.skills.length === 0) {
       this.listEl.appendChild(_el('div', 'skills-empty', 'Aucun skill. Créez-en un pour commencer.'));
-      return;
-    }
-
-    for (const skill of this.skills) {
-      const item = _el('div', {
-        className: `skills-item ${this.selectedId === skill.id ? 'skills-item-active' : ''}`,
-        onClick: () => this._selectSkill(skill.id),
-      },
-        _el('div', 'skills-item-main',
-          _el('div', 'skills-item-name', skill.name),
-          skill.description && _el('div', 'skills-item-desc', skill.description),
-        ),
-        _el('div', 'skills-item-meta',
-          _el('div', 'skills-item-source', skill.source),
-        ),
-        _el('button', {
-          className: 'skills-item-delete',
-          title: 'Supprimer',
-          textContent: '✕',
-          onClick: (e) => { e.stopPropagation(); this._deleteSkill(skill.id); },
-        }),
-      );
-      this.listEl.appendChild(item);
     }
   }
 

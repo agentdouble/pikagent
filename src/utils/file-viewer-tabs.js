@@ -3,7 +3,7 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 
-import { _el } from './file-dom.js';
+import { _el, renderList } from './file-dom.js';
 import { attachContextMenu } from './context-menu.js';
 import { createTabElement } from './tab-renderer.js';
 
@@ -69,8 +69,7 @@ function createTabEl(filePath, file, activeFile, isPinned, isModified, callbacks
  * @param {{ onClose: (filePath: string) => void, onActivate: (filePath: string) => void, onTogglePin: (filePath: string) => void }} callbacks
  */
 export function renderTabs(tabsBar, openFiles, activeFile, isPinned, isModified, callbacks) {
-  tabsBar.replaceChildren();
-  for (const [filePath, file] of openFiles) {
-    tabsBar.appendChild(createTabEl(filePath, file, activeFile, isPinned, isModified, callbacks));
-  }
+  renderList(tabsBar, [...openFiles], ([filePath, file]) =>
+    createTabEl(filePath, file, activeFile, isPinned, isModified, callbacks),
+  );
 }
