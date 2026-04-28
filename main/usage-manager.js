@@ -1,5 +1,4 @@
 const { Cache, cachedAsync } = require('./cache');
-const { createLogger } = require('./logger');
 const {
   getAllFlows,
   getTokenMetrics,
@@ -9,8 +8,6 @@ const {
   collectUniqueCwds,
 } = require('./token-collector');
 const { getMostModifiedFiles } = require('./git-metrics-collector');
-
-const log = createLogger('usage-manager');
 
 let _sessionManager = null;
 const CACHE_TTL = 30_000;

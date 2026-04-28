@@ -8,7 +8,7 @@ app.setName('Pickagent');
 let managerCleanup = null;
 
 app.whenReady().then(() => {
-  const win = window.create();
+  window.create();
   const getWindow = () => window.get();
 
   const { targets, cleanup, ptyManager, sessionManager } = initManagers(getWindow);
