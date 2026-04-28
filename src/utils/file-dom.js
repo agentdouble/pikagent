@@ -5,4 +5,4 @@
  * file-editor-renderer, file-viewer-tabs) import _el through this facade
  * instead of reaching into the core dom.js hub directly.
  */
-export { _el, createActionButton } from './dom.js';
+export { _el, createActionButton, renderList } from './dom.js';

@@ -3,7 +3,7 @@
  * Abstracts the heading + content + action buttons pattern
  * shared across settings-appearance, settings-configs, and settings-keybindings.
  */
-import { _el, renderButtonBar } from './settings-dom.js';
+import { _el, renderButtonBar, renderList } from './settings-dom.js';
 import { createAsyncHandler } from './event-helpers.js';
 
 /**
@@ -48,9 +48,7 @@ export function createSettingsSection(contentEl, { heading, actions = [], conten
  */
 export function buildSettingsSection(contentEl, { heading, items, renderItem, listClass, actions, before = [], after = [] }) {
   const list = _el('div', listClass || null);
-  for (const item of items) {
-    list.appendChild(renderItem(item));
-  }
+  renderList(list, items, renderItem);
 
   return createSettingsSection(contentEl, {
     heading,

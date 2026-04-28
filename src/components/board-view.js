@@ -1,5 +1,5 @@
 import { onTerminalCreated, onTerminalRemoved, onTerminalExited } from '../utils/terminal-events.js';
-import { _el, renderButtonBar } from '../utils/terminal-dom.js';
+import { _el, renderButtonBar, renderList } from '../utils/terminal-dom.js';
 import { _safeFit, createTerminal, disposeTerminal, disposeTerminalMap, setupTerminalAddons } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
@@ -188,14 +188,10 @@ export class BoardView extends ComponentBase {
 
   _updateHiddenBar() {
     if (!this.hiddenBarEl) return;
-    this.hiddenBarEl.replaceChildren();
-    if (this._hiddenTerms.size === 0) return;
-
-    for (const termId of this._hiddenTerms) {
+    renderList(this.hiddenBarEl, [...this._hiddenTerms], (termId) => {
       const card = this.cards.get(termId);
-      if (!card) continue;
-
-      this.hiddenBarEl.appendChild(_el('button', {
+      if (!card) return null;
+      return _el('button', {
         className: 'board-hidden-chip',
         textContent: formatCardLabel(card.info.agent, card.info.tabName),
         title: 'Show',
@@ -205,8 +201,8 @@ export class BoardView extends ComponentBase {
           this._updateHiddenBar();
           setTimeout(() => _safeFit(card.fitAddon), FIT_UNHIDE_DELAY_MS);
         },
-      }));
-    }
+      });
+    });
   }
 
   _setupListeners() {
