@@ -67,8 +67,8 @@ function getRegisteredChannels(skip = new Set()) {
  *
  * @param {Electron.IpcMain} ipc
  * @param {Record<string, (...args: unknown[]) => unknown>} target
- * @param {Array} entries
- * @param {(target: object, entry: Array) => (event: any, arg: any) => any} buildCallback
+ * @param {Array<[string, string, string[]?]>} entries
+ * @param {(target: Record<string, (...args: unknown[]) => unknown>, entry: [string, string, string[]?]) => (event: Electron.IpcMainInvokeEvent, arg: unknown) => unknown} buildCallback
  */
 function registerHandlers(ipc, target, entries, buildCallback) {
   for (const entry of entries) {

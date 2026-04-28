@@ -118,8 +118,8 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
 /**
  * Clear a container and populate it by calling `renderItem` for each item.
  * @param {HTMLElement} container
- * @param {Array} items
- * @param {(item: *, index: number) => HTMLElement|null} renderItem
+ * @param {Array<unknown>} items
+ * @param {(item: unknown, index: number) => HTMLElement|null} renderItem
  */
 export function renderList(container, items, renderItem) {
   container.replaceChildren();
