@@ -17,8 +17,8 @@ export class ComponentBase {
 
   /**
    * Register an unsubscribe function (or any teardown callback) to be called on dispose.
-   * @param {Function} unsub
-   * @returns {Function} the same unsub, for chaining
+   * @param {() => void} unsub
+   * @returns {() => void} the same unsub, for chaining
    */
   _track(unsub) {
     this._disposables.push(unsub);
@@ -27,7 +27,7 @@ export class ComponentBase {
 
   /**
    * Execute `fn` only if the component has not been disposed.
-   * @param {Function} fn
+   * @param {() => void} fn
    */
   _guardDisposed(fn) {
     if (!this.disposed) fn();
