@@ -9,7 +9,7 @@
  * @see event-bus.js (singleton bus instance)
  */
 
-import { bus } from './event-bus.js';
+import { createTypedEvent } from './event-bus.js';
 
 // ── Event constants ─────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ import { bus } from './event-bus.js';
  * @readonly
  * @enum {string}
  */
-export const WORKSPACE_EVENTS = {
+const WORKSPACE_EVENTS = {
   /** Workspace layout changed (panel resize, split, webview). */
   LAYOUT_CHANGED: 'layout:changed',
   /** Workspace tab activated or re-shown. */
@@ -33,43 +33,41 @@ export const WORKSPACE_EVENTS = {
   FILE_OPEN: 'file:open',
 };
 
-// ── Typed subscription helpers ──────────────────────────────────────
-// Each returns an unsubscribe function.
+// ── Typed helpers (generated via factory) ───────────────────────────
+
+const layoutChanged = createTypedEvent(WORKSPACE_EVENTS.LAYOUT_CHANGED);
+const activated = createTypedEvent(WORKSPACE_EVENTS.ACTIVATED);
+const openFromFolder = createTypedEvent(WORKSPACE_EVENTS.OPEN_FROM_FOLDER);
+const createWorktree = createTypedEvent(WORKSPACE_EVENTS.CREATE_WORKTREE);
+const openPr = createTypedEvent(WORKSPACE_EVENTS.OPEN_PR);
+const fileOpen = createTypedEvent(WORKSPACE_EVENTS.FILE_OPEN);
 
 /** @param {(data: undefined) => void} cb */
-export const onLayoutChanged = (cb) => bus.on(WORKSPACE_EVENTS.LAYOUT_CHANGED, cb);
+export const onLayoutChanged = layoutChanged.on;
+/** Emit layout:changed (no payload). */
+export const emitLayoutChanged = layoutChanged.emit;
 
 /** @param {(data: undefined) => void} cb */
-export const onWorkspaceActivated = (cb) => bus.on(WORKSPACE_EVENTS.ACTIVATED, cb);
+export const onWorkspaceActivated = activated.on;
+/** Emit workspace:activated (no payload). */
+export const emitWorkspaceActivated = activated.emit;
 
 /** @param {(data: { cwd: string }) => void} cb */
-export const onWorkspaceOpenFromFolder = (cb) => bus.on(WORKSPACE_EVENTS.OPEN_FROM_FOLDER, cb);
+export const onWorkspaceOpenFromFolder = openFromFolder.on;
+/** @param {{ cwd: string }} data */
+export const emitWorkspaceOpenFromFolder = openFromFolder.emit;
 
 /** @param {(data: { repoCwd: string }) => void} cb */
-export const onWorkspaceCreateWorktree = (cb) => bus.on(WORKSPACE_EVENTS.CREATE_WORKTREE, cb);
+export const onWorkspaceCreateWorktree = createWorktree.on;
+/** @param {{ repoCwd: string }} data */
+export const emitWorkspaceCreateWorktree = createWorktree.emit;
 
 /** @param {(data: { repoCwd: string }) => void} cb */
-export const onWorkspaceOpenPr = (cb) => bus.on(WORKSPACE_EVENTS.OPEN_PR, cb);
+export const onWorkspaceOpenPr = openPr.on;
+/** @param {{ repoCwd: string }} data */
+export const emitWorkspaceOpenPr = openPr.emit;
 
 /** @param {(data: { path: string, name: string }) => void} cb */
-export const onFileOpen = (cb) => bus.on(WORKSPACE_EVENTS.FILE_OPEN, cb);
-
-// ── Typed emission helpers ──────────────────────────────────────────
-
-/** Emit layout:changed (no payload). */
-export const emitLayoutChanged = () => bus.emit(WORKSPACE_EVENTS.LAYOUT_CHANGED);
-
-/** Emit workspace:activated (no payload). */
-export const emitWorkspaceActivated = () => bus.emit(WORKSPACE_EVENTS.ACTIVATED);
-
-/** @param {{ cwd: string }} data */
-export const emitWorkspaceOpenFromFolder = (data) => bus.emit(WORKSPACE_EVENTS.OPEN_FROM_FOLDER, data);
-
-/** @param {{ repoCwd: string }} data */
-export const emitWorkspaceCreateWorktree = (data) => bus.emit(WORKSPACE_EVENTS.CREATE_WORKTREE, data);
-
-/** @param {{ repoCwd: string }} data */
-export const emitWorkspaceOpenPr = (data) => bus.emit(WORKSPACE_EVENTS.OPEN_PR, data);
-
+export const onFileOpen = fileOpen.on;
 /** @param {{ path: string, name: string }} data */
-export const emitFileOpen = (data) => bus.emit(WORKSPACE_EVENTS.FILE_OPEN, data);
+export const emitFileOpen = fileOpen.emit;

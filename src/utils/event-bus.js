@@ -36,3 +36,15 @@ class EventBus {
 }
 
 export const bus = new EventBus();
+
+/**
+ * Create a pair of typed on/emit helpers for a given event name.
+ * @param {string} name - the event name
+ * @returns {{ on: (cb: Function) => () => void, emit: (data?: unknown) => void }}
+ */
+export function createTypedEvent(name) {
+  return {
+    on: (cb) => bus.on(name, cb),
+    emit: (data) => bus.emit(name, data),
+  };
+}

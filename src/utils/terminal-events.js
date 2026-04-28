@@ -8,7 +8,7 @@
  * @see event-bus.js (singleton bus instance)
  */
 
-import { bus } from './event-bus.js';
+import { createTypedEvent } from './event-bus.js';
 
 // ── Event constants ─────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ import { bus } from './event-bus.js';
  * @readonly
  * @enum {string}
  */
-export const TERMINAL_EVENTS = {
+const TERMINAL_EVENTS = {
   /** Terminal working directory changed (user ran `cd`). */
   CWD_CHANGED: 'terminal:cwdChanged',
   /** New terminal spawned in a tab. */
@@ -28,31 +28,29 @@ export const TERMINAL_EVENTS = {
   EXITED: 'terminal:exited',
 };
 
-// ── Typed subscription helpers ──────────────────────────────────────
-// Each returns an unsubscribe function.
+// ── Typed helpers (generated via factory) ───────────────────────────
+
+const cwdChanged = createTypedEvent(TERMINAL_EVENTS.CWD_CHANGED);
+const created = createTypedEvent(TERMINAL_EVENTS.CREATED);
+const removed = createTypedEvent(TERMINAL_EVENTS.REMOVED);
+const exited = createTypedEvent(TERMINAL_EVENTS.EXITED);
 
 /** @param {(data: { id: string, cwd: string }) => void} cb */
-export const onTerminalCwdChanged = (cb) => bus.on(TERMINAL_EVENTS.CWD_CHANGED, cb);
+export const onTerminalCwdChanged = cwdChanged.on;
+/** @param {{ id: string, cwd: string }} data */
+export const emitTerminalCwdChanged = cwdChanged.emit;
 
 /** @param {(data: { id: string, cwd: string }) => void} cb */
-export const onTerminalCreated = (cb) => bus.on(TERMINAL_EVENTS.CREATED, cb);
+export const onTerminalCreated = created.on;
+/** @param {{ id: string, cwd: string }} data */
+export const emitTerminalCreated = created.emit;
 
 /** @param {(data: { id: string }) => void} cb */
-export const onTerminalRemoved = (cb) => bus.on(TERMINAL_EVENTS.REMOVED, cb);
+export const onTerminalRemoved = removed.on;
+/** @param {{ id: string }} data */
+export const emitTerminalRemoved = removed.emit;
 
 /** @param {(data: { id: string }) => void} cb */
-export const onTerminalExited = (cb) => bus.on(TERMINAL_EVENTS.EXITED, cb);
-
-// ── Typed emission helpers ──────────────────────────────────────────
-
-/** @param {{ id: string, cwd: string }} data */
-export const emitTerminalCwdChanged = (data) => bus.emit(TERMINAL_EVENTS.CWD_CHANGED, data);
-
-/** @param {{ id: string, cwd: string }} data */
-export const emitTerminalCreated = (data) => bus.emit(TERMINAL_EVENTS.CREATED, data);
-
+export const onTerminalExited = exited.on;
 /** @param {{ id: string }} data */
-export const emitTerminalRemoved = (data) => bus.emit(TERMINAL_EVENTS.REMOVED, data);
-
-/** @param {{ id: string }} data */
-export const emitTerminalExited = (data) => bus.emit(TERMINAL_EVENTS.EXITED, data);
+export const emitTerminalExited = exited.emit;
