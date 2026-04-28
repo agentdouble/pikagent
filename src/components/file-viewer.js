@@ -2,11 +2,13 @@ import { detectLanguage } from '../utils/file-icons.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/file-dom.js';
 import { EMPTY_MESSAGE, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
-import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
-import { createMarkdownPreviewDOM, updatePreviewStatusBar } from '../utils/markdown-preview-renderer.js';
-import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
-import { renderModeBar } from '../utils/file-viewer-mode-bar.js';
-import { setupFileViewerListeners } from '../utils/file-viewer-listeners.js';
+import {
+  createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile,
+  createMarkdownPreviewDOM, updatePreviewStatusBar,
+  renderTabs as renderTabsHelper,
+  renderModeBar,
+  setupFileViewerListeners,
+} from '../utils/file-viewer-subsystem.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 
