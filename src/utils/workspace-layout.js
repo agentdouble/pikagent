@@ -10,7 +10,6 @@
  * Tab disposal logic lives in workspace-cleanup.js.
  */
 
-import { getComponent } from './component-registry.js';
 import { emitWorkspaceActivated } from './workspace-events.js';
 import { _el } from './workspace-dom.js';
 import { WORKSPACE_PANELS } from './tab-constants.js';
@@ -32,15 +31,18 @@ import {
  * @param {{ left: { content: HTMLElement, panel: HTMLElement }, right: { content: HTMLElement, panel: HTMLElement } }} sides
  * @param {HTMLElement} termContainer
  * @param {() => string|null} getActiveTabId
+ * @param {{ FileTree: new (el: HTMLElement) => unknown, FileViewer: new (el: HTMLElement, isActive: () => boolean) => unknown, TerminalPanel: new (el: HTMLElement, cwd: string) => unknown }} components
  */
-function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId) {
-  const FileTree = getComponent('FileTree');
-  const FileViewer = getComponent('FileViewer');
-  const TerminalPanel = getComponent('TerminalPanel');
+function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId, components) {
+  const { FileTree, FileViewer, TerminalPanel } = components;
 
   tab.layoutElement = layout;
   tab.fileTree = new FileTree(sides.left.content);
-  tab.fileViewer = new FileViewer(sides.right.content, () => tab.id === getActiveTabId());
+  tab.fileViewer = new FileViewer(
+    sides.right.content,
+    () => tab.id === getActiveTabId(),
+    { WebviewManager: components.WebviewManager, GitChangesView: components.GitChangesView },
+  );
 
   if (tab._restoreData?.splitTree) {
     tab.terminalPanel = new TerminalPanel(termContainer, tab.cwd);
@@ -63,8 +65,9 @@ function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId) {
  * @param {RenderWorkspaceDeps} deps
  * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {{ gitBranch: (cwd: string) => Promise<string> }} api - injected API methods
+ * @param {{ FileTree: Function, FileViewer: Function, TerminalPanel: Function }} components - injected component constructors
  */
-export async function renderWorkspace({ workspaceContainer, getActiveTabId, getActiveTab, scheduleAutoSave }, tab, { gitBranch }) {
+export async function renderWorkspace({ workspaceContainer, getActiveTabId, getActiveTab, scheduleAutoSave }, tab, { gitBranch }, components) {
   workspaceContainer.replaceChildren();
 
   const panelDeps = { getActiveTab, scheduleAutoSave };
@@ -85,7 +88,7 @@ export async function renderWorkspace({ workspaceContainer, getActiveTabId, getA
   );
   workspaceContainer.appendChild(layout);
 
-  _initTabComponents(tab, layout, sides, termContainer, getActiveTabId);
+  _initTabComponents(tab, layout, sides, termContainer, getActiveTabId, components);
 
   const branch = await gitBranch(tab.cwd);
   if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;

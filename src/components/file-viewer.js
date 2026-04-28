@@ -9,13 +9,19 @@ import {
   renderModeBar,
   setupFileViewerListeners,
 } from '../utils/file-viewer-subsystem.js';
-import { registerComponent, getComponent } from '../utils/component-registry.js';
+import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 
 export class FileViewer extends ComponentBase {
-  constructor(container, isActive) {
+  /**
+   * @param {HTMLElement} container
+   * @param {() => boolean} [isActive]
+   * @param {{ WebviewManager?: Function, GitChangesView?: Function }} [components]
+   */
+  constructor(container, isActive, components = {}) {
     super(container);
     this.isActive = isActive || (() => true);
+    this._components = components;
     this.openFiles = new Map(); // path -> { name, content, savedContent, lang }
     this.activeFile = null;
     this.editorEl = null;
@@ -24,7 +30,7 @@ export class FileViewer extends ComponentBase {
     this.mode = 'files'; // 'files' | 'git' | webview id
     this.gitChanges = null;
     this.render();
-    const WebviewManager = getComponent('WebviewManager');
+    const { WebviewManager } = this._components;
     this._webviewMgr = new WebviewManager(
       this.container, this.statusBar,
       (mode) => this.switchMode(mode),
@@ -64,7 +70,7 @@ export class FileViewer extends ComponentBase {
     this.gitViewEl = _el('div', 'git-changes-view');
     this.gitViewEl.style.display = 'none';
     this.container.appendChild(this.gitViewEl);
-    const GitChangesView = getComponent('GitChangesView');
+    const { GitChangesView } = this._components;
     this.gitChanges = new GitChangesView(this.gitViewEl);
 
     this.statusBar = _el('div', 'editor-status-bar');
