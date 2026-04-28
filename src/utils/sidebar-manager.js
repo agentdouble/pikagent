@@ -17,7 +17,7 @@
  */
 
 import { getComponent } from './component-registry.js';
-import { _el } from './workspace-dom.js';
+import { _el, renderList } from './workspace-dom.js';
 import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-constants.js';
 import { createAsyncHandler } from './event-helpers.js';
 
@@ -85,14 +85,13 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
   activityBar.replaceChildren();
 
   const topSection = _el('div', 'activity-bar-top');
-
-  for (const { label, mode, icon } of ACTIVITY_BUTTONS) {
+  renderList(topSection, ACTIVITY_BUTTONS, ({ label, mode, icon }) => {
     const btn = buildActivityButton(label, icon);
     btn.dataset.mode = mode;
     if (sidebarMode === mode) btn.classList.add('active');
     btn.addEventListener('click', () => setSidebarMode(mode));
-    topSection.appendChild(btn);
-  }
+    return btn;
+  });
 
   activityBar.appendChild(topSection);
 

@@ -15,14 +15,14 @@ import { STATIC_MODES } from './editor-helpers.js';
  * @param {{ webviewTabs: Array<{ id: string, label: string, url: string }>, buildWebviewModeBtn: (wt: { id: string, label: string, url: string }, currentMode: string) => HTMLElement, buildAddWebviewBtn: (modeBar: HTMLElement) => HTMLElement }} webviewMgr
  */
 export function renderModeBar(modeBar, currentMode, { switchMode }, webviewMgr) {
-  modeBar.replaceChildren();
-  for (const { key, label } of STATIC_MODES) {
-    const btn = _el('button', `mode-btn${currentMode === key ? ' active' : ''}`, label);
-    btn.addEventListener('click', () => switchMode(key));
-    modeBar.appendChild(btn);
-  }
-  for (const wt of webviewMgr.webviewTabs) {
-    modeBar.appendChild(webviewMgr.buildWebviewModeBtn(wt, currentMode));
-  }
-  modeBar.appendChild(webviewMgr.buildAddWebviewBtn(modeBar));
+  const allItems = [
+    ...STATIC_MODES.map(({ key, label }) => {
+      const btn = _el('button', `mode-btn${currentMode === key ? ' active' : ''}`, label);
+      btn.addEventListener('click', () => switchMode(key));
+      return btn;
+    }),
+    ...webviewMgr.webviewTabs.map(wt => webviewMgr.buildWebviewModeBtn(wt, currentMode)),
+    webviewMgr.buildAddWebviewBtn(modeBar),
+  ];
+  modeBar.replaceChildren(...allItems);
 }
