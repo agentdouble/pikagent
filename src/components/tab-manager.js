@@ -110,6 +110,7 @@ export class TabManager {
       reattachLayout,
       renderWorkspace: (tab) => this.renderWorkspace(tab),
       tabManager: this,
+      resolveComponent: getComponent,
     }, this.sidebarMode, mode);
     this.sidebarMode = mode;
 
