@@ -7,9 +7,7 @@
  * Domain-specific helpers (extractDateString, generateDateRange) stay here.
  */
 
-const { formatDateTime } = require('../shared/date-utils');
-
-const DATE_LOCALE = 'fr-FR';
+const { formatDateTime, DATE_LOCALE } = require('../shared/date-utils');
 const DAY_LABEL_FORMAT = { day: '2-digit', month: '2-digit' };
 
 /**

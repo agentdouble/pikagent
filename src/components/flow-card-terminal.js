@@ -36,6 +36,23 @@ export class FlowCardTerminalManager {
     map.delete(flowId);
   }
 
+  /**
+   * Create a readonly terminal, register it in the given map, and run an
+   * optional setup callback.  Returns the terminal record.
+   * @param {Map} map - target map (_liveTerminals or _logTerminals)
+   * @param {string} flowId
+   * @param {HTMLElement} containerEl
+   * @param {object} opts - extra terminal options (scrollback, cursorStyle, …)
+   * @param {(record: object) => void} [setupFn] - called with the record before it is stored
+   * @returns {object} the terminal record stored in the map
+   */
+  _createAndRegister(map, flowId, containerEl, opts, setupFn) {
+    const record = this._createReadonlyTerminal(containerEl, opts);
+    if (setupFn) setupFn(record);
+    map.set(flowId, { ...record, containerEl });
+    return record;
+  }
+
   // === Live Terminal (for running flows) ===
 
   createLiveTerminal(flowId, ptyId) {
@@ -47,16 +64,15 @@ export class FlowCardTerminalManager {
 
     const containerEl = _el('div', 'flow-card-terminal');
 
-    const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
-      scrollback: LIVE_SCROLLBACK,
-      cursorStyle: 'bar',
-    });
-
-    const unsubData = window.api.pty.onData(ptyId, (data) => {
-      term.write(data);
-    });
-
-    this._liveTerminals.set(flowId, { term, fitAddon, unsubData, resizeObs, containerEl, ptyId });
+    this._createAndRegister(
+      this._liveTerminals, flowId, containerEl,
+      { scrollback: LIVE_SCROLLBACK, cursorStyle: 'bar' },
+      (rec) => {
+        const unsubData = window.api.pty.onData(ptyId, (data) => { rec.term.write(data); });
+        rec.unsubData = unsubData;
+        rec.ptyId = ptyId;
+      },
+    );
 
     return containerEl;
   }
@@ -72,12 +88,12 @@ export class FlowCardTerminalManager {
       ? await window.api.flow.getRunLog(flowId, run.logTimestamp)
       : null;
 
-    const { term, fitAddon, resizeObs } = this._createReadonlyTerminal(containerEl, {
-      scrollback: LOG_SCROLLBACK,
-    });
+    const { term } = this._createAndRegister(
+      this._logTerminals, flowId, containerEl,
+      { scrollback: LOG_SCROLLBACK },
+    );
 
     term.write(log || NO_LOG_MESSAGE);
-    this._logTerminals.set(flowId, { term, fitAddon, resizeObs });
   }
 
   disposeLogTerminal(flowId) {
