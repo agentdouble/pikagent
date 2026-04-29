@@ -4,7 +4,7 @@
  */
 import { _el } from '../utils/flow-dom.js';
 import { createModalOverlay } from '../utils/dom-dialogs.js';
-import { setupKeyboardShortcuts } from '../utils/keyboard-helpers.js';
+import { onKeyAction } from '../utils/event-helpers.js';
 import { _safeFit, createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
@@ -110,7 +110,7 @@ export class FlowCardTerminalManager {
     term.write(log || NO_LOG_MODAL_MESSAGE);
 
     modal.querySelector('.flow-log-close').addEventListener('click', close);
-    setupKeyboardShortcuts(overlay, { onEscape: close });
+    onKeyAction(overlay, { onEscape: close });
   }
 
   // === Cleanup on render / refresh ===

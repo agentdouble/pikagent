@@ -177,7 +177,7 @@ async function _isAllowedPath(p) {
 }
 
 module.exports = {
-  list, read, write, create, remove, importFrom,
+  list, read, write, create,
   getRoot, setRoot, resetRoot,
   // Channel-suffix aliases
   delete: remove,

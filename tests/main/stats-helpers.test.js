@@ -1,25 +1,8 @@
 import { describe, it, expect } from 'vitest';
-const { countByStatus, computeRate, computeDuration } = require('../../main/stats-helpers');
+const { computeRate, computeDuration } = require('../../main/stats-helpers');
 const { extractDateString, generateDateRange } = require('../../main/date-utils');
 
 describe('stats-helpers', () => {
-  describe('countByStatus', () => {
-    it('counts success and error statuses', () => {
-      const items = [
-        { status: 'success' },
-        { status: 'completed' },
-        { status: 'error' },
-        { status: 'exited' },
-        { status: 'running' },
-      ];
-      expect(countByStatus(items)).toEqual({ success: 2, error: 2, running: 1 });
-    });
-
-    it('returns zeros for empty array', () => {
-      expect(countByStatus([])).toEqual({ success: 0, error: 0, running: 0 });
-    });
-  });
-
   describe('computeRate', () => {
     it('computes success rate percentage', () => {
       const items = [

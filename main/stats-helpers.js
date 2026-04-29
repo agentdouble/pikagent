@@ -41,4 +41,4 @@ function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
   }));
 }
 
-module.exports = { DEFAULT_DAYS, countByStatus, computeRate, computeDuration, perDay };
+module.exports = { DEFAULT_DAYS, computeRate, computeDuration, perDay };

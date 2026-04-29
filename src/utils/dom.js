@@ -10,7 +10,7 @@
  *     showConfirmDialog                     → ./dom-dialogs.js
  *   - setupInlineInput, startInlineRename   → ./form-helpers.js
  *   - setupDropZone                         → ./drop-zone-helpers.js
- *   - setupKeyboardShortcuts                → ./keyboard-helpers.js
+ *   - onKeyAction (was setupKeyboardShortcuts) → ./event-helpers.js
  *   - _safeFit                              → ./terminal-factory.js
  *   - createSelect                          → ./flow-modal-helpers.js (private)
  *   - positionInViewport                    → ./context-menu.js (private)

@@ -5,8 +5,7 @@
  */
 
 import { _el } from './dom.js';
-import { onClickStopped } from './event-helpers.js';
-import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { onClickStopped, onKeyAction } from './event-helpers.js';
 
 /**
  * Create a guard that ensures `fn` is called at most once.
@@ -32,7 +31,7 @@ export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
     else input.remove();
   });
 
-  setupKeyboardShortcuts(input, {
+  onKeyAction(input, {
     onEnter: (e) => { e.preventDefault(); e.stopPropagation(); commit(); },
     onEscape: (e) => { e.stopPropagation(); cancel(); },
   });

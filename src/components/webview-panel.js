@@ -1,5 +1,5 @@
 import { _el } from '../utils/workspace-dom.js';
-import { setupKeyboardShortcuts } from '../utils/keyboard-helpers.js';
+import { onKeyAction } from '../utils/event-helpers.js';
 import { trackMouse } from '../utils/drag-helpers.js';
 import {
   MAX_LOGS,
@@ -46,7 +46,7 @@ export class WebviewInstance {
     this.urlInput.type = 'text';
     this.urlInput.value = this.url;
     this.urlInput.spellcheck = false;
-    setupKeyboardShortcuts(this.urlInput, {
+    onKeyAction(this.urlInput, {
       onEnter: (e) => {
         e.preventDefault();
         this.navigate(this.urlInput.value.trim());

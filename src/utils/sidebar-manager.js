@@ -118,7 +118,7 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
  * @param {...unknown} ctorArgs  - Arguments for the ViewClass constructor
  * @returns {boolean}
  */
-export function renderSideView({ workspaceContainer, viewStore }, viewKey, containerKey, ViewClass, ...ctorArgs) {
+function renderSideView({ workspaceContainer, viewStore }, viewKey, containerKey, ViewClass, ...ctorArgs) {
   workspaceContainer.replaceChildren();
 
   if (viewStore.getView(viewKey) && viewStore.getContainer(containerKey)) {
@@ -140,7 +140,7 @@ export function renderSideView({ workspaceContainer, viewStore }, viewKey, conta
  * @param {string} mode         - Side view mode (board, flow, usage)
  * @param {{ boardCtorArgs?: unknown[], flowCtorArgs?: unknown[] }} extraArgs - Additional constructor args per mode
  */
-export function activateSideView(deps, mode, extraArgs = {}) {
+function activateSideView(deps, mode, extraArgs = {}) {
   const sideView = SIDE_VIEWS[mode];
   const renderer = SIDE_VIEW_RENDERERS[mode];
   if (!sideView || !renderer) return;

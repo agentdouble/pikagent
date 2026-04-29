@@ -3,8 +3,7 @@
  */
 
 import { _el } from './dom.js';
-import { onClickStopped } from './event-helpers.js';
-import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { onClickStopped, onKeyAction } from './event-helpers.js';
 
 /**
  * Clamp (x, y) so a box of (width, height) stays within the viewport.
@@ -82,7 +81,7 @@ class ContextMenu {
     document.removeEventListener('mousedown', this._onMouseDown);
     if (this._cleanupKeyboard) this._cleanupKeyboard();
     document.addEventListener('mousedown', this._onMouseDown);
-    this._cleanupKeyboard = setupKeyboardShortcuts(document, {
+    this._cleanupKeyboard = onKeyAction(document, {
       onEscape: () => this.close(),
     });
   }
