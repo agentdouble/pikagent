@@ -8,6 +8,7 @@ import { buildChevronRow } from './chevron-row.js';
 import { setupDropZone } from './drop-zone-helpers.js';
 import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
 import { computeInsertionIndex } from './drag-helpers.js';
+import { clearIndicators } from './flow-drag-cleanup.js';
 
 /**
  * Create a category group DOM element with header and flow items.
@@ -122,27 +123,7 @@ function _updateDropIndicator(container, clientY) {
   }
 }
 
-/**
- * Remove all elements matching `selector` from `container`.
- * Shared by _updateDropIndicator / _setupCategoryDropZone / cleanupAllDragState.
- */
-function clearIndicators(container, selector) {
-  for (const el of container.querySelectorAll(selector)) {
-    el.remove();
-  }
-}
-
 function _getDropIndex(container, clientY) {
   const cards = [...container.querySelectorAll(':scope > .flow-card')];
   return computeInsertionIndex(cards, clientY, 'y');
-}
-
-/**
- * Remove all drag state indicators from the document.
- */
-export function cleanupAllDragState() {
-  clearIndicators(document, '.flow-drop-indicator');
-  for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
-    el.classList.remove('flow-drop-zone-active');
-  }
 }
