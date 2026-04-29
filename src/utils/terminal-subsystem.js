@@ -14,9 +14,6 @@
 export {
   SplitNode,
   RESIZE_CURSOR,
-  isSameDirectionSplit,
-  createSplitContainer,
-  equalizeChildren,
   doResize,
 } from './terminal-panel-helpers.js';
 
