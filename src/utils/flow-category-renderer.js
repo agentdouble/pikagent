@@ -3,7 +3,7 @@
  * Handles category headers, collapse state, and drag-drop zone setup.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el, renderButtonBar } from './flow-dom.js';
+import { _el, buildDomainButtonBar } from './flow-dom.js';
 import { buildChevronRow } from './chevron-row.js';
 import { setupDropZone } from './drop-zone-helpers.js';
 import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
@@ -63,14 +63,7 @@ function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, 
       rename: () => onRenameCategory(cat.id, name),
       delete: () => onDeleteCategory(cat.id),
     };
-    const configs = CATEGORY_ACTIONS.map(({ text, title, cls, action }) => ({
-      text,
-      title,
-      cls: cls ? `flow-category-btn ${cls}` : 'flow-category-btn',
-      action,
-      stopPropagation: true,
-    }));
-    header.appendChild(renderButtonBar({ containerClass: 'flow-category-actions', configs, handlers: catHandlers }));
+    header.appendChild(buildDomainButtonBar('flow-category-btn', 'flow-category-actions', CATEGORY_ACTIONS, catHandlers));
   }
 
   header.addEventListener('click', () => onToggleCollapse(cat.id));

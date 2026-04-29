@@ -24,4 +24,4 @@ function formatDateTime(date, timestamp) {
   return `${date}${time ? ' ' + time : ''}`;
 }
 
-module.exports = { formatDateTime };
+module.exports = { DATE_LOCALE, formatDateTime };

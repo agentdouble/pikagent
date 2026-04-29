@@ -57,6 +57,23 @@ export function focusDirection(direction, sidebarMode, boardView, getActiveTab) 
 }
 
 /**
+ * Retrieve a tab, apply a mutation, re-render the tab bar, and schedule a save.
+ * Shared plumbing for setTabColorGroup / toggleNoShortcut (and future mutators).
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
+ * @param {string} id
+ * @param {(tab: import('./tab-types.js').WorkspaceTab) => void} mutationFn
+ * @param {() => void} renderTabBar
+ * @param {{ scheduleAutoSave: () => void }} configManager
+ */
+function _mutateTab(tabs, id, mutationFn, renderTabBar, configManager) {
+  const tab = tabs.get(id);
+  if (!tab) return;
+  mutationFn(tab);
+  renderTabBar();
+  configManager.scheduleAutoSave();
+}
+
+/**
  * Set or clear a tab's color group.
  * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
  * @param {string} id
@@ -65,11 +82,7 @@ export function focusDirection(direction, sidebarMode, boardView, getActiveTab) 
  * @param {{ scheduleAutoSave: () => void }} configManager
  */
 export function setTabColorGroup(tabs, id, colorGroupId, renderTabBar, configManager) {
-  const tab = tabs.get(id);
-  if (!tab) return;
-  tab.colorGroup = colorGroupId;
-  renderTabBar();
-  configManager.scheduleAutoSave();
+  _mutateTab(tabs, id, (tab) => { tab.colorGroup = colorGroupId; }, renderTabBar, configManager);
 }
 
 /**
@@ -80,9 +93,5 @@ export function setTabColorGroup(tabs, id, colorGroupId, renderTabBar, configMan
  * @param {{ scheduleAutoSave: () => void }} configManager
  */
 export function toggleNoShortcut(tabs, id, renderTabBar, configManager) {
-  const tab = tabs.get(id);
-  if (!tab) return;
-  tab.noShortcut = !tab.noShortcut;
-  renderTabBar();
-  configManager.scheduleAutoSave();
+  _mutateTab(tabs, id, (tab) => { tab.noShortcut = !tab.noShortcut; }, renderTabBar, configManager);
 }
