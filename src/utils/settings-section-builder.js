@@ -18,10 +18,14 @@ export function createSettingsSection(contentEl, { heading, actions = [], conten
 
   const headingEl = _el('div', 'settings-section-header');
   headingEl.appendChild(_el('h3', null, heading));
-  renderList(headingEl, actions, (el) => el);
+  for (const action of actions) {
+    if (action) headingEl.appendChild(action);
+  }
   contentEl.appendChild(headingEl);
 
-  renderList(contentEl, content, (el) => el);
+  for (const node of content) {
+    if (node) contentEl.appendChild(node);
+  }
 
   return headingEl;
 }
