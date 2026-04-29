@@ -3,7 +3,7 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 
-import { _el } from './file-dom.js';
+import { _el, renderList } from './file-dom.js';
 import { STATIC_MODES } from './editor-helpers.js';
 
 /**
@@ -24,5 +24,5 @@ export function renderModeBar(modeBar, currentMode, { switchMode }, webviewMgr) 
     ...webviewMgr.webviewTabs.map(wt => webviewMgr.buildWebviewModeBtn(wt, currentMode)),
     webviewMgr.buildAddWebviewBtn(modeBar),
   ];
-  modeBar.replaceChildren(...allItems);
+  renderList(modeBar, allItems, (item) => item);
 }

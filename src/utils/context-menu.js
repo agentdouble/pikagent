@@ -2,7 +2,7 @@
  * @typedef {{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<ContextMenuItem> }} ContextMenuItem
  */
 
-import { _el } from './dom.js';
+import { _el, renderList } from './dom.js';
 import { onClickStopped, onKeyAction } from './event-helpers.js';
 
 /**
@@ -69,7 +69,7 @@ class ContextMenu {
   }
 
   show(x, y, items) {
-    this.el.replaceChildren(...items.map((item) => this._buildItem(item)));
+    renderList(this.el, items, (item) => this._buildItem(item));
 
     this.el.style.display = 'block';
     const { width, height } = this.el.getBoundingClientRect();
