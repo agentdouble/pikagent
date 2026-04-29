@@ -46,6 +46,18 @@ function groupAndAggregate(items, keyFn, aggFn) {
 }
 
 /**
+ * Build a plain-object counter (all values set to `defaultValue`) from an array of keys.
+ * Each element may be a plain string or an object with a `.key` property.
+ *
+ * @param {Array<string|{key: string}>} keys
+ * @param {*} [defaultValue=0]
+ * @returns {Record<string, *>}
+ */
+function initializeCounters(keys, defaultValue = 0) {
+  return Object.fromEntries(keys.map(k => [typeof k === 'string' ? k : k.key, defaultValue]));
+}
+
+/**
  * Counts occurrences of each key produced by keyFn.
  * @param {Array<unknown>} items
  * @param {(item: unknown) => string} keyFn - Returns the key for each item
@@ -81,4 +93,4 @@ function resolveFromMap(map, keys) {
   return keys.map(k => map.get(k)).filter(Boolean);
 }
 
-module.exports = { aggregateByKey, groupAndAggregate, countBy, createLookupMap, resolveFromMap };
+module.exports = { aggregateByKey, groupAndAggregate, countBy, createLookupMap, resolveFromMap, initializeCounters };

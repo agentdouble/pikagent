@@ -3,7 +3,7 @@ const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
 const { aggregateByKey, groupAndAggregate } = require('./aggregation-utils');
-const { countBy } = require('../shared/aggregation-utils');
+const { countBy, initializeCounters } = require('../shared/aggregation-utils');
 
 // ===== Declarative configs =====
 
@@ -31,11 +31,11 @@ const GIT_TIMEOUT_MS = 5000;
 // ===== Token helpers =====
 
 function newTokenTotals() {
-  return Object.fromEntries(TOKEN_FIELD_MAP.map(f => [f.key, 0]));
+  return initializeCounters(TOKEN_FIELD_MAP);
 }
 
 function newPerDayTotals() {
-  return Object.fromEntries(PERDAY_KEYS.map(k => [k, 0]));
+  return initializeCounters(PERDAY_KEYS);
 }
 
 /**
@@ -108,7 +108,7 @@ function buildPerProjectRanking(projectResults) {
   const perProjectAgg = aggregateByKey(
     projectResults.filter(({ totals: pt }) => PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0) > 0),
     ({ proj }) => projectShortName(proj),
-    () => ({ ...Object.fromEntries(PERDAY_KEYS.map(k => [k, 0])), total: 0 }),
+    () => ({ ...initializeCounters(PERDAY_KEYS), total: 0 }),
     (bucket, { totals: pt }) => {
       addTokens(bucket, pt, PERDAY_KEYS);
       bucket.total += PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
