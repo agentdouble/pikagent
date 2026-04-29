@@ -31,17 +31,52 @@ export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = 
     rafPending = true;
     requestAnimationFrame(() => { rafPending = false; onMove(e); });
   };
-  const up = () => {
+  const cleanup = () => {
     document.removeEventListener('mousemove', move);
     document.removeEventListener('mouseup', up);
     clearDragBodyState();
     if (bodyClass) document.body.classList.remove(bodyClass);
+  };
+  const up = () => {
+    cleanup();
     onDone();
   };
   setDragBodyState(cursor);
   if (bodyClass) document.body.classList.add(bodyClass);
   document.addEventListener('mousemove', move);
   document.addEventListener('mouseup', up);
+  return cleanup;
+}
+
+/**
+ * Named-params variant of trackMouse for callers that prefer destructuring.
+ *
+ * Adds mousemove and mouseup listeners on document, applies cursor and
+ * userSelect on document.body, and cleans everything up automatically on
+ * mouseup.
+ *
+ * @param {{ cursor?: string, onMove: (e: MouseEvent) => void, onUp?: () => void, bodyClass?: string }} opts
+ */
+export function trackMouseDrag({ cursor = 'default', onMove, onUp = () => {}, bodyClass = 'resizing' } = {}) {
+  return trackMouse(cursor, onMove, onUp, { bodyClass });
+}
+
+/**
+ * Add an event listener to a target and return a cleanup function that
+ * removes it.  Calling the cleanup is idempotent.
+ *
+ * Replaces the repeated "removeEventListener + addEventListener" pattern
+ * used to ensure only one listener is active at a time.
+ *
+ * @param {EventTarget} target
+ * @param {string} type
+ * @param {EventListener} handler
+ * @param {boolean|AddEventListenerOptions} [options]
+ * @returns {() => void} cleanup — removes the listener when called
+ */
+export function addListener(target, type, handler, options) {
+  target.addEventListener(type, handler, options);
+  return () => target.removeEventListener(type, handler, options);
 }
 
 /**

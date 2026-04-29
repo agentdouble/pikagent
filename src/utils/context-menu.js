@@ -4,6 +4,7 @@
 
 import { _el, renderList } from './dom.js';
 import { onClickStopped, onKeyAction } from './event-helpers.js';
+import { addListener } from './drag-helpers.js';
 
 /**
  * Clamp (x, y) so a box of (width, height) stays within the viewport.
@@ -26,10 +27,7 @@ class ContextMenu {
     this.el = _el('div', { className: 'context-menu' });
     document.body.appendChild(this.el);
 
-    /** Named handlers so they can be added/removed with the menu lifecycle. */
-    this._onMouseDown = (e) => {
-      if (!this.el.contains(e.target)) this.close();
-    };
+    this._cleanupMouseDown = null;
     this._cleanupKeyboard = null;
   }
 
@@ -77,10 +75,12 @@ class ContextMenu {
     this.el.style.left = `${left}px`;
     this.el.style.top = `${top}px`;
 
-    // Register dismiss listeners only while visible (idempotent remove-then-add)
-    document.removeEventListener('mousedown', this._onMouseDown);
+    // Register dismiss listeners only while visible (idempotent cleanup-then-add)
+    if (this._cleanupMouseDown) this._cleanupMouseDown();
     if (this._cleanupKeyboard) this._cleanupKeyboard();
-    document.addEventListener('mousedown', this._onMouseDown);
+    this._cleanupMouseDown = addListener(document, 'mousedown', (e) => {
+      if (!this.el.contains(e.target)) this.close();
+    });
     this._cleanupKeyboard = onKeyAction(document, {
       onEscape: () => this.close(),
     });
@@ -88,7 +88,7 @@ class ContextMenu {
 
   close() {
     this.el.style.display = 'none';
-    document.removeEventListener('mousedown', this._onMouseDown);
+    if (this._cleanupMouseDown) { this._cleanupMouseDown(); this._cleanupMouseDown = null; }
     if (this._cleanupKeyboard) { this._cleanupKeyboard(); this._cleanupKeyboard = null; }
   }
 }

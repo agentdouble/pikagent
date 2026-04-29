@@ -9,7 +9,7 @@
  */
 
 import { DRAG_THRESHOLD } from './tab-constants.js';
-import { trackMouse, computeInsertionIndex, setupSimpleDragState } from './drag-helpers.js';
+import { trackMouse, trackMouseDrag, computeInsertionIndex, setupSimpleDragState } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
@@ -201,20 +201,16 @@ function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
  * @internal
  */
 function installThresholdListeners(deps, tabEl, tabId, state, ctx) {
-  const onThresholdMove = (ev) => {
-    if (Math.abs(ev.clientX - ctx.startX) <= DRAG_THRESHOLD) return;
-    document.removeEventListener('mousemove', onThresholdMove);
-    document.removeEventListener('mouseup', onThresholdUp);
-    activateDrag(deps, tabEl, tabId, state, ctx, ev);
-  };
-
-  const onThresholdUp = () => {
-    document.removeEventListener('mousemove', onThresholdMove);
-    document.removeEventListener('mouseup', onThresholdUp);
-  };
-
-  document.addEventListener('mousemove', onThresholdMove);
-  document.addEventListener('mouseup', onThresholdUp);
+  const cancel = trackMouseDrag({
+    cursor: '',
+    bodyClass: '',
+    onMove: (ev) => {
+      if (Math.abs(ev.clientX - ctx.startX) <= DRAG_THRESHOLD) return;
+      cancel();
+      activateDrag(deps, tabEl, tabId, state, ctx, ev);
+    },
+    onUp: () => {},
+  });
 }
 
 /**
