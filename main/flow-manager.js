@@ -11,7 +11,7 @@ const {
 } = require('./flow-helpers');
 const { safeSend } = require('./ipc-helpers');
 const { createPollingManager } = require('../shared/polling-manager');
-const { buildRecord } = require('./record-helpers');
+const { buildTimestampedRecord } = require('./record-helpers');
 const { trySafe } = require('./logger');
 const { JsonStore } = require('./json-store');
 
@@ -56,8 +56,7 @@ class FlowManager {
   async save(flow) {
     await ensureLogsDir();
     const existing = await this.get(flow.id);
-    const now = new Date().toISOString();
-    const data = buildRecord(flow, { createdAt: existing?.createdAt || now, updatedAt: now });
+    const data = buildTimestampedRecord(flow, existing);
     if (!data.runs) data.runs = [];
     if (data.enabled === undefined) data.enabled = true;
     await store.save(flow.id, data);
