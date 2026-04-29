@@ -35,7 +35,7 @@ class EventBus {
   }
 }
 
-export const bus = new EventBus();
+const bus = new EventBus();
 
 /**
  * Create a pair of typed on/emit helpers for a given event name.
