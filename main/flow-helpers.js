@@ -160,7 +160,7 @@ const MAX_FLOW_RUNTIME_MS = 2 * 60 * 60 * 1000; // 2 hours
 module.exports = {
   SCHEDULER_INTERVAL_MS, SHELL_INIT_DELAY_MS, MAX_RUN_HISTORY,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS, MAX_FLOW_RUNTIME_MS,
-  flowPath, logPath,
+  logPath,
   shouldRun, buildFlowCommand,
   createOutputProcessor,
 };

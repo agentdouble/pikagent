@@ -23,7 +23,7 @@ import { setupSimpleDragState } from './drag-helpers.js';
  * @param {string} catId
  * @param {{ flowId: string|null, catId: string|null }} dragState - mutable drag state object
  */
-export function setupCardDrag(card, flowId, catId, dragState) {
+function setupCardDrag(card, flowId, catId, dragState) {
   const { onDragStart: startFlow, onDragEnd: endFlow } = setupSimpleDragState(
     card, 'flow-dragging', dragState, 'flowId', flowId, {
       onStart: (e) => {

@@ -7,7 +7,7 @@
  */
 
 import { _el, createActionButton } from './dom.js';
-import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { onKeyAction } from './event-helpers.js';
 
 /**
  * Create a modal overlay with click-outside-to-close behavior.
@@ -71,7 +71,7 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
     builder({ modal, cleanup, cancel }) {
       const confirm = () => { const v = input.value.trim(); cleanup(v || null); };
       const input = _el('input', { className: 'prompt-dialog-input', type: 'text', value: defaultValue, placeholder });
-      setupKeyboardShortcuts(input, {
+      onKeyAction(input, {
         onEnter: () => confirm(),
         onEscape: cancel,
       });
@@ -129,7 +129,7 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
       );
       modal.appendChild(btnRow);
 
-      setupKeyboardShortcuts(overlay, {
+      onKeyAction(overlay, {
         onEscape: cancel,
         onEnter: () => cleanup(true),
       });

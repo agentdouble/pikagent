@@ -11,7 +11,7 @@
 
 import { _el, createActionButton } from './git-dom.js';
 import { createDialogBase } from './dom-dialogs.js';
-import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { onKeyAction } from './event-helpers.js';
 
 /** Sanitize a branch name into a filesystem-safe segment. */
 function sanitizeSegment(name) {
@@ -90,7 +90,7 @@ function readBranchValue(mode, newInput, existingSelect) {
 
 /** Wire Enter/Escape keyboard shortcuts on multiple elements. */
 function wireKeyboardShortcuts(elements, actions) {
-  for (const el of elements) setupKeyboardShortcuts(el, actions);
+  for (const el of elements) onKeyAction(el, actions);
 }
 
 /** Assemble modal children (title, mode row, inputs, path, action buttons). */
