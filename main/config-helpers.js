@@ -3,7 +3,7 @@
  * No I/O — deterministic functions that can be tested in isolation.
  */
 
-const { buildRecord } = require('./record-helpers');
+const { buildTimestampedRecord } = require('./record-helpers');
 
 const DEFAULT_META = { defaultConfig: null };
 
@@ -12,7 +12,7 @@ function sanitizeName(name) {
 }
 
 function buildConfigRecord(name, data, existing, now = new Date().toISOString()) {
-  return buildRecord({ ...data, name }, { createdAt: existing?.createdAt || now, updatedAt: now });
+  return buildTimestampedRecord({ ...data, name }, existing, now);
 }
 
 function formatConfigList(configs, defaultConfigName) {
