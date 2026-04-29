@@ -10,7 +10,7 @@
 
 import { _el } from './flow-dom.js';
 import { getLastRun, toggleInSet } from './flow-view-helpers.js';
-import { cleanupAllDragState } from './flow-category-renderer.js';
+import { cleanupAllDragState } from './flow-drag-cleanup.js';
 import { createCardHeader } from './flow-card-renderer.js';
 import { onDragEvents } from './event-helpers.js';
 import { setupSimpleDragState } from './drag-helpers.js';
