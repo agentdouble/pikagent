@@ -1,6 +1,7 @@
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked } = require('./git-helpers');
+const { splitLines, matchFirst } = require('./parse-utils');
 const { createLogger, trySafe } = require('./logger');
 
 const log = createLogger('git-manager');
@@ -68,8 +69,7 @@ async function isGitRepo(cwd) {
 
 async function listBranches(cwd) {
   const raw = await runGit(cwd, ['for-each-ref', '--format=%(refname:short)', 'refs/heads'], { fallback: '' });
-  if (!raw) return [];
-  return raw.split('\n').filter(Boolean);
+  return splitLines(raw);
 }
 
 /**
@@ -175,9 +175,7 @@ async function ghAvailable() {
  * the existing PR URL when one already exists).
  */
 function _firstUrl(text) {
-  if (!text) return null;
-  const m = text.match(/https:\/\/\S+/);
-  return m ? m[0] : null;
+  return matchFirst(text, /https:\/\/\S+/);
 }
 
 /**
