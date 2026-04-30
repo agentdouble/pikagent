@@ -58,6 +58,18 @@ function initializeCounters(keys, defaultValue = 0) {
 }
 
 /**
+ * Accumulate numeric values from `source` into `target` (in-place).
+ * For each key in `keys`, adds `source[k]` (defaulting to 0) to `target[k]`.
+ *
+ * @param {Record<string, number>} target - object to mutate
+ * @param {Record<string, number>} source - object to read values from
+ * @param {string[]} keys - field names to accumulate
+ */
+function accumulateBy(target, source, keys) {
+  for (const k of keys) target[k] += source[k] || 0;
+}
+
+/**
  * Counts occurrences of each key produced by keyFn.
  * @param {Array<unknown>} items
  * @param {(item: unknown) => string} keyFn - Returns the key for each item
@@ -93,4 +105,4 @@ function resolveFromMap(map, keys) {
   return keys.map(k => map.get(k)).filter(Boolean);
 }
 
-module.exports = { aggregateByKey, groupAndAggregate, countBy, createLookupMap, resolveFromMap, initializeCounters };
+module.exports = { aggregateByKey, groupAndAggregate, accumulateBy, countBy, createLookupMap, resolveFromMap, initializeCounters };

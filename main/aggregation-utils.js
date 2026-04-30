@@ -6,7 +6,7 @@
  * for cross-process reuse (main + renderer).
  */
 
-const { aggregateByKey, groupAndAggregate } = require('../shared/aggregation-utils');
+const { aggregateByKey, groupAndAggregate, initializeCounters } = require('../shared/aggregation-utils');
 
 /**
  * Compute a category rate from items using a category set map.
@@ -20,7 +20,7 @@ const { aggregateByKey, groupAndAggregate } = require('../shared/aggregation-uti
  */
 function computeRate(items, categories, field = 'status', rateKey = 'success') {
   const keys = Object.keys(categories);
-  const counts = Object.fromEntries(keys.map((k) => [k, 0]));
+  const counts = initializeCounters(keys);
 
   for (const item of items) {
     const val = item[field];
