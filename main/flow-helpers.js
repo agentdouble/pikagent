@@ -1,5 +1,5 @@
 const path = require('path');
-const { FLOWS_DIR, LOGS_DIR } = require('./paths');
+const { LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
 const { getLastRun } = require('../shared/flow-utils');
 const { AGENT_IDS } = require('../shared/agent-registry');
@@ -10,10 +10,6 @@ const SHELL_INIT_DELAY_MS = 500;
 const MAX_RUN_HISTORY = 7;
 const DEFAULT_PTY_COLS = 120;
 const DEFAULT_PTY_ROWS = 30;
-
-function flowPath(id) {
-  return path.join(FLOWS_DIR, `${id}.json`);
-}
 
 function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
