@@ -2,7 +2,6 @@ import { _el, createActionButton } from '../utils/file-dom.js';
 import { buildChevronRow } from '../utils/chevron-row.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
-  DEBOUNCE_DELAY, WATCH_PREFIX,
   HEADER_ACTIONS,
   extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
@@ -16,6 +15,7 @@ import {
   promptRename as doPromptRename,
   promptNewEntry as doPromptNewEntry,
 } from '../utils/file-tree-drop.js';
+import { listenForChanges, startWatch, stopWatch } from '../utils/file-tree-watcher.js';
 import { ComponentBase } from '../utils/component-base.js';
 
 export class FileTree extends ComponentBase {
@@ -56,18 +56,7 @@ export class FileTree extends ComponentBase {
   }
 
   listenForChanges() {
-    this._track(window.api.fs.onChanged(({ id }) => {
-      if (this.debounceTimers.has(id)) {
-        clearTimeout(this.debounceTimers.get(id));
-      }
-      this.debounceTimers.set(
-        id,
-        setTimeout(() => {
-          this.debounceTimers.delete(id);
-          this.refreshSection(id).catch(() => {});
-        }, DEBOUNCE_DELAY)
-      );
-    }));
+    this._track(listenForChanges(this.debounceTimers, (id) => this.refreshSection(id), { onChanged: window.api.fs.onChanged }));
   }
 
   async setTerminalRoot(termId, dirPath) {
@@ -88,12 +77,10 @@ export class FileTree extends ComponentBase {
 
     const sectionEl = _el('div', { className: 'file-tree-section' });
     const expandedDirs = new Set([dirPath]);
-    const watchId = `${WATCH_PREFIX}${dirPath}`;
+    const watchId = startWatch(dirPath, { watch: window.api.fs.watch });
     this.sections.set(dirPath, { termIds: new Set([termId]), sectionEl, expandedDirs, watchId });
     this.treeEl.appendChild(sectionEl);
     await this.refreshSection(dirPath);
-
-    window.api.fs.watch(watchId, dirPath);
   }
 
   removeTerminal(termId) {
@@ -110,7 +97,7 @@ export class FileTree extends ComponentBase {
     section.termIds.delete(termId);
 
     if (section.termIds.size === 0) {
-      window.api.fs.unwatch(section.watchId);
+      stopWatch(section.watchId, { unwatch: window.api.fs.unwatch });
       section.sectionEl.remove();
       this.sections.delete(cwd);
     }
@@ -290,8 +277,9 @@ export class FileTree extends ComponentBase {
 
   dispose() {
     super.dispose();
+    const fsApi = { unwatch: window.api.fs.unwatch };
     for (const [, section] of this.sections) {
-      window.api.fs.unwatch(section.watchId);
+      stopWatch(section.watchId, fsApi);
     }
     this.sections.clear();
     this.termCwds.clear();

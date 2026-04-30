@@ -45,13 +45,10 @@ function _showAvailable(area, result, onInstall) {
 }
 
 /**
- * Render the Update section into the given content element.
- * @param {HTMLElement} contentEl
+ * Build the version bar and update area, appending them to contentEl.
+ * @returns {{ area: HTMLElement }}
  */
-export async function renderUpdate(contentEl) {
-  createSettingsSection(contentEl, { heading: 'Update' });
-
-  const version = await window.api.update.version();
+function _buildUpdateUI(contentEl, version) {
   const bar = _el('div', 'update-version-bar');
   bar.appendChild(_el('span', 'update-version-label', 'Version'));
   bar.appendChild(_el('span', 'update-version-value', `v${version}`));
@@ -59,6 +56,60 @@ export async function renderUpdate(contentEl) {
 
   const area = _el('div', 'update-area');
   contentEl.appendChild(area);
+  return { area };
+}
+
+/**
+ * Build progress DOM elements and bind the onProgress event.
+ * @returns {{ unsub: Function|undefined }}
+ */
+function _bindProgressUpdates(area) {
+  const progress = _el('div', 'update-progress');
+  const barTrack = _el('div', 'update-progress-track');
+  const barFill = _el('div', 'update-progress-fill');
+  barTrack.appendChild(barFill);
+  const label = _el('div', 'update-progress-label', 'Starting...');
+  progress.appendChild(barTrack);
+  progress.appendChild(label);
+  area.appendChild(progress);
+
+  const unsub = window.api.update.onProgress((p) => {
+    barFill.style.width = `${(p.step / p.total) * 100}%`;
+    label.textContent = p.label;
+  });
+  return { unsub };
+}
+
+/**
+ * Run the download/install flow: show progress, then success or error.
+ */
+async function _handleDownload(area, runCheck) {
+  area.replaceChildren();
+  const { unsub } = _bindProgressUpdates(area);
+
+  try {
+    await window.api.update.run();
+    unsub?.();
+    area.replaceChildren();
+    area.appendChild(_el('div', 'update-message update-ok', '\u2713 Update installed successfully!'));
+    const btn = _el('button', 'update-btn update-btn-primary', 'Restart now');
+    btn.addEventListener('click', () => window.api.update.relaunch());
+    area.appendChild(btn);
+  } catch (err) {
+    unsub?.();
+    _showMessage(area, 'error', err.message, runCheck);
+  }
+}
+
+/**
+ * Render the Update section into the given content element.
+ * @param {HTMLElement} contentEl
+ */
+export async function renderUpdate(contentEl) {
+  createSettingsSection(contentEl, { heading: 'Update' });
+
+  const version = await window.api.update.version();
+  const { area } = _buildUpdateUI(contentEl, version);
 
   async function runCheck(btn) {
     btn.textContent = 'Checking...';
@@ -68,39 +119,8 @@ export async function renderUpdate(contentEl) {
       const result = await window.api.update.check();
       if (result.error) _showMessage(area, 'error', result.error, runCheck);
       else if (!result.available) _showMessage(area, 'ok', 'Your application is up to date', runCheck);
-      else _showAvailable(area, result, runInstall);
+      else _showAvailable(area, result, () => _handleDownload(area, runCheck));
     } catch (err) {
-      _showMessage(area, 'error', err.message, runCheck);
-    }
-  }
-
-  async function runInstall() {
-    area.replaceChildren();
-
-    const progress = _el('div', 'update-progress');
-    const barTrack = _el('div', 'update-progress-track');
-    const barFill = _el('div', 'update-progress-fill');
-    barTrack.appendChild(barFill);
-    const label = _el('div', 'update-progress-label', 'Starting...');
-    progress.appendChild(barTrack);
-    progress.appendChild(label);
-    area.appendChild(progress);
-
-    const unsub = window.api.update.onProgress((p) => {
-      barFill.style.width = `${(p.step / p.total) * 100}%`;
-      label.textContent = p.label;
-    });
-
-    try {
-      await window.api.update.run();
-      unsub?.();
-      area.replaceChildren();
-      area.appendChild(_el('div', 'update-message update-ok', '\u2713 Update installed successfully!'));
-      const btn = _el('button', 'update-btn update-btn-primary', 'Restart now');
-      btn.addEventListener('click', () => window.api.update.relaunch());
-      area.appendChild(btn);
-    } catch (err) {
-      unsub?.();
       _showMessage(area, 'error', err.message, runCheck);
     }
   }
