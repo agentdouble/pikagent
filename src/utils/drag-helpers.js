@@ -5,16 +5,33 @@
  * Pure DOM helper — no component dependencies.
  */
 
-/** Set cursor and disable text selection on document.body during a drag. */
-function setDragBodyState(cursor) {
-  document.body.style.cursor = cursor;
-  document.body.style.userSelect = 'none';
-}
+/**
+ * Save the current cursor and userSelect on document.body, apply overrides,
+ * and return a function that restores the originals.  Calling restore is
+ * idempotent — subsequent calls are no-ops.
+ *
+ * @param {string} cursor     - CSS cursor value to apply (e.g. 'grabbing')
+ * @param {string} [userSelect='none'] - CSS user-select value to apply
+ * @returns {{ restore: () => void }}
+ */
+export function withBodyStyle(cursor, userSelect = 'none') {
+  const prev = {
+    cursor: document.body.style.cursor,
+    userSelect: document.body.style.userSelect,
+  };
+  let restored = false;
 
-/** Clear cursor and re-enable text selection on document.body after a drag. */
-function clearDragBodyState() {
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
+  document.body.style.cursor = cursor;
+  document.body.style.userSelect = userSelect;
+
+  return {
+    restore() {
+      if (restored) return;
+      restored = true;
+      document.body.style.cursor = prev.cursor;
+      document.body.style.userSelect = prev.userSelect;
+    },
+  };
 }
 
 /**
@@ -26,6 +43,7 @@ function clearDragBodyState() {
  */
 export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = {}) {
   let rafPending = false;
+  const bodyStyle = withBodyStyle(cursor);
   const move = (e) => {
     if (rafPending) return;
     rafPending = true;
@@ -34,14 +52,13 @@ export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = 
   const cleanup = () => {
     document.removeEventListener('mousemove', move);
     document.removeEventListener('mouseup', up);
-    clearDragBodyState();
+    bodyStyle.restore();
     if (bodyClass) document.body.classList.remove(bodyClass);
   };
   const up = () => {
     cleanup();
     onDone();
   };
-  setDragBodyState(cursor);
   if (bodyClass) document.body.classList.add(bodyClass);
   document.addEventListener('mousemove', move);
   document.addEventListener('mouseup', up);
