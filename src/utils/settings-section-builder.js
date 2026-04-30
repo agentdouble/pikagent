@@ -14,18 +14,10 @@ import { createAsyncHandler } from './event-helpers.js';
  * @returns {HTMLElement} the heading element that was created
  */
 export function createSettingsSection(contentEl, { heading, actions = [], content = [] }) {
-  contentEl.replaceChildren();
-
   const headingEl = _el('div', 'settings-section-header');
-  headingEl.appendChild(_el('h3', null, heading));
-  for (const action of actions) {
-    if (action) headingEl.appendChild(action);
-  }
-  contentEl.appendChild(headingEl);
+  renderList(headingEl, [_el('h3', null, heading), ...actions], (item) => item);
 
-  for (const node of content) {
-    if (node) contentEl.appendChild(node);
-  }
+  renderList(contentEl, [headingEl, ...content], (item) => item);
 
   return headingEl;
 }
