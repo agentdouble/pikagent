@@ -1,4 +1,3 @@
-import { detectLanguage } from '../utils/file-icons.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/file-dom.js';
 import { EMPTY_MESSAGE, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
@@ -9,6 +8,10 @@ import {
   renderModeBar,
   setupFileViewerListeners,
 } from '../utils/file-viewer-subsystem.js';
+import {
+  openFileEntry, isModified as isFileModified, isPinned as isFilePinned,
+  togglePin as toggleFilePin, isMarkdown as isFileMarkdown, closeFileEntry,
+} from '../utils/file-viewer-files.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 
@@ -87,18 +90,10 @@ export class FileViewer extends ComponentBase {
     }
   }
 
-  isPinned(filePath) {
-    return pinnedFiles.has(filePath);
-  }
+  isPinned(filePath) { return isFilePinned(filePath); }
 
   togglePin(filePath) {
-    const file = this.openFiles.get(filePath);
-    if (!file) return;
-    if (pinnedFiles.has(filePath)) {
-      pinnedFiles.delete(filePath);
-    } else {
-      pinnedFiles.set(filePath, { name: file.name });
-    }
+    toggleFilePin(this.openFiles, filePath);
     this.renderTabs();
   }
 
@@ -120,27 +115,11 @@ export class FileViewer extends ComponentBase {
   // ===== Files Mode =====
 
   async openFile(filePath, fileName) {
-    if (this.openFiles.has(filePath)) {
-      this.setActiveTab(filePath);
-      return;
-    }
-
-    const result = await window.api.fs.readfile(filePath);
-    if (result.error) {
-      this.openFiles.set(filePath, { name: fileName, content: '', savedContent: '', lang: 'plaintext', error: result.error, viewMode: 'edit' });
-    } else {
-      const lang = detectLanguage(fileName);
-      const viewMode = lang === 'markdown' ? 'preview' : 'edit';
-      this.openFiles.set(filePath, { name: fileName, content: result.content, savedContent: result.content, lang, error: null, viewMode });
-    }
-
+    await openFileEntry(this.openFiles, filePath, fileName, { readfile: window.api.fs.readfile });
     this.setActiveTab(filePath);
   }
 
-  isMarkdown(filePath) {
-    const file = this.openFiles.get(filePath);
-    return !!file && file.lang === 'markdown';
-  }
+  isMarkdown(filePath) { return isFileMarkdown(this.openFiles, filePath); }
 
   toggleViewMode(filePath) {
     const file = this.openFiles.get(filePath);
@@ -156,11 +135,7 @@ export class FileViewer extends ComponentBase {
     this.renderEditor();
   }
 
-  isModified(filePath) {
-    const file = this.openFiles.get(filePath);
-    if (!file) return false;
-    return file.content !== file.savedContent;
-  }
+  isModified(filePath) { return isFileModified(this.openFiles, filePath); }
 
   renderTabs() {
     renderTabsHelper(this.tabsBar, this.openFiles, this.activeFile,
@@ -243,22 +218,11 @@ export class FileViewer extends ComponentBase {
   }
 
   closeFile(filePath) {
-    if (this.isModified(filePath)) {
-      const file = this.openFiles.get(filePath);
-      if (!confirm(`"${file.name}" has unsaved changes. Close anyway?`)) return;
-    }
-
-    this.openFiles.delete(filePath);
-
-    if (this.activeFile === filePath) {
-      if (this.openFiles.size > 0) {
-        this.setActiveTab([...this.openFiles.keys()].pop());
-      } else {
-        this._resetEditor();
-      }
-    } else {
-      this.renderTabs();
-    }
+    const result = closeFileEntry(this.openFiles, filePath, this.activeFile);
+    if (result === false) return;
+    if (result.switchTo === null) this._resetEditor();
+    else if (result.switchTo !== undefined) this.setActiveTab(result.switchTo);
+    else this.renderTabs();
   }
 
   _resetEditor() {

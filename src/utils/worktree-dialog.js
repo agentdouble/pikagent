@@ -105,6 +105,29 @@ function populateModal(modal, { btnNew, btnExisting, els, pathEl, cancel, confir
 }
 
 /**
+ * Build all form elements needed by the worktree dialog.
+ * @returns {{ els: object, pathEl: HTMLElement, btnNew: HTMLElement, btnExisting: HTMLElement }}
+ */
+function _buildWorktreeForm({ allBranches, existingBranches, currentBranch }) {
+  const els = {
+    newInput: buildBranchInput(),
+    baseSelect: buildBaseSelect(allBranches, currentBranch),
+    baseLabel: _el('label', 'worktree-dialog-sub-label', 'Base branch'),
+    existingSelect: buildExistingSelect(existingBranches),
+  };
+  const pathEl = _el('div', 'worktree-dialog-path');
+  const { btnNew, btnExisting } = buildModeButtons(() => {}, () => {});
+  return { els, pathEl, btnNew, btnExisting };
+}
+
+/**
+ * Validate the worktree input: return the trimmed branch name or empty string.
+ */
+function _validateWorktreeInput(mode, els) {
+  return readBranchValue(mode, els.newInput, els.existingSelect);
+}
+
+/**
  * Show the worktree creation dialog.
  *
  * `allBranches` is the full list of local branches (used to build the
@@ -122,23 +145,12 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
     modalClass: 'prompt-dialog-box worktree-dialog-box',
     builder({ modal, cleanup, cancel }) {
       let mode = 'new';
-      const els = {
-        newInput: buildBranchInput(),
-        baseSelect: buildBaseSelect(allBranches, currentBranch),
-        baseLabel: _el('label', 'worktree-dialog-sub-label', 'Base branch'),
-        existingSelect: buildExistingSelect(existingBranches),
-      };
-      const pathEl = _el('div', 'worktree-dialog-path');
+      const { els, pathEl, btnNew, btnExisting } = _buildWorktreeForm({ allBranches, existingBranches, currentBranch });
 
       const updatePath = () => {
-        const branch = readBranchValue(mode, els.newInput, els.existingSelect);
+        const branch = _validateWorktreeInput(mode, els);
         pathEl.textContent = branch ? defaultWorktreePath(repoCwd, branch) : '';
       };
-
-      const { btnNew, btnExisting } = buildModeButtons(
-        () => setMode('new'),
-        () => setMode('existing'),
-      );
 
       function setMode(next) {
         mode = next;
@@ -149,11 +161,14 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
         (isNew ? els.newInput : els.existingSelect).focus();
       }
 
+      btnNew.addEventListener('click', () => setMode('new'));
+      btnExisting.addEventListener('click', () => setMode('existing'));
+
       els.newInput.addEventListener('input', updatePath);
       els.existingSelect.addEventListener('change', updatePath);
 
       const confirm = () => {
-        const branch = readBranchValue(mode, els.newInput, els.existingSelect);
+        const branch = _validateWorktreeInput(mode, els);
         if (!branch) return;
         cleanup({
           branch,
