@@ -3,7 +3,7 @@ const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
 const { aggregateByKey, groupAndAggregate } = require('./aggregation-utils');
-const { countBy, initializeCounters } = require('../shared/aggregation-utils');
+const { accumulateBy, countBy, initializeCounters } = require('../shared/aggregation-utils');
 
 // ===== Declarative configs =====
 
@@ -40,12 +40,13 @@ function newPerDayTotals() {
 
 /**
  * Add numeric token fields from `source` into `target` (in-place).
+ * Delegates to the generic accumulateBy helper.
  * @param {Record<string, number>} target
  * @param {Record<string, number>} source
  * @param {string[]} [keys=TOKEN_KEYS] - field names to accumulate
  */
 function addTokens(target, source, keys = TOKEN_KEYS) {
-  for (const k of keys) target[k] += source[k] || 0;
+  accumulateBy(target, source, keys);
 }
 
 /** @internal */
