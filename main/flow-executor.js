@@ -8,6 +8,7 @@
 
 const fsp = require('fs/promises');
 const os = require('os');
+const path = require('path');
 const {
   SHELL_INIT_DELAY_MS,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
@@ -144,6 +145,7 @@ function setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp) 
  *   stopAll: () => void,
  *   getRunning: () => Record<string, string>,
  *   getRunLog: (flowId: string, timestamp: string) => Promise<string | null>,
+ *   cleanLogs: (flowId: string) => Promise<void>,
  * }}
  */
 function createFlowExecutor(deps) {
@@ -192,6 +194,21 @@ function createFlowExecutor(deps) {
     }
   }
 
+  // --- Log cleanup ---
+
+  async function cleanLogs(flowId) {
+    await trySafe(
+      async () => {
+        const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
+        await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
+      },
+      undefined,
+      { log, label: 'cleanLogs' },
+    );
+  }
+
+  // --- Public API ---
+
   function stopAll() {
     const ptyManager = getPtyManager();
     for (const [, { ptyId, timeout }] of runningFlows) {
@@ -213,6 +230,7 @@ function createFlowExecutor(deps) {
     stopAll,
     getRunning,
     getRunLog: (flowId, timestamp) => getRunLog(deps, flowId, timestamp),
+    cleanLogs,
   };
 }
 

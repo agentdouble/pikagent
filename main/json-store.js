@@ -73,6 +73,23 @@ class JsonStore {
     return this._ensureDir();
   }
 
+  /**
+   * Read a JSON file at an arbitrary absolute path (returns null when missing).
+   * Useful for satellite files (e.g. categories) that live alongside the store.
+   */
+  async readFile(filePath) {
+    return readJson(filePath);
+  }
+
+  /**
+   * Write a JSON file at an arbitrary absolute path.
+   * Ensures the store directory exists first.
+   */
+  async writeFile(filePath, data) {
+    await this._ensureDir();
+    return writeJson(filePath, data);
+  }
+
   /** Expose the logger so the owning manager can reuse it. */
   get log() {
     return this._log;
