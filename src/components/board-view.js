@@ -11,6 +11,9 @@ import {
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
   formatCardLabel,
 } from '../utils/board-helpers.js';
+import * as ptyApi from '../services/terminal-api.js';
+import * as shellApi from '../services/shell-api.js';
+import * as fsApi from '../services/fs-api.js';
 
 export class BoardView extends ComponentBase {
   constructor(container, tabManager) {
@@ -40,7 +43,7 @@ export class BoardView extends ComponentBase {
     if (this.disposed) return;
 
     try {
-      const agents = await window.api.pty.checkAgents();
+      const agents = await ptyApi.checkAgents();
 
       for (const [termId] of this.cards) {
         if (!agents[termId]) this.removeCard(termId);
@@ -140,12 +143,12 @@ export class BoardView extends ComponentBase {
     const { term, fitAddon } = createTerminal(termContainer, BOARD_TERMINAL_OPTS);
 
     setupTerminalAddons(term, {
-      openExternal: (url) => window.api.shell.openExternal(url),
+      openExternal: (url) => shellApi.openExternal(url),
       getCwd: () => null,
-      homedir: window.api.fs.homedir,
-      openPath: window.api.shell.openPath,
+      homedir: fsApi.homedir,
+      openPath: shellApi.openPath,
     });
-    term.onData((data) => window.api.pty.write(termId, data));
+    term.onData((data) => ptyApi.write(termId, data));
 
     return { term, fitAddon };
   }
@@ -162,7 +165,7 @@ export class BoardView extends ComponentBase {
 
     const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
 
-    cardData.unsubData = window.api.pty.onData(termId, (data) => {
+    cardData.unsubData = ptyApi.onData(termId, (data) => {
       term.write(data);
       cardData.dataBytes += data.length;
     });

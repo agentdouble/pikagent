@@ -7,15 +7,16 @@ import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../util
 import { buildSettingsSection, createActionBar } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
+import * as configApi from '../services/config-api.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
   return createActionBar({
     containerClass: 'config-actions',
     actions: CONFIG_ACTIONS,
     handlerDefs: {
-      setDefault: { apiCall: () => window.api.config.setDefault(config.name) },
-      overwrite: { apiCall: () => window.api.config.save(config.name, tabManager.serialize()), guard: () => !!tabManager },
-      delete: { apiCall: () => window.api.config.delete(config.name) },
+      setDefault: { apiCall: () => configApi.setDefault(config.name) },
+      overwrite: { apiCall: () => configApi.save(config.name, tabManager.serialize()), guard: () => !!tabManager },
+      delete: { apiCall: () => configApi.deleteConfig(config.name) },
     },
     onSuccess: renderConfigsFn,
     filter: (desc) => !(desc.hideWhen && config[desc.hideWhen]),
@@ -93,7 +94,7 @@ export async function renderConfigs(contentEl, tabManager, renderConfigsFn) {
   currentBar.appendChild(_el('span', 'config-current-value', currentName));
 
   // Config list
-  const configs = await window.api.config.list();
+  const configs = await configApi.list();
 
   buildSettingsSection(contentEl, {
     heading: 'Workspace Configs',

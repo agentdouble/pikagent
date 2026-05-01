@@ -8,6 +8,7 @@ import {
   suggestedDuplicateName,
 } from '../utils/config-manager-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import * as configApi from '../services/config-api.js';
 
 export class ConfigManager {
   constructor(tabManager) {
@@ -38,8 +39,8 @@ export class ConfigManager {
     try {
       const data = this.tabManager.serialize();
       const name = this.currentConfigName || DEFAULT_CONFIG_NAME;
-      await window.api.config.save(name, data);
-      await window.api.config.setDefault(name);
+      await configApi.save(name, data);
+      await configApi.setDefault(name);
       this.currentConfigName = name;
       this.updateConfigBar();
     } catch (e) {
@@ -56,7 +57,7 @@ export class ConfigManager {
     this.tabManager._disposeSideView('board');
     this.tabManager._disposeAllTabs();
     this.tabManager.createTab();
-    await window.api.config.setDefault(name);
+    await configApi.setDefault(name);
     await this.autoSave();
     this.updateConfigBar();
   }
@@ -64,19 +65,19 @@ export class ConfigManager {
   async duplicateConfig(newName) {
     if (!newName) return;
     const data = this.tabManager.serialize();
-    await window.api.config.save(newName, data);
+    await configApi.save(newName, data);
     this.currentConfigName = newName;
-    await window.api.config.setDefault(newName);
+    await configApi.setDefault(newName);
     this.updateConfigBar();
   }
 
   async switchConfig(name) {
     if (name === this.currentConfigName) return;
     await this.autoSave();
-    const config = await window.api.config.load(name);
+    const config = await configApi.load(name);
     if (config && config.tabs && config.tabs.length > 0) {
       this.currentConfigName = name;
-      await window.api.config.setDefault(name);
+      await configApi.setDefault(name);
       await this.tabManager.restoreConfig(config);
       this.updateConfigBar();
     }
@@ -92,7 +93,7 @@ export class ConfigManager {
   }
 
   async showConfigMenu(anchorEl) {
-    const configs = await window.api.config.list();
+    const configs = await configApi.list();
     const rect = anchorEl.getBoundingClientRect();
 
     const items = configs.map((config) => ({

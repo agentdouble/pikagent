@@ -15,6 +15,9 @@ import {
   splitTerminal,
   focusDirection as focusDirectionHelper,
 } from '../utils/terminal-subsystem.js';
+import * as shellApi from '../services/shell-api.js';
+import * as fsApi from '../services/fs-api.js';
+import * as ptyApi from '../services/terminal-api.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {
@@ -26,16 +29,16 @@ export class TerminalPanel {
 
     // Injected API methods forwarded to TerminalInstance
     this._terminalApi = {
-      openExternal: window.api.shell.openExternal,
-      homedir: window.api.fs.homedir,
-      openPath: window.api.shell.openPath,
-      ptyWrite: window.api.pty.write,
-      ptyOnData: window.api.pty.onData,
-      ptyOnExit: window.api.pty.onExit,
-      ptyCreate: window.api.pty.create,
-      ptyGetCwd: window.api.pty.getCwd,
-      ptyResize: window.api.pty.resize,
-      ptyKill: window.api.pty.kill,
+      openExternal: shellApi.openExternal,
+      homedir: fsApi.homedir,
+      openPath: shellApi.openPath,
+      ptyWrite: ptyApi.write,
+      ptyOnData: ptyApi.onData,
+      ptyOnExit: ptyApi.onExit,
+      ptyCreate: ptyApi.create,
+      ptyGetCwd: ptyApi.getCwd,
+      ptyResize: ptyApi.resize,
+      ptyKill: ptyApi.kill,
     };
 
     // Drag and drop state
