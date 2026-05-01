@@ -6,10 +6,7 @@
  * IPC communication, and wiring the sub-modules together.
  */
 
-const fsp = require('fs/promises');
-const path = require('path');
-const { FLOWS_DIR, LOGS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
-const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
+const { FLOWS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
 const { safeSend } = require('./ipc-helpers');
 const { buildTimestampedRecord } = require('./record-helpers');
 const { trySafe } = require('./logger');
@@ -18,7 +15,6 @@ const { createFlowScheduler } = require('./flow-scheduler');
 const { createFlowExecutor } = require('./flow-executor');
 
 const store = new JsonStore(FLOWS_DIR, 'flow-manager');
-const ensureLogsDir = ensureDirOnce(LOGS_DIR);
 
 class FlowManager {
   constructor() {
@@ -64,7 +60,6 @@ class FlowManager {
   // --- CRUD ---
 
   async save(flow) {
-    await ensureLogsDir();
     const existing = await this.get(flow.id);
     const data = buildTimestampedRecord(flow, existing);
     if (!data.runs) data.runs = [];
@@ -112,25 +107,17 @@ class FlowManager {
 
   async getCategories() {
     await store.ensureDir();
-    const data = await readJson(FLOW_CATEGORIES_FILE);
+    const data = await store.readFile(FLOW_CATEGORIES_FILE);
     return data || { categories: [], order: {} };
   }
 
   async saveCategories(data) {
-    await store.ensureDir();
-    await writeJson(FLOW_CATEGORIES_FILE, data);
+    await store.writeFile(FLOW_CATEGORIES_FILE, data);
     return data;
   }
 
   async _cleanLogs(flowId) {
-    await trySafe(
-      async () => {
-        const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
-        await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
-      },
-      undefined,
-      { log: store.log, label: 'cleanLogs' },
-    );
+    await this._executor.cleanLogs(flowId);
   }
 
   // --- On-demand execution ---
