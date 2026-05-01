@@ -1,21 +1,19 @@
 import { _el } from '../utils/file-dom.js';
 import { buildChevronRow } from '../utils/chevron-row.js';
+import { registerComponent } from '../utils/component-registry.js';
+import { attachContextMenu } from '../utils/context-menu.js';
+import { emitWorkspaceCreateWorktree, emitWorkspaceOpenPr } from '../utils/workspace-events.js';
+import { ComponentBase } from '../utils/component-base.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   extractFolderName, resolveWatchCwd,
-} from '../utils/file-tree-helpers.js';
-import { registerComponent } from '../utils/component-registry.js';
-import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
-import { attachContextMenu } from '../utils/context-menu.js';
-import { emitWorkspaceCreateWorktree, emitWorkspaceOpenPr } from '../utils/workspace-events.js';
-import { renderDirEntry, renderFileEntry, buildSectionActions } from '../utils/file-tree-renderer.js';
-import {
+  buildDirContextItems,
+  renderDirEntry, renderFileEntry, buildSectionActions,
   setupDropZone, handleFileDrop,
   promptRename as doPromptRename,
   promptNewEntry as doPromptNewEntry,
-} from '../utils/file-tree-drop.js';
-import { listenForChanges, startWatch, stopWatch } from '../utils/file-tree-watcher.js';
-import { ComponentBase } from '../utils/component-base.js';
+  listenForChanges, startWatch, stopWatch,
+} from '../utils/file-tree-subsystem.js';
 
 export class FileTree extends ComponentBase {
   constructor(container) {
