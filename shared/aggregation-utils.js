@@ -70,6 +70,33 @@ function accumulateBy(target, source, keys) {
 }
 
 /**
+ * Sum the values of `obj` for the given `keys`.
+ *
+ * @param {Record<string, number>} obj
+ * @param {string[]} keys
+ * @returns {number}
+ */
+function sumByKeys(obj, keys) {
+  let total = 0;
+  for (const k of keys) total += obj[k] || 0;
+  return total;
+}
+
+/**
+ * Map fields from a source object using a field-mapping array.
+ * Each entry in `fieldMap` must have a `key` (target name) and an `apiField` (source name).
+ * Missing source values default to `defaultValue`.
+ *
+ * @param {Record<string, unknown>} source
+ * @param {Array<{key: string, apiField: string}>} fieldMap
+ * @param {*} [defaultValue=0]
+ * @returns {Record<string, unknown>}
+ */
+function mapFields(source, fieldMap, defaultValue = 0) {
+  return Object.fromEntries(fieldMap.map(f => [f.key, source[f.apiField] || defaultValue]));
+}
+
+/**
  * Counts occurrences of each key produced by keyFn.
  * @param {Array<unknown>} items
  * @param {(item: unknown) => string} keyFn - Returns the key for each item
@@ -177,6 +204,8 @@ module.exports = {
   aggregateByKey,
   groupAndAggregate,
   accumulateBy,
+  sumByKeys,
+  mapFields,
   countBy,
   createLookupMap,
   resolveFromMap,
