@@ -15,6 +15,7 @@ import {
 } from '../utils/file-viewer-files.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
+import * as fsApi from '../services/fs-api.js';
 
 export class FileViewer extends ComponentBase {
   /**
@@ -124,7 +125,7 @@ export class FileViewer extends ComponentBase {
   // ===== Files Mode =====
 
   async openFile(filePath, fileName) {
-    await openFileEntry(this.openFiles, filePath, fileName, { readfile: window.api.fs.readfile });
+    await openFileEntry(this.openFiles, filePath, fileName, { readfile: fsApi.readfile });
     this.setActiveTab(filePath);
   }
 
@@ -227,7 +228,7 @@ export class FileViewer extends ComponentBase {
         this.renderTabs();
         this.updateStatusBar();
       },
-    }, { writefile: window.api.fs.writefile });
+    }, { writefile: fsApi.writefile });
   }
 
   closeFile(filePath) {

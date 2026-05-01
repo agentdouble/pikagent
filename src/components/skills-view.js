@@ -2,6 +2,9 @@ import { _el, renderList } from '../utils/workspace-dom.js';
 import { showPromptDialog, showConfirmDialog } from '../utils/dom-dialogs.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
+import * as skillsApi from '../services/skills-api.js';
+import * as shellApi from '../services/shell-api.js';
+import * as dialogApi from '../services/dialog-api.js';
 
 export class SkillsView extends ComponentBase {
   constructor(container) {
@@ -19,8 +22,8 @@ export class SkillsView extends ComponentBase {
 
   async refresh() {
     if (this.disposed) return;
-    this.skills = await window.api.skills.list();
-    if (!this.rootPath) this.rootPath = await window.api.skills.getRoot();
+    this.skills = await skillsApi.list();
+    if (!this.rootPath) this.rootPath = await skillsApi.getRoot();
     if (this.selectedId && !this.skills.find((s) => s.id === this.selectedId)) {
       this.selectedId = null;
     }
@@ -87,13 +90,13 @@ export class SkillsView extends ComponentBase {
 
   async _openRoot() {
     if (!this.rootPath) return;
-    await window.api.shell.openPath(this.rootPath);
+    await shellApi.openPath(this.rootPath);
   }
 
   async _configurePath() {
-    const picked = await window.api.dialog.openFolder();
+    const picked = await dialogApi.openFolder();
     if (!picked) return;
-    const res = await window.api.skills.setRoot(picked);
+    const res = await skillsApi.setRoot(picked);
     if (res && res.success) {
       this.rootPath = res.root;
       this.selectedId = null;
@@ -103,9 +106,9 @@ export class SkillsView extends ComponentBase {
   }
 
   async _importSkill() {
-    const picked = await window.api.dialog.openFolder();
+    const picked = await dialogApi.openFolder();
     if (!picked) return;
-    const res = await window.api.skills.import(picked);
+    const res = await skillsApi.importSkill(picked);
     if (res && res.success) {
       this.selectedId = res.id;
       await this.refresh();
@@ -131,7 +134,7 @@ export class SkillsView extends ComponentBase {
       confirmLabel: 'Créer',
       cancelLabel: 'Annuler',
     });
-    const res = await window.api.skills.create({ id, description: description || '' });
+    const res = await skillsApi.create({ id, description: description || '' });
     if (res && res.success) {
       this.selectedId = res.id;
       await this.refresh();
@@ -144,7 +147,7 @@ export class SkillsView extends ComponentBase {
       { confirmLabel: 'Supprimer', cancelLabel: 'Annuler' },
     );
     if (!ok) return;
-    await window.api.skills.delete(id);
+    await skillsApi.deleteSkill(id);
     if (this.selectedId === id) this.selectedId = null;
     await this.refresh();
   }
@@ -167,7 +170,7 @@ export class SkillsView extends ComponentBase {
       _el('button', {
         className: 'skills-item-delete',
         title: 'Supprimer',
-        textContent: '✕',
+        textContent: '\u2715',
         onClick: (e) => { e.stopPropagation(); this._deleteSkill(skill.id); },
       }),
     ));
@@ -206,7 +209,7 @@ export class SkillsView extends ComponentBase {
     const skill = this.skills.find((s) => s.id === this.selectedId);
     if (!skill) return;
 
-    const content = await window.api.skills.read(skill.path);
+    const content = await skillsApi.read(skill.path);
     this.editorValue = content ?? '';
     this.editorDirty = false;
 
@@ -263,7 +266,7 @@ export class SkillsView extends ComponentBase {
   async _save() {
     const skill = this.skills.find((s) => s.id === this.selectedId);
     if (!skill) return;
-    const res = await window.api.skills.write(skill.path, this.editorValue);
+    const res = await skillsApi.write(skill.path, this.editorValue);
     if (res && res.success) {
       this.editorDirty = false;
       this._updateDirtyBadge();

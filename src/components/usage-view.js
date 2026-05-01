@@ -2,6 +2,7 @@ import { _el } from '../utils/workspace-dom.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
+import * as usageApi from '../services/usage-api.js';
 
 // --- Component ---
 
@@ -49,7 +50,7 @@ export class UsageView extends ComponentBase {
     this._renderEmpty('Chargement des métriques...');
 
     try {
-      this.metrics = await window.api.usage.getMetrics();
+      this.metrics = await usageApi.getMetrics();
     } catch {
       this._renderEmpty('Erreur lors du chargement');
       return;

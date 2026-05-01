@@ -11,6 +11,7 @@ import {
 } from '../utils/flow-modal-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
+import * as dialogApi from '../services/dialog-api.js';
 
 // --- Section builders ---
 
@@ -62,7 +63,7 @@ function _buildCwdPicker(state) {
     onClick: createAsyncHandler(
       { stopProp: false },
       async () => {
-        const folder = await window.api.dialog.openFolder();
+        const folder = await dialogApi.openFolder();
         if (folder) {
           state.selectedCwd = folder;
           cwdLabel.textContent = folder.split('/').pop();

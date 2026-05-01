@@ -12,6 +12,8 @@ import {
   formatRunDateTime,
 } from '../utils/flow-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import * as ptyApi from '../services/terminal-api.js';
+import * as flowApi from '../services/flow-api.js';
 
 export class FlowCardTerminalManager {
   constructor() {
@@ -68,7 +70,7 @@ export class FlowCardTerminalManager {
       this._liveTerminals, flowId, containerEl,
       { scrollback: LIVE_SCROLLBACK, cursorStyle: 'bar' },
       (rec) => {
-        const unsubData = window.api.pty.onData(ptyId, (data) => { rec.term.write(data); });
+        const unsubData = ptyApi.onData(ptyId, (data) => { rec.term.write(data); });
         rec.unsubData = unsubData;
         rec.ptyId = ptyId;
       },
@@ -85,7 +87,7 @@ export class FlowCardTerminalManager {
 
   async loadLogIntoContainer(flowId, run, containerEl) {
     const log = run.logTimestamp
-      ? await window.api.flow.getRunLog(flowId, run.logTimestamp)
+      ? await flowApi.getRunLog(flowId, run.logTimestamp)
       : null;
 
     const { term } = this._createAndRegister(
@@ -111,7 +113,7 @@ export class FlowCardTerminalManager {
   }
 
   async showRunLog(flow, run) {
-    const log = await window.api.flow.getRunLog(flow.id, run.logTimestamp);
+    const log = await flowApi.getRunLog(flow.id, run.logTimestamp);
 
     const close = () => { resizeObs.disconnect(); term.dispose(); overlay.remove(); };
     const { overlay, modal } = createModalOverlay('flow-modal-overlay', 'flow-log-modal', close);

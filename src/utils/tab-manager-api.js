@@ -5,9 +5,11 @@
  * helpers (worktree-flow, open-pr-flow, sidebar-manager) so that the
  * main TabManager class stays focused on orchestration.
  *
- * All functions receive their dependencies via parameters — no direct
- * window.api references.
+ * All API access is routed through the service layer in src/services/.
  */
+
+import * as gitApi from '../services/git-api.js';
+import * as shellApi from '../services/shell-api.js';
 
 /**
  * @typedef {{ branch: (cwd: string) => Promise<string|null>, remoteUrl: (cwd: string) => Promise<string|null>, pushBranch: (cwd: string, branch: string) => Promise<{ ok: boolean, error?: string }>, ghAvailable: () => Promise<boolean>, ghPrCreate: (cwd: string, baseBranch: string|null) => Promise<{ ok: boolean, url?: string, existed?: boolean, code?: string, error?: string }> }} GitApi
@@ -16,17 +18,16 @@
 
 /**
  * Adapter exposing the git + shell surface needed by the open-PR flow.
- * @param {{ git: GitApi, shell: ShellApi }} api — injected API surface
  * @returns {import('./open-pr-flow.js').OpenPrApi}
  */
-export function buildPrApi(api) {
+export function buildPrApi() {
   return {
-    branch:       (cwd) => api.git.branch(cwd),
-    remoteUrl:    (cwd) => api.git.remoteUrl(cwd),
-    pushBranch:   ({ cwd, branch }) => api.git.pushBranch(cwd, branch),
-    ghAvailable:  () => api.git.ghAvailable(),
-    ghPrCreate:   ({ cwd, baseBranch }) => api.git.ghPrCreate(cwd, baseBranch),
-    openExternal: (url) => api.shell.openExternal(url),
+    branch:       (cwd) => gitApi.branch(cwd),
+    remoteUrl:    (cwd) => gitApi.remoteUrl(cwd),
+    pushBranch:   ({ cwd, branch }) => gitApi.pushBranch(cwd, branch),
+    ghAvailable:  () => gitApi.ghAvailable(),
+    ghPrCreate:   ({ cwd, baseBranch }) => gitApi.ghPrCreate(cwd, baseBranch),
+    openExternal: (url) => shellApi.openExternal(url),
   };
 }
 
@@ -37,19 +38,18 @@ export function buildPrApi(api) {
 /**
  * Adapter exposing the git-worktree IPC surface as an object-style API,
  * matching {@link import('./worktree-flow.js').GitWorktreeApi}.
- * @param {{ git: GitWorktreeIpc }} api — injected API surface
  * @returns {import('./worktree-flow.js').GitWorktreeApi}
  */
-export function buildWorktreeApi(api) {
+export function buildWorktreeApi() {
   return {
-    isRepo:       (cwd) => api.git.isRepo(cwd),
-    branch:       (cwd) => api.git.branch(cwd),
-    listBranches: (cwd) => api.git.listBranches(cwd),
-    worktreeList: (cwd) => api.git.worktreeList(cwd),
+    isRepo:       (cwd) => gitApi.isRepo(cwd),
+    branch:       (cwd) => gitApi.branch(cwd),
+    listBranches: (cwd) => gitApi.listBranches(cwd),
+    worktreeList: (cwd) => gitApi.worktreeList(cwd),
     worktreeAdd:  ({ cwd, branch, targetPath, createBranch, baseBranch }) =>
-      api.git.worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch),
+      gitApi.worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch),
     worktreeRemove: ({ cwd, worktreePath, force }) =>
-      api.git.worktreeRemove(cwd, worktreePath, force),
+      gitApi.worktreeRemove(cwd, worktreePath, force),
   };
 }
 

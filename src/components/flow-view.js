@@ -11,6 +11,7 @@ import {
 } from '../utils/flow-view-helpers.js';
 import { createCategoryGroup } from '../utils/flow-category-renderer.js';
 import { createFlowCard } from '../utils/flow-card-setup.js';
+import * as flowApi from '../services/flow-api.js';
 
 
 export class FlowView extends ComponentBase {
@@ -28,13 +29,13 @@ export class FlowView extends ComponentBase {
     // Drag state (shared mutable object for use with setupCardDrag)
     this._drag = { flowId: null, catId: null };
 
-    this._track(window.api.flow.onRunStarted(({ flowId, ptyId }) => {
+    this._track(flowApi.onRunStarted(({ flowId, ptyId }) => {
       this._runningMap[flowId] = ptyId;
       this._expandedCards.add(flowId);
       this.refresh();
     }));
 
-    this._track(window.api.flow.onRunComplete(({ flowId }) => {
+    this._track(flowApi.onRunComplete(({ flowId }) => {
       this._termManager.disposeLiveTerminal(flowId);
       delete this._runningMap[flowId];
       this.refresh();
@@ -45,7 +46,7 @@ export class FlowView extends ComponentBase {
   }
 
   async _initRunning() {
-    this._runningMap = await window.api.flow.getRunning();
+    this._runningMap = await flowApi.getRunning();
     for (const flowId of Object.keys(this._runningMap)) {
       this._expandedCards.add(flowId);
     }
@@ -54,13 +55,13 @@ export class FlowView extends ComponentBase {
 
   async refresh() {
     if (this.disposed) return;
-    this.flows = await window.api.flow.list();
-    this.catData = await window.api.flow.getCategories();
+    this.flows = await flowApi.list();
+    this.catData = await flowApi.getCategories();
     this._renderList();
   }
 
   async _persistCategories() {
-    await window.api.flow.saveCategories(this.catData);
+    await flowApi.saveCategories(this.catData);
   }
 
   // --- Category helpers ---
@@ -180,8 +181,8 @@ export class FlowView extends ComponentBase {
       termManager: this._termManager,
       onRenderList: () => this._renderList(),
       onShowLog: (f, run) => this._termManager.showRunLog(f, run),
-      onRun: (flowId) => window.api.flow.runNow(flowId),
-      onToggle: (flowId) => window.api.flow.toggle(flowId),
+      onRun: (flowId) => flowApi.runNow(flowId),
+      onToggle: (flowId) => flowApi.toggle(flowId),
       onRefresh: () => this.refresh(),
       onOpenModal: (f) => this._openModal(f),
       onDeleteFlow: (id) => this._deleteFlow(id),
@@ -193,7 +194,7 @@ export class FlowView extends ComponentBase {
     this._termManager.disposeLiveTerminal(flowId);
     removeFlowFromOrder(this.catData.order, flowId);
     await this._persistCategories();
-    await window.api.flow.delete(flowId);
+    await flowApi.deleteFlow(flowId);
     this.refresh();
   }
 
@@ -247,7 +248,7 @@ export class FlowView extends ComponentBase {
       const catId = flow._category;
       delete flow._category;
 
-      await window.api.flow.save(flow);
+      await flowApi.save(flow);
 
       if (catId) {
         this._moveFlowToCategory(flow.id, catId);

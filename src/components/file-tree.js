@@ -14,6 +14,9 @@ import {
   promptNewEntry as doPromptNewEntry,
   listenForChanges, startWatch, stopWatch,
 } from '../utils/file-tree-subsystem.js';
+import * as fsApi from '../services/fs-api.js';
+import * as shellApi from '../services/shell-api.js';
+import * as clipboardApi from '../services/clipboard-api.js';
 
 export class FileTree extends ComponentBase {
   constructor(container) {
@@ -25,16 +28,16 @@ export class FileTree extends ComponentBase {
 
     // Injected API methods for file-tree-drop and file-tree-context-menu utils
     this._contextMenuApi = {
-      clipboardWrite: window.api.clipboard.write,
-      fsCopy: window.api.fs.copy,
-      showInFolder: window.api.shell.showInFolder,
-      fsTrash: window.api.fs.trash,
+      clipboardWrite: clipboardApi.write,
+      fsCopy: fsApi.copy,
+      showInFolder: shellApi.showInFolder,
+      fsTrash: fsApi.trash,
     };
     this._dropApi = {
-      copyTo: window.api.fs.copyTo,
-      rename: window.api.fs.rename,
-      mkdir: window.api.fs.mkdir,
-      writefile: window.api.fs.writefile,
+      copyTo: fsApi.copyTo,
+      rename: fsApi.rename,
+      mkdir: fsApi.mkdir,
+      writefile: fsApi.writefile,
     };
 
     this.render();
@@ -53,7 +56,7 @@ export class FileTree extends ComponentBase {
   }
 
   listenForChanges() {
-    this._track(listenForChanges(this.debounceTimers, (id) => this.refreshSection(id), { onChanged: window.api.fs.onChanged }));
+    this._track(listenForChanges(this.debounceTimers, (id) => this.refreshSection(id), { onChanged: fsApi.onChanged }));
   }
 
   async setTerminalRoot(termId, dirPath) {
@@ -74,7 +77,7 @@ export class FileTree extends ComponentBase {
 
     const sectionEl = _el('div', { className: 'file-tree-section' });
     const expandedDirs = new Set([dirPath]);
-    const watchId = startWatch(dirPath, { watch: window.api.fs.watch });
+    const watchId = startWatch(dirPath, { watch: fsApi.watch });
     this.sections.set(dirPath, { termIds: new Set([termId]), sectionEl, expandedDirs, watchId });
     this.treeEl.appendChild(sectionEl);
     await this.refreshSection(dirPath);
@@ -94,7 +97,7 @@ export class FileTree extends ComponentBase {
     section.termIds.delete(termId);
 
     if (section.termIds.size === 0) {
-      stopWatch(section.watchId, { unwatch: window.api.fs.unwatch });
+      stopWatch(section.watchId, { unwatch: fsApi.unwatch });
       section.sectionEl.remove();
       this.sections.delete(cwd);
     }
@@ -257,7 +260,7 @@ export class FileTree extends ComponentBase {
   }
 
   async renderDir(dirPath, parentEl, depth, expandedDirs) {
-    const entries = await window.api.fs.readdir(dirPath);
+    const entries = await fsApi.readdir(dirPath);
     for (const entry of entries) {
       if (entry.isDirectory) {
         await this._renderDirEntry(entry, parentEl, depth, expandedDirs);
@@ -269,9 +272,9 @@ export class FileTree extends ComponentBase {
 
   dispose() {
     super.dispose();
-    const fsApi = { unwatch: window.api.fs.unwatch };
+    const unwatchApi = { unwatch: fsApi.unwatch };
     for (const [, section] of this.sections) {
-      stopWatch(section.watchId, fsApi);
+      stopWatch(section.watchId, unwatchApi);
     }
     this.sections.clear();
     this.termCwds.clear();

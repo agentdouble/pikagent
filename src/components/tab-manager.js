@@ -30,6 +30,9 @@ import {
   toggleNoShortcut as doToggleNoShortcut,
   buildPrApi, buildWorktreeApi, buildViewStore,
 } from '../utils/tab-facade.js';
+import * as gitApi from '../services/git-api.js';
+import * as fsApi from '../services/fs-api.js';
+import * as configApi from '../services/config-api.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
@@ -54,13 +57,13 @@ export class TabManager {
     this.excludedColors = new Set(); // COLOR_GROUPS ids to hide
 
     // Injected API methods for workspace-layout utils
-    this._api = { gitBranch: window.api.git.branch };
+    this._api = { gitBranch: gitApi.branch };
 
     this.init();
   }
 
-  _prApi() { return buildPrApi(window.api); }
-  _worktreeApi() { return buildWorktreeApi(window.api); }
+  _prApi() { return buildPrApi(); }
+  _worktreeApi() { return buildWorktreeApi(); }
   _viewStore() { return buildViewStore(this); }
 
   async init() {
@@ -70,7 +73,7 @@ export class TabManager {
       restoreConfig: (config) => this.restoreConfig(config),
       createTab: (name) => this.createTab(name),
       setDefaultCwd: (cwd) => { this.defaultCwd = cwd; },
-      api: { homedir: window.api.fs.homedir, getDefault: window.api.config.getDefault, loadDefault: window.api.config.loadDefault },
+      api: { homedir: fsApi.homedir, getDefault: configApi.getDefault, loadDefault: configApi.loadDefault },
     });
 
     this._busListeners = setupBusListeners({
@@ -80,7 +83,7 @@ export class TabManager {
       createTab: (name, cwd) => this.createTab(name, cwd),
       renderTabBar: () => this.renderTabBar(),
       api: {
-        gitBranch: window.api.git.branch,
+        gitBranch: gitApi.branch,
         worktree: this._worktreeApi(),
         pr: this._prApi(),
       },

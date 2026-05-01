@@ -5,6 +5,7 @@
 import { _el } from '../utils/settings-dom.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
+import * as updateApi from '../services/update-api.js';
 
 function _showCheckButton(area, onCheck) {
   area.replaceChildren();
@@ -73,7 +74,7 @@ function handleProgress(area) {
   progress.appendChild(label);
   area.appendChild(progress);
 
-  const unsub = window.api.update.onProgress((p) => {
+  const unsub = updateApi.onProgress((p) => {
     barFill.style.width = `${(p.step / p.total) * 100}%`;
     label.textContent = p.label;
   });
@@ -88,12 +89,12 @@ async function handleDownload(area, runCheck) {
   const { unsub } = handleProgress(area);
 
   try {
-    await window.api.update.run();
+    await updateApi.run();
     unsub?.();
     area.replaceChildren();
     area.appendChild(_el('div', 'update-message update-ok', '\u2713 Update installed successfully!'));
     const btn = _el('button', 'update-btn update-btn-primary', 'Restart now');
-    btn.addEventListener('click', () => window.api.update.relaunch());
+    btn.addEventListener('click', () => updateApi.relaunch());
     area.appendChild(btn);
   } catch (err) {
     unsub?.();
@@ -111,7 +112,7 @@ async function runCheck(area, btn) {
   btn.disabled = true;
   btn.classList.add('disabled');
   try {
-    const result = await window.api.update.check();
+    const result = await updateApi.check();
     if (result.error) _showMessage(area, 'error', result.error, (b) => runCheck(area, b));
     else if (!result.available) _showMessage(area, 'ok', 'Your application is up to date', (b) => runCheck(area, b));
     else _showAvailable(area, result, () => handleDownload(area, (b) => runCheck(area, b)));
@@ -126,7 +127,7 @@ async function runCheck(area, btn) {
  */
 export async function renderUpdate(contentEl) {
   createSettingsSection(contentEl, { heading: 'Update' });
-  const version = await window.api.update.version();
+  const version = await updateApi.version();
   const { area } = renderUpdateUI(contentEl, version);
   _showCheckButton(area, (btn) => runCheck(area, btn));
 }
