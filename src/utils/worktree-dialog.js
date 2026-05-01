@@ -128,13 +128,51 @@ function _validateWorktreeInput(mode, els) {
 }
 
 /**
+ * Wire up mode switching, path updates, and confirm/cancel inside the dialog.
+ * Returns an initializer function to call after the modal is mounted.
+ */
+function _wireWorktreeDialog({ modal, cleanup, cancel, repoCwd, allBranches, existingBranches, currentBranch }) {
+  let mode = 'new';
+  const { els, pathEl, btnNew, btnExisting } = _buildWorktreeForm({ allBranches, existingBranches, currentBranch });
+
+  const updatePath = () => {
+    const branch = _validateWorktreeInput(mode, els);
+    pathEl.textContent = branch ? defaultWorktreePath(repoCwd, branch) : '';
+  };
+
+  function setMode(next) {
+    mode = next;
+    btnNew.classList.toggle('active', mode === 'new');
+    btnExisting.classList.toggle('active', mode === 'existing');
+    const isNew = applyModeVisibility(mode, els);
+    updatePath();
+    (isNew ? els.newInput : els.existingSelect).focus();
+  }
+
+  btnNew.addEventListener('click', () => setMode('new'));
+  btnExisting.addEventListener('click', () => setMode('existing'));
+  els.newInput.addEventListener('input', updatePath);
+  els.existingSelect.addEventListener('change', updatePath);
+
+  const confirm = () => {
+    const branch = _validateWorktreeInput(mode, els);
+    if (!branch) return;
+    cleanup({
+      branch,
+      createBranch: mode === 'new',
+      targetPath: defaultWorktreePath(repoCwd, branch),
+      baseBranch: mode === 'new' ? (els.baseSelect.value || null) : null,
+    });
+  };
+
+  wireKeyboardShortcuts([els.newInput, els.existingSelect, els.baseSelect], { onEnter: confirm, onEscape: cancel });
+  populateModal(modal, { btnNew, btnExisting, els, pathEl, cancel, confirm });
+
+  return () => { updatePath(); els.newInput.focus(); };
+}
+
+/**
  * Show the worktree creation dialog.
- *
- * `allBranches` is the full list of local branches (used to build the
- * base-branch dropdown in "new branch" mode — a base branch can be one
- * that's already checked out elsewhere).
- * `existingBranches` is the list of branches available for the "existing
- * branch" mode (i.e. not already checked out in another worktree).
  *
  * @param {{ repoCwd: string, allBranches: string[], existingBranches: string[], currentBranch: string|null }} opts
  * @returns {Promise<{ branch: string, createBranch: boolean, targetPath: string, baseBranch: string|null } | null>}
@@ -144,44 +182,7 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
     overlayClass: 'prompt-dialog-overlay',
     modalClass: 'prompt-dialog-box worktree-dialog-box',
     builder({ modal, cleanup, cancel }) {
-      let mode = 'new';
-      const { els, pathEl, btnNew, btnExisting } = _buildWorktreeForm({ allBranches, existingBranches, currentBranch });
-
-      const updatePath = () => {
-        const branch = _validateWorktreeInput(mode, els);
-        pathEl.textContent = branch ? defaultWorktreePath(repoCwd, branch) : '';
-      };
-
-      function setMode(next) {
-        mode = next;
-        btnNew.classList.toggle('active', mode === 'new');
-        btnExisting.classList.toggle('active', mode === 'existing');
-        const isNew = applyModeVisibility(mode, els);
-        updatePath();
-        (isNew ? els.newInput : els.existingSelect).focus();
-      }
-
-      btnNew.addEventListener('click', () => setMode('new'));
-      btnExisting.addEventListener('click', () => setMode('existing'));
-
-      els.newInput.addEventListener('input', updatePath);
-      els.existingSelect.addEventListener('change', updatePath);
-
-      const confirm = () => {
-        const branch = _validateWorktreeInput(mode, els);
-        if (!branch) return;
-        cleanup({
-          branch,
-          createBranch: mode === 'new',
-          targetPath: defaultWorktreePath(repoCwd, branch),
-          baseBranch: mode === 'new' ? (els.baseSelect.value || null) : null,
-        });
-      };
-
-      wireKeyboardShortcuts([els.newInput, els.existingSelect, els.baseSelect], { onEnter: confirm, onEscape: cancel });
-      populateModal(modal, { btnNew, btnExisting, els, pathEl, cancel, confirm });
-
-      return () => { updatePath(); els.newInput.focus(); };
+      return _wireWorktreeDialog({ modal, cleanup, cancel, repoCwd, allBranches, existingBranches, currentBranch });
     },
   });
 }

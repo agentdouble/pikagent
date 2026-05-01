@@ -48,7 +48,7 @@ function _showAvailable(area, result, onInstall) {
  * Build the version bar and update area, appending them to contentEl.
  * @returns {{ area: HTMLElement }}
  */
-function _buildUpdateUI(contentEl, version) {
+function renderUpdateUI(contentEl, version) {
   const bar = _el('div', 'update-version-bar');
   bar.appendChild(_el('span', 'update-version-label', 'Version'));
   bar.appendChild(_el('span', 'update-version-value', `v${version}`));
@@ -63,7 +63,7 @@ function _buildUpdateUI(contentEl, version) {
  * Build progress DOM elements and bind the onProgress event.
  * @returns {{ unsub: (() => void)|undefined }}
  */
-function _bindProgressUpdates(area) {
+function handleProgress(area) {
   const progress = _el('div', 'update-progress');
   const barTrack = _el('div', 'update-progress-track');
   const barFill = _el('div', 'update-progress-fill');
@@ -83,9 +83,9 @@ function _bindProgressUpdates(area) {
 /**
  * Run the download/install flow: show progress, then success or error.
  */
-async function _handleDownload(area, runCheck) {
+async function handleDownload(area, runCheck) {
   area.replaceChildren();
-  const { unsub } = _bindProgressUpdates(area);
+  const { unsub } = handleProgress(area);
 
   try {
     await window.api.update.run();
@@ -109,7 +109,7 @@ export async function renderUpdate(contentEl) {
   createSettingsSection(contentEl, { heading: 'Update' });
 
   const version = await window.api.update.version();
-  const { area } = _buildUpdateUI(contentEl, version);
+  const { area } = renderUpdateUI(contentEl, version);
 
   async function runCheck(btn) {
     btn.textContent = 'Checking...';
@@ -119,7 +119,7 @@ export async function renderUpdate(contentEl) {
       const result = await window.api.update.check();
       if (result.error) _showMessage(area, 'error', result.error, runCheck);
       else if (!result.available) _showMessage(area, 'ok', 'Your application is up to date', runCheck);
-      else _showAvailable(area, result, () => _handleDownload(area, runCheck));
+      else _showAvailable(area, result, () => handleDownload(area, runCheck));
     } catch (err) {
       _showMessage(area, 'error', err.message, runCheck);
     }

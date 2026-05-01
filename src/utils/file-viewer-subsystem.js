@@ -13,6 +13,7 @@ export {
   updateHighlight,
   updateStatusBar,
   saveFile,
+  initCodeEditor,
 } from './file-editor-renderer.js';
 
 export {
