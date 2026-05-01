@@ -1,4 +1,4 @@
-const { computeRate: genericComputeRate, groupAndAggregate, computeNumericStats } = require('./aggregation-utils');
+const { computeRate: genericComputeRate, groupAndAggregate, computeNumericStats } = require('../shared/aggregation-utils');
 const { generateDateRange } = require('./date-utils');
 
 const DEFAULT_DAYS = 30;
