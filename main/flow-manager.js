@@ -6,15 +6,15 @@
  * IPC communication, and wiring the sub-modules together.
  */
 
-const { FLOWS_DIR, FLOW_CATEGORIES_FILE } = require('./paths');
+const { FLOWS_DIR } = require('./paths');
 const { safeSend } = require('./ipc-helpers');
 const { buildTimestampedRecord } = require('./record-helpers');
-const { trySafe } = require('./logger');
 const { JsonStore } = require('./json-store');
 const { createFlowScheduler } = require('./flow-scheduler');
 const { createFlowExecutor } = require('./flow-executor');
 
 const store = new JsonStore(FLOWS_DIR, 'flow-manager');
+const CATEGORIES_FILE = store.resolve('categories.json');
 
 class FlowManager {
   constructor() {
@@ -77,14 +77,14 @@ class FlowManager {
   }
 
   async remove(id) {
-    return trySafe(
+    return store.trySafe(
       async () => {
         await store.removeOrThrow(id);
         await this._cleanLogs(id);
         return true;
       },
       false,
-      { log: store.log, label: 'remove' },
+      'remove',
     );
   }
 
@@ -107,12 +107,12 @@ class FlowManager {
 
   async getCategories() {
     await store.ensureDir();
-    const data = await store.readFile(FLOW_CATEGORIES_FILE);
+    const data = await store.readFile(CATEGORIES_FILE);
     return data || { categories: [], order: {} };
   }
 
   async saveCategories(data) {
-    await store.writeFile(FLOW_CATEGORIES_FILE, data);
+    await store.writeFile(CATEGORIES_FILE, data);
     return data;
   }
 
