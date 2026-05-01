@@ -2,8 +2,14 @@ const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
 const { extractDateString } = require('./date-utils');
-const { aggregateByKey, groupAndAggregate } = require('./aggregation-utils');
-const { accumulateBy, countBy, initializeCounters } = require('../shared/aggregation-utils');
+const {
+  aggregateByKey,
+  groupAndAggregate,
+  accumulateBy,
+  countBy,
+  initializeCounters,
+  buildMetrics: genericBuildMetrics,
+} = require('../shared/aggregation-utils');
 
 // ===== Declarative configs =====
 
@@ -169,8 +175,8 @@ function getFlowRunDuration(run) {
 }
 
 /**
- * Shared metrics builder — computes rate, duration, and perDay from a list of
- * items and merges any extra fields supplied by the caller.
+ * Domain-specific metrics builder — delegates to the generic shared buildMetrics
+ * factory, injecting domain-specific rate and perDay functions.
  *
  * @param {Array<{ status?: string, [key: string]: unknown }>} items - The items to compute base metrics for
  * @param {{ durationMapper: (item: { status?: string, [key: string]: unknown }) => number|null,
@@ -179,12 +185,14 @@ function getFlowRunDuration(run) {
  * @returns {Record<string, unknown>}
  */
 function buildMetrics(items, { durationMapper, dateExtractor, extra = {} }) {
-  return {
-    rate: computeRate(items),
-    duration: computeDuration(items.map(durationMapper)),
-    perDay: perDay(items, dateExtractor, DEFAULT_DAYS),
-    ...extra,
-  };
+  return genericBuildMetrics(items, {
+    rateFn: computeRate,
+    durationMapper,
+    dateExtractor,
+    perDayFn: perDay,
+    days: DEFAULT_DAYS,
+    extra,
+  });
 }
 
 function buildFlowMetrics(flows, flowRuns) {
