@@ -8,8 +8,8 @@ import { DEBOUNCE_DELAY, WATCH_PREFIX } from './file-tree-helpers.js';
  * Set up a debounced fs.onChanged listener.
  * @param {Map} debounceTimers - shared timer map
  * @param {(watchIdOrCwd: string) => Promise<void>} refreshSection - callback to refresh
- * @param {{ onChanged: Function }} fsApi - injected fs API
- * @returns {Function} unsubscribe function
+ * @param {{ onChanged: (cb: (event: { id: string }) => void) => (() => void) }} fsApi - injected fs API
+ * @returns {() => void} unsubscribe function
  */
 export function listenForChanges(debounceTimers, refreshSection, fsApi) {
   return fsApi.onChanged(({ id }) => {
@@ -29,7 +29,7 @@ export function listenForChanges(debounceTimers, refreshSection, fsApi) {
 /**
  * Start watching a directory for changes.
  * @param {string} cwd
- * @param {{ watch: Function }} fsApi - injected fs API
+ * @param {{ watch: (id: string, cwd: string) => void }} fsApi - injected fs API
  * @returns {string} watchId
  */
 export function startWatch(cwd, fsApi) {
@@ -41,7 +41,7 @@ export function startWatch(cwd, fsApi) {
 /**
  * Stop watching a directory.
  * @param {string} watchId
- * @param {{ unwatch: Function }} fsApi - injected fs API
+ * @param {{ unwatch: (id: string) => void }} fsApi - injected fs API
  */
 export function stopWatch(watchId, fsApi) {
   fsApi.unwatch(watchId);
