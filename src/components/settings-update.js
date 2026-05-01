@@ -102,30 +102,33 @@ async function handleDownload(area, runCheck) {
 }
 
 /**
+ * Handle the check-for-updates button click: disable the button, run the check, show result.
+ * @param {HTMLElement} area
+ * @param {HTMLButtonElement} btn
+ */
+async function runCheck(area, btn) {
+  btn.textContent = 'Checking...';
+  btn.disabled = true;
+  btn.classList.add('disabled');
+  try {
+    const result = await window.api.update.check();
+    if (result.error) _showMessage(area, 'error', result.error, (b) => runCheck(area, b));
+    else if (!result.available) _showMessage(area, 'ok', 'Your application is up to date', (b) => runCheck(area, b));
+    else _showAvailable(area, result, () => handleDownload(area, (b) => runCheck(area, b)));
+  } catch (err) {
+    _showMessage(area, 'error', err.message, (b) => runCheck(area, b));
+  }
+}
+
+/**
  * Render the Update section into the given content element.
  * @param {HTMLElement} contentEl
  */
 export async function renderUpdate(contentEl) {
   createSettingsSection(contentEl, { heading: 'Update' });
-
   const version = await window.api.update.version();
   const { area } = renderUpdateUI(contentEl, version);
-
-  async function runCheck(btn) {
-    btn.textContent = 'Checking...';
-    btn.disabled = true;
-    btn.classList.add('disabled');
-    try {
-      const result = await window.api.update.check();
-      if (result.error) _showMessage(area, 'error', result.error, runCheck);
-      else if (!result.available) _showMessage(area, 'ok', 'Your application is up to date', runCheck);
-      else _showAvailable(area, result, () => handleDownload(area, runCheck));
-    } catch (err) {
-      _showMessage(area, 'error', err.message, runCheck);
-    }
-  }
-
-  _showCheckButton(area, runCheck);
+  _showCheckButton(area, (btn) => runCheck(area, btn));
 }
 
 registerComponent('renderUpdate', renderUpdate);

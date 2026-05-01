@@ -34,6 +34,11 @@ export class FileViewer extends ComponentBase {
     this.mode = 'files'; // 'files' | 'git' | webview id
     this.gitChanges = null;
     this.render();
+    this._initWebviewManager();
+    this._initBusListeners();
+  }
+
+  _initWebviewManager() {
     const { WebviewManager } = this._components;
     this._webviewMgr = new WebviewManager(
       this.container, this.statusBar,
@@ -41,6 +46,9 @@ export class FileViewer extends ComponentBase {
       () => this._renderModeBar(),
     );
     this._renderModeBar();
+  }
+
+  _initBusListeners() {
     const busListeners = setupFileViewerListeners(
       { isActive: () => this.isActive() },
       {
@@ -168,14 +176,22 @@ export class FileViewer extends ComponentBase {
     }
 
     if (file.lang === 'markdown' && file.viewMode === 'preview') {
-      this.lineNumbers = null;
-      this.highlightLayer = null;
-      this.editorEl = null;
-      createMarkdownPreviewDOM(this.editorWrapper, file);
-      updatePreviewStatusBar(this.statusBar, file);
+      this._renderMarkdownPreview(file);
       return;
     }
 
+    this._renderCodeEditor(file);
+  }
+
+  _renderMarkdownPreview(file) {
+    this.lineNumbers = null;
+    this.highlightLayer = null;
+    this.editorEl = null;
+    createMarkdownPreviewDOM(this.editorWrapper, file);
+    updatePreviewStatusBar(this.statusBar, file);
+  }
+
+  _renderCodeEditor(file) {
     const { lineNumbers, highlightLayer, editorEl } = initCodeEditor(this.editorWrapper, file, {
       onUpdate: () => { this.updateLineNumbers(); this.updateHighlight(); this.renderTabs(); this.updateStatusBar(); },
       onSave: () => this.saveActive(),
