@@ -21,6 +21,113 @@ const { trySafe } = require('./logger');
 
 const ensureLogsDir = ensureDirOnce(LOGS_DIR);
 
+// --- Top-level helpers (extracted from the factory closure) ---
+
+/**
+ * Persists the raw output of a flow run to disk.
+ *
+ * @param {{ log: object }} deps
+ * @param {string} flowId
+ * @param {string} runTimestamp
+ * @param {string} output
+ */
+async function saveLog(deps, flowId, runTimestamp, output) {
+  await ensureLogsDir();
+  await trySafe(
+    () => fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8'),
+    undefined,
+    { log: deps.log, label: 'saveLog' },
+  );
+}
+
+/**
+ * Reads a previously saved run log from disk.
+ *
+ * @param {{ log: object }} deps
+ * @param {string} flowId
+ * @param {string} timestamp
+ * @returns {Promise<string | null>}
+ */
+async function getRunLog(deps, flowId, timestamp) {
+  return trySafe(
+    () => fsp.readFile(logPath(flowId, timestamp), 'utf-8'),
+    null,
+    { log: deps.log, label: 'getRunLog' },
+  );
+}
+
+/**
+ * Appends a run record to the flow's history.
+ *
+ * @param {{ getFlow: Function, saveFlow: Function }} deps
+ * @param {string} flowId
+ * @param {string} status
+ * @param {string} runTimestamp
+ */
+async function recordRun(deps, flowId, status, runTimestamp) {
+  const flow = await deps.getFlow(flowId);
+  if (!flow) return;
+  const now = new Date().toISOString();
+  const runs = flow.runs || [];
+  runs.push({
+    date: now.slice(0, 10),
+    timestamp: now,
+    logTimestamp: runTimestamp,
+    status,
+  });
+  flow.runs = runs.length > MAX_RUN_HISTORY ? runs.slice(-MAX_RUN_HISTORY) : runs;
+  await deps.saveFlow(flow);
+}
+
+/**
+ * Cleans up a finished flow process: clears timeout, removes PTY,
+ * and notifies the renderer.
+ *
+ * @param {{ getPtyManager: Function, sendToWindow: Function }} deps
+ * @param {Map} runningFlows
+ * @param {string} flowId
+ * @param {string} ptyId
+ * @param {number} exitCode
+ */
+function cleanupFlowProcess(deps, runningFlows, flowId, ptyId, exitCode) {
+  const entry = runningFlows.get(flowId);
+  if (entry?.timeout) clearTimeout(entry.timeout);
+  deps.getPtyManager().processes.delete(ptyId);
+  runningFlows.delete(flowId);
+  deps.sendToWindow('pty:exit', { id: ptyId, exitCode });
+  deps.sendToWindow('flow:runComplete', { flowId, ptyId, exitCode });
+}
+
+/**
+ * Wires up PTY data/exit listeners for a running flow process.
+ *
+ * @param {{ sendToWindow: Function, getPtyManager: Function, getFlow: Function, saveFlow: Function, log: object }} deps
+ * @param {Map} runningFlows
+ * @param {object} proc
+ * @param {object} flow
+ * @param {string} ptyId
+ * @param {string} runTimestamp
+ */
+function setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp) {
+  const output = createOutputProcessor(flow.agent);
+
+  proc.onData((data) => {
+    const formatted = output.processData(data);
+    if (formatted) deps.sendToWindow('pty:data', { id: ptyId, data: formatted });
+  });
+
+  proc.onExit(async ({ exitCode }) => {
+    const remaining = output.flush();
+    if (remaining) deps.sendToWindow('pty:data', { id: ptyId, data: remaining });
+
+    cleanupFlowProcess(deps, runningFlows, flow.id, ptyId, exitCode);
+    await saveLog(deps, flow.id, runTimestamp, output.getOutput());
+    await recordRun(deps, flow.id, exitCode === 0 ? 'success' : 'error', runTimestamp);
+  });
+}
+
+// --- Factory function ---
+
 /**
  * Creates a flow executor bound to external dependencies.
  *
@@ -40,75 +147,8 @@ const ensureLogsDir = ensureDirOnce(LOGS_DIR);
  * }}
  */
 function createFlowExecutor(deps) {
-  const { getPtyManager, sendToWindow, getFlow, saveFlow, log } = deps;
+  const { getPtyManager, sendToWindow, log } = deps;
   const runningFlows = new Map();
-
-  // --- Log helpers ---
-
-  async function saveLog(flowId, runTimestamp, output) {
-    await ensureLogsDir();
-    await trySafe(
-      () => fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8'),
-      undefined,
-      { log, label: 'saveLog' },
-    );
-  }
-
-  async function getRunLog(flowId, timestamp) {
-    return trySafe(
-      () => fsp.readFile(logPath(flowId, timestamp), 'utf-8'),
-      null,
-      { log, label: 'getRunLog' },
-    );
-  }
-
-  // --- Run recording ---
-
-  async function recordRun(flowId, status, runTimestamp) {
-    const flow = await getFlow(flowId);
-    if (!flow) return;
-    const now = new Date().toISOString();
-    const runs = flow.runs || [];
-    runs.push({
-      date: now.slice(0, 10),
-      timestamp: now,
-      logTimestamp: runTimestamp,
-      status,
-    });
-    flow.runs = runs.length > MAX_RUN_HISTORY ? runs.slice(-MAX_RUN_HISTORY) : runs;
-    await saveFlow(flow);
-  }
-
-  // --- PTY lifecycle ---
-
-  function cleanupFlowProcess(flowId, ptyId, exitCode) {
-    const entry = runningFlows.get(flowId);
-    if (entry?.timeout) clearTimeout(entry.timeout);
-    getPtyManager().processes.delete(ptyId);
-    runningFlows.delete(flowId);
-    sendToWindow('pty:exit', { id: ptyId, exitCode });
-    sendToWindow('flow:runComplete', { flowId, ptyId, exitCode });
-  }
-
-  function setupPtyListeners(proc, flow, ptyId, runTimestamp) {
-    const output = createOutputProcessor(flow.agent);
-
-    proc.onData((data) => {
-      const formatted = output.processData(data);
-      if (formatted) sendToWindow('pty:data', { id: ptyId, data: formatted });
-    });
-
-    proc.onExit(async ({ exitCode }) => {
-      const remaining = output.flush();
-      if (remaining) sendToWindow('pty:data', { id: ptyId, data: remaining });
-
-      cleanupFlowProcess(flow.id, ptyId, exitCode);
-      await saveLog(flow.id, runTimestamp, output.getOutput());
-      await recordRun(flow.id, exitCode === 0 ? 'success' : 'error', runTimestamp);
-    });
-  }
-
-  // --- Main execution entry point ---
 
   function execute(flow) {
     const ptyManager = getPtyManager();
@@ -126,7 +166,7 @@ function createFlowExecutor(deps) {
         rows: DEFAULT_PTY_ROWS,
       });
 
-      setupPtyListeners(proc, flow, ptyId, runTimestamp);
+      setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp);
 
       // Auto-kill flows that exceed the max runtime
       const timeout = setTimeout(() => {
@@ -148,11 +188,9 @@ function createFlowExecutor(deps) {
       }, SHELL_INIT_DELAY_MS);
     } catch (err) {
       log.error('execution failed', err);
-      recordRun(flow.id, 'error', runTimestamp);
+      recordRun(deps, flow.id, 'error', runTimestamp);
     }
   }
-
-  // --- Public API ---
 
   function stopAll() {
     const ptyManager = getPtyManager();
@@ -174,7 +212,7 @@ function createFlowExecutor(deps) {
     runningFlows,
     stopAll,
     getRunning,
-    getRunLog,
+    getRunLog: (flowId, timestamp) => getRunLog(deps, flowId, timestamp),
   };
 }
 
