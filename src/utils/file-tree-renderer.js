@@ -4,9 +4,9 @@
  */
 
 import { emitFileOpen } from './workspace-events.js';
-import { _el } from './file-dom.js';
+import { _el, createActionButton } from './file-dom.js';
 import { buildChevronRow } from './chevron-row.js';
-import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS } from './file-tree-helpers.js';
+import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS, HEADER_ACTIONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';
 
@@ -115,4 +115,23 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
     (path, nameEl) => promptRename(path, nameEl),
     contextMenuApi,
   ));
+}
+
+/**
+ * Build the action buttons container for a section header.
+ *
+ * @param {Record<string, () => void>} actionDispatcher - action name -> handler
+ * @returns {HTMLElement} container with action buttons
+ */
+export function buildSectionActions(actionDispatcher) {
+  const actionBtns = HEADER_ACTIONS.map(({ key, title, action }) =>
+    createActionButton({
+      title,
+      cls: 'file-tree-action-btn',
+      childNode: PARSED_ICONS[key].cloneNode(true),
+      stopPropagation: true,
+      onClick: actionDispatcher[action],
+    }),
+  );
+  return _el('div', { className: 'file-tree-section-actions' }, ...actionBtns);
 }

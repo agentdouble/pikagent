@@ -1,15 +1,14 @@
-import { _el, createActionButton } from '../utils/file-dom.js';
+import { _el } from '../utils/file-dom.js';
 import { buildChevronRow } from '../utils/chevron-row.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
-  HEADER_ACTIONS,
   extractFolderName, resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
 import { attachContextMenu } from '../utils/context-menu.js';
 import { emitWorkspaceCreateWorktree, emitWorkspaceOpenPr } from '../utils/workspace-events.js';
-import { renderDirEntry, renderFileEntry, PARSED_ICONS } from '../utils/file-tree-renderer.js';
+import { renderDirEntry, renderFileEntry, buildSectionActions } from '../utils/file-tree-renderer.js';
 import {
   setupDropZone, handleFileDrop,
   promptRename as doPromptRename,
@@ -146,17 +145,7 @@ export class FileTree extends ComponentBase {
       openPr:      () => emitWorkspaceOpenPr({ repoCwd: cwd }),
       refresh:     () => this.refreshSection(cwd),
     };
-    const actionBtns = HEADER_ACTIONS.map(({ key, title, action }) =>
-      createActionButton({
-        title,
-        cls: 'file-tree-action-btn',
-        childNode: PARSED_ICONS[key].cloneNode(true),
-        stopPropagation: true,
-        onClick: actionDispatcher[action],
-      }),
-    );
-
-    const actionsContainer = _el('div', { className: 'file-tree-section-actions' }, ...actionBtns);
+    const actionsContainer = buildSectionActions(actionDispatcher);
 
     const { chevron, name: labelEl, row: header } = buildChevronRow({
       chevronClass: 'file-tree-section-chevron',

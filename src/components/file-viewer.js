@@ -2,7 +2,8 @@ import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/file-dom.js';
 import { EMPTY_MESSAGE, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import {
-  createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile,
+  updateLineNumbers, updateHighlight, updateStatusBar, saveFile,
+  initCodeEditor,
   createMarkdownPreviewDOM, updatePreviewStatusBar,
   renderTabs as renderTabsHelper,
   renderModeBar,
@@ -175,17 +176,13 @@ export class FileViewer extends ComponentBase {
       return;
     }
 
-    const { lineNumbers, highlightLayer, editorEl } = createEditorDOM(this.editorWrapper, file);
-    this.lineNumbers = lineNumbers;
-    this.highlightLayer = highlightLayer;
-    this.editorEl = editorEl;
-
-    bindEditorEvents(this.editorEl, this.lineNumbers, this.highlightLayer, file, {
+    const { lineNumbers, highlightLayer, editorEl } = initCodeEditor(this.editorWrapper, file, {
       onUpdate: () => { this.updateLineNumbers(); this.updateHighlight(); this.renderTabs(); this.updateStatusBar(); },
       onSave: () => this.saveActive(),
     });
-    this.updateLineNumbers();
-    this.updateHighlight();
+    this.lineNumbers = lineNumbers;
+    this.highlightLayer = highlightLayer;
+    this.editorEl = editorEl;
     this.updateStatusBar();
     this.editorEl.focus();
   }
