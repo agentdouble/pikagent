@@ -127,16 +127,6 @@ export function updateStatusBar(statusBar, editorEl, file) {
 }
 
 /**
- * Persist the active file to disk and flash the status bar.
- * Mutates file.savedContent on success.
- *
- * @param {string} filePath
- * @param {{ content: string, savedContent: string, error?: string }} file
- * @param {HTMLElement} statusBar
- * @param {{ onSuccess: () => void }} callbacks
- * @param {{ writefile: (path: string, content: string) => Promise<{ error?: string }> }} api - injected API methods
- */
-/**
  * Create the code editor DOM, bind events, and run initial updates.
  * Returns { lineNumbers, highlightLayer, editorEl }.
  *
@@ -158,6 +148,16 @@ export function initCodeEditor(editorWrapper, file, { onUpdate, onSave }) {
   return { lineNumbers, highlightLayer, editorEl };
 }
 
+/**
+ * Persist the active file to disk and flash the status bar.
+ * Mutates file.savedContent on success.
+ *
+ * @param {string} filePath
+ * @param {{ content: string, savedContent: string, error?: string }} file
+ * @param {HTMLElement} statusBar
+ * @param {{ onSuccess: () => void }} callbacks
+ * @param {{ writefile: (path: string, content: string) => Promise<{ error?: string }> }} api - injected API methods
+ */
 export async function saveFile(filePath, file, statusBar, { onSuccess }, { writefile }) {
   if (!file || file.error) return;
   const result = await writefile(filePath, file.content);
