@@ -65,7 +65,7 @@ function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId, c
  * @param {RenderWorkspaceDeps} deps
  * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {{ gitBranch: (cwd: string) => Promise<string> }} api - injected API methods
- * @param {{ FileTree: Function, FileViewer: Function, TerminalPanel: Function }} components - injected component constructors
+ * @param {{ FileTree: new (el: HTMLElement) => unknown, FileViewer: new (el: HTMLElement, isActive: () => boolean) => unknown, TerminalPanel: new (el: HTMLElement, cwd: string) => unknown }} components - injected component constructors
  */
 export async function renderWorkspace({ workspaceContainer, getActiveTabId, getActiveTab, scheduleAutoSave }, tab, { gitBranch }, components) {
   workspaceContainer.replaceChildren();

@@ -61,7 +61,7 @@ function _buildUpdateUI(contentEl, version) {
 
 /**
  * Build progress DOM elements and bind the onProgress event.
- * @returns {{ unsub: Function|undefined }}
+ * @returns {{ unsub: (() => void)|undefined }}
  */
 function _bindProgressUpdates(area) {
   const progress = _el('div', 'update-progress');

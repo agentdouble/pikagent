@@ -70,7 +70,7 @@ export function buildSettingsSection(contentEl, { heading, items, renderItem, li
  * @param {{
  *   containerClass: string,
  *   actions: Array<{ action: string, label?: string, title?: string, cls?: string, hideWhen?: string }>,
- *   handlerDefs: Record<string, Function | { apiCall: Function, guard?: () => boolean }>,
+ *   handlerDefs: Record<string, ((...args: unknown[]) => void) | { apiCall: () => Promise<unknown>, guard?: () => boolean }>,
  *   onSuccess?: () => void,
  *   filter?: (desc: object) => boolean,
  * }} opts

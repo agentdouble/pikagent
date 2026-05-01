@@ -12,7 +12,7 @@ import { pinnedFiles } from './editor-helpers.js';
  * @param {Map} openFiles
  * @param {string} filePath
  * @param {string} fileName
- * @param {{ readfile: Function }} fsApi - injected fs API
+ * @param {{ readfile: (path: string) => Promise<{ content?: string, error?: string }> }} fsApi - injected fs API
  * @returns {Promise<boolean>} true if the file was newly opened
  */
 export async function openFileEntry(openFiles, filePath, fileName, fsApi) {

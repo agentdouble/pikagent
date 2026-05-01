@@ -40,7 +40,7 @@ const bus = new EventBus();
 /**
  * Create a pair of typed on/emit helpers for a given event name.
  * @param {string} name - the event name
- * @returns {{ on: (cb: Function) => () => void, emit: (data?: unknown) => void }}
+ * @returns {{ on: (cb: (data?: unknown) => void) => () => void, emit: (data?: unknown) => void }}
  */
 export function createTypedEvent(name) {
   return {
