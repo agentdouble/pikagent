@@ -2,83 +2,23 @@
  * Flow execution — PTY process management and output collection.
  *
  * Extracted from flow-manager.js to isolate the execution concern.
- * Handles PTY creation, output processing, log persistence, and
- * run-record bookkeeping.
+ * Handles PTY creation, output processing, and orchestration.
+ *
+ * Logging helpers live in flow-executor-log.js; run-recording
+ * helpers live in flow-executor-run.js.
  */
 
-const fsp = require('fs/promises');
 const os = require('os');
-const path = require('path');
 const {
   SHELL_INIT_DELAY_MS,
   DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS,
-  MAX_FLOW_RUNTIME_MS, MAX_RUN_HISTORY,
-  logPath,
+  MAX_FLOW_RUNTIME_MS,
   buildFlowCommand, createOutputProcessor,
 } = require('./flow-helpers');
-const { ensureDirOnce } = require('./fs-utils');
-const { LOGS_DIR } = require('./paths');
-const { trySafe } = require('./logger');
+const { saveLog, getRunLog, cleanLogs } = require('./flow-executor-log');
+const { recordRun } = require('./flow-executor-run');
 
-const ensureLogsDir = ensureDirOnce(LOGS_DIR);
-
-// --- Top-level helpers (extracted from the factory closure) ---
-
-/**
- * Persists the raw output of a flow run to disk.
- *
- * @param {{ log: object }} deps
- * @param {string} flowId
- * @param {string} runTimestamp
- * @param {string} output
- */
-async function saveLog(deps, flowId, runTimestamp, output) {
-  await ensureLogsDir();
-  await trySafe(
-    () => fsp.writeFile(logPath(flowId, runTimestamp), output, 'utf-8'),
-    undefined,
-    { log: deps.log, label: 'saveLog' },
-  );
-}
-
-/**
- * Reads a previously saved run log from disk.
- *
- * @param {{ log: object }} deps
- * @param {string} flowId
- * @param {string} timestamp
- * @returns {Promise<string | null>}
- */
-async function getRunLog(deps, flowId, timestamp) {
-  return trySafe(
-    () => fsp.readFile(logPath(flowId, timestamp), 'utf-8'),
-    null,
-    { log: deps.log, label: 'getRunLog' },
-  );
-}
-
-/**
- * Appends a run record to the flow's history.
- *
- * @param {{ getFlow: Function, saveFlow: Function }} deps
- * @param {string} flowId
- * @param {string} status
- * @param {string} runTimestamp
- */
-async function recordRun(deps, flowId, status, runTimestamp) {
-  const flow = await deps.getFlow(flowId);
-  if (!flow) return;
-  const now = new Date().toISOString();
-  const runs = flow.runs || [];
-  runs.push({
-    date: now.slice(0, 10),
-    timestamp: now,
-    logTimestamp: runTimestamp,
-    status,
-  });
-  flow.runs = runs.length > MAX_RUN_HISTORY ? runs.slice(-MAX_RUN_HISTORY) : runs;
-  await deps.saveFlow(flow);
-}
+// --- Top-level helpers ---
 
 /**
  * Cleans up a finished flow process: clears timeout, removes PTY,
@@ -127,6 +67,82 @@ function setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp) 
   });
 }
 
+/**
+ * Executes a single flow inside a new PTY process.
+ *
+ * @param {{ getPtyManager: Function, sendToWindow: Function, log: object, getFlow: Function, saveFlow: Function }} deps
+ * @param {Map} runningFlows
+ * @param {object} flow
+ */
+function execute(deps, runningFlows, flow) {
+  const ptyManager = deps.getPtyManager();
+  if (!ptyManager) return;
+
+  const ptyId = `flow-${flow.id}-${Date.now()}`;
+  const cwd = flow.cwd || os.homedir();
+  const runTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+  try {
+    const proc = ptyManager.create({
+      id: ptyId,
+      cwd,
+      cols: DEFAULT_PTY_COLS,
+      rows: DEFAULT_PTY_ROWS,
+    });
+
+    setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp);
+
+    // Auto-kill flows that exceed the max runtime
+    const timeout = setTimeout(() => {
+      console.warn(`Flow ${flow.id} exceeded max runtime (${MAX_FLOW_RUNTIME_MS / 60000}min), killing`);
+      ptyManager.kill(ptyId);
+    }, MAX_FLOW_RUNTIME_MS);
+
+    runningFlows.set(flow.id, { ptyId, proc, timeout });
+
+    deps.sendToWindow('flow:runStarted', {
+      flowId: flow.id,
+      ptyId,
+      flowName: flow.name,
+    });
+
+    const cmd = buildFlowCommand(flow);
+    setTimeout(() => {
+      ptyManager.write(ptyId, cmd);
+    }, SHELL_INIT_DELAY_MS);
+  } catch (err) {
+    deps.log.error('execution failed', err);
+    recordRun(deps, flow.id, 'error', runTimestamp);
+  }
+}
+
+/**
+ * Kills all running flow processes and clears the map.
+ *
+ * @param {{ getPtyManager: Function }} deps
+ * @param {Map} runningFlows
+ */
+function stopAll(deps, runningFlows) {
+  const ptyManager = deps.getPtyManager();
+  for (const [, { ptyId, timeout }] of runningFlows) {
+    if (timeout) clearTimeout(timeout);
+    ptyManager?.kill(ptyId);
+  }
+  runningFlows.clear();
+}
+
+/**
+ * Returns a plain object mapping flow IDs to their PTY IDs.
+ *
+ * @param {Map} runningFlows
+ * @returns {Record<string, string>}
+ */
+function getRunning(runningFlows) {
+  return Object.fromEntries(
+    [...runningFlows].map(([id, { ptyId }]) => [id, ptyId]),
+  );
+}
+
 // --- Factory function ---
 
 /**
@@ -149,88 +165,15 @@ function setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp) 
  * }}
  */
 function createFlowExecutor(deps) {
-  const { getPtyManager, sendToWindow, log } = deps;
   const runningFlows = new Map();
 
-  function execute(flow) {
-    const ptyManager = getPtyManager();
-    if (!ptyManager) return;
-
-    const ptyId = `flow-${flow.id}-${Date.now()}`;
-    const cwd = flow.cwd || os.homedir();
-    const runTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
-
-    try {
-      const proc = ptyManager.create({
-        id: ptyId,
-        cwd,
-        cols: DEFAULT_PTY_COLS,
-        rows: DEFAULT_PTY_ROWS,
-      });
-
-      setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp);
-
-      // Auto-kill flows that exceed the max runtime
-      const timeout = setTimeout(() => {
-        console.warn(`Flow ${flow.id} exceeded max runtime (${MAX_FLOW_RUNTIME_MS / 60000}min), killing`);
-        ptyManager.kill(ptyId);
-      }, MAX_FLOW_RUNTIME_MS);
-
-      runningFlows.set(flow.id, { ptyId, proc, timeout });
-
-      sendToWindow('flow:runStarted', {
-        flowId: flow.id,
-        ptyId,
-        flowName: flow.name,
-      });
-
-      const cmd = buildFlowCommand(flow);
-      setTimeout(() => {
-        ptyManager.write(ptyId, cmd);
-      }, SHELL_INIT_DELAY_MS);
-    } catch (err) {
-      log.error('execution failed', err);
-      recordRun(deps, flow.id, 'error', runTimestamp);
-    }
-  }
-
-  // --- Log cleanup ---
-
-  async function cleanLogs(flowId) {
-    await trySafe(
-      async () => {
-        const files = (await fsp.readdir(LOGS_DIR)).filter((f) => f.startsWith(flowId + '_'));
-        await Promise.all(files.map((f) => fsp.unlink(path.join(LOGS_DIR, f))));
-      },
-      undefined,
-      { log, label: 'cleanLogs' },
-    );
-  }
-
-  // --- Public API ---
-
-  function stopAll() {
-    const ptyManager = getPtyManager();
-    for (const [, { ptyId, timeout }] of runningFlows) {
-      if (timeout) clearTimeout(timeout);
-      ptyManager?.kill(ptyId);
-    }
-    runningFlows.clear();
-  }
-
-  function getRunning() {
-    return Object.fromEntries(
-      [...runningFlows].map(([id, { ptyId }]) => [id, ptyId]),
-    );
-  }
-
   return {
-    execute,
+    execute: (flow) => execute(deps, runningFlows, flow),
     runningFlows,
-    stopAll,
-    getRunning,
+    stopAll: () => stopAll(deps, runningFlows),
+    getRunning: () => getRunning(runningFlows),
     getRunLog: (flowId, timestamp) => getRunLog(deps, flowId, timestamp),
-    cleanLogs,
+    cleanLogs: (flowId) => cleanLogs(deps, flowId),
   };
 }
 
