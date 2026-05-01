@@ -94,6 +94,35 @@ class JsonStore {
   get log() {
     return this._log;
   }
+
+  /**
+   * Convenience wrapper around `trySafe` pre-bound to this store's logger.
+   *
+   * Allows callers to perform safe operations without importing `trySafe`
+   * from `./logger` separately.
+   *
+   * @template T
+   * @param {() => T | Promise<T>} fn
+   * @param {T} fallback
+   * @param {string} label
+   * @returns {Promise<T>}
+   */
+  trySafe(fn, fallback, label) {
+    return trySafe(fn, fallback, { log: this._log, label });
+  }
+
+  /**
+   * Resolve a satellite file path relative to the store directory.
+   *
+   * Useful for files that live alongside the store records (e.g. categories)
+   * without forcing callers to import the full path from `./paths`.
+   *
+   * @param {string} filename
+   * @returns {string}
+   */
+  resolve(filename) {
+    return path.join(this._dir, filename);
+  }
 }
 
 module.exports = { JsonStore };
