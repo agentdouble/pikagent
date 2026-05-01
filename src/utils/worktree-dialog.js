@@ -127,6 +127,29 @@ function _validateWorktreeInput(mode, els) {
   return readBranchValue(mode, els.newInput, els.existingSelect);
 }
 
+/** Build the confirm callback that validates input and invokes cleanup with the result. */
+function _buildConfirmAction(getMode, els, cleanup, repoCwd) {
+  return () => {
+    const mode = getMode();
+    const branch = _validateWorktreeInput(mode, els);
+    if (!branch) return;
+    cleanup({
+      branch,
+      createBranch: mode === 'new',
+      targetPath: defaultWorktreePath(repoCwd, branch),
+      baseBranch: mode === 'new' ? (els.baseSelect.value || null) : null,
+    });
+  };
+}
+
+/** Bind mode-toggle and input listeners that keep the path preview in sync. */
+function _bindModeListeners(btnNew, btnExisting, els, setMode, updatePath) {
+  btnNew.addEventListener('click', () => setMode('new'));
+  btnExisting.addEventListener('click', () => setMode('existing'));
+  els.newInput.addEventListener('input', updatePath);
+  els.existingSelect.addEventListener('change', updatePath);
+}
+
 /**
  * Wire up mode switching, path updates, and confirm/cancel inside the dialog.
  * Returns an initializer function to call after the modal is mounted.
@@ -149,21 +172,8 @@ function _wireWorktreeDialog({ modal, cleanup, cancel, repoCwd, allBranches, exi
     (isNew ? els.newInput : els.existingSelect).focus();
   }
 
-  btnNew.addEventListener('click', () => setMode('new'));
-  btnExisting.addEventListener('click', () => setMode('existing'));
-  els.newInput.addEventListener('input', updatePath);
-  els.existingSelect.addEventListener('change', updatePath);
-
-  const confirm = () => {
-    const branch = _validateWorktreeInput(mode, els);
-    if (!branch) return;
-    cleanup({
-      branch,
-      createBranch: mode === 'new',
-      targetPath: defaultWorktreePath(repoCwd, branch),
-      baseBranch: mode === 'new' ? (els.baseSelect.value || null) : null,
-    });
-  };
+  _bindModeListeners(btnNew, btnExisting, els, setMode, updatePath);
+  const confirm = _buildConfirmAction(() => mode, els, cleanup, repoCwd);
 
   wireKeyboardShortcuts([els.newInput, els.existingSelect, els.baseSelect], { onEnter: confirm, onEscape: cancel });
   populateModal(modal, { btnNew, btnExisting, els, pathEl, cancel, confirm });
