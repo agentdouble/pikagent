@@ -6,6 +6,8 @@ const {
   aggregateByKey,
   groupAndAggregate,
   accumulateBy,
+  sumByKeys,
+  mapFields,
   countBy,
   initializeCounters,
   buildMetrics: genericBuildMetrics,
@@ -81,7 +83,7 @@ function parseTokenUsage(line, cutoffMs) {
   }
 
   return {
-    ...Object.fromEntries(TOKEN_FIELD_MAP.map(f => [f.key, u[f.apiField] || 0])),
+    ...mapFields(u, TOKEN_FIELD_MAP),
     dateKey,
   };
 }
@@ -113,12 +115,12 @@ function buildGlobalPerDay(labels, projectResults) {
 /** @internal Aggregate per-project token data, sorted by total descending. */
 function buildPerProjectRanking(projectResults) {
   const perProjectAgg = aggregateByKey(
-    projectResults.filter(({ totals: pt }) => PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0) > 0),
+    projectResults.filter(({ totals: pt }) => sumByKeys(pt, PERDAY_KEYS) > 0),
     ({ proj }) => projectShortName(proj),
     () => ({ ...initializeCounters(PERDAY_KEYS), total: 0 }),
     (bucket, { totals: pt }) => {
       addTokens(bucket, pt, PERDAY_KEYS);
-      bucket.total += PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
+      bucket.total += sumByKeys(pt, PERDAY_KEYS);
     },
   );
 
@@ -136,7 +138,7 @@ function aggregateTokenData(labels, projectResults) {
 
   const perDay = labels.map((day) => {
     const g = globalPerDay[day.date] || newPerDayTotals();
-    const total = PERDAY_KEYS.reduce((sum, k) => sum + g[k], 0);
+    const total = sumByKeys(g, PERDAY_KEYS);
     return { ...day, ...g, total };
   });
 
