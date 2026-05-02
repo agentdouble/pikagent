@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-const { computeRate, computeNumericStats } = require('../../main/aggregation-utils');
+const { computeRate, computeNumericStats } = require('../../shared/aggregation-utils');
 
 describe('aggregation-utils', () => {
   describe('computeRate', () => {
