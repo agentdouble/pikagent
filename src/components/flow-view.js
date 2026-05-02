@@ -8,9 +8,8 @@ import {
   EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
-} from '../utils/flow-view-helpers.js';
-import { createCategoryGroup } from '../utils/flow-category-renderer.js';
-import { createFlowCard } from '../utils/flow-card-setup.js';
+  createCategoryGroup, createFlowCard,
+} from '../utils/flow-view-subsystem.js';
 import flowApi from '../services/flow-api.js';
 
 
