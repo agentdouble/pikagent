@@ -11,7 +11,7 @@ import {
 } from '../utils/flow-modal-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
-import * as dialogApi from '../services/dialog-api.js';
+import dialogApi from '../services/dialog-api.js';
 
 // --- Section builders ---
 

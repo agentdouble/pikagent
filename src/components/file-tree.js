@@ -14,9 +14,9 @@ import {
   promptNewEntry as doPromptNewEntry,
   listenForChanges, startWatch, stopWatch,
 } from '../utils/file-tree-subsystem.js';
-import * as fsApi from '../services/fs-api.js';
-import * as shellApi from '../services/shell-api.js';
-import * as clipboardApi from '../services/clipboard-api.js';
+import fsApi from '../services/fs-api.js';
+import shellApi from '../services/shell-api.js';
+import clipboardApi from '../services/clipboard-api.js';
 
 export class FileTree extends ComponentBase {
   constructor(container) {

@@ -2,7 +2,7 @@ import { _el } from '../utils/workspace-dom.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import * as usageApi from '../services/usage-api.js';
+import usageApi from '../services/usage-api.js';
 
 // --- Component ---
 

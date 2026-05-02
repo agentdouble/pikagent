@@ -15,7 +15,7 @@ import {
 } from '../utils/file-viewer-files.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import * as fsApi from '../services/fs-api.js';
+import fsApi from '../services/fs-api.js';
 
 export class FileViewer extends ComponentBase {
   /**

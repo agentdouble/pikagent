@@ -8,8 +8,8 @@
  * All API access is routed through the service layer in src/services/.
  */
 
-import * as gitApi from '../services/git-api.js';
-import * as shellApi from '../services/shell-api.js';
+import gitApi from '../services/git-api.js';
+import shellApi from '../services/shell-api.js';
 
 /**
  * @typedef {{ branch: (cwd: string) => Promise<string|null>, remoteUrl: (cwd: string) => Promise<string|null>, pushBranch: (cwd: string, branch: string) => Promise<{ ok: boolean, error?: string }>, ghAvailable: () => Promise<boolean>, ghPrCreate: (cwd: string, baseBranch: string|null) => Promise<{ ok: boolean, url?: string, existed?: boolean, code?: string, error?: string }> }} GitApi

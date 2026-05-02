@@ -14,7 +14,7 @@ import {
   shortLevelLabel,
 } from '../utils/webview-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import * as shellApi from '../services/shell-api.js';
+import shellApi from '../services/shell-api.js';
 
 export class WebviewInstance {
   constructor(container, url) {

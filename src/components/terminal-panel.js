@@ -15,9 +15,9 @@ import {
   splitTerminal,
   focusDirection as focusDirectionHelper,
 } from '../utils/terminal-subsystem.js';
-import * as shellApi from '../services/shell-api.js';
-import * as fsApi from '../services/fs-api.js';
-import * as ptyApi from '../services/terminal-api.js';
+import shellApi from '../services/shell-api.js';
+import fsApi from '../services/fs-api.js';
+import ptyApi from '../services/terminal-api.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {
