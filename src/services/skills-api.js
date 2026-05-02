@@ -3,4 +3,10 @@
  * Components should import from here instead of calling window.api.skills directly.
  */
 import { createApiService } from './create-api-service.js';
-export default createApiService('skills');
+const api = createApiService('skills');
+
+// Aliases: consumers use importSkill/deleteSkill but the IPC methods are import/delete
+api.importSkill = api.import;
+api.deleteSkill = api.delete;
+
+export default api;
