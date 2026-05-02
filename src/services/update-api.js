@@ -1,10 +1,12 @@
 /**
- * Service layer for window.api.update — application update operations.
+ * Service layer for application update operations.
  * Components should import from here instead of calling window.api.update directly.
  */
+import { createApiService } from './create-api-service.js';
+const api = createApiService('update');
 
-export const check      = (...args) => window.api.update.check(...args);
-export const run        = (...args) => window.api.update.run(...args);
-export const relaunch   = (...args) => window.api.update.relaunch(...args);
-export const version    = (...args) => window.api.update.version(...args);
-export const onProgress = (...args) => window.api.update.onProgress(...args);
+export const check      = api.check;
+export const run        = api.run;
+export const relaunch   = api.relaunch;
+export const version    = api.version;
+export const onProgress = api.onProgress;

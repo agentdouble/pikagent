@@ -1,13 +1,15 @@
 /**
- * Service layer for window.api.pty — pseudo-terminal operations.
+ * Service layer for pseudo-terminal operations.
  * Components should import from here instead of calling window.api.pty directly.
  */
+import { createApiService } from './create-api-service.js';
+const api = createApiService('pty');
 
-export const create      = (...args) => window.api.pty.create(...args);
-export const write       = (...args) => window.api.pty.write(...args);
-export const resize      = (...args) => window.api.pty.resize(...args);
-export const kill        = (...args) => window.api.pty.kill(...args);
-export const getCwd      = (...args) => window.api.pty.getCwd(...args);
-export const onData      = (...args) => window.api.pty.onData(...args);
-export const onExit      = (...args) => window.api.pty.onExit(...args);
-export const checkAgents = (...args) => window.api.pty.checkAgents(...args);
+export const create      = api.create;
+export const write       = api.write;
+export const resize      = api.resize;
+export const kill        = api.kill;
+export const getCwd      = api.getCwd;
+export const onData      = api.onData;
+export const onExit      = api.onExit;
+export const checkAgents = api.checkAgents;
