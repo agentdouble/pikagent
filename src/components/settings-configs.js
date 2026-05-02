@@ -7,7 +7,7 @@ import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../util
 import { buildSettingsSection, createActionBar } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
-import * as configApi from '../services/config-api.js';
+import configApi from '../services/config-api.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
   return createActionBar({

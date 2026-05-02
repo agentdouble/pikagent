@@ -2,9 +2,9 @@ import { _el, renderList } from '../utils/workspace-dom.js';
 import { showPromptDialog, showConfirmDialog } from '../utils/dom-dialogs.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import * as skillsApi from '../services/skills-api.js';
-import * as shellApi from '../services/shell-api.js';
-import * as dialogApi from '../services/dialog-api.js';
+import skillsApi from '../services/skills-api.js';
+import shellApi from '../services/shell-api.js';
+import dialogApi from '../services/dialog-api.js';
 
 export class SkillsView extends ComponentBase {
   constructor(container) {

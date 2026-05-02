@@ -4,7 +4,7 @@ import { onClickStopped } from '../utils/event-helpers.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import * as gitApi from '../services/git-api.js';
+import gitApi from '../services/git-api.js';
 
 export class GitChangesView extends ComponentBase {
   constructor(container) {

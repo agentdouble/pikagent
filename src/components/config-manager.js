@@ -8,7 +8,7 @@ import {
   suggestedDuplicateName,
 } from '../utils/config-manager-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import * as configApi from '../services/config-api.js';
+import configApi from '../services/config-api.js';
 
 export class ConfigManager {
   constructor(tabManager) {

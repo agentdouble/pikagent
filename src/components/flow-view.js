@@ -11,7 +11,7 @@ import {
 } from '../utils/flow-view-helpers.js';
 import { createCategoryGroup } from '../utils/flow-category-renderer.js';
 import { createFlowCard } from '../utils/flow-card-setup.js';
-import * as flowApi from '../services/flow-api.js';
+import flowApi from '../services/flow-api.js';
 
 
 export class FlowView extends ComponentBase {

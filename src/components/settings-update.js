@@ -5,7 +5,7 @@
 import { _el } from '../utils/settings-dom.js';
 import { createSettingsSection } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
-import * as updateApi from '../services/update-api.js';
+import updateApi from '../services/update-api.js';
 
 function _showCheckButton(area, onCheck) {
   area.replaceChildren();

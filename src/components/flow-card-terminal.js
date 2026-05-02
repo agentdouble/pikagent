@@ -12,8 +12,8 @@ import {
   formatRunDateTime,
 } from '../utils/flow-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import * as ptyApi from '../services/terminal-api.js';
-import * as flowApi from '../services/flow-api.js';
+import ptyApi from '../services/terminal-api.js';
+import flowApi from '../services/flow-api.js';
 
 export class FlowCardTerminalManager {
   constructor() {

@@ -5,6 +5,9 @@
  */
 export function createApiService(domain) {
   return new Proxy(/** @type {any} */ ({}), {
-    get: (_, method) => (...args) => window.api[domain][method](...args),
+    get: (target, method) =>
+      method in target
+        ? target[method]
+        : (...args) => window.api[domain][method](...args),
   });
 }
