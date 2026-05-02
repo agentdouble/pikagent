@@ -19,12 +19,15 @@ export class BoardView extends ComponentBase {
   constructor(container, tabManager) {
     super(container);
     this.tabManager = tabManager;
-    this.cards = new Map();
-    this._hiddenTerms = new Set();
-
+    this._initState();
     this.render();
     this._setupListeners();
     this._startPolling();
+  }
+
+  _initState() {
+    this.cards = new Map();
+    this._hiddenTerms = new Set();
   }
 
   render() {

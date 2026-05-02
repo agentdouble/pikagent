@@ -21,11 +21,20 @@ import * as clipboardApi from '../services/clipboard-api.js';
 export class FileTree extends ComponentBase {
   constructor(container) {
     super(container);
+    this._initState();
+    this._initApi();
+    this.render();
+    this.listenForChanges();
+  }
+
+  _initState() {
     this.termCwds = new Map();
     this.sections = new Map();
     this.debounceTimers = new Map();
     this._activeRow = null;
+  }
 
+  _initApi() {
     // Injected API methods for file-tree-drop and file-tree-context-menu utils
     this._contextMenuApi = {
       clipboardWrite: clipboardApi.write,
@@ -39,9 +48,6 @@ export class FileTree extends ComponentBase {
       mkdir: fsApi.mkdir,
       writefile: fsApi.writefile,
     };
-
-    this.render();
-    this.listenForChanges();
   }
 
   render() {

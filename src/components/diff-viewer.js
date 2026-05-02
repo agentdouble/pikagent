@@ -13,12 +13,20 @@ export class DiffViewer {
     this.container = container;
     this.diffText = diffText;
     this.filePath = filePath;
-    this.lang = detectLanguage(filePath);
+    this._initState();
+    this._parseDiff();
+    this.render();
+  }
+
+  _initState() {
+    this.lang = detectLanguage(this.filePath);
     this.viewMode = 'split';
     this.currentHunkIndex = -1;
     this.hunkElements = [];
+  }
 
-    const parsed = parseDiff(diffText);
+  _parseDiff() {
+    const parsed = parseDiff(this.diffText);
     this.headerLines = parsed.headerLines;
     this.hunks = parsed.hunks;
     this.rows = buildSideBySideRows(this.hunks);
@@ -26,8 +34,6 @@ export class DiffViewer {
     const stats = countDiffStats(this.hunks);
     this._additions = stats.additions;
     this._deletions = stats.deletions;
-
-    this.render();
   }
 
   render() {

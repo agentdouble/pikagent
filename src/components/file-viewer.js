@@ -27,6 +27,13 @@ export class FileViewer extends ComponentBase {
     super(container);
     this.isActive = isActive || (() => true);
     this._components = components;
+    this._initState();
+    this.render();
+    this._initWebviewManager();
+    this._initBusListeners();
+  }
+
+  _initState() {
     this.openFiles = new Map(); // path -> { name, content, savedContent, lang }
     this.activeFile = null;
     this.editorEl = null;
@@ -34,9 +41,6 @@ export class FileViewer extends ComponentBase {
     this.highlightLayer = null;
     this.mode = 'files'; // 'files' | 'git' | webview id
     this.gitChanges = null;
-    this.render();
-    this._initWebviewManager();
-    this._initBusListeners();
   }
 
   _initWebviewManager() {
