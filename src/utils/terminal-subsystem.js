@@ -1,11 +1,14 @@
 /**
- * Terminal subsystem facade — single entry-point for the terminal-panel
- * component to access the split-layout, serialization, node-building,
- * drag-drop indicator, and terminal-split APIs.
+ * Terminal subsystem facade — single entry-point for terminal-panel
+ * and board-view components to access terminal infrastructure.
  *
- * Reduces the import surface of terminal-panel.js from 11 modules
- * down to ~5 (this facade + dom, drag-helpers, component-registry,
- * and the two event modules).
+ * Covers the split-layout, serialization, node-building, drag-drop
+ * indicator, terminal-split, terminal-events, terminal-dom, and
+ * terminal-factory APIs.
+ *
+ * Reduces the import surface of terminal-panel.js and board-view.js.
+ *
+ * Extended for issue #384 to reduce coupling in board-view.js.
  *
  * @module terminal-subsystem
  */
@@ -31,3 +34,17 @@ export { buildTopBar, createTerminalNode, buildFromTree } from './terminal-node-
 
 // ── terminal-split ──────────────────────────────────────────────────
 export { moveTerminal, splitTerminal, focusDirection } from './terminal-split.js';
+
+// ── terminal-events (board-view) ────────────────────────────────────
+export {
+  onTerminalCreated, onTerminalRemoved, onTerminalExited,
+} from './terminal-events.js';
+
+// ── terminal-dom (board-view) ───────────────────────────────────────
+export { _el, renderButtonBar, renderList } from './terminal-dom.js';
+
+// ── terminal-factory (board-view) ───────────────────────────────────
+export {
+  _safeFit, createTerminal, disposeTerminal, disposeTerminalMap,
+  setupTerminalAddons,
+} from './terminal-factory.js';
