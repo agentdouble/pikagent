@@ -38,6 +38,12 @@ export class TabManager {
   constructor(tabBar, workspaceContainer) {
     this.tabBar = tabBar;
     this.workspaceContainer = workspaceContainer;
+    this._initState();
+    this._initApi();
+    this.init();
+  }
+
+  _initState() {
     this.tabs = new Map();
     this.activeTabId = null;
     this.defaultCwd = null;
@@ -55,11 +61,11 @@ export class TabManager {
     this.sidebarMode = 'work';
     this.activeColorFilter = null; // null = show all, or a COLOR_GROUPS id
     this.excludedColors = new Set(); // COLOR_GROUPS ids to hide
+  }
 
+  _initApi() {
     // Injected API methods for workspace-layout utils
     this._api = { gitBranch: gitApi.branch };
-
-    this.init();
   }
 
   _prApi() { return buildPrApi(); }

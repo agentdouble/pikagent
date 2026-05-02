@@ -23,10 +23,19 @@ export class TerminalPanel {
   constructor(container, cwd) {
     this.container = container;
     this.cwd = cwd;
+    this._initState();
+    this._initApi();
+    this._initDragState();
+    this.init();
+  }
+
+  _initState() {
     this.root = null;
     this.activeTerminal = null;
     this.terminals = new Map();
+  }
 
+  _initApi() {
     // Injected API methods forwarded to TerminalInstance
     this._terminalApi = {
       openExternal: shellApi.openExternal,
@@ -40,12 +49,12 @@ export class TerminalPanel {
       ptyResize: ptyApi.resize,
       ptyKill: ptyApi.kill,
     };
+  }
 
+  _initDragState() {
     // Drag and drop state
     this._dragSourceId = null;
-    this._drop = new DropIndicatorManager(container);
-
-    this.init();
+    this._drop = new DropIndicatorManager(this.container);
   }
 
   // ===== DOM Helpers =====

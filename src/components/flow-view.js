@@ -18,6 +18,13 @@ export class FlowView extends ComponentBase {
   constructor(container, tabManager) {
     super(container);
     this.tabManager = tabManager;
+    this._initState();
+    this._bindEvents();
+    this.render();
+    this._initRunning();
+  }
+
+  _initState() {
     this.flows = [];
     this.catData = { categories: [], order: {} };
     const FlowCardTerminalManager = getComponent('FlowCardTerminalManager');
@@ -28,7 +35,9 @@ export class FlowView extends ComponentBase {
 
     // Drag state (shared mutable object for use with setupCardDrag)
     this._drag = { flowId: null, catId: null };
+  }
 
+  _bindEvents() {
     this._track(flowApi.onRunStarted(({ flowId, ptyId }) => {
       this._runningMap[flowId] = ptyId;
       this._expandedCards.add(flowId);
@@ -40,9 +49,6 @@ export class FlowView extends ComponentBase {
       delete this._runningMap[flowId];
       this.refresh();
     }));
-
-    this.render();
-    this._initRunning();
   }
 
   async _initRunning() {
