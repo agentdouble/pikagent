@@ -1,12 +1,14 @@
 /**
- * Service layer for window.api.config — workspace config operations.
+ * Service layer for workspace config operations.
  * Components should import from here instead of calling window.api.config directly.
  */
+import { createApiService } from './create-api-service.js';
+const api = createApiService('config');
 
-export const save        = (...args) => window.api.config.save(...args);
-export const load        = (...args) => window.api.config.load(...args);
-export const list        = (...args) => window.api.config.list(...args);
-export const deleteConfig = (...args) => window.api.config.delete(...args);
-export const setDefault  = (...args) => window.api.config.setDefault(...args);
-export const getDefault  = (...args) => window.api.config.getDefault(...args);
-export const loadDefault = (...args) => window.api.config.loadDefault(...args);
+export const save        = api.save;
+export const load        = api.load;
+export const list        = api.list;
+export const deleteConfig = api.delete;
+export const setDefault  = api.setDefault;
+export const getDefault  = api.getDefault;
+export const loadDefault = api.loadDefault;

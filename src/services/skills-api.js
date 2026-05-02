@@ -1,13 +1,15 @@
 /**
- * Service layer for window.api.skills — skills management operations.
+ * Service layer for skills management operations.
  * Components should import from here instead of calling window.api.skills directly.
  */
+import { createApiService } from './create-api-service.js';
+const api = createApiService('skills');
 
-export const list        = (...args) => window.api.skills.list(...args);
-export const getRoot     = (...args) => window.api.skills.getRoot(...args);
-export const setRoot     = (...args) => window.api.skills.setRoot(...args);
-export const importSkill = (...args) => window.api.skills.import(...args);
-export const create      = (...args) => window.api.skills.create(...args);
-export const deleteSkill = (...args) => window.api.skills.delete(...args);
-export const read        = (...args) => window.api.skills.read(...args);
-export const write       = (...args) => window.api.skills.write(...args);
+export const list        = api.list;
+export const getRoot     = api.getRoot;
+export const setRoot     = api.setRoot;
+export const importSkill = api.import;
+export const create      = api.create;
+export const deleteSkill = api.delete;
+export const read        = api.read;
+export const write       = api.write;
