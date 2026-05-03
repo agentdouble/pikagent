@@ -200,6 +200,25 @@ function buildMetrics(items, { rateFn, durationMapper, dateExtractor, perDayFn, 
   };
 }
 
+/**
+ * Factory that pre-binds domain-specific rateFn, perDayFn and days into a
+ * simpler metrics builder.  Eliminates repeated config injection at each call site.
+ *
+ * Usage:
+ *   const buildMetrics = createDomainMetricsBuilder({ rateFn, perDayFn, days });
+ *   buildMetrics(items, { durationMapper, dateExtractor, extra });
+ *
+ * @param {{ rateFn: (items: Array) => Record<string, unknown>,
+ *           perDayFn: (items: Array, dateExtractor: Function, days: number) => Array,
+ *           days?: number }} domainConfig
+ * @returns {(items: Array, opts: { durationMapper: Function, dateExtractor: Function, extra?: Record<string, unknown> }) => Record<string, unknown>}
+ */
+function createDomainMetricsBuilder({ rateFn, perDayFn, days = 30 }) {
+  return function domainBuildMetrics(items, { durationMapper, dateExtractor, extra = {} }) {
+    return buildMetrics(items, { rateFn, durationMapper, dateExtractor, perDayFn, days, extra });
+  };
+}
+
 module.exports = {
   aggregateByKey,
   groupAndAggregate,
@@ -213,4 +232,5 @@ module.exports = {
   computeRate,
   computeNumericStats,
   buildMetrics,
+  createDomainMetricsBuilder,
 };

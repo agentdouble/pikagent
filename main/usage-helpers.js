@@ -10,7 +10,7 @@ const {
   mapFields,
   countBy,
   initializeCounters,
-  buildMetrics: genericBuildMetrics,
+  createDomainMetricsBuilder,
 } = require('../shared/aggregation-utils');
 
 // ===== Declarative configs =====
@@ -177,25 +177,14 @@ function getFlowRunDuration(run) {
 }
 
 /**
- * Domain-specific metrics builder — delegates to the generic shared buildMetrics
- * factory, injecting domain-specific rate and perDay functions.
- *
- * @param {Array<{ status?: string, [key: string]: unknown }>} items - The items to compute base metrics for
- * @param {{ durationMapper: (item: { status?: string, [key: string]: unknown }) => number|null,
- *           dateExtractor: (item: { status?: string, [key: string]: unknown }) => string,
- *           extra?: Record<string, unknown> }} opts
- * @returns {Record<string, unknown>}
+ * Domain-specific metrics builder — pre-configured with domain rate/perDay
+ * functions via createDomainMetricsBuilder, eliminating repeated config injection.
  */
-function buildMetrics(items, { durationMapper, dateExtractor, extra = {} }) {
-  return genericBuildMetrics(items, {
-    rateFn: computeRate,
-    durationMapper,
-    dateExtractor,
-    perDayFn: perDay,
-    days: DEFAULT_DAYS,
-    extra,
-  });
-}
+const buildMetrics = createDomainMetricsBuilder({
+  rateFn: computeRate,
+  perDayFn: perDay,
+  days: DEFAULT_DAYS,
+});
 
 function buildFlowMetrics(flows, flowRuns) {
   return buildMetrics(flowRuns, {
