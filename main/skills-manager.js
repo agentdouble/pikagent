@@ -3,7 +3,7 @@ const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { BASE_DIR } = require('./paths');
-const { readJson, writeJson } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { trySafe } = require('./logger');
 const { pathExists } = require('./fs-manager-helpers');
 const { JsonStore } = require('./json-store');
@@ -15,6 +15,7 @@ const DEFAULT_SKILLS_DIR = path.join(os.homedir(), '.claude', 'skills');
 const SETTINGS_FILE = path.join(BASE_DIR, 'skills-settings.json');
 
 let _rootCache = null;
+let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
 
 function parseFrontmatter(md) {
   if (!md.startsWith('---')) return {};
@@ -40,6 +41,7 @@ async function _saveRoot(newRoot) {
   await store.ensureDir();
   await writeJson(SETTINGS_FILE, { root: newRoot });
   _rootCache = newRoot;
+  _ensureRootDir = ensureDirOnce(newRoot);
 }
 
 async function _readSkillDir(rootDir, skillName) {
@@ -132,7 +134,7 @@ async function importFrom(srcDir) {
       return { success: false, error: 'No SKILL.md found in folder' };
     }
     const root = await _loadRoot();
-    await fsp.mkdir(root, { recursive: true });
+    await _ensureRootDir();
     const baseName = path.basename(srcDir);
     let destName = baseName;
     let destDir = path.join(root, destName);
@@ -164,6 +166,7 @@ async function resetRoot() {
   return trySafe(async () => {
     await fsp.unlink(SETTINGS_FILE).catch(() => {});
     _rootCache = null;
+    _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
     const root = await _loadRoot();
     return { success: true, root };
   }, { success: false }, { log, label: 'resetRoot' });
