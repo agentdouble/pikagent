@@ -18,7 +18,7 @@ function _parseSvg(svgStr) {
 }
 
 /** Parse all SVG icons once at module load from the declarative SVG_ICONS map. */
-export const PARSED_ICONS = Object.fromEntries(
+const PARSED_ICONS = Object.fromEntries(
   Object.entries(SVG_ICONS).map(([k, v]) => [k, _parseSvg(v)])
 );
 
