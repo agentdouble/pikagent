@@ -1,5 +1,3 @@
-import { startInlineRename } from '../utils/form-helpers.js';
-import { _el, renderButtonBar } from '../utils/flow-dom.js';
 import { showPromptDialog } from '../utils/dom-dialogs.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
@@ -9,6 +7,7 @@ import {
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
   createCategoryGroup, createFlowCard,
+  _el, renderButtonBar, startInlineRename,
 } from '../utils/flow-view-subsystem.js';
 import flowApi from '../services/flow-api.js';
 
