@@ -50,7 +50,7 @@ export function reorderEntries(entries, fromId, toId, before) {
  * @param {(item: T) => boolean} predicate — return true for a match
  * @returns {T|null} the first matching item, or null if none found
  */
-export function findCycleMatch(items, startIdx, step, predicate) {
+function findCycleMatch(items, startIdx, step, predicate) {
   const len = items.length;
   for (let i = 1; i < len; i++) {
     const item = items[(startIdx + step * i + len) % len];

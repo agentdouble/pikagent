@@ -14,7 +14,7 @@
  * @param {string} [userSelect='none'] - CSS user-select value to apply
  * @returns {{ restore: () => void }}
  */
-export function withBodyStyle(cursor, userSelect = 'none') {
+function withBodyStyle(cursor, userSelect = 'none') {
   const prev = {
     cursor: document.body.style.cursor,
     userSelect: document.body.style.userSelect,
