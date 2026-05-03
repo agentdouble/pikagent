@@ -1,4 +1,9 @@
-const { computeRate: genericComputeRate, groupAndAggregate, computeNumericStats } = require('../shared/aggregation-utils');
+const {
+  computeRate: genericComputeRate,
+  groupAndAggregate,
+  computeNumericStats,
+  initializeCounters,
+} = require('../shared/aggregation-utils');
 const { generateDateRange } = require('./date-utils');
 
 const DEFAULT_DAYS = 30;
@@ -10,10 +15,17 @@ const STATUS_CATEGORIES = {
   running: new Set(['running']),
 };
 
+/** Category keys derived once from STATUS_CATEGORIES. */
+const STATUS_KEYS = Object.keys(STATUS_CATEGORIES);
+
+/** Return only the per-status counts (no total/rate) for a set of items. */
 function countByStatus(items, field = 'status') {
   const { total, rate, ...counts } = genericComputeRate(items, STATUS_CATEGORIES, field);
   return counts;
 }
+
+/** Default zeroed status counts, used as spread defaults in perDay labels. */
+const EMPTY_STATUS_COUNTS = initializeCounters(STATUS_KEYS);
 
 function computeRate(items, statusField = 'status') {
   if (items.length === 0) return { total: 0, success: 0, error: 0, rate: 0 };
@@ -36,7 +48,7 @@ function perDay(items, dateExtractor, days = DEFAULT_DAYS) {
   return labels.map((day) => ({
     ...day,
     total: 0,
-    ...countByStatus([]),
+    ...EMPTY_STATUS_COUNTS,
     ...grouped[day.date],
   }));
 }
