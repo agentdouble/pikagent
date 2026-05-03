@@ -262,7 +262,7 @@ export class TabManager {
     for (const unsub of this._busListeners) unsub();
     this._busListeners = [];
     disposeAllSideViews(this._viewStore());
-    disposeAllTabs({ tabs: this.tabs, setActiveTabId: (id) => { this.activeTabId = id; } });
+    this._disposeAllTabs();
   }
 
   setTabColorGroup(id, colorGroupId) {
