@@ -166,6 +166,7 @@ async function resetRoot() {
   return trySafe(async () => {
     await fsp.unlink(SETTINGS_FILE).catch(() => {});
     _rootCache = null;
+    _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
     const root = await _loadRoot();
     return { success: true, root };
   }, { success: false }, { log, label: 'resetRoot' });
