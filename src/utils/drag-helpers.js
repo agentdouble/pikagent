@@ -97,6 +97,25 @@ export function addListener(target, type, handler, options) {
 }
 
 /**
+ * Attach a mousedown → trackMouse resize handler to a handle element.
+ * Eliminates the repeated mousedown + preventDefault + capture-state + trackMouse
+ * boilerplate found in panel/terminal/console resize code.
+ *
+ * @param {HTMLElement} handle  — the resize handle element
+ * @param {{ cursor: string, onStart?: (e: MouseEvent) => unknown, onMove: (e: MouseEvent, ctx: unknown) => void, onDone?: (ctx: unknown) => void }} opts
+ */
+export function setupResizeHandler(handle, { cursor, onStart, onMove, onDone }) {
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const ctx = onStart ? onStart(e) : undefined;
+    trackMouse(cursor,
+      (ev) => onMove(ev, ctx),
+      () => { if (onDone) onDone(ctx); },
+    );
+  });
+}
+
+/**
  * Build dragstart / dragend handlers that toggle a CSS class on the element
  * and set / clear a key on a shared state object.
  *

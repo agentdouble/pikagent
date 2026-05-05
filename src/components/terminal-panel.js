@@ -1,7 +1,7 @@
 import { emitTerminalRemoved } from '../utils/terminal-events.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/terminal-dom.js';
-import { trackMouse } from '../utils/drag-helpers.js';
+import { trackMouse, setupResizeHandler } from '../utils/drag-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import {
   SplitNode, RESIZE_CURSOR, doResize,
@@ -196,13 +196,11 @@ export class TerminalPanel {
   }
 
   setupResizeHandle(handle, splitEl, direction) {
-    handle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      trackMouse(RESIZE_CURSOR[direction],
-        (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
-        /** @fires layout:changed {undefined} — resize complete */
-        () => emitLayoutChanged(),
-      );
+    setupResizeHandler(handle, {
+      cursor: RESIZE_CURSOR[direction],
+      onMove: (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
+      /** @fires layout:changed {undefined} — resize complete */
+      onDone: () => emitLayoutChanged(),
     });
   }
 

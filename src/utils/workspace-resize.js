@@ -7,7 +7,7 @@
  */
 
 import { _el } from './workspace-dom.js';
-import { trackMouse } from './drag-helpers.js';
+import { setupResizeHandler } from './drag-helpers.js';
 import { PANEL_MIN_WIDTH, FIT_DELAY_MS, WORKSPACE_PANELS } from './tab-constants.js';
 import { clampPanelWidth, panelArrowState } from './tab-manager-helpers.js';
 
@@ -79,23 +79,17 @@ export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
  * @param {string} side
  */
 function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, panel, side) {
-  let startX = 0;
-  let startWidth = 0;
-
-  handle.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    startX = e.clientX;
-    startWidth = panel.getBoundingClientRect().width;
-    trackMouse('col-resize',
-      (ev) => {
-        const dx = ev.clientX - startX;
-        const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-        panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
-        panel.style.flex = 'none';
-        getActiveTab()?.terminalPanel?.fitAll();
-      },
-      () => scheduleAutoSave(),
-    );
+  setupResizeHandler(handle, {
+    cursor: 'col-resize',
+    onStart: (e) => ({ startX: e.clientX, startWidth: panel.getBoundingClientRect().width }),
+    onMove: (ev, ctx) => {
+      const dx = ev.clientX - ctx.startX;
+      const newWidth = side === 'left' ? ctx.startWidth + dx : ctx.startWidth - dx;
+      panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
+      panel.style.flex = 'none';
+      getActiveTab()?.terminalPanel?.fitAll();
+    },
+    onDone: () => scheduleAutoSave(),
   });
 }
 
