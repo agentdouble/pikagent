@@ -6,7 +6,7 @@
  *   e.g. { deleteConfig: 'delete' } so proxy.deleteConfig delegates to window.api[domain].delete
  */
 export function createApiService(domain, aliases) {
-  return new Proxy(/** @type {any} */ ({}), {
+  return new Proxy(/** @type {Record<string, (...args: unknown[]) => unknown>} */ ({}), {
     get: (target, method) => {
       if (method in target) return target[method];
       const resolved = aliases?.[method] ?? method;
