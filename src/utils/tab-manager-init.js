@@ -7,10 +7,10 @@
  */
 
 import { onTerminalCwdChanged as onTermCwdEvent, onTerminalCreated, onTerminalRemoved } from './terminal-events.js';
-import { onLayoutChanged, onWorkspaceOpenFromFolder, onWorkspaceCreateWorktree, onWorkspaceOpenPr } from './workspace-events.js';
+import { onLayoutChanged, onWorkspaceOpenFromFolder, onWorkspaceCreateWorktree, onWorkspaceOpenPr, onTabWorktreeClosed } from './workspace-events.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
-import { createWorktreeFlow } from './worktree-flow.js';
+import { createWorktreeFlow, maybeRemoveWorktree } from './worktree-flow.js';
 import { openPrFlow } from './open-pr-flow.js';
 
 export { getComponent } from './component-registry.js';
@@ -101,6 +101,10 @@ export function setupBusListeners(deps) {
         api: deps.api.worktree,
         createTab: deps.createTab,
       }).catch((e) => console.warn('createWorktreeFlow failed:', e));
+    }),
+    onTabWorktreeClosed(({ worktree, tabName }) => {
+      maybeRemoveWorktree(worktree, tabName, deps.api.worktree)
+        .catch((e) => console.warn('maybeRemoveWorktree failed:', e));
     }),
     onWorkspaceOpenPr(({ repoCwd }) => {
       const tab = _findTabByCwd(deps.tabs, repoCwd);

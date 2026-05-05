@@ -36,6 +36,11 @@ const { on: onWorkspaceCreateWorktree, emit: emitWorkspaceCreateWorktree } =
 const { on: onWorkspaceOpenPr, emit: emitWorkspaceOpenPr } =
   createTypedEvent('workspace:openPr');
 
+// ── tabWorktreeClosed ───────────────────────────────────────────────
+
+const { on: onTabWorktreeClosed, emit: emitTabWorktreeClosed } =
+  createTypedEvent('tab:worktreeClosed');
+
 // ── fileOpen ────────────────────────────────────────────────────────
 
 const { on: onFileOpen, emit: emitFileOpen } =
@@ -54,6 +59,8 @@ export {
   emitWorkspaceCreateWorktree,
   onWorkspaceOpenPr,
   emitWorkspaceOpenPr,
+  onTabWorktreeClosed,
+  emitTabWorktreeClosed,
   onFileOpen,
   emitFileOpen,
 };

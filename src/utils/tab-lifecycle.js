@@ -10,7 +10,7 @@
  *
  * @typedef {{ tabs: Map<string, WorkspaceTab>, defaultCwd: string, activeColorFilter: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void } }} CreateTabDeps
  *
- * @typedef {{ tabs: Map<string, WorkspaceTab>, activeTabId: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void }, worktreeApi?: import('./worktree-flow.js').GitWorktreeApi }} CloseTabDeps
+ * @typedef {{ tabs: Map<string, WorkspaceTab>, activeTabId: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void } }} CloseTabDeps
  *
  * @typedef {{ tabs: Map<string, WorkspaceTab>, getActiveTabId: () => string|null, setActiveTabId: (id: string) => void, getSidebarMode: () => string, setSidebarMode: (mode: string) => void, workspaceContainer: HTMLElement, renderTabBar: () => void, renderActivityBar: () => void, renderWorkspace: (tab: WorkspaceTab) => void, detachSidebarView: (mode: string) => void }} SwitchToDeps
  */
@@ -18,11 +18,11 @@
 import { generateId } from './id.js';
 import { _el } from './tab-dom.js';
 import { showConfirmDialog } from './dom-dialogs.js';
-import { emitWorkspaceActivated } from './workspace-events.js';
+import { emitWorkspaceActivated, emitTabWorktreeClosed } from './workspace-events.js';
 import { WorkspaceTab } from './tab-types.js';
 import { reattachLayout, syncFileTree, capturePanelWidths, disposeTab } from './workspace-ops.js';
 import { extractFolderName } from './file-tree-helpers.js';
-import { maybeRemoveWorktree } from './worktree-flow.js';
+
 
 // ── Tab creation ──
 
@@ -71,8 +71,8 @@ export async function closeTab(deps, createTabFn, switchToFn, id) {
   disposeTab(tab);
   deps.tabs.delete(id);
 
-  if (tab.worktree && deps.worktreeApi) {
-    await maybeRemoveWorktree(tab.worktree, tab.name, deps.worktreeApi);
+  if (tab.worktree) {
+    emitTabWorktreeClosed({ worktree: tab.worktree, tabName: tab.name });
   }
 
   if (deps.tabs.size === 0) {
