@@ -1,19 +1,16 @@
 import { _el } from '../utils/file-dom.js';
-import { buildChevronRow } from '../utils/chevron-row.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { attachContextMenu } from '../utils/context-menu.js';
-import { emitWorkspaceCreateWorktree, emitWorkspaceOpenPr } from '../utils/workspace-events.js';
 import { ComponentBase } from '../utils/component-base.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
-  extractFolderName, resolveWatchCwd,
-  buildDirContextItems,
-  renderDirEntry, renderFileEntry, buildSectionActions,
+  resolveWatchCwd,
+  renderDirEntry, renderFileEntry,
   setupDropZone, handleFileDrop,
   promptRename as doPromptRename,
   promptNewEntry as doPromptNewEntry,
   listenForChanges, startWatch, stopWatch,
 } from '../utils/file-tree-subsystem.js';
+import { rebuildSectionDOM } from '../utils/file-tree-section-dom.js';
 import fsApi from '../services/fs-api.js';
 import shellApi from '../services/shell-api.js';
 import clipboardApi from '../services/clipboard-api.js';
@@ -134,54 +131,13 @@ export class FileTree extends ComponentBase {
   }
 
   _rebuildSectionDOM(section, cwd) {
-    const wasCollapsed =
-      section.sectionEl.querySelector('.file-tree-section-content.collapsed') !== null;
-    section.sectionEl.replaceChildren();
-
-    const contentEl = _el('div', { className: `file-tree-section-content${wasCollapsed ? ' collapsed' : ''}` });
-    const { header } = this._buildSectionHeader(cwd, contentEl, wasCollapsed, section.expandedDirs);
-    section.sectionEl.append(header, contentEl);
-
-    this._setupDropZone(header, cwd);
-    this._setupDropZone(contentEl, cwd);
-    return contentEl;
-  }
-
-  _buildSectionHeader(cwd, contentEl, wasCollapsed, expandedDirs) {
-    const actionsContainer = buildSectionActions({
-      newFile:     () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'file'),
-      newFolder:   () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'folder'),
-      newWorktree: () => emitWorkspaceCreateWorktree({ repoCwd: cwd }),
-      openPr:      () => emitWorkspaceOpenPr({ repoCwd: cwd }),
-      refresh:     () => this.refreshSection(cwd),
+    return rebuildSectionDOM(section, cwd, {
+      setupDropZone: (el, targetDir) => this._setupDropZone(el, targetDir),
+      promptNewEntry: (dirPath, cEl, depth, eDirs, type) => this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
+      promptRename: (path, nameEl) => this.promptRename(path, nameEl),
+      refreshSection: (c) => this.refreshSection(c),
+      contextMenuApi: this._contextMenuApi,
     });
-
-    const { chevron, name: labelEl, row: header } = buildChevronRow({
-      chevronClass: 'file-tree-section-chevron',
-      chevronText: wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED,
-      nameClass: 'file-tree-section-label',
-      name: extractFolderName(cwd),
-      containerClass: 'file-tree-section-header',
-      extraChildren: [actionsContainer],
-    });
-    labelEl.title = cwd;
-
-    header.addEventListener('click', () => {
-      const collapsed = contentEl.classList.toggle('collapsed');
-      chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
-    });
-
-    this._attachSectionContextMenu(header, cwd, contentEl, expandedDirs);
-    return { chevron, header };
-  }
-
-  _attachSectionContextMenu(header, cwd, contentEl, expandedDirs) {
-    attachContextMenu(header, () => buildDirContextItems(
-      cwd, cwd, contentEl, 0, expandedDirs, null,
-      (path, nameEl) => this.promptRename(path, nameEl),
-      (dirPath, cEl, depth, eDirs, type) => this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
-      this._contextMenuApi,
-    ));
   }
 
   // --- Context menu helpers ---
