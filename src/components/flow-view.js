@@ -1,14 +1,15 @@
-import { showPromptDialog } from '../utils/dom-dialogs.js';
-import { generateId } from '../utils/id.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 import {
   EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
   getFlowsForCategory, getUncategorizedFlows,
-  removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
+  removeFlowFromOrder, moveFlowInOrder,
   createCategoryGroup, createFlowCard,
-  _el, renderButtonBar, startInlineRename,
+  _el, renderButtonBar,
 } from '../utils/flow-view-subsystem.js';
+import {
+  addCategory, renameCategoryInline, deleteCategory,
+} from '../utils/flow-view-categories.js';
 import flowApi from '../services/flow-api.js';
 
 
@@ -202,45 +203,18 @@ export class FlowView extends ComponentBase {
     this.refresh();
   }
 
-  // --- Category management ---
+  // --- Category management (delegated) ---
 
-  async _addCategory() {
-    const name = await showPromptDialog({
-      title: 'Nouvelle catégorie',
-      placeholder: 'Nom de la catégorie',
-      confirmLabel: 'Créer',
-      cancelLabel: 'Annuler',
-    });
-    if (!name) return;
-    const cat = { id: generateId('cat'), name };
-    this.catData.categories.push(cat);
-    this.catData.order[cat.id] = [];
-    await this._persistCategories();
-    this._renderList();
+  _addCategory() {
+    return addCategory(this.catData, () => this._persistCategories(), () => this._renderList());
   }
 
   _renameCategoryInline(catId, nameEl) {
-    const cat = this.catData.categories.find(c => c.id === catId);
-    if (!cat) return;
-
-    const finish = async (newName) => {
-      if (newName && newName !== cat.name) cat.name = newName;
-      await this._persistCategories();
-      this._renderList();
-    };
-
-    startInlineRename(nameEl, {
-      className: 'flow-category-name-input',
-      value: cat.name,
-      onCommit: finish,
-      onCancel: () => finish(null),
-    });
+    renameCategoryInline(this.catData, catId, nameEl, () => this._persistCategories(), () => this._renderList());
   }
 
-  async _deleteCategory(catId) {
-    if (!deleteCategoryData(this.catData, catId)) return;
-    await this._persistCategories();
-    this._renderList();
+  _deleteCategory(catId) {
+    return deleteCategory(this.catData, catId, () => this._persistCategories(), () => this._renderList());
   }
 
   // ===== Creation / Edit Modal =====
