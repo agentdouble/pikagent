@@ -1,15 +1,13 @@
 import { startInlineRename } from '../utils/form-helpers.js';
-import { _el, renderButtonBar } from '../utils/dom.js';
 import { showPromptDialog } from '../utils/dom-dialogs.js';
 import { generateId } from '../utils/id.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import {
-  EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
-  getFlowsForCategory, getUncategorizedFlows,
+  UNCATEGORIZED,
   removeFlowFromOrder, moveFlowInOrder, deleteCategoryData,
 } from '../utils/flow-view-helpers.js';
-import { createCategoryGroup } from '../utils/flow-category-renderer.js';
 import { createFlowCard } from '../utils/flow-card-setup.js';
+import { buildFlowLayout, renderFlowList } from '../utils/flow-view-renderer.js';
 
 
 export class FlowView {
@@ -63,8 +61,6 @@ export class FlowView {
     await window.api.flow.saveCategories(this.catData);
   }
 
-  // --- Category helpers ---
-
   _moveFlowToCategory(flowId, targetCatId, insertIndex = -1) {
     moveFlowInOrder(this.catData.order, flowId, targetCatId, insertIndex);
     this._persistCategories();
@@ -74,32 +70,14 @@ export class FlowView {
 
   render() {
     this.container.replaceChildren();
-
-    const wrapper = _el('div', 'flow-container');
-
-    const header = _el('div', 'flow-header');
-    header.appendChild(_el('h2', 'flow-title', 'Flows'));
-
-    const headerHandlers = { addCategory: () => this._addCategory(), addFlow: () => this._openModal() };
-    const configs = HEADER_BUTTONS.map(({ label, action }) => ({
-      label,
-      cls: 'flow-add-btn',
-      action,
-    }));
-    const headerRight = renderButtonBar({ containerClass: 'flow-header-right', configs, handlers: headerHandlers });
-    headerRight.style.display = 'flex';
-    headerRight.style.gap = '8px';
-
-    header.appendChild(headerRight);
-    wrapper.appendChild(header);
-
-    this.listEl = _el('div', 'flow-list');
-    wrapper.appendChild(this.listEl);
-
+    const { wrapper, listEl } = buildFlowLayout({
+      onAddCategory: () => this._addCategory(),
+      onAddFlow: () => this._openModal(),
+    });
+    this.listEl = listEl;
     this.container.appendChild(wrapper);
   }
 
-  /** Build the shared groupParams object for a category section. */
   _buildGroupParams(cat, flows, isUncat = false) {
     return {
       cat,
@@ -121,46 +99,17 @@ export class FlowView {
     };
   }
 
-  /** Render named category groups into the list element. */
-  _renderCategorizedGroups() {
-    for (const cat of this.catData.categories) {
-      const flows = getFlowsForCategory(this.flows, this.catData.order, cat.id);
-      this.listEl.appendChild(createCategoryGroup(this._buildGroupParams(cat, flows)));
-    }
-  }
-
-  /** Render the uncategorized section into the list element. */
-  _renderUncategorizedSection(uncatFlows, hasCats) {
-    if (uncatFlows.length === 0 && !hasCats) return;
-    if (hasCats) {
-      this.listEl.appendChild(createCategoryGroup(
-        this._buildGroupParams({ id: UNCATEGORIZED, name: 'Sans catégorie' }, uncatFlows, true)
-      ));
-    } else {
-      for (const flow of uncatFlows) {
-        this.listEl.appendChild(this._createCard(flow, UNCATEGORIZED));
-      }
-    }
-  }
-
   _renderList() {
     if (!this.listEl) return;
 
     this._termManager.cleanupStaleLiveTerminals(this._runningMap);
     this._termManager.disposeAllLogTerminals();
 
-    this.listEl.replaceChildren();
-
-    const hasCats = this.catData.categories.length > 0;
-    const uncatFlows = getUncategorizedFlows(this.flows, this.catData.order);
-
-    if (this.flows.length === 0 && !hasCats) {
-      this.listEl.appendChild(_el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
-      return;
-    }
-
-    this._renderCategorizedGroups();
-    this._renderUncategorizedSection(uncatFlows, hasCats);
+    renderFlowList(
+      this.listEl, this.flows, this.catData,
+      (cat, flows, isUncat) => this._buildGroupParams(cat, flows, isUncat),
+      (flow, catId) => this._createCard(flow, catId),
+    );
   }
 
   _toggleCollapse(catId) {
@@ -187,7 +136,6 @@ export class FlowView {
       onDeleteFlow: (id) => this._deleteFlow(id),
     }, flow, catId);
   }
-
 
   async _deleteFlow(flowId) {
     this._termManager.disposeLiveTerminal(flowId);

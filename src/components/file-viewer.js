@@ -1,24 +1,25 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { bus, subscribeBus, unsubscribeBus, EVENTS } from '../utils/events.js';
+import { bus, unsubscribeBus, EVENTS } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
-import { EMPTY_MESSAGE, STATIC_MODES, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
+import { EMPTY_MESSAGE, MODE_ACTIVATE, pinnedFiles } from '../utils/editor-helpers.js';
 import { createEditorDOM, bindEditorEvents, updateLineNumbers, updateHighlight, updateStatusBar, saveFile } from '../utils/file-editor-renderer.js';
 import { createMarkdownPreviewDOM, updatePreviewStatusBar } from '../utils/markdown-preview-renderer.js';
 import { renderTabs as renderTabsHelper } from '../utils/file-viewer-tabs.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
+import { buildFileViewerLayout, setupFileViewerListeners, setModeVisibility, renderModeBar } from '../utils/file-viewer-renderer.js';
 
 export class FileViewer {
   constructor(container, isActive) {
     this.container = container;
     this.isActive = isActive || (() => true);
-    this.openFiles = new Map(); // path -> { name, content, savedContent, lang }
+    this.openFiles = new Map();
     this.activeFile = null;
     this.editorEl = null;
     this.lineNumbers = null;
     this.highlightLayer = null;
-    this.mode = 'files'; // 'files' | 'git' | webview id
+    this.mode = 'files';
     this.gitChanges = null;
-    this.render();
+    this._buildLayout();
     const WebviewManager = getComponent('WebviewManager');
     this._webviewMgr = new WebviewManager(
       this.container, this.statusBar,
@@ -26,97 +27,52 @@ export class FileViewer {
       () => this._renderModeBar(),
     );
     this._renderModeBar();
-    this._setupListeners();
+    this._busListeners = setupFileViewerListeners({
+      isActive: () => this.isActive(),
+      switchMode: (mode) => this.switchMode(mode),
+      openFile: (path, name) => this.openFile(path, name),
+      gitChanges: this.gitChanges,
+      getMode: () => this.mode,
+      loadPinnedFiles: () => this.loadPinnedFiles(),
+    });
   }
 
   static get pinnedFiles() { return pinnedFiles; }
 
-  // ===== Build =====
-
-  render() {
-    this.container.replaceChildren();
-
-    this.modeBar = _el('div', 'file-viewer-mode-bar');
-    this.container.appendChild(this.modeBar);
-
-    this.tabsBar = _el('div', 'file-viewer-tabs');
-    this.container.appendChild(this.tabsBar);
-
-    this.breadcrumb = _el('div', 'file-viewer-breadcrumb');
-    this.container.appendChild(this.breadcrumb);
-
-    this.editorWrapper = _el('div', 'editor-wrapper');
-    this.container.appendChild(this.editorWrapper);
-
-    this.gitViewEl = _el('div', 'git-changes-view');
-    this.gitViewEl.style.display = 'none';
-    this.container.appendChild(this.gitViewEl);
+  _buildLayout() {
     const GitChangesView = getComponent('GitChangesView');
-    this.gitChanges = new GitChangesView(this.gitViewEl);
-
-    this.statusBar = _el('div', 'editor-status-bar');
-    this.container.appendChild(this.statusBar);
-
+    const layout = buildFileViewerLayout(this.container, {
+      createGitView: (el) => new GitChangesView(el),
+    });
+    this.modeBar = layout.modeBar;
+    this.tabsBar = layout.tabsBar;
+    this.breadcrumb = layout.breadcrumb;
+    this.editorWrapper = layout.editorWrapper;
+    this.gitViewEl = layout.gitViewEl;
+    this.statusBar = layout.statusBar;
+    this.gitChanges = layout.gitChanges;
     this.showEmpty();
-  }
-
-  _setupListeners() {
-    // Bus event listeners — single declaration drives both subscription and cleanup
-    this._busListeners = subscribeBus([
-      /** @listens file:open {{ path: string, name: string }} */
-      [EVENTS.FILE_OPEN, ({ path, name }) => {
-        if (!this.isActive()) return;
-        this.switchMode('files');
-        this.openFile(path, name);
-      }],
-      /** @listens terminal:cwdChanged {{ id: string, cwd: string }} */
-      [EVENTS.TERMINAL_CWD_CHANGED, ({ cwd }) => {
-        if (!this.isActive()) return;
-        this.gitChanges.setCwd(cwd);
-        if (this.mode === 'git') this.gitChanges.loadChanges();
-      }],
-      /** @listens workspace:activated {undefined} */
-      [EVENTS.WORKSPACE_ACTIVATED, () => {
-        if (!this.isActive()) return;
-        this.loadPinnedFiles();
-      }],
-    ]);
   }
 
   async loadPinnedFiles() {
     for (const [path, info] of pinnedFiles) {
-      if (!this.openFiles.has(path)) {
-        await this.openFile(path, info.name);
-      }
+      if (!this.openFiles.has(path)) await this.openFile(path, info.name);
     }
   }
 
-  isPinned(filePath) {
-    return pinnedFiles.has(filePath);
-  }
+  isPinned(filePath) { return pinnedFiles.has(filePath); }
 
   togglePin(filePath) {
     const file = this.openFiles.get(filePath);
     if (!file) return;
-    if (pinnedFiles.has(filePath)) {
-      pinnedFiles.delete(filePath);
-    } else {
-      pinnedFiles.set(filePath, { name: file.name });
-    }
+    if (pinnedFiles.has(filePath)) pinnedFiles.delete(filePath);
+    else pinnedFiles.set(filePath, { name: file.name });
     this.renderTabs();
-  }
-
-  _setModeVisibility(mode) {
-    const visible = new Set(MODE_CONFIG[mode]?.elements || []);
-    for (const key of ALL_STATIC_ELEMENTS) {
-      this[key].style.display = visible.has(key) ? '' : 'none';
-    }
-    this._webviewMgr.setModeVisibility(mode);
   }
 
   switchMode(mode) {
     this.mode = mode;
-    this._setModeVisibility(mode);
+    setModeVisibility(mode, this, this._webviewMgr);
     this._renderModeBar();
     MODE_ACTIVATE[mode]?.(this);
   }
@@ -124,11 +80,7 @@ export class FileViewer {
   // ===== Files Mode =====
 
   async openFile(filePath, fileName) {
-    if (this.openFiles.has(filePath)) {
-      this.setActiveTab(filePath);
-      return;
-    }
-
+    if (this.openFiles.has(filePath)) { this.setActiveTab(filePath); return; }
     const result = await window.api.fs.readfile(filePath);
     if (result.error) {
       this.openFiles.set(filePath, { name: fileName, content: '', savedContent: '', lang: 'plaintext', error: result.error, viewMode: 'edit' });
@@ -137,7 +89,6 @@ export class FileViewer {
       const viewMode = lang === 'markdown' ? 'preview' : 'edit';
       this.openFiles.set(filePath, { name: fileName, content: result.content, savedContent: result.content, lang, error: null, viewMode });
     }
-
     this.setActiveTab(filePath);
   }
 
@@ -162,14 +113,12 @@ export class FileViewer {
 
   isModified(filePath) {
     const file = this.openFiles.get(filePath);
-    if (!file) return false;
-    return file.content !== file.savedContent;
+    return !!file && file.content !== file.savedContent;
   }
 
   renderTabs() {
     renderTabsHelper(this.tabsBar, this.openFiles, this.activeFile,
-      (p) => this.isPinned(p),
-      (p) => this.isModified(p),
+      (p) => this.isPinned(p), (p) => this.isModified(p),
       {
         onClose: (p) => this.closeFile(p),
         onActivate: (p) => this.setActiveTab(p),
@@ -184,49 +133,34 @@ export class FileViewer {
   renderEditor() {
     this.editorWrapper.replaceChildren();
     this.statusBar.replaceChildren();
-
     const file = this.openFiles.get(this.activeFile);
     if (!file) { this.showEmpty(); return; }
-
     this.breadcrumb.textContent = this.activeFile;
-
     if (file.error) {
       this.editorWrapper.replaceChildren(_el('div', 'file-viewer-error', file.error));
       return;
     }
-
     if (file.lang === 'markdown' && file.viewMode === 'preview') {
-      this.lineNumbers = null;
-      this.highlightLayer = null;
-      this.editorEl = null;
+      this.lineNumbers = null; this.highlightLayer = null; this.editorEl = null;
       createMarkdownPreviewDOM(this.editorWrapper, file);
       updatePreviewStatusBar(this.statusBar, file);
       return;
     }
-
     const { lineNumbers, highlightLayer, editorEl } = createEditorDOM(this.editorWrapper, file);
-    this.lineNumbers = lineNumbers;
-    this.highlightLayer = highlightLayer;
-    this.editorEl = editorEl;
-
+    this.lineNumbers = lineNumbers; this.highlightLayer = highlightLayer; this.editorEl = editorEl;
     bindEditorEvents(this.editorEl, this.lineNumbers, this.highlightLayer, file, {
       onUpdate: () => { this.updateLineNumbers(); this.updateHighlight(); this.renderTabs(); this.updateStatusBar(); },
       onSave: () => this.saveActive(),
     });
-    this.updateLineNumbers();
-    this.updateHighlight();
-    this.updateStatusBar();
+    this.updateLineNumbers(); this.updateHighlight(); this.updateStatusBar();
     this.editorEl.focus();
   }
 
-  updateLineNumbers() {
-    updateLineNumbers(this.lineNumbers, this.editorEl);
-  }
+  updateLineNumbers() { updateLineNumbers(this.lineNumbers, this.editorEl); }
 
   updateHighlight() {
     const file = this.openFiles.get(this.activeFile);
-    if (!file) return;
-    updateHighlight(this.highlightLayer, this.editorEl, file.lang);
+    if (file) updateHighlight(this.highlightLayer, this.editorEl, file.lang);
   }
 
   updateStatusBar() {
@@ -239,10 +173,7 @@ export class FileViewer {
   async saveActive() {
     const file = this.openFiles.get(this.activeFile);
     await saveFile(this.activeFile, file, this.statusBar, {
-      onSuccess: () => {
-        this.renderTabs();
-        this.updateStatusBar();
-      },
+      onSuccess: () => { this.renderTabs(); this.updateStatusBar(); },
     }, { writefile: window.api.fs.writefile });
   }
 
@@ -251,15 +182,10 @@ export class FileViewer {
       const file = this.openFiles.get(filePath);
       if (!confirm(`"${file.name}" has unsaved changes. Close anyway?`)) return;
     }
-
     this.openFiles.delete(filePath);
-
     if (this.activeFile === filePath) {
-      if (this.openFiles.size > 0) {
-        this.setActiveTab([...this.openFiles.keys()].pop());
-      } else {
-        this._resetEditor();
-      }
+      if (this.openFiles.size > 0) this.setActiveTab([...this.openFiles.keys()].pop());
+      else this._resetEditor();
     } else {
       this.renderTabs();
     }
@@ -277,42 +203,26 @@ export class FileViewer {
     this.statusBar.replaceChildren();
   }
 
-  // ===== Mode Bar =====
-
   _renderModeBar() {
-    this.modeBar.replaceChildren();
-    for (const { key, label } of STATIC_MODES) {
-      const btn = _el('button', `mode-btn${this.mode === key ? ' active' : ''}`, label);
-      btn.addEventListener('click', () => this.switchMode(key));
-      this.modeBar.appendChild(btn);
-    }
-    for (const wt of this._webviewMgr.webviewTabs) {
-      this.modeBar.appendChild(this._webviewMgr.buildWebviewModeBtn(wt, this.mode));
-    }
-    this.modeBar.appendChild(this._webviewMgr.buildAddWebviewBtn(this.modeBar));
+    renderModeBar(this.modeBar, this.mode, {
+      switchMode: (mode) => this.switchMode(mode),
+      webviewMgr: this._webviewMgr,
+    });
   }
 
   // ===== Webview Management (delegated) =====
 
-  addWebview(label, url) {
-    this._webviewMgr.addWebview(label, url);
-  }
+  addWebview(label, url) { this._webviewMgr.addWebview(label, url); }
 
   removeWebview(webviewId) {
     const removedId = this._webviewMgr.removeWebview(webviewId);
     if (this.mode === removedId) this.switchMode('files');
     else this._renderModeBar();
-    /** @fires layout:changed {undefined} — webview removed from file-viewer */
     bus.emit(EVENTS.LAYOUT_CHANGED);
   }
 
-  getWebviewTabs() {
-    return this._webviewMgr.getWebviewTabs();
-  }
-
-  setWebviewTabs(tabs) {
-    this._webviewMgr.setWebviewTabs(tabs);
-  }
+  getWebviewTabs() { return this._webviewMgr.getWebviewTabs(); }
+  setWebviewTabs(tabs) { this._webviewMgr.setWebviewTabs(tabs); }
 
   dispose() {
     unsubscribeBus(this._busListeners);

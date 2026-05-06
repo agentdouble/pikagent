@@ -9,7 +9,7 @@
 
 export { inlineRenameTab } from './tab-renderer.js';
 export { renderTabBar } from './tab-bar-renderer.js';
-export { isTabVisible } from './tab-color-filter.js';
+export { isTabVisible, ensureVisibleTabActive } from './tab-color-filter.js';
 export { createTab, closeTab, switchTo } from './tab-lifecycle.js';
 export {
   reorderEntries, findCycleTarget, findColorGroupTarget,

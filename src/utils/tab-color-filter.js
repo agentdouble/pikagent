@@ -16,6 +16,24 @@ export function isTabVisible(tab, activeColorFilter, excludedColors) {
 }
 
 /**
+ * Ensure a visible tab is active after filter changes.
+ * If the current active tab is hidden, switch to the first visible one.
+ *
+ * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {string|null} activeTabId
+ * @param {string|null} activeColorFilter
+ * @param {Set<string>} excludedColors
+ * @param {(id: string) => void} switchTo
+ */
+export function ensureVisibleTabActive(tabs, activeTabId, activeColorFilter, excludedColors, switchTo) {
+  const active = tabs.get(activeTabId);
+  if (active && isTabVisible(active, activeColorFilter, excludedColors)) return;
+  for (const [id, tab] of tabs) {
+    if (isTabVisible(tab, activeColorFilter, excludedColors)) { switchTo(id); return; }
+  }
+}
+
+/**
  * Build the color filter bar DOM element.
  * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
  * @param {string|null} activeColorFilter

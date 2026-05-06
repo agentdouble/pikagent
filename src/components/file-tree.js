@@ -1,20 +1,17 @@
-import { _el, createActionButton } from '../utils/dom.js';
+import { _el } from '../utils/dom.js';
 import {
-  CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   DEBOUNCE_DELAY, WATCH_PREFIX,
-  HEADER_ACTIONS,
-  extractFolderName, resolveWatchCwd,
+  resolveWatchCwd,
 } from '../utils/file-tree-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { buildDirContextItems } from '../utils/file-tree-context-menu.js';
-import { attachContextMenu } from '../utils/context-menu.js';
-import { bus, EVENTS } from '../utils/events.js';
-import { renderDirEntry, renderFileEntry, PARSED_ICONS } from '../utils/file-tree-renderer.js';
+import { renderDirEntry, renderFileEntry } from '../utils/file-tree-renderer.js';
 import {
   setupDropZone, handleFileDrop,
   promptRename as doPromptRename,
   promptNewEntry as doPromptNewEntry,
 } from '../utils/file-tree-drop.js';
+import { buildSectionHeader, refreshSectionDOM } from '../utils/file-tree-section-renderer.js';
+import { bus, EVENTS } from '../utils/events.js';
 
 export class FileTree {
   constructor(container) {
@@ -24,7 +21,6 @@ export class FileTree {
     this.debounceTimers = new Map();
     this._activeRow = null;
 
-    // Injected API methods for file-tree-drop and file-tree-context-menu utils
     this._contextMenuApi = {
       clipboardWrite: window.api.clipboard.write,
       fsCopy: window.api.fs.copy,
@@ -46,7 +42,6 @@ export class FileTree {
     this.container.replaceChildren();
     this.treeEl = _el('div', { className: 'file-tree-content' });
     this.container.appendChild(this.treeEl);
-
     this._setupDropZone(this.container, () => {
       const firstCwd = this.sections.keys().next().value;
       return firstCwd || null;
@@ -55,15 +50,12 @@ export class FileTree {
 
   listenForChanges() {
     this.unsubFs = window.api.fs.onChanged(({ id }) => {
-      if (this.debounceTimers.has(id)) {
-        clearTimeout(this.debounceTimers.get(id));
-      }
-      this.debounceTimers.set(
-        id,
+      if (this.debounceTimers.has(id)) clearTimeout(this.debounceTimers.get(id));
+      this.debounceTimers.set(id,
         setTimeout(() => {
           this.debounceTimers.delete(id);
           this.refreshSection(id).catch(() => {});
-        }, DEBOUNCE_DELAY)
+        }, DEBOUNCE_DELAY),
       );
     });
   }
@@ -71,18 +63,11 @@ export class FileTree {
   async setTerminalRoot(termId, dirPath) {
     const prevCwd = this.termCwds.get(termId);
     if (prevCwd === dirPath) return;
-
-    if (prevCwd) {
-      this._removeTermFromSection(termId, prevCwd);
-    }
-
+    if (prevCwd) this._removeTermFromSection(termId, prevCwd);
     this.termCwds.set(termId, dirPath);
 
     const existing = this.sections.get(dirPath);
-    if (existing) {
-      existing.termIds.add(termId);
-      return;
-    }
+    if (existing) { existing.termIds.add(termId); return; }
 
     const sectionEl = _el('div', { className: 'file-tree-section' });
     const expandedDirs = new Set([dirPath]);
@@ -90,7 +75,6 @@ export class FileTree {
     this.sections.set(dirPath, { termIds: new Set([termId]), sectionEl, expandedDirs, watchId });
     this.treeEl.appendChild(sectionEl);
     await this.refreshSection(dirPath);
-
     window.api.fs.watch(watchId, dirPath);
   }
 
@@ -104,9 +88,7 @@ export class FileTree {
   _removeTermFromSection(termId, cwd) {
     const section = this.sections.get(cwd);
     if (!section) return;
-
     section.termIds.delete(termId);
-
     if (section.termIds.size === 0) {
       window.api.fs.unwatch(section.watchId);
       section.sectionEl.remove();
@@ -119,78 +101,24 @@ export class FileTree {
     const section = this.sections.get(cwd);
     if (!section) return;
 
-    if (section._refreshing) {
-      section._pendingRefresh = true;
-      return;
-    }
-    section._refreshing = true;
-
-    const wasCollapsed =
-      section.sectionEl.querySelector('.file-tree-section-content.collapsed') !== null;
-
-    section.sectionEl.replaceChildren();
-
-    const contentEl = _el('div', { className: `file-tree-section-content${wasCollapsed ? ' collapsed' : ''}` });
-    const chevron = _el('span', {
-      className: 'file-tree-section-chevron',
-      textContent: wasCollapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED,
+    await refreshSectionDOM(section, cwd, {
+      buildSectionHeader: (c, contentEl, chevron, expandedDirs) =>
+        this._buildSectionHeader(c, contentEl, chevron, expandedDirs),
+      setupDropZone: (el, targetDir) => this._setupDropZone(el, targetDir),
+      renderDir: (dirPath, parentEl, depth, expandedDirs) =>
+        this.renderDir(dirPath, parentEl, depth, expandedDirs),
+      refreshSection: (c) => this.refreshSection(c),
     });
-
-    const header = this._buildSectionHeader(cwd, contentEl, chevron, section.expandedDirs);
-    section.sectionEl.append(header, contentEl);
-
-    this._setupDropZone(header, cwd);
-    this._setupDropZone(contentEl, cwd);
-
-    try {
-      await this.renderDir(cwd, contentEl, 0, section.expandedDirs);
-    } finally {
-      section._refreshing = false;
-      if (section._pendingRefresh) {
-        section._pendingRefresh = false;
-        this.refreshSection(cwd).catch(() => {});
-      }
-    }
   }
 
   _buildSectionHeader(cwd, contentEl, chevron, expandedDirs) {
-    const actionDispatcher = {
-      newFile:     () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'file'),
-      newFolder:   () => this.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'folder'),
-      newWorktree: () => bus.emit(EVENTS.WORKSPACE_CREATE_WORKTREE, { repoCwd: cwd }),
-      openPr:      () => bus.emit(EVENTS.WORKSPACE_OPEN_PR, { repoCwd: cwd }),
-      refresh:     () => this.refreshSection(cwd),
-    };
-    const actionBtns = HEADER_ACTIONS.map(({ key, title, action }) =>
-      createActionButton({
-        title,
-        cls: 'file-tree-action-btn',
-        childNode: PARSED_ICONS[key].cloneNode(true),
-        stopPropagation: true,
-        onClick: actionDispatcher[action],
-      }),
-    );
-
-    const header = _el('div', {
-      className: 'file-tree-section-header',
-      onClick: () => {
-        const collapsed = contentEl.classList.toggle('collapsed');
-        chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
-      },
-    },
-      chevron,
-      _el('span', { className: 'file-tree-section-label', textContent: extractFolderName(cwd), title: cwd }),
-      _el('div', { className: 'file-tree-section-actions' }, ...actionBtns),
-    );
-
-    attachContextMenu(header, () => buildDirContextItems(
-      cwd, cwd, contentEl, 0, expandedDirs, null,
-      (path, nameEl) => this.promptRename(path, nameEl),
-      (dirPath, cEl, depth, eDirs, type) => this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
-      this._contextMenuApi,
-    ));
-
-    return header;
+    return buildSectionHeader(cwd, contentEl, chevron, expandedDirs, {
+      promptNewEntry: (dirPath, cEl, depth, eDirs, type) =>
+        this.promptNewEntry(dirPath, cEl, depth, eDirs, type),
+      promptRename: (path, nameEl) => this.promptRename(path, nameEl),
+      onRefresh: (c) => this.refreshSection(c),
+      contextMenuApi: this._contextMenuApi,
+    });
   }
 
   // --- Context menu helpers ---
@@ -202,13 +130,9 @@ export class FileTree {
     return '';
   }
 
-  // --- Rename inline input ---
-
   promptRename(entryPath, nameEl) {
     doPromptRename(entryPath, nameEl, { rename: this._dropApi.rename });
   }
-
-  // --- New File / Folder inline input ---
 
   promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type) {
     doPromptNewEntry(dirPath, parentContentEl, depth, expandedDirs, type, { mkdir: this._dropApi.mkdir, writefile: this._dropApi.writefile });
@@ -225,7 +149,7 @@ export class FileTree {
 
   async _expandDir(dirPath, childContainer, chevron, depth, expandedDirs) {
     expandedDirs.add(dirPath);
-    chevron.textContent = CHEVRON_EXPANDED;
+    chevron.textContent = '\u25BC';
     chevron.classList.add('expanded');
     await this.renderDir(dirPath, childContainer, depth + 1, expandedDirs);
   }
@@ -233,7 +157,7 @@ export class FileTree {
   _collapseDir(dirPath, childContainer, chevron, expandedDirs) {
     expandedDirs.delete(dirPath);
     childContainer.replaceChildren();
-    chevron.textContent = CHEVRON_COLLAPSED;
+    chevron.textContent = '\u25B6';
     chevron.classList.remove('expanded');
   }
 

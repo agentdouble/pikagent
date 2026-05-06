@@ -1,6 +1,7 @@
 import { _el } from '../utils/dom.js';
 import { showPromptDialog, showConfirmDialog } from '../utils/dom-dialogs.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { buildSkillsLayout, renderSkillList, renderSkillEditor, renderEditorEmpty } from '../utils/skills-view-renderer.js';
 
 export class SkillsView {
   constructor(container) {
@@ -28,61 +29,28 @@ export class SkillsView {
     await this._renderEditor();
   }
 
-  async render() {
+  render() {
     this.el.replaceChildren();
 
-    const header = _el('div', 'skills-header',
-      _el('div', 'skills-header-left',
-        _el('h2', 'skills-title', 'Skills'),
-        this._rootBadge(),
-      ),
-      _el('div', 'skills-header-right',
-        _el('button', {
-          className: 'skills-btn skills-btn-secondary',
-          textContent: 'Configurer le chemin…',
-          onClick: () => this._configurePath(),
-        }),
-        _el('button', {
-          className: 'skills-btn skills-btn-secondary',
-          textContent: 'Ouvrir le dossier',
-          onClick: () => this._openRoot(),
-        }),
-        _el('button', {
-          className: 'skills-btn skills-btn-secondary',
-          textContent: 'Importer',
-          onClick: () => this._importSkill(),
-        }),
-        _el('button', {
-          className: 'skills-btn skills-btn-primary',
-          textContent: '+ Nouveau skill',
-          onClick: () => this._createSkill(),
-        }),
-        _el('button', {
-          className: 'skills-btn skills-btn-secondary',
-          textContent: 'Rafraîchir',
-          onClick: () => this.refresh(),
-        }),
-      ),
-    );
-    this.el.appendChild(header);
+    const { header, listEl, editorEl, rootBadgeEl } = buildSkillsLayout({
+      rootPath: this.rootPath,
+      onConfigurePath: () => this._configurePath(),
+      onOpenRoot: () => this._openRoot(),
+      onImportSkill: () => this._importSkill(),
+      onCreateSkill: () => this._createSkill(),
+      onRefresh: () => this.refresh(),
+    });
+    this._rootBadgeEl = rootBadgeEl;
+    this.listEl = listEl;
+    this.editorEl = editorEl;
 
+    this.el.appendChild(header);
     const body = _el('div', 'skills-body');
-    this.listEl = _el('div', 'skills-list');
-    this.editorEl = _el('div', 'skills-editor');
     body.appendChild(this.listEl);
     body.appendChild(this.editorEl);
     this.el.appendChild(body);
 
-    await this.refresh();
-  }
-
-  _rootBadge() {
-    this._rootBadgeEl = _el('div', {
-      className: 'skills-root-badge',
-      title: 'Dossier des skills utilisateur',
-      textContent: this.rootPath || '…',
-    });
-    return this._rootBadgeEl;
+    this.refresh();
   }
 
   async _openRoot() {
@@ -153,34 +121,10 @@ export class SkillsView {
     if (!this.listEl) return;
     if (this._rootBadgeEl) this._rootBadgeEl.textContent = this.rootPath;
 
-    this.listEl.replaceChildren();
-
-    if (this.skills.length === 0) {
-      this.listEl.appendChild(_el('div', 'skills-empty', 'Aucun skill. Créez-en un pour commencer.'));
-      return;
-    }
-
-    for (const skill of this.skills) {
-      const item = _el('div', {
-        className: `skills-item ${this.selectedId === skill.id ? 'skills-item-active' : ''}`,
-        onClick: () => this._selectSkill(skill.id),
-      },
-        _el('div', 'skills-item-main',
-          _el('div', 'skills-item-name', skill.name),
-          skill.description && _el('div', 'skills-item-desc', skill.description),
-        ),
-        _el('div', 'skills-item-meta',
-          _el('div', 'skills-item-source', skill.source),
-        ),
-        _el('button', {
-          className: 'skills-item-delete',
-          title: 'Supprimer',
-          textContent: '✕',
-          onClick: (e) => { e.stopPropagation(); this._deleteSkill(skill.id); },
-        }),
-      );
-      this.listEl.appendChild(item);
-    }
+    renderSkillList(this.listEl, this.skills, this.selectedId, {
+      onSelect: (id) => this._selectSkill(id),
+      onDelete: (id) => this._deleteSkill(id),
+    });
   }
 
   async _selectSkill(id) {
@@ -199,13 +143,9 @@ export class SkillsView {
 
   async _renderEditor() {
     if (!this.editorEl) return;
-    this.editorEl.replaceChildren();
 
     if (!this.selectedId) {
-      this.editorEl.appendChild(_el('div', 'skills-editor-empty',
-        _el('div', 'skills-editor-empty-title', 'Sélectionnez un skill'),
-        _el('div', 'skills-editor-empty-sub', 'Cliquez sur un skill à gauche pour l\'éditer, ou créez-en un nouveau.'),
-      ));
+      renderEditorEmpty(this.editorEl);
       return;
     }
 
@@ -216,39 +156,12 @@ export class SkillsView {
     this.editorValue = content ?? '';
     this.editorDirty = false;
 
-    const toolbar = _el('div', 'skills-editor-toolbar',
-      _el('div', 'skills-editor-toolbar-left',
-        _el('div', 'skills-editor-name', skill.name),
-        _el('div', 'skills-editor-path', skill.path),
-      ),
-      _el('div', 'skills-editor-toolbar-right',
-        this._dirtyBadge(),
-        _el('button', {
-          className: 'skills-btn skills-btn-primary',
-          textContent: 'Enregistrer',
-          onClick: () => this._save(),
-        }),
-      ),
+    const { dirtyBadgeEl, textareaEl } = renderSkillEditor(
+      this.editorEl, skill, this.editorValue, this.editorDirty,
+      { onSave: () => this._save(), onEditorInput: (v) => this._onEditorInput(v) },
     );
-
-    const textarea = _el('textarea', {
-      className: 'skills-editor-textarea',
-      spellcheck: false,
-      value: this.editorValue,
-      onInput: (e) => this._onEditorInput(e.target.value),
-    });
-    this._textareaEl = textarea;
-
-    this.editorEl.appendChild(toolbar);
-    this.editorEl.appendChild(textarea);
-  }
-
-  _dirtyBadge() {
-    this._dirtyBadgeEl = _el('div', {
-      className: `skills-editor-dirty ${this.editorDirty ? 'is-dirty' : ''}`,
-      textContent: this.editorDirty ? 'Modifié' : 'Enregistré',
-    });
-    return this._dirtyBadgeEl;
+    this._dirtyBadgeEl = dirtyBadgeEl;
+    this._textareaEl = textareaEl;
   }
 
   _onEditorInput(value) {

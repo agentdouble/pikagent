@@ -12,11 +12,12 @@ import {
 import {
   inlineRenameTab,
   renderTabBar as doRenderTabBar,
-  isTabVisible,
+  isTabVisible, ensureVisibleTabActive,
   createTab as doCreateTab, closeTab as doCloseTab,
   switchTo as doSwitchTo,
   reorderEntries, findCycleTarget, findColorGroupTarget,
 } from '../utils/tab-facade.js';
+import { createPrApi, createWorktreeApi, createViewStore } from '../utils/tab-manager-api-adapters.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
@@ -37,57 +38,17 @@ export class TabManager {
     this.skillsView = null;
     this._skillsContainerEl = null;
     this.sidebarMode = 'work';
-    this.activeColorFilter = null; // null = show all, or a COLOR_GROUPS id
-    this.excludedColors = new Set(); // COLOR_GROUPS ids to hide
+    this.activeColorFilter = null;
+    this.excludedColors = new Set();
 
-    // Injected API methods for workspace-layout utils
     this._api = { gitBranch: window.api.git.branch };
 
     this.init();
   }
 
-  /**
-   * Adapter exposing the git + shell surface needed by the open-PR flow.
-   * @returns {import('../utils/open-pr-flow.js').OpenPrApi}
-   */
-  _prApi() {
-    return {
-      branch:       (cwd) => window.api.git.branch(cwd),
-      remoteUrl:    (cwd) => window.api.git.remoteUrl(cwd),
-      pushBranch:   ({ cwd, branch }) => window.api.git.pushBranch(cwd, branch),
-      ghAvailable:  () => window.api.git.ghAvailable(),
-      ghPrCreate:   ({ cwd, baseBranch }) => window.api.git.ghPrCreate(cwd, baseBranch),
-      openExternal: (url) => window.api.shell.openExternal(url),
-    };
-  }
-
-  /**
-   * Adapter exposing the git-worktree IPC surface as an object-style API,
-   * matching {@link import('../utils/worktree-flow.js').GitWorktreeApi}.
-   * @returns {import('../utils/worktree-flow.js').GitWorktreeApi}
-   */
-  _worktreeApi() {
-    return {
-      isRepo:       (cwd) => window.api.git.isRepo(cwd),
-      branch:       (cwd) => window.api.git.branch(cwd),
-      listBranches: (cwd) => window.api.git.listBranches(cwd),
-      worktreeList: (cwd) => window.api.git.worktreeList(cwd),
-      worktreeAdd:  ({ cwd, branch, targetPath, createBranch, baseBranch }) =>
-        window.api.git.worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch),
-      worktreeRemove: ({ cwd, worktreePath, force }) =>
-        window.api.git.worktreeRemove(cwd, worktreePath, force),
-    };
-  }
-
-  /** @returns {import('../utils/sidebar-manager.js').SideViewStore} */
-  _viewStore() {
-    return {
-      getView: (key) => this[key],
-      setView: (key, val) => { this[key] = val; },
-      getContainer: (key) => this[key],
-      setContainer: (key, val) => { this[key] = val; },
-    };
-  }
+  _prApi() { return createPrApi({ git: window.api.git, shell: window.api.shell }); }
+  _worktreeApi() { return createWorktreeApi(window.api.git); }
+  _viewStore() { return createViewStore(this); }
 
   async init() {
     this.defaultCwd = await initTabManager({
@@ -113,9 +74,7 @@ export class TabManager {
     });
   }
 
-  _activeTab() {
-    return this.tabs.get(this.activeTabId);
-  }
+  _activeTab() { return this.tabs.get(this.activeTabId); }
 
   renderActivityBar() {
     renderActivityBar({
@@ -127,7 +86,6 @@ export class TabManager {
 
   setSidebarMode(mode) {
     if (mode === this.sidebarMode) return;
-
     changeSidebarMode({
       getActiveTab: () => this._activeTab(),
       capturePanelWidths,
@@ -138,11 +96,11 @@ export class TabManager {
       tabManager: this,
     }, this.sidebarMode, mode);
     this.sidebarMode = mode;
-
     this.renderActivityBar();
   }
 
   switchToBoard() { this.setSidebarMode('board'); }
+
   async renderWorkspace(tab) {
     return doRenderWorkspace({
       workspaceContainer: this.workspaceContainer,
@@ -153,10 +111,7 @@ export class TabManager {
   }
 
   serialize() {
-    return doSerialize({
-      tabs: this.tabs,
-      activeTabId: this.activeTabId,
-    });
+    return doSerialize({ tabs: this.tabs, activeTabId: this.activeTabId });
   }
 
   async restoreConfig(config) {
@@ -172,6 +127,7 @@ export class TabManager {
   }
 
   autoSave() { return this.configManager.autoSave(); }
+
   createTab(name = null, cwd = null) {
     return doCreateTab({
       tabs: this.tabs,
@@ -215,7 +171,7 @@ export class TabManager {
     this.excludedColors.clear();
     this.activeColorFilter = this.activeColorFilter === colorGroupId ? null : colorGroupId;
     this.renderTabBar();
-    this._ensureVisibleTabActive();
+    ensureVisibleTabActive(this.tabs, this.activeTabId, this.activeColorFilter, this.excludedColors, (id) => this.switchTo(id));
   }
 
   toggleExcludeColor(colorGroupId) {
@@ -223,20 +179,10 @@ export class TabManager {
     if (this.excludedColors.has(colorGroupId)) this.excludedColors.delete(colorGroupId);
     else this.excludedColors.add(colorGroupId);
     this.renderTabBar();
-    this._ensureVisibleTabActive();
+    ensureVisibleTabActive(this.tabs, this.activeTabId, this.activeColorFilter, this.excludedColors, (id) => this.switchTo(id));
   }
 
-  _isTabVisible(tab) {
-    return isTabVisible(tab, this.activeColorFilter, this.excludedColors);
-  }
-
-  _ensureVisibleTabActive() {
-    const active = this._activeTab();
-    if (active && this._isTabVisible(active)) return;
-    for (const [id, tab] of this.tabs) {
-      if (this._isTabVisible(tab)) { this.switchTo(id); return; }
-    }
-  }
+  _isTabVisible(tab) { return isTabVisible(tab, this.activeColorFilter, this.excludedColors); }
 
   renderTabBar() {
     this._tabElements = doRenderTabBar({
