@@ -188,7 +188,6 @@ export class TabManager {
       activeTabId: this.activeTabId,
       renderTabBar: () => this.renderTabBar(),
       configManager: this.configManager,
-      worktreeApi: this._worktreeApi(),
     }, () => this.createTab(), (tabId) => this.switchTo(tabId), id);
   }
 

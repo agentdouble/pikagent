@@ -9,7 +9,7 @@
 import { subscribeBus, EVENTS } from './events.js';
 import { extractFolderName } from './file-tree-helpers.js';
 import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
-import { createWorktreeFlow } from './worktree-flow.js';
+import { createWorktreeFlow, maybeRemoveWorktree } from './worktree-flow.js';
 import { openPrFlow } from './open-pr-flow.js';
 
 export { unsubscribeBus } from './events.js';
@@ -114,6 +114,13 @@ export function setupBusListeners(deps) {
       const baseBranch = tab?.worktree?.baseBranch ?? null;
       openPrFlow({ cwd: repoCwd, baseBranch, api: deps.api.pr })
         .catch((e) => console.warn('openPrFlow failed:', e));
+    }],
+    /** @listens tab:closed {{ worktree, tabName }} — clean up git worktree */
+    [EVENTS.TAB_CLOSED, ({ worktree, tabName }) => {
+      if (worktree) {
+        maybeRemoveWorktree(worktree, tabName, deps.api.worktree)
+          .catch((e) => console.warn('maybeRemoveWorktree failed:', e));
+      }
     }],
   ]);
 }

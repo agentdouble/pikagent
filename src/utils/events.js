@@ -54,6 +54,8 @@ export const EVENTS = {
   WORKSPACE_OPEN_PR: 'workspace:openPr',
   /** @see EVENT_CATALOG['file:open'] */
   FILE_OPEN: 'file:open',
+  /** @see EVENT_CATALOG['tab:closed'] */
+  TAB_CLOSED: 'tab:closed',
 };
 
 const EVENT_CATALOG = {
@@ -195,6 +197,22 @@ const EVENT_CATALOG = {
     payload: '{ path: string, name: string }',
     emitters: ['file-tree-renderer.js', 'file-tree-drop.js', 'git-changes-view.js'],
     consumers: ['file-viewer.js'],
+  },
+
+  // ── Tab lifecycle events ──
+
+  /**
+   * Fired after a tab has been closed and disposed. Carries the worktree
+   * metadata (if any) so that listeners can clean up git worktrees without
+   * the tab-lifecycle module importing worktree-flow directly.
+   * @event tab:closed
+   * @type {{ worktree: { mainRepoCwd: string, worktreePath: string } | null, tabName: string }}
+   */
+  'tab:closed': {
+    description: 'Tab closed and disposed — carries worktree metadata for cleanup',
+    payload: '{ worktree: { mainRepoCwd: string, worktreePath: string } | null, tabName: string }',
+    emitters: ['tab-lifecycle.js'],
+    consumers: ['tab-manager-init.js'],
   },
 };
 
