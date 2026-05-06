@@ -12,6 +12,7 @@
 import { _el, createActionButton } from './dom.js';
 import { createModalOverlay } from './dom-dialogs.js';
 import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { createSelect, _vis } from './flow-modal-helpers.js';
 
 /** Sanitize a branch name into a filesystem-safe segment. */
 function sanitizeSegment(name) {
@@ -51,18 +52,22 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
       className: 'prompt-dialog-input', type: 'text', placeholder: 'feat/my-branch',
     });
 
-    const baseSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-    for (const b of allBranches) {
-      const opt = _el('option', null, b);
-      opt.value = b;
-      if (b === currentBranch) opt.selected = true;
-      baseSelect.appendChild(opt);
-    }
+    const branchOptions = Object.fromEntries(allBranches.map(b => [b, b]));
+    const baseSelect = createSelect({
+      options: branchOptions,
+      value: currentBranch || undefined,
+      className: 'prompt-dialog-input worktree-dialog-select',
+    });
     const baseLabel = _el('label', 'worktree-dialog-sub-label', 'Base branch');
 
-    const existingSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-    for (const b of existingBranches) existingSelect.appendChild(_el('option', null, b));
-    if (!existingBranches.length) existingSelect.appendChild(_el('option', { disabled: true }, 'No other branches'));
+    const existingOptions = existingBranches.length
+      ? Object.fromEntries(existingBranches.map(b => [b, b]))
+      : { '': 'No other branches' };
+    const existingSelect = createSelect({
+      options: existingOptions,
+      className: 'prompt-dialog-input worktree-dialog-select',
+    });
+    if (!existingBranches.length) existingSelect.querySelector('option').disabled = true;
 
     const pathEl = _el('div', 'worktree-dialog-path');
 
@@ -85,10 +90,10 @@ export function showWorktreeDialog({ repoCwd, allBranches, existingBranches, cur
       btnNew.classList.toggle('active', mode === 'new');
       btnExisting.classList.toggle('active', mode === 'existing');
       const isNew = mode === 'new';
-      newInput.style.display = isNew ? '' : 'none';
-      baseSelect.style.display = isNew ? '' : 'none';
-      baseLabel.style.display = isNew ? '' : 'none';
-      existingSelect.style.display = isNew ? 'none' : '';
+      _vis(newInput, isNew, '');
+      _vis(baseSelect, isNew, '');
+      _vis(baseLabel, isNew, '');
+      _vis(existingSelect, !isNew, '');
       updatePath();
       (isNew ? newInput : existingSelect).focus();
     }

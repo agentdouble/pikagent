@@ -12,7 +12,7 @@
  *   - setupDropZone                         → ./drop-zone-helpers.js
  *   - setupKeyboardShortcuts                → ./keyboard-helpers.js
  *   - _safeFit                              → ./terminal-factory.js
- *   - createSelect                          → ./flow-modal-helpers.js (private)
+ *   - createSelect                          → ./flow-modal-helpers.js
  *   - positionInViewport                    → ./context-menu.js (private)
  */
 import { onClickStopped } from './event-helpers.js';

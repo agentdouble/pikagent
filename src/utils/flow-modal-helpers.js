@@ -6,7 +6,7 @@ import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
  * @param {{ options: Record<string, string>, value?: string, className?: string, onChange?: (e: Event) => void }} opts
  * @returns {HTMLSelectElement}
  */
-function createSelect({ options, value, className, onChange } = {}) {
+export function createSelect({ options, value, className, onChange } = {}) {
   const select = _el('select', { className: className || '' });
   for (const [val, label] of Object.entries(options)) {
     select.appendChild(_el('option', { value: val, textContent: label }));
@@ -33,8 +33,8 @@ export const SKIP_PERM_CONFIG = {
 
 // --- Pure helpers ---
 
-export function _vis(el, show) {
-  el.style.display = show ? 'flex' : 'none';
+export function _vis(el, show, displayValue = 'flex') {
+  el.style.display = show ? displayValue : 'none';
 }
 
 /**
