@@ -5,6 +5,45 @@
  * Pure DOM helper — no component dependencies.
  */
 
+/**
+ * Attach a mousedown handler that captures initial state and starts a
+ * `trackMouse` session.  Centralises the recurring boilerplate:
+ *
+ *   element.addEventListener('mousedown', …) → preventDefault / stopPropagation
+ *     → onStart(e) → trackMouse(cursor, onMove, onEnd)
+ *
+ * @param {HTMLElement} element  — element to listen on
+ * @param {object}      opts
+ * @param {(e: MouseEvent) => any}              [opts.onStart]  — called on mousedown; return value is
+ *        forwarded to onMove / onEnd as `ctx`.  Return `false` to abort the drag.
+ * @param {(e: MouseEvent, ctx: any) => void}   [opts.onMove]   — called on mousemove (RAF-throttled)
+ * @param {(ctx: any) => void}                  [opts.onEnd]    — called on mouseup after cleanup
+ * @param {string}                              [opts.cursor='col-resize'] — CSS cursor during drag
+ * @param {boolean}                             [opts.stopPropagation=true] — call stopPropagation on mousedown
+ * @param {string}                              [opts.bodyClass] — body class during drag (forwarded to trackMouse)
+ */
+export function setupDragHandler(element, {
+  onStart,
+  onMove,
+  onEnd,
+  cursor = 'col-resize',
+  stopPropagation = true,
+  bodyClass,
+} = {}) {
+  element.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    if (stopPropagation) e.stopPropagation();
+    const ctx = onStart?.(e);
+    if (ctx === false) return;
+    trackMouse(
+      cursor,
+      (ev) => onMove?.(ev, ctx),
+      () => onEnd?.(ctx),
+      bodyClass != null ? { bodyClass } : undefined,
+    );
+  });
+}
+
 /** Set cursor and disable text selection on document.body during a drag. */
 export function setDragBodyState(cursor) {
   document.body.style.cursor = cursor;

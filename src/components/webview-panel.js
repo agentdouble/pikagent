@@ -1,6 +1,6 @@
 import { _el } from '../utils/dom.js';
 import { setupKeyboardShortcuts } from '../utils/keyboard-helpers.js';
-import { trackMouse } from '../utils/drag-helpers.js';
+import { setupDragHandler } from '../utils/drag-helpers.js';
 import {
   MAX_LOGS,
   WEBVIEW_NAV_ACTIONS,
@@ -178,17 +178,11 @@ export class WebviewInstance {
   }
 
   _setupConsoleResize() {
-    let startY = 0;
-    let startHeight = 0;
-
-    this._consoleHandle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      startY = e.clientY;
-      startHeight = this._consolePanel.getBoundingClientRect().height;
-      trackMouse('row-resize',
-        (ev) => { this._consolePanel.style.height = `${clampConsoleHeight(startHeight, startY - ev.clientY)}px`; },
-        () => {},
-      );
+    setupDragHandler(this._consoleHandle, {
+      cursor: 'row-resize',
+      stopPropagation: false,
+      onStart: (e) => ({ startY: e.clientY, startHeight: this._consolePanel.getBoundingClientRect().height }),
+      onMove: (ev, ctx) => { this._consolePanel.style.height = `${clampConsoleHeight(ctx.startHeight, ctx.startY - ev.clientY)}px`; },
     });
   }
 

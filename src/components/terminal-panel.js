@@ -1,6 +1,6 @@
 import { bus, EVENTS } from '../utils/events.js';
 import { _el } from '../utils/dom.js';
-import { trackMouse } from '../utils/drag-helpers.js';
+import { setupDragHandler } from '../utils/drag-helpers.js';
 import {
   SplitNode, RESIZE_CURSOR,
   isSameDirectionSplit, createSplitContainer, equalizeChildren, doResize,
@@ -115,27 +115,25 @@ export class TerminalPanel {
   // ===== Drag & Drop =====
 
   setupDrag(handle, sourceNode) {
-    handle.addEventListener('mousedown', (e) => {
-      if (this.terminals.size < 2) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      this._dragSourceId = sourceNode.terminal.id;
-      sourceNode.element.classList.add('dragging');
-      this._drop.create();
-
-      trackMouse('grabbing',
-        (ev) => this._drop.update(ev.clientX, ev.clientY, this.terminals, this._dragSourceId),
-        () => {
-          sourceNode.element.classList.remove('dragging');
-          const { targetId, side } = this._drop;
-          this._drop.remove();
-          if (targetId && side && targetId !== this._dragSourceId) {
-            this.moveTerminal(this._dragSourceId, targetId, side);
-          }
-          this._dragSourceId = null;
-        },
-      );
+    setupDragHandler(handle, {
+      cursor: 'grabbing',
+      bodyClass: 'dragging',
+      onStart: () => {
+        if (this.terminals.size < 2) return false;
+        this._dragSourceId = sourceNode.terminal.id;
+        sourceNode.element.classList.add('dragging');
+        this._drop.create();
+      },
+      onMove: (ev) => this._drop.update(ev.clientX, ev.clientY, this.terminals, this._dragSourceId),
+      onEnd: () => {
+        sourceNode.element.classList.remove('dragging');
+        const { targetId, side } = this._drop;
+        this._drop.remove();
+        if (targetId && side && targetId !== this._dragSourceId) {
+          this.moveTerminal(this._dragSourceId, targetId, side);
+        }
+        this._dragSourceId = null;
+      },
     });
   }
 
@@ -184,13 +182,12 @@ export class TerminalPanel {
   }
 
   setupResizeHandle(handle, splitEl, direction) {
-    handle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      trackMouse(RESIZE_CURSOR[direction],
-        (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
-        /** @fires layout:changed {undefined} — resize complete */
-        () => bus.emit(EVENTS.LAYOUT_CHANGED),
-      );
+    setupDragHandler(handle, {
+      cursor: RESIZE_CURSOR[direction],
+      stopPropagation: false,
+      onMove: (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
+      /** @fires layout:changed {undefined} — resize complete */
+      onEnd: () => bus.emit(EVENTS.LAYOUT_CHANGED),
     });
   }
 
