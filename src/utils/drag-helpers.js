@@ -109,13 +109,14 @@ export function addListener(target, type, handler, options) {
  *   onEnd?: (ctx: unknown) => void,
  *   guard?: (e: MouseEvent) => boolean,
  *   stopPropagation?: boolean,
+ *   preventDefault?: boolean,
  *   bodyClass?: string
  * }} opts
  */
-export function setupDragHandler(element, { cursor = 'default', onStart, onMove, onEnd, guard, stopPropagation = false, bodyClass = 'resizing' }) {
+export function setupDragHandler(element, { cursor = 'default', onStart, onMove, onEnd, guard, stopPropagation = false, preventDefault = true, bodyClass = 'resizing' }) {
   element.addEventListener('mousedown', (e) => {
     if (guard && !guard(e)) return;
-    e.preventDefault();
+    if (preventDefault) e.preventDefault();
     if (stopPropagation) e.stopPropagation();
     const ctx = onStart ? onStart(e) : undefined;
     trackMouse(cursor,
