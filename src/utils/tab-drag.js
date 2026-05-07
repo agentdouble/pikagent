@@ -9,7 +9,7 @@
  */
 
 import { DRAG_THRESHOLD } from './tab-constants.js';
-import { trackMouse, trackMouseDrag, computeInsertionIndex, setupSimpleDragState } from './drag-helpers.js';
+import { trackMouse, computeInsertionIndex, setupSimpleDragState, setupDragHandler } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
@@ -196,25 +196,11 @@ function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
 }
 
 /**
- * Install threshold listeners that wait for a minimum drag distance
- * before activating the full drag phase.
- * @internal
- */
-function installThresholdListeners(deps, tabEl, tabId, state, ctx) {
-  const cancel = trackMouseDrag({
-    cursor: '',
-    bodyClass: '',
-    onMove: (ev) => {
-      if (Math.abs(ev.clientX - ctx.startX) <= DRAG_THRESHOLD) return;
-      cancel();
-      activateDrag(deps, tabEl, tabId, state, ctx, ev);
-    },
-    onUp: () => {},
-  });
-}
-
-/**
  * Wire drag-to-reorder behaviour on a single tab element.
+ *
+ * Uses setupDragHandler for the initial mousedown capture with a lightweight
+ * threshold phase (empty cursor / bodyClass).  Once the drag distance exceeds
+ * DRAG_THRESHOLD the full drag is activated via activateDrag / trackMouse.
  *
  * @param {TabDragDeps} deps  — explicit dependency interface
  * @param {HTMLElement} tabEl — the tab DOM element
@@ -222,13 +208,22 @@ function installThresholdListeners(deps, tabEl, tabId, state, ctx) {
  */
 export function setupTabDrag(deps, tabEl, tabId) {
   const state = initDragState();
-  const ctx = { startX: 0, ghost: null, offsetX: 0 };
 
-  tabEl.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    ctx.startX = e.clientX;
-    const rect = tabEl.getBoundingClientRect();
-    ctx.offsetX = e.clientX - rect.left;
-    installThresholdListeners(deps, tabEl, tabId, state, ctx);
+  setupDragHandler(tabEl, {
+    cursor: '',
+    bodyClass: '',
+    preventDefault: false,
+    guard: (e) => e.button === 0,
+    onStart: (e) => {
+      const rect = tabEl.getBoundingClientRect();
+      return { startX: e.clientX, ghost: null, offsetX: e.clientX - rect.left, activated: false };
+    },
+    onMove: (ev, ctx) => {
+      if (ctx.activated) return;
+      if (Math.abs(ev.clientX - ctx.startX) <= DRAG_THRESHOLD) return;
+      ctx.activated = true;
+      activateDrag(deps, tabEl, tabId, state, ctx, ev);
+    },
+    onEnd: () => { /* threshold phase ended without activation — nothing to clean up */ },
   });
 }
