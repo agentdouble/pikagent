@@ -8,6 +8,7 @@
 
 import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
 import { _el } from './git-dom.js';
+import { gitFlowStep } from './git-flow-helpers.js';
 
 /**
  * Parse a remote URL (HTTPS or SSH) into { host, owner, repo }.
@@ -163,11 +164,8 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
   );
   if (!ok) return;
 
-  const push = await api.pushBranch({ cwd, branch });
-  if (!push?.ok) {
-    await showErrorAlert('Push failed: ', push?.error);
-    return;
-  }
+  const push = await gitFlowStep(() => api.pushBranch({ cwd, branch }), 'Push failed: ');
+  if (!push) return;
 
   await api.openExternal(url);
 }
