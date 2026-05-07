@@ -11,7 +11,7 @@ import {
   listenForChanges, startWatch, stopWatch,
 } from '../utils/file-tree-subsystem.js';
 import { rebuildSectionDOM } from '../utils/file-tree-section-dom.js';
-import { fsApi, shellApi, clipboardApi } from '../utils/file-tree-api.js';
+import { fsApi, shellApi, clipboardApi } from '../utils/file-tree-services.js';
 
 export class FileTree extends ComponentBase {
   constructor(container) {
