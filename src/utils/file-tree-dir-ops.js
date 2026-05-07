@@ -17,7 +17,7 @@ import { rebuildSectionDOM } from './file-tree-section-dom.js';
 /**
  * Expand a directory in the tree.
  */
-export async function expandDir(dirPath, childContainer, chevron, depth, expandedDirs, renderDirFn) {
+async function expandDir(dirPath, childContainer, chevron, depth, expandedDirs, renderDirFn) {
   expandedDirs.add(dirPath);
   chevron.textContent = CHEVRON_EXPANDED;
   chevron.classList.add('expanded');
@@ -27,7 +27,7 @@ export async function expandDir(dirPath, childContainer, chevron, depth, expande
 /**
  * Collapse a directory in the tree.
  */
-export function collapseDir(dirPath, childContainer, chevron, expandedDirs) {
+function collapseDir(dirPath, childContainer, chevron, expandedDirs) {
   expandedDirs.delete(dirPath);
   childContainer.replaceChildren();
   chevron.textContent = CHEVRON_COLLAPSED;
@@ -39,7 +39,7 @@ export function collapseDir(dirPath, childContainer, chevron, expandedDirs) {
  * @param {object} ft - FileTree instance
  * @param {Set<string>} expandedDirs
  */
-export function getDirEntryCallbacks(ft, expandedDirs) {
+function getDirEntryCallbacks(ft, expandedDirs) {
   return {
     setupDropZone: (el, targetDir) => ft._setupDropZone(el, targetDir),
     expandDir: (dirPath, childContainer, chevron, depth, eDirs) =>
@@ -59,14 +59,14 @@ export function getDirEntryCallbacks(ft, expandedDirs) {
 /**
  * Render a single directory entry.
  */
-export async function renderDirEntryWrap(ft, entry, parentEl, depth, expandedDirs) {
+async function renderDirEntryWrap(ft, entry, parentEl, depth, expandedDirs) {
   await renderDirEntry(entry, parentEl, depth, expandedDirs, getDirEntryCallbacks(ft, expandedDirs));
 }
 
 /**
  * Render a single file entry.
  */
-export function renderFileEntryWrap(ft, entry, parentEl, depth) {
+function renderFileEntryWrap(ft, entry, parentEl, depth) {
   const activeRowRef = {
     get current() { return ft._activeRow; },
     set current(v) { ft._activeRow = v; },
@@ -128,7 +128,7 @@ export function removeTerminal(ft, termId, fsUnwatch) {
 /**
  * Remove a terminal from its section, and cleanup if section is empty.
  */
-export function removeTermFromSection(ft, termId, cwd, fsUnwatch) {
+function removeTermFromSection(ft, termId, cwd, fsUnwatch) {
   const section = ft.sections.get(cwd);
   if (!section) return;
 
