@@ -5,9 +5,7 @@ import { ComponentBase } from '../utils/component-base.js';
 import {
   renderHeader, renderSkillList, renderEditorContent, renderEditorEmpty, updateDirtyBadge,
 } from '../utils/skills-view-renderer.js';
-import skillsApi from '../services/skills-api.js';
-import shellApi from '../services/shell-api.js';
-import dialogApi from '../services/dialog-api.js';
+import { skillsApi, shellApi, dialogApi } from '../utils/skills-api-facade.js';
 
 export class SkillsView extends ComponentBase {
   constructor(container) {
