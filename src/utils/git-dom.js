@@ -5,4 +5,4 @@
  * DOM primitives through this facade instead of reaching into the core dom.js
  * hub directly.  This reduces dom.js fan-in.
  */
-export { _el, createActionButton } from './dom.js';
+export { _el, createActionButton, _vis } from './dom.js';

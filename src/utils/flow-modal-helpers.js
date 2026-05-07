@@ -1,4 +1,5 @@
 import { _el } from './flow-dom.js';
+import { _vis as _visGeneric } from './dom.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
 import { AGENT_OPTIONS } from '../../shared/agent-registry.js';
 
@@ -30,8 +31,9 @@ export const SKIP_PERM_CONFIG = {
 
 // --- Pure helpers ---
 
+/** Flow-specific visibility toggle (uses 'flex' display). */
 export function _vis(el, show) {
-  el.style.display = show ? 'flex' : 'none';
+  _visGeneric(el, show, 'flex');
 }
 
 /**
