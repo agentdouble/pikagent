@@ -27,9 +27,7 @@ import {
   toggleNoShortcut as doToggleNoShortcut,
   buildPrApi, buildWorktreeApi, buildViewStore,
 } from '../utils/tab-facade.js';
-import gitApi from '../services/git-api.js';
-import fsApi from '../services/fs-api.js';
-import configApi from '../services/config-api.js';
+import { gitApi, fsApi, configApi } from '../utils/tab-services.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
