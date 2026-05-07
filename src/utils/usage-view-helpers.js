@@ -77,6 +77,25 @@ export function createSection(title) {
 
 // --- Tab configurations ---
 
+/**
+ * Factory that builds the common { cards, chart, tables } shape shared by
+ * run-based tabs (agents and flows).
+ *
+ * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
+ * @param {object}   options
+ * @param {Array}    options.cards    Four card descriptors (label/value/cls/sub).
+ * @param {string}   options.chartTitle  Title displayed above the chart.
+ * @param {Array}    options.tables   One or more table descriptors.
+ * @returns {{ cards: Array, chart: object, tables: Array }}
+ */
+function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {
+  return {
+    cards,
+    chart: { title: chartTitle, data: m.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
+    tables,
+  };
+}
+
 export function getTabConfig(tabId, metrics) {
   const builders = { agents: _agentTabConfig, tokens: _tokenTabConfig, flows: _flowTabConfig };
   return builders[tabId]?.(metrics);
@@ -85,14 +104,14 @@ export function getTabConfig(tabId, metrics) {
 function _agentTabConfig(metrics) {
   const m = metrics.agent;
   const maxFileCount = metrics.mostModifiedFiles[0]?.count || 1;
-  return {
+  return _createRunBasedTabConfig(m, {
     cards: [
       { label: 'Sessions', value: m.totalSessions, cls: '' },
       { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
       { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
       { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
     ],
-    chart: { title: 'Sessions par jour', data: m.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
+    chartTitle: 'Sessions par jour',
     tables: [
       {
         title: 'Par agent',
@@ -119,7 +138,7 @@ function _agentTabConfig(metrics) {
         ]),
       },
     ],
-  };
+  });
 }
 
 function _tokenTabConfig(metrics) {
@@ -162,14 +181,14 @@ function _flowTabConfig(metrics) {
   if (f.totalFlows === 0) {
     return { empty: ['Aucun flow configuré', 'Créez des flows depuis la vue FLOW'] };
   }
-  return {
+  return _createRunBasedTabConfig(f, {
     cards: [
       { label: 'Total Runs', value: f.rate.total, cls: '' },
       { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
       { label: 'Taux succès', value: `${f.rate.rate}%`, cls: rateCls(f.rate.rate) },
       { label: 'Durée moy.', value: formatDuration(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${formatDuration(f.duration.min)} · max: ${formatDuration(f.duration.max)}` : '' },
     ],
-    chart: { title: 'Runs par jour', data: f.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
+    chartTitle: 'Runs par jour',
     tables: [
       {
         title: 'Par flow',
@@ -193,5 +212,5 @@ function _flowTabConfig(metrics) {
         ]),
       },
     ],
-  };
+  });
 }
