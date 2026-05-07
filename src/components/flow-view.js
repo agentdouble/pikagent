@@ -1,15 +1,13 @@
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import {
-  EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
-  getFlowsForCategory, getUncategorizedFlows,
-  removeFlowFromOrder, moveFlowInOrder,
-  createCategoryGroup, createFlowCard,
-  _el, buildDomainButtonBar,
-} from '../utils/flow-view-subsystem.js';
+import { moveFlowInOrder } from '../utils/flow-view-subsystem.js';
 import {
   addCategory, renameCategoryInline, deleteCategory,
 } from '../utils/flow-view-categories.js';
+import {
+  renderFlowViewShell, buildGroupParams, buildFlowCard,
+  renderFlowList, handleOpenModal, deleteFlow,
+} from '../utils/flow-view-rendering.js';
 import flowApi from '../services/flow-api.js';
 
 
@@ -31,8 +29,6 @@ export class FlowView extends ComponentBase {
     this._expandedCards = new Set();
     this._collapsedCategories = new Set();
     this._runningMap = {};
-
-    // Drag state (shared mutable object for use with setupCardDrag)
     this._drag = { flowId: null, catId: null };
   }
 
@@ -42,7 +38,6 @@ export class FlowView extends ComponentBase {
       this._expandedCards.add(flowId);
       this.refresh();
     }));
-
     this._track(flowApi.onRunComplete(({ flowId }) => {
       this._termManager.disposeLiveTerminal(flowId);
       delete this._runningMap[flowId];
@@ -52,9 +47,7 @@ export class FlowView extends ComponentBase {
 
   async _initRunning() {
     this._runningMap = await flowApi.getRunning();
-    for (const flowId of Object.keys(this._runningMap)) {
-      this._expandedCards.add(flowId);
-    }
+    for (const flowId of Object.keys(this._runningMap)) this._expandedCards.add(flowId);
     await this.refresh();
   }
 
@@ -65,183 +58,84 @@ export class FlowView extends ComponentBase {
     this._renderList();
   }
 
-  async _persistCategories() {
-    await flowApi.saveCategories(this.catData);
-  }
-
-  // --- Category helpers ---
+  async _persistCategories() { await flowApi.saveCategories(this.catData); }
 
   _moveFlowToCategory(flowId, targetCatId, insertIndex = -1) {
     moveFlowInOrder(this.catData.order, flowId, targetCatId, insertIndex);
     this._persistCategories();
   }
 
-  // --- Rendering ---
-
   render() {
-    this.container.replaceChildren();
-
-    const wrapper = _el('div', 'flow-container');
-
-    const header = _el('div', 'flow-header');
-    header.appendChild(_el('h2', 'flow-title', 'Flows'));
-
-    const headerHandlers = { addCategory: () => this._addCategory(), addFlow: () => this._openModal() };
-    const headerRight = buildDomainButtonBar('flow-add-btn', 'flow-header-right', HEADER_BUTTONS, headerHandlers);
-    headerRight.style.display = 'flex';
-    headerRight.style.gap = '8px';
-
-    header.appendChild(headerRight);
-    wrapper.appendChild(header);
-
-    this.listEl = _el('div', 'flow-list');
-    wrapper.appendChild(this.listEl);
-
-    this.container.appendChild(wrapper);
+    const { listEl } = renderFlowViewShell(this.container, {
+      onAddCategory: () => this._addCategory(),
+      onAddFlow: () => this._openModal(),
+    });
+    this.listEl = listEl;
   }
 
-  /** Build the shared groupParams object for a category section. */
   _buildGroupParams(cat, flows, isUncat = false) {
-    return {
-      cat,
-      flows,
-      isUncategorized: isUncat,
+    return buildGroupParams({
+      cat, flows, isUncat,
       collapsedCategories: this._collapsedCategories,
       createCard: (flow, catId) => this._createCard(flow, catId),
       onToggleCollapse: (catId) => this._toggleCollapse(catId),
       onRenameCategory: (catId, nameEl) => this._renameCategoryInline(catId, nameEl),
       onDeleteCategory: (catId) => this._deleteCategory(catId),
-      onDropFlow: (flowId, catId, insertIndex) => {
-        this._moveFlowToCategory(flowId, catId, insertIndex);
-        this._renderList();
-      },
+      onDropFlow: (flowId, catId, insertIndex) => { this._moveFlowToCategory(flowId, catId, insertIndex); this._renderList(); },
       dragState: {
         getDragFlowId: () => this._drag.flowId,
         clearDrag: () => { this._drag.flowId = null; this._drag.catId = null; },
       },
-    };
-  }
-
-  /** Render named category groups into the list element. */
-  _renderCategorizedGroups() {
-    for (const cat of this.catData.categories) {
-      const flows = getFlowsForCategory(this.flows, this.catData.order, cat.id);
-      this.listEl.appendChild(createCategoryGroup(this._buildGroupParams(cat, flows)));
-    }
-  }
-
-  /** Render the uncategorized section into the list element. */
-  _renderUncategorizedSection(uncatFlows, hasCats) {
-    if (uncatFlows.length === 0 && !hasCats) return;
-    if (hasCats) {
-      this.listEl.appendChild(createCategoryGroup(
-        this._buildGroupParams({ id: UNCATEGORIZED, name: 'Sans catégorie' }, uncatFlows, true)
-      ));
-    } else {
-      for (const flow of uncatFlows) {
-        this.listEl.appendChild(this._createCard(flow, UNCATEGORIZED));
-      }
-    }
+    });
   }
 
   _renderList() {
-    if (!this.listEl) return;
-
-    this._termManager.cleanupStaleLiveTerminals(this._runningMap);
-    this._termManager.disposeAllLogTerminals();
-
-    this.listEl.replaceChildren();
-
-    const hasCats = this.catData.categories.length > 0;
-    const uncatFlows = getUncategorizedFlows(this.flows, this.catData.order);
-
-    if (this.flows.length === 0 && !hasCats) {
-      this.listEl.appendChild(_el('div', 'flow-empty', EMPTY_LIST_MESSAGE));
-      return;
-    }
-
-    this._renderCategorizedGroups();
-    this._renderUncategorizedSection(uncatFlows, hasCats);
+    renderFlowList({
+      listEl: this.listEl, flows: this.flows, catData: this.catData,
+      termManager: this._termManager, runningMap: this._runningMap,
+      buildParams: (cat, flows, isUncat) => this._buildGroupParams(cat, flows, isUncat),
+      createCard: (flow, catId) => this._createCard(flow, catId),
+    });
   }
 
   _toggleCollapse(catId) {
-    if (this._collapsedCategories.has(catId)) {
-      this._collapsedCategories.delete(catId);
-    } else {
-      this._collapsedCategories.add(catId);
-    }
+    if (this._collapsedCategories.has(catId)) this._collapsedCategories.delete(catId);
+    else this._collapsedCategories.add(catId);
     this._renderList();
   }
 
   _createCard(flow, catId) {
-    return createFlowCard({
-      runningMap: this._runningMap,
-      expandedCards: this._expandedCards,
-      drag: this._drag,
-      termManager: this._termManager,
+    return buildFlowCard({
+      runningMap: this._runningMap, expandedCards: this._expandedCards,
+      drag: this._drag, termManager: this._termManager,
       onRenderList: () => this._renderList(),
-      onShowLog: (f, run) => this._termManager.showRunLog(f, run),
-      onRun: (flowId) => flowApi.runNow(flowId),
-      onToggle: (flowId) => flowApi.toggle(flowId),
+      onRun: (fId) => flowApi.runNow(fId),
+      onToggle: (fId) => flowApi.toggle(fId),
       onRefresh: () => this.refresh(),
       onOpenModal: (f) => this._openModal(f),
       onDeleteFlow: (id) => this._deleteFlow(id),
     }, flow, catId);
   }
 
-
   async _deleteFlow(flowId) {
-    this._termManager.disposeLiveTerminal(flowId);
-    removeFlowFromOrder(this.catData.order, flowId);
-    await this._persistCategories();
-    await flowApi.deleteFlow(flowId);
-    this.refresh();
+    await deleteFlow({
+      termManager: this._termManager, catDataOrder: this.catData.order,
+      persistCategories: () => this._persistCategories(), refresh: () => this.refresh(),
+    }, flowId, flowApi);
   }
 
-  // --- Category management (delegated) ---
-
-  _addCategory() {
-    return addCategory(this.catData, () => this._persistCategories(), () => this._renderList());
-  }
-
-  _renameCategoryInline(catId, nameEl) {
-    renameCategoryInline(this.catData, catId, nameEl, () => this._persistCategories(), () => this._renderList());
-  }
-
-  _deleteCategory(catId) {
-    return deleteCategory(this.catData, catId, () => this._persistCategories(), () => this._renderList());
-  }
-
-  // ===== Creation / Edit Modal =====
+  _addCategory() { return addCategory(this.catData, () => this._persistCategories(), () => this._renderList()); }
+  _renameCategoryInline(catId, nameEl) { renameCategoryInline(this.catData, catId, nameEl, () => this._persistCategories(), () => this._renderList()); }
+  _deleteCategory(catId) { return deleteCategory(this.catData, catId, () => this._persistCategories(), () => this._renderList()); }
 
   async _openModal(existing = null) {
-    const openFlowModal = getComponent('openFlowModal');
-    const flow = await openFlowModal(existing, this.catData.categories);
-    if (flow) {
-      const catId = flow._category;
-      delete flow._category;
-
-      await flowApi.save(flow);
-
-      if (catId) {
-        this._moveFlowToCategory(flow.id, catId);
-      } else if (!existing) {
-        if (!this.catData.order[UNCATEGORIZED]) this.catData.order[UNCATEGORIZED] = [];
-        const allOrdered = new Set(Object.values(this.catData.order).flat());
-        if (!allOrdered.has(flow.id)) {
-          this.catData.order[UNCATEGORIZED].push(flow.id);
-          await this._persistCategories();
-        }
-      }
-
-      this.refresh();
-    }
+    await handleOpenModal(
+      { existing, catData: this.catData, moveFlowToCategory: (fId, cId) => this._moveFlowToCategory(fId, cId), persistCategories: () => this._persistCategories(), refresh: () => this.refresh() },
+      () => getComponent('openFlowModal'), flowApi,
+    );
   }
 
-  dispose() {
-    super.dispose();
-    this._termManager.disposeAll();
-  }
+  dispose() { super.dispose(); this._termManager.disposeAll(); }
 }
 
 registerComponent('FlowView', FlowView);

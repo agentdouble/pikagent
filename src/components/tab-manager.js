@@ -3,21 +3,11 @@ import {
   getComponent,
 } from '../utils/tab-manager-init.js';
 import {
-  renderWorkspace as doRenderWorkspace, reattachLayout,
-  capturePanelWidths, disposeAllTabs,
   serialize as doSerialize, restoreConfig as doRestoreConfig,
 } from '../utils/workspace-ops.js';
 import {
-  renderActivityBar, detachSidebarView, changeSidebarMode,
-  disposeSideView, disposeAllSideViews,
-} from '../utils/sidebar-manager.js';
-import {
-  inlineRenameTab,
-  renderTabBar as doRenderTabBar,
   isTabVisible,
-  createTab as doCreateTab, closeTab as doCloseTab,
   switchTo as doSwitchTo,
-  reorderEntries,
   setColorFilter as doSetColorFilter,
   toggleExcludeColor as doToggleExcludeColor,
   ensureVisibleTabActive as doEnsureVisibleTabActive,
@@ -27,6 +17,20 @@ import {
   toggleNoShortcut as doToggleNoShortcut,
   buildPrApi, buildWorktreeApi, buildViewStore,
 } from '../utils/tab-facade.js';
+import {
+  renderActivityBar as doRenderActivityBar,
+  setSidebarMode as doSetSidebarMode,
+  renderWorkspace as doRenderWorkspace,
+  buildSwitchToDeps,
+  disposeAllSideViews, disposeAllTabs,
+} from '../utils/tab-manager-sidebar.js';
+import {
+  renderTabBar as doRenderTabBar,
+  createTab as doCreateTab,
+  closeTab as doCloseTab,
+  reorderTab as doReorderTab,
+  renameTab as doRenameTab,
+} from '../utils/tab-manager-tab-ops.js';
 import { gitApi, fsApi, configApi } from '../utils/tab-services.js';
 
 export class TabManager {
@@ -40,32 +44,22 @@ export class TabManager {
 
   _initState() {
     this.tabs = new Map();
-    this.activeTabId = null;
-    this.defaultCwd = null;
-    this.onOpenSettings = null;
-    const ConfigManager = getComponent('ConfigManager');
-    this.configManager = new ConfigManager(this);
-    this.boardView = null;
-    this._boardContainerEl = null;
-    this.flowView = null;
-    this._flowContainerEl = null;
-    this.usageView = null;
-    this._usageContainerEl = null;
-    this.skillsView = null;
-    this._skillsContainerEl = null;
+    this.activeTabId = this.defaultCwd = this.onOpenSettings = null;
+    this.configManager = new (getComponent('ConfigManager'))(this);
+    this.boardView = this._boardContainerEl = null;
+    this.flowView = this._flowContainerEl = null;
+    this.usageView = this._usageContainerEl = null;
+    this.skillsView = this._skillsContainerEl = null;
     this.sidebarMode = 'work';
-    this.activeColorFilter = null; // null = show all, or a COLOR_GROUPS id
-    this.excludedColors = new Set(); // COLOR_GROUPS ids to hide
+    this.activeColorFilter = null;
+    this.excludedColors = new Set();
   }
 
-  _initApi() {
-    // Injected API methods for workspace-layout utils
-    this._api = { gitBranch: gitApi.branch };
-  }
-
+  _initApi() { this._api = { gitBranch: gitApi.branch }; }
   _prApi() { return buildPrApi(); }
   _worktreeApi() { return buildWorktreeApi(); }
   _viewStore() { return buildViewStore(this); }
+  _activeTab() { return this.tabs.get(this.activeTabId); }
 
   async init() {
     this.defaultCwd = await initTabManager({
@@ -76,74 +70,24 @@ export class TabManager {
       setDefaultCwd: (cwd) => { this.defaultCwd = cwd; },
       api: { homedir: fsApi.homedir, getDefault: configApi.getDefault, loadDefault: configApi.loadDefault },
     });
-
     this._busListeners = setupBusListeners({
       tabs: this.tabs,
       getActiveTabId: () => this.activeTabId,
       configManager: this.configManager,
       createTab: (name, cwd) => this.createTab(name, cwd),
       renderTabBar: () => this.renderTabBar(),
-      api: {
-        gitBranch: gitApi.branch,
-        worktree: this._worktreeApi(),
-        pr: this._prApi(),
-      },
+      api: { gitBranch: gitApi.branch, worktree: this._worktreeApi(), pr: this._prApi() },
     });
   }
 
-  _activeTab() {
-    return this.tabs.get(this.activeTabId);
-  }
+  // --- Sidebar & Workspace (delegated) ---
 
-  renderActivityBar() {
-    renderActivityBar({
-      sidebarMode: this.sidebarMode,
-      setSidebarMode: (mode) => this.setSidebarMode(mode),
-      onOpenSettings: this.onOpenSettings,
-    });
-  }
-
-  setSidebarMode(mode) {
-    if (mode === this.sidebarMode) return;
-
-    changeSidebarMode({
-      getActiveTab: () => this._activeTab(),
-      capturePanelWidths,
-      viewStore: this._viewStore(),
-      workspaceContainer: this.workspaceContainer,
-      reattachLayout,
-      renderWorkspace: (tab) => this.renderWorkspace(tab),
-      tabManager: this,
-      resolveComponent: getComponent,
-    }, this.sidebarMode, mode);
-    this.sidebarMode = mode;
-
-    this.renderActivityBar();
-  }
-
+  renderActivityBar() { doRenderActivityBar(this); }
+  setSidebarMode(mode) { doSetSidebarMode(this, mode); }
   switchToBoard() { this.setSidebarMode('board'); }
+  async renderWorkspace(tab) { return doRenderWorkspace(this, tab, this._api); }
 
-  async renderWorkspace(tab) {
-    return doRenderWorkspace({
-      workspaceContainer: this.workspaceContainer,
-      getActiveTabId: () => this.activeTabId,
-      getActiveTab: () => this._activeTab(),
-      scheduleAutoSave: () => this.configManager.scheduleAutoSave(),
-    }, tab, this._api, {
-      FileTree: getComponent('FileTree'),
-      FileViewer: getComponent('FileViewer'),
-      TerminalPanel: getComponent('TerminalPanel'),
-      WebviewManager: getComponent('WebviewManager'),
-      GitChangesView: getComponent('GitChangesView'),
-    });
-  }
-
-  serialize() {
-    return doSerialize({
-      tabs: this.tabs,
-      activeTabId: this.activeTabId,
-    });
-  }
+  serialize() { return doSerialize({ tabs: this.tabs, activeTabId: this.activeTabId }); }
 
   async restoreConfig(config) {
     return doRestoreConfig({
@@ -159,134 +103,43 @@ export class TabManager {
 
   autoSave() { return this.configManager.autoSave(); }
 
-  createTab(name = null, cwd = null) {
-    return doCreateTab({
-      tabs: this.tabs,
-      defaultCwd: this.defaultCwd,
-      activeColorFilter: this.activeColorFilter,
-      renderTabBar: () => this.renderTabBar(),
-      configManager: this.configManager,
-    }, (id) => this.switchTo(id), name, cwd);
-  }
+  // --- Tab lifecycle (delegated) ---
 
-  closeTab(id) {
-    return doCloseTab({
-      tabs: this.tabs,
-      activeTabId: this.activeTabId,
-      renderTabBar: () => this.renderTabBar(),
-      configManager: this.configManager,
-    }, () => this.createTab(), (tabId) => this.switchTo(tabId), id);
-  }
+  createTab(name = null, cwd = null) { return doCreateTab(this, (id) => this.switchTo(id), name, cwd); }
+  closeTab(id) { return doCloseTab(this, () => this.createTab(), (tabId) => this.switchTo(tabId), id); }
 
-  switchTo(id) {
-    return doSwitchTo({
-      tabs: this.tabs,
-      getActiveTabId: () => this.activeTabId,
-      setActiveTabId: (newId) => { this.activeTabId = newId; },
-      getSidebarMode: () => this.sidebarMode,
-      setSidebarMode: (mode) => { this.sidebarMode = mode; },
-      workspaceContainer: this.workspaceContainer,
-      renderTabBar: () => this.renderTabBar(),
-      renderActivityBar: () => this.renderActivityBar(),
-      renderWorkspace: (tab) => this.renderWorkspace(tab),
-      detachSidebarView: (mode) => detachSidebarView({
-        getActiveTab: () => this._activeTab(),
-        capturePanelWidths,
-        viewStore: this._viewStore(),
-      }, mode),
-    }, id);
-  }
+  switchTo(id) { return doSwitchTo(buildSwitchToDeps(this), id); }
 
-  setColorFilter(colorGroupId) {
-    doSetColorFilter(this, colorGroupId, () => this.renderTabBar(), () => this._ensureVisibleTabActive());
-  }
+  renderTabBar() { this._tabElements = doRenderTabBar(this); }
+  reorderTab(fromId, toId, before) { doReorderTab(this, fromId, toId, before); }
+  renameTab(id, nameEl) { doRenameTab(this, id)(nameEl); }
 
-  toggleExcludeColor(colorGroupId) {
-    doToggleExcludeColor(this, colorGroupId, () => this.renderTabBar(), () => this._ensureVisibleTabActive());
-  }
+  // --- Color filters ---
 
-  _isTabVisible(tab) {
-    return isTabVisible(tab, this.activeColorFilter, this.excludedColors);
-  }
+  setColorFilter(cg) { doSetColorFilter(this, cg, () => this.renderTabBar(), () => this._ensureVisibleTabActive()); }
+  toggleExcludeColor(cg) { doToggleExcludeColor(this, cg, () => this.renderTabBar(), () => this._ensureVisibleTabActive()); }
+  _isTabVisible(tab) { return isTabVisible(tab, this.activeColorFilter, this.excludedColors); }
+  _ensureVisibleTabActive() { doEnsureVisibleTabActive(this.tabs, () => this._activeTab(), this.activeColorFilter, this.excludedColors, (id) => this.switchTo(id)); }
 
-  _ensureVisibleTabActive() {
-    doEnsureVisibleTabActive(this.tabs, () => this._activeTab(), this.activeColorFilter, this.excludedColors, (id) => this.switchTo(id));
-  }
+  setTabColorGroup(id, cg) { doSetTabColorGroup(this.tabs, id, cg, () => this.renderTabBar(), this.configManager); }
+  toggleNoShortcut(id) { doToggleNoShortcut(this.tabs, id, () => this.renderTabBar(), this.configManager); }
+  goToColorGroup(cg) { doGoToColorGroup(this.tabs, this.activeTabId, cg, (id) => this.switchTo(id)); }
 
-  renderTabBar() {
-    this._tabElements = doRenderTabBar({
-      tabBar: this.tabBar,
-      tabs: this.tabs,
-      activeTabId: this.activeTabId,
-      activeColorFilter: this.activeColorFilter,
-      excludedColors: this.excludedColors,
-      switchTo: (id) => this.switchTo(id),
-      closeTab: (id) => this.closeTab(id),
-      renameTab: (id, nameEl) => this.renameTab(id, nameEl),
-      setTabColorGroup: (id, cg) => this.setTabColorGroup(id, cg),
-      toggleNoShortcut: (id) => this.toggleNoShortcut(id),
-      setColorFilter: (id) => this.setColorFilter(id),
-      toggleExcludeColor: (id) => this.toggleExcludeColor(id),
-      clearColorFilters: () => { this.activeColorFilter = null; this.excludedColors.clear(); },
-      createTab: () => this.createTab(),
-      reorderTab: (fromId, toId, before) => this.reorderTab(fromId, toId, before),
-      isTabVisible: (tab) => this._isTabVisible(tab),
-      renderTabBar: () => this.renderTabBar(),
-    });
-  }
-
-  reorderTab(fromId, toId, before) {
-    if (fromId === toId) return;
-    this.tabs = new Map(reorderEntries(Array.from(this.tabs.entries()), fromId, toId, before));
-    this.renderTabBar();
-    this.configManager.scheduleAutoSave();
-  }
-
-  renameTab(id, nameEl) {
-    const tab = this.tabs.get(id);
-    inlineRenameTab(tab, nameEl,
-      () => { this.renderTabBar(); this.configManager.scheduleAutoSave(); },
-      () => this.renderTabBar(),
-    );
-  }
-
-  _disposeSideView(mode) { disposeSideView(this._viewStore(), mode); }
-  _disposeAllTabs() {
-    disposeAllTabs({ tabs: this.tabs, setActiveTabId: (id) => { this.activeTabId = id; } });
-  }
-
-  dispose() {
-    for (const unsub of this._busListeners) unsub();
-    this._busListeners = [];
-    disposeAllSideViews(this._viewStore());
-    this._disposeAllTabs();
-  }
-
-  setTabColorGroup(id, colorGroupId) {
-    doSetTabColorGroup(this.tabs, id, colorGroupId, () => this.renderTabBar(), this.configManager);
-  }
-
-  goToColorGroup(colorGroupId) {
-    doGoToColorGroup(this.tabs, this.activeTabId, colorGroupId, (id) => this.switchTo(id));
-  }
-
-  toggleNoShortcut(id) {
-    doToggleNoShortcut(this.tabs, id, () => this.renderTabBar(), this.configManager);
-  }
+  // --- Navigation ---
 
   isActiveNoShortcut() { return this._activeTab()?.noShortcut ?? false; }
   splitHorizontal() { this._activeTab()?.terminalPanel?.splitActive('horizontal'); }
   splitVertical() { this._activeTab()?.terminalPanel?.splitActive('vertical'); }
+  focusDirection(dir) { doFocusDirection(dir, this.sidebarMode, this.boardView, () => this._activeTab()); }
+  nextTab() { doNextTab(this.tabs, this.activeTabId, (id) => this.switchTo(id)); }
+  prevTab() { doPrevTab(this.tabs, this.activeTabId, (id) => this.switchTo(id)); }
 
-  focusDirection(direction) {
-    doFocusDirection(direction, this.sidebarMode, this.boardView, () => this._activeTab());
-  }
+  // --- Dispose ---
 
-  nextTab() {
-    doNextTab(this.tabs, this.activeTabId, (id) => this.switchTo(id));
-  }
-
-  prevTab() {
-    doPrevTab(this.tabs, this.activeTabId, (id) => this.switchTo(id));
+  dispose() {
+    for (const unsub of this._busListeners) unsub();
+    this._busListeners = [];
+    disposeAllSideViews(this);
+    disposeAllTabs(this);
   }
 }

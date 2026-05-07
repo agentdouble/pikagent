@@ -113,15 +113,25 @@ describe('DI: workspace-layout renderWorkspace signature', () => {
 
 describe('DI: tab-manager caller passes explicit deps to renderWorkspace', () => {
   it('renderWorkspace call in tab-manager passes explicit deps object and this._api', () => {
-    const src = fs.readFileSync(
-      path.resolve(__dirname, '../../src/components/tab-manager.js'),
+    // The deps-building for renderWorkspace was extracted from tab-manager.js
+    // into tab-manager-sidebar.js.  The DI pattern is preserved there:
+    // doRenderWorkspace({ workspaceContainer: ... }, tab, api, { ... })
+    const sidebarSrc = fs.readFileSync(
+      path.resolve(__dirname, '../../src/utils/tab-manager-sidebar.js'),
       'utf-8',
     );
 
-    // Verify the caller passes an explicit deps object (not `this`)
-    expect(src).toContain('doRenderWorkspace({');
-    expect(src).toContain('this._api');
-    // Should NOT pass `this` as first argument
-    expect(src).not.toMatch(/doRenderWorkspace\(this,/);
+    // Verify the extracted module passes an explicit deps object (not `this`)
+    expect(sidebarSrc).toContain('doRenderWorkspace({');
+    // Should NOT pass `this` or `tm` as first argument
+    expect(sidebarSrc).not.toMatch(/doRenderWorkspace\(tm,/);
+    expect(sidebarSrc).not.toMatch(/doRenderWorkspace\(this,/);
+
+    // Verify tab-manager.js delegates to the sidebar module and passes this._api
+    const tmSrc = fs.readFileSync(
+      path.resolve(__dirname, '../../src/components/tab-manager.js'),
+      'utf-8',
+    );
+    expect(tmSrc).toContain('this._api');
   });
 });
