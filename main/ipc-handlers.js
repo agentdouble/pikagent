@@ -1,10 +1,9 @@
 const { ipcMain } = require('electron');
-const { registerManagerHandlers, safeSend, getRegisteredChannels } = require('./ipc-helpers');
+const { registerManagerHandlers, safeSend } = require('./ipc-helpers');
 const { createSafeHandler } = require('./safe-handler');
 
 /**
  * Channels with custom handlers (registered manually in `register()`).
- * Kept at module scope so `cleanup()` can reference them.
  */
 const CUSTOM_CHANNELS = ['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder'];
 
@@ -62,22 +61,4 @@ function register(getWindow, { targets, ptyManager, sessionManager }) {
   });
 }
 
-/**
- * Remove all IPC handlers registered by `register()`.
- *
- * Called during `before-quit` to ensure a clean shutdown and avoid
- * stale handler references.
- */
-function cleanup() {
-  // Remove custom handlers
-  for (const channel of CUSTOM_CHANNELS) {
-    ipcMain.removeHandler(channel);
-  }
-
-  // Remove declaratively registered handlers
-  for (const channel of getRegisteredChannels()) {
-    ipcMain.removeHandler(channel);
-  }
-}
-
-module.exports = { register, cleanup };
+module.exports = { register };
