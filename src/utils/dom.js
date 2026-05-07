@@ -2,7 +2,7 @@
  * Core DOM utilities.
  *
  * This module keeps only the essential DOM factories:
- *   _el, createActionButton, renderButtonBar, renderList
+ *   _el, _vis, createActionButton, renderButtonBar, renderList
  *
  * The following helpers have been extracted to dedicated modules — import
  * them directly from there instead of going through this file:
@@ -121,6 +121,16 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
  * @param {Array<unknown>} items
  * @param {(item: unknown, index: number) => HTMLElement|null} renderItem
  */
+/**
+ * Toggle element visibility by setting display style.
+ * @param {HTMLElement} el
+ * @param {boolean} show
+ * @param {string} [display=''] - Display value when visible (e.g. 'flex', 'block').
+ */
+export function _vis(el, show, display = '') {
+  el.style.display = show ? display : 'none';
+}
+
 export function renderList(container, items, renderItem) {
   container.replaceChildren();
   for (let i = 0; i < items.length; i++) {

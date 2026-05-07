@@ -99,10 +99,15 @@ function _setupCategoryDropZone(items, catId, onDropFlow, dragState) {
 
 // --- Drop indicator helpers ---
 
+/** Return all direct .flow-card children of the given container. */
+function _getFlowCards(container) {
+  return [...container.querySelectorAll(':scope > .flow-card')];
+}
+
 function _updateDropIndicator(container, clientY) {
   clearIndicators(container, '.flow-drop-indicator');
 
-  const cards = [...container.querySelectorAll(':scope > .flow-card')];
+  const cards = _getFlowCards(container);
   if (cards.length === 0) return;
 
   const idx = computeInsertionIndex(cards, clientY, 'y');
@@ -117,6 +122,5 @@ function _updateDropIndicator(container, clientY) {
 }
 
 function _getDropIndex(container, clientY) {
-  const cards = [...container.querySelectorAll(':scope > .flow-card')];
-  return computeInsertionIndex(cards, clientY, 'y');
+  return computeInsertionIndex(_getFlowCards(container), clientY, 'y');
 }

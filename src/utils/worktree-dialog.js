@@ -9,10 +9,11 @@
  * Returns a Promise<{ branch, createBranch, targetPath } | null>.
  */
 
-import { _el, createActionButton } from './git-dom.js';
+import { _el, createActionButton, _vis } from './git-dom.js';
 import { createDialogBase } from './dom-dialogs.js';
 import { onKeyAction } from './event-helpers.js';
 import { sanitizeSegment } from '../../shared/string-utils.js';
+import { buildSelect } from './form-helpers.js';
 
 /** Build the default target path for a worktree given the host repo cwd. */
 function defaultWorktreePath(repoCwd, branch) {
@@ -29,22 +30,21 @@ function buildBranchInput() {
 
 /** Build the base-branch <select> for "new branch" mode. */
 function buildBaseSelect(allBranches, currentBranch) {
-  const baseSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-  for (const b of allBranches) {
-    const opt = _el('option', null, b);
-    opt.value = b;
-    if (b === currentBranch) opt.selected = true;
-    baseSelect.appendChild(opt);
-  }
-  return baseSelect;
+  return buildSelect(allBranches, {
+    className: 'prompt-dialog-input worktree-dialog-select',
+    selected: currentBranch,
+  });
 }
 
 /** Build the existing-branch <select> for "existing branch" mode. */
 function buildExistingSelect(existingBranches) {
-  const existingSelect = _el('select', { className: 'prompt-dialog-input worktree-dialog-select' });
-  for (const b of existingBranches) existingSelect.appendChild(_el('option', null, b));
-  if (!existingBranches.length) existingSelect.appendChild(_el('option', { disabled: true }, 'No other branches'));
-  existingSelect.style.display = 'none';
+  const items = existingBranches.length
+    ? existingBranches
+    : [{ value: '', label: 'No other branches', disabled: true }];
+  const existingSelect = buildSelect(items, {
+    className: 'prompt-dialog-input worktree-dialog-select',
+  });
+  _vis(existingSelect, false);
   return existingSelect;
 }
 
@@ -72,10 +72,10 @@ function buildActionButtons(cancel, confirm) {
 /** Apply visibility for the given mode to the form elements. */
 function applyModeVisibility(mode, { newInput, baseSelect, baseLabel, existingSelect }) {
   const isNew = mode === 'new';
-  newInput.style.display = isNew ? '' : 'none';
-  baseSelect.style.display = isNew ? '' : 'none';
-  baseLabel.style.display = isNew ? '' : 'none';
-  existingSelect.style.display = isNew ? 'none' : '';
+  _vis(newInput, isNew);
+  _vis(baseSelect, isNew);
+  _vis(baseLabel, isNew);
+  _vis(existingSelect, !isNew);
   return isNew;
 }
 
