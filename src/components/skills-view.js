@@ -1,10 +1,13 @@
 import { _el } from '../utils/workspace-dom.js';
-import { showPromptDialog, showConfirmDialog } from '../utils/dom-dialogs.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 import {
   renderHeader, renderSkillList, renderEditorContent, renderEditorEmpty, updateDirtyBadge,
 } from '../utils/skills-view-renderer.js';
+import {
+  openRoot, configurePath, importSkill, createSkill,
+  deleteSkill, selectSkill, save,
+} from '../utils/skills-view-actions.js';
 import { skillsApi, shellApi, dialogApi } from '../utils/skills-services.js';
 
 export class SkillsView extends ComponentBase {
@@ -34,7 +37,6 @@ export class SkillsView extends ComponentBase {
 
   render() {
     this.el.replaceChildren();
-
     const { header, rootBadgeEl } = renderHeader(this.rootPath, {
       onConfigurePath: () => this._configurePath(),
       onOpenRoot: () => this._openRoot(),
@@ -51,7 +53,6 @@ export class SkillsView extends ComponentBase {
     body.appendChild(this.listEl);
     body.appendChild(this.editorEl);
     this.el.appendChild(body);
-
     this.refresh();
   }
 
@@ -67,14 +68,11 @@ export class SkillsView extends ComponentBase {
   async _renderEditor() {
     if (!this.editorEl) return;
     if (!this.selectedId) { renderEditorEmpty(this.editorEl); return; }
-
     const skill = this.skills.find((s) => s.id === this.selectedId);
     if (!skill) return;
-
     const content = await skillsApi.read(skill.path);
     this.editorValue = content ?? '';
     this.editorDirty = false;
-
     const { dirtyBadgeEl } = renderEditorContent(this.editorEl, skill, this.editorValue, {
       onSave: () => this._save(),
       onInput: (value) => this._onEditorInput(value),
@@ -84,107 +82,19 @@ export class SkillsView extends ComponentBase {
 
   _onEditorInput(value) {
     this.editorValue = value;
-    if (!this.editorDirty) {
-      this.editorDirty = true;
-      updateDirtyBadge(this._dirtyBadgeEl, true);
-    }
+    if (!this.editorDirty) { this.editorDirty = true; updateDirtyBadge(this._dirtyBadgeEl, true); }
   }
 
-  // --- Actions ---
+  // --- Actions (delegated) ---
+  async _openRoot() { await openRoot(this.rootPath, shellApi); }
+  async _configurePath() { await configurePath(this, { dialogApi, skillsApi }); }
+  async _importSkill() { await importSkill(this, { dialogApi, skillsApi }); }
+  async _createSkill() { await createSkill(this, skillsApi); }
+  async _deleteSkill(id) { await deleteSkill(this, id, skillsApi); }
+  async _selectSkill(id) { await selectSkill(this, id); }
+  async _save() { await save(this, skillsApi); }
 
-  async _openRoot() {
-    if (!this.rootPath) return;
-    await shellApi.openPath(this.rootPath);
-  }
-
-  async _configurePath() {
-    const picked = await dialogApi.openFolder();
-    if (!picked) return;
-    const res = await skillsApi.setRoot(picked);
-    if (res && res.success) {
-      this.rootPath = res.root;
-      this.selectedId = null;
-      this.editorDirty = false;
-      await this.refresh();
-    }
-  }
-
-  async _importSkill() {
-    const picked = await dialogApi.openFolder();
-    if (!picked) return;
-    const res = await skillsApi.importSkill(picked);
-    if (res && res.success) {
-      this.selectedId = res.id;
-      await this.refresh();
-    } else {
-      await showConfirmDialog(
-        `Import impossible : ${res?.error || 'erreur inconnue'}. Le dossier doit contenir un fichier SKILL.md.`,
-        { confirmLabel: 'OK', cancelLabel: 'Fermer' },
-      );
-    }
-  }
-
-  async _createSkill() {
-    const id = await showPromptDialog({
-      title: 'Nouveau skill',
-      placeholder: 'identifiant-du-skill',
-      confirmLabel: 'Créer',
-      cancelLabel: 'Annuler',
-    });
-    if (!id) return;
-    const description = await showPromptDialog({
-      title: 'Description',
-      placeholder: 'Quand activer ce skill ?',
-      confirmLabel: 'Créer',
-      cancelLabel: 'Annuler',
-    });
-    const res = await skillsApi.create({ id, description: description || '' });
-    if (res && res.success) {
-      this.selectedId = res.id;
-      await this.refresh();
-    }
-  }
-
-  async _deleteSkill(id) {
-    const ok = await showConfirmDialog(
-      `Supprimer le skill "${id}" ? Cette action est irréversible.`,
-      { confirmLabel: 'Supprimer', cancelLabel: 'Annuler' },
-    );
-    if (!ok) return;
-    await skillsApi.deleteSkill(id);
-    if (this.selectedId === id) this.selectedId = null;
-    await this.refresh();
-  }
-
-  async _selectSkill(id) {
-    if (this.editorDirty) {
-      const ok = await showConfirmDialog(
-        'Modifications non enregistrées. Abandonner les changements en cours ?',
-        { confirmLabel: 'Abandonner', cancelLabel: 'Rester' },
-      );
-      if (!ok) return;
-    }
-    this.selectedId = id;
-    this.editorDirty = false;
-    this._renderList();
-    await this._renderEditor();
-  }
-
-  async _save() {
-    const skill = this.skills.find((s) => s.id === this.selectedId);
-    if (!skill) return;
-    const res = await skillsApi.write(skill.path, this.editorValue);
-    if (res && res.success) {
-      this.editorDirty = false;
-      updateDirtyBadge(this._dirtyBadgeEl, false);
-      await this.refresh();
-    }
-  }
-
-  dispose() {
-    super.dispose();
-    this.el.remove();
-  }
+  dispose() { super.dispose(); this.el.remove(); }
 }
 
 registerComponent('SkillsView', SkillsView);
