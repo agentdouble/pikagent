@@ -50,8 +50,8 @@ function groupAndAggregate(items, keyFn, aggFn) {
  * Each element may be a plain string or an object with a `.key` property.
  *
  * @param {Array<string|{key: string}>} keys
- * @param {*} [defaultValue=0]
- * @returns {Record<string, *>}
+ * @param {number} [defaultValue=0]
+ * @returns {Record<string, number>}
  */
 function initializeCounters(keys, defaultValue = 0) {
   return Object.fromEntries(keys.map(k => [typeof k === 'string' ? k : k.key, defaultValue]));
@@ -89,8 +89,8 @@ function sumByKeys(obj, keys) {
  *
  * @param {Record<string, unknown>} source
  * @param {Array<{key: string, apiField: string}>} fieldMap
- * @param {*} [defaultValue=0]
- * @returns {Record<string, unknown>}
+ * @param {number} [defaultValue=0]
+ * @returns {Record<string, number>}
  */
 function mapFields(source, fieldMap, defaultValue = 0) {
   return Object.fromEntries(fieldMap.map(f => [f.key, source[f.apiField] || defaultValue]));
