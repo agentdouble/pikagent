@@ -32,8 +32,8 @@ export const UNCATEGORIZED = '_uncategorized';
 
 // --- Header button configuration ---
 export const HEADER_BUTTONS = [
-  { label: '+ Catégorie', action: 'addCategory' },
-  { label: '+ Nouveau', action: 'addFlow' },
+  { text: '+ Catégorie', action: 'addCategory' },
+  { text: '+ Nouveau', action: 'addFlow' },
 ];
 
 // --- Category action button configuration ---

@@ -24,7 +24,7 @@ export { createCategoryGroup } from './flow-category-renderer.js';
 export { createFlowCard } from './flow-card-setup.js';
 
 // ── flow-dom (DOM primitives for the flow domain) ───────────────────
-export { _el, renderButtonBar } from './flow-dom.js';
+export { _el, buildDomainButtonBar } from './flow-dom.js';
 
 // ── form-helpers (inline rename used by category management) ────────
 export { startInlineRename } from './form-helpers.js';

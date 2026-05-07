@@ -12,11 +12,7 @@
 import { _el, createActionButton } from './git-dom.js';
 import { createDialogBase } from './dom-dialogs.js';
 import { onKeyAction } from './event-helpers.js';
-
-/** Sanitize a branch name into a filesystem-safe segment. */
-function sanitizeSegment(name) {
-  return name.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-}
+import { sanitizeSegment } from '../../shared/string-utils.js';
 
 /** Build the default target path for a worktree given the host repo cwd. */
 function defaultWorktreePath(repoCwd, branch) {
