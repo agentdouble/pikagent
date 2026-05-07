@@ -31,7 +31,7 @@ import {
   reorderTab as doReorderTab,
   renameTab as doRenameTab,
 } from '../utils/tab-manager-tab-ops.js';
-import { gitApi, fsApi, configApi } from '../utils/tab-services.js';
+import { tabFacade } from '../utils/tab-services.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
@@ -55,7 +55,7 @@ export class TabManager {
     this.excludedColors = new Set();
   }
 
-  _initApi() { this._api = { gitBranch: gitApi.branch }; }
+  _initApi() { this._api = { gitBranch: tabFacade.gitBranch }; }
   _prApi() { return buildPrApi(); }
   _worktreeApi() { return buildWorktreeApi(); }
   _viewStore() { return buildViewStore(this); }
@@ -68,7 +68,7 @@ export class TabManager {
       restoreConfig: (config) => this.restoreConfig(config),
       createTab: (name) => this.createTab(name),
       setDefaultCwd: (cwd) => { this.defaultCwd = cwd; },
-      api: { homedir: fsApi.homedir, getDefault: configApi.getDefault, loadDefault: configApi.loadDefault },
+      api: { homedir: tabFacade.homedir, getDefault: tabFacade.getDefault, loadDefault: tabFacade.loadDefault },
     });
     this._busListeners = setupBusListeners({
       tabs: this.tabs,
@@ -76,7 +76,7 @@ export class TabManager {
       configManager: this.configManager,
       createTab: (name, cwd) => this.createTab(name, cwd),
       renderTabBar: () => this.renderTabBar(),
-      api: { gitBranch: gitApi.branch, worktree: this._worktreeApi(), pr: this._prApi() },
+      api: { gitBranch: tabFacade.gitBranch, worktree: this._worktreeApi(), pr: this._prApi() },
     });
   }
 
