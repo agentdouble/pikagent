@@ -8,8 +8,9 @@
  */
 
 import { showWorktreeDialog } from './worktree-dialog.js';
-import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
+import { showConfirmDialog } from './dom-dialogs.js';
 import { _el } from './git-dom.js';
+import { gitFlowStep } from './git-flow-helpers.js';
 
 /**
  * Branches to hide from the "existing branch" picker: those already checked
@@ -63,18 +64,17 @@ export async function createWorktreeFlow({ repoCwd, api, createTab }) {
   });
   if (!choice) return;
 
-  const result = await api.worktreeAdd({
-    cwd: repoCwd,
-    branch: choice.branch,
-    targetPath: choice.targetPath,
-    createBranch: choice.createBranch,
-    baseBranch: choice.baseBranch,
-  });
-
-  if (!result?.ok) {
-    await showErrorAlert('Worktree creation failed: ', result?.error);
-    return;
-  }
+  const result = await gitFlowStep(
+    () => api.worktreeAdd({
+      cwd: repoCwd,
+      branch: choice.branch,
+      targetPath: choice.targetPath,
+      createBranch: choice.createBranch,
+      baseBranch: choice.baseBranch,
+    }),
+    'Worktree creation failed: ',
+  );
+  if (!result) return;
 
   const tab = createTab(choice.branch, choice.targetPath);
   if (tab) {
@@ -123,14 +123,13 @@ export async function maybeRemoveWorktree(worktree, tabName, api) {
       { confirmLabel: 'Force remove', cancelLabel: 'Cancel' },
     );
     if (!retryForce) return;
-    result = await api.worktreeRemove({
-      cwd: worktree.mainRepoCwd,
-      worktreePath: worktree.worktreePath,
-      force: true,
-    });
-  }
-
-  if (!result?.ok) {
-    await showErrorAlert('Could not remove worktree: ', result?.error);
+    await gitFlowStep(
+      () => api.worktreeRemove({
+        cwd: worktree.mainRepoCwd,
+        worktreePath: worktree.worktreePath,
+        force: true,
+      }),
+      'Could not remove worktree: ',
+    );
   }
 }
