@@ -1,7 +1,7 @@
 import { emitTerminalRemoved } from '../utils/terminal-events.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/terminal-dom.js';
-import { trackMouse, setupResizeHandler } from '../utils/drag-helpers.js';
+import { setupDragHandler, setupResizeHandler } from '../utils/drag-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import {
   SplitNode, RESIZE_CURSOR, doResize,
@@ -127,27 +127,26 @@ export class TerminalPanel {
   // ===== Drag & Drop =====
 
   setupDrag(handle, sourceNode) {
-    handle.addEventListener('mousedown', (e) => {
-      if (this.terminals.size < 2) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      this._dragSourceId = sourceNode.terminal.id;
-      sourceNode.element.classList.add('dragging');
-      this._drop.create();
-
-      trackMouse('grabbing',
-        (ev) => this._drop.update(ev.clientX, ev.clientY, this.terminals, this._dragSourceId),
-        () => {
-          sourceNode.element.classList.remove('dragging');
-          const { targetId, side } = this._drop;
-          this._drop.remove();
-          if (targetId && side && targetId !== this._dragSourceId) {
-            this.moveTerminal(this._dragSourceId, targetId, side);
-          }
-          this._dragSourceId = null;
-        },
-      );
+    setupDragHandler(handle, {
+      guard: () => this.terminals.size >= 2,
+      stopPropagation: true,
+      cursor: 'grabbing',
+      bodyClass: 'dragging',
+      onStart: () => {
+        this._dragSourceId = sourceNode.terminal.id;
+        sourceNode.element.classList.add('dragging');
+        this._drop.create();
+      },
+      onMove: (ev) => this._drop.update(ev.clientX, ev.clientY, this.terminals, this._dragSourceId),
+      onEnd: () => {
+        sourceNode.element.classList.remove('dragging');
+        const { targetId, side } = this._drop;
+        this._drop.remove();
+        if (targetId && side && targetId !== this._dragSourceId) {
+          this.moveTerminal(this._dragSourceId, targetId, side);
+        }
+        this._dragSourceId = null;
+      },
     });
   }
 

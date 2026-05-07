@@ -97,22 +97,44 @@ export function addListener(target, type, handler, options) {
 }
 
 /**
+ * Attach a mousedown → trackMouse drag handler to an element.
+ * Generalises the repeated mousedown + preventDefault + optional stopPropagation
+ * + capture-state + trackMouse + cleanup boilerplate.
+ *
+ * @param {HTMLElement} element — the element to listen on
+ * @param {{
+ *   cursor?: string,
+ *   onStart?: (e: MouseEvent) => unknown,
+ *   onMove: (e: MouseEvent, ctx: unknown) => void,
+ *   onEnd?: (ctx: unknown) => void,
+ *   guard?: (e: MouseEvent) => boolean,
+ *   stopPropagation?: boolean,
+ *   bodyClass?: string
+ * }} opts
+ */
+export function setupDragHandler(element, { cursor = 'default', onStart, onMove, onEnd, guard, stopPropagation = false, bodyClass = 'resizing' }) {
+  element.addEventListener('mousedown', (e) => {
+    if (guard && !guard(e)) return;
+    e.preventDefault();
+    if (stopPropagation) e.stopPropagation();
+    const ctx = onStart ? onStart(e) : undefined;
+    trackMouse(cursor,
+      (ev) => onMove(ev, ctx),
+      () => { if (onEnd) onEnd(ctx); },
+      { bodyClass },
+    );
+  });
+}
+
+/**
  * Attach a mousedown → trackMouse resize handler to a handle element.
- * Eliminates the repeated mousedown + preventDefault + capture-state + trackMouse
- * boilerplate found in panel/terminal/console resize code.
+ * Convenience wrapper around setupDragHandler for resize interactions.
  *
  * @param {HTMLElement} handle  — the resize handle element
  * @param {{ cursor: string, onStart?: (e: MouseEvent) => unknown, onMove: (e: MouseEvent, ctx: unknown) => void, onDone?: (ctx: unknown) => void }} opts
  */
 export function setupResizeHandler(handle, { cursor, onStart, onMove, onDone }) {
-  handle.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    const ctx = onStart ? onStart(e) : undefined;
-    trackMouse(cursor,
-      (ev) => onMove(ev, ctx),
-      () => { if (onDone) onDone(ctx); },
-    );
-  });
+  setupDragHandler(handle, { cursor, onStart, onMove, onEnd: onDone });
 }
 
 /**
