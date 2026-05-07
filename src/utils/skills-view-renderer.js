@@ -147,7 +147,7 @@ export function renderEditorEmpty(editorEl) {
  * @param {boolean} isDirty
  * @returns {HTMLElement}
  */
-export function createDirtyBadge(isDirty) {
+function createDirtyBadge(isDirty) {
   return _el('div', {
     className: `skills-editor-dirty ${isDirty ? 'is-dirty' : ''}`,
     textContent: isDirty ? 'Modifié' : 'Enregistré',

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-const { extractDateString, generateDateRange, formatDateTime } = require('../../main/date-utils');
+const { extractDateString, generateDateRange } = require('../../main/date-utils');
+const { formatDateTime } = require('../../shared/date-utils');
 
 describe('date-utils', () => {
   describe('extractDateString', () => {
