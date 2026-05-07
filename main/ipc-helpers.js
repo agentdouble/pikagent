@@ -44,7 +44,7 @@ const { forward: FORWARD_TABLE, spread: SPREAD_TABLE } = buildTablesFromSchema(A
 
 /**
  * Return the list of all declaratively registered IPC channel names.
- * Used by `ipc-handlers.cleanup()` to remove handlers on shutdown.
+ * Returns all declaratively registered IPC channel names.
  *
  * @param {Set<string>} [skip] - Channels to exclude (custom handlers managed separately)
  * @returns {string[]}
