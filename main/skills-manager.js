@@ -7,6 +7,7 @@ const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
 const { trySafe } = require('./logger');
 const { pathExists } = require('./fs-manager-helpers');
 const { JsonStore } = require('./json-store');
+const { sanitizeSegment } = require('../shared/string-utils');
 
 const store = new JsonStore(BASE_DIR, 'skills-manager');
 const log = store.log;
@@ -92,7 +93,7 @@ async function write({ filePath, content }) {
 }
 
 async function create({ id, description }) {
-  const safeId = String(id || '').trim().replace(/[^a-zA-Z0-9._-]/g, '-');
+  const safeId = sanitizeSegment(String(id || '').trim());
   if (!safeId) return { success: false, error: 'Invalid id' };
   const root = await _loadRoot();
   const dir = path.join(root, safeId);
