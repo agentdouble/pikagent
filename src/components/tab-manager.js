@@ -22,7 +22,7 @@ import {
   setSidebarMode as doSetSidebarMode,
   renderWorkspace as doRenderWorkspace,
   buildSwitchToDeps,
-  disposeAllSideViews, disposeAllTabs,
+  disposeSideView, disposeAllSideViews, disposeAllTabs,
 } from '../utils/tab-manager-sidebar.js';
 import {
   renderTabBar as doRenderTabBar,
@@ -135,6 +135,9 @@ export class TabManager {
   prevTab() { doPrevTab(this.tabs, this.activeTabId, (id) => this.switchTo(id)); }
 
   // --- Dispose ---
+
+  _disposeSideView(mode) { disposeSideView(this, mode); }
+  _disposeAllTabs() { disposeAllTabs(this); }
 
   dispose() {
     for (const unsub of this._busListeners) unsub();

@@ -58,7 +58,7 @@ export class FileTree extends ComponentBase {
   }
 
   async setTerminalRoot(termId, dirPath) {
-    await doSetTerminalRoot(this, termId, dirPath, fsApi.watch, (c) => this.refreshSection(c));
+    await doSetTerminalRoot(this, termId, dirPath, fsApi.watch, (c) => this.refreshSection(c), fsApi.unwatch);
   }
 
   removeTerminal(termId) { doRemoveTerminal(this, termId, fsApi.unwatch); }

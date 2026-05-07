@@ -96,11 +96,11 @@ export async function renderDir(ft, dirPath, parentEl, depth, expandedDirs, fsRe
 /**
  * Set a terminal root and create/reuse a section.
  */
-export async function setTerminalRoot(ft, termId, dirPath, fsWatch, refreshSectionFn) {
+export async function setTerminalRoot(ft, termId, dirPath, fsWatch, refreshSectionFn, fsUnwatch) {
   const prevCwd = ft.termCwds.get(termId);
   if (prevCwd === dirPath) return;
 
-  if (prevCwd) removeTermFromSection(ft, termId, prevCwd);
+  if (prevCwd) removeTermFromSection(ft, termId, prevCwd, fsUnwatch);
 
   ft.termCwds.set(termId, dirPath);
 

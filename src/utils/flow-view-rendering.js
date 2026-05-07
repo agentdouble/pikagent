@@ -10,7 +10,7 @@ import {
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder,
   createCategoryGroup, createFlowCard,
-  _el, renderButtonBar,
+  _el, buildDomainButtonBar,
 } from './flow-view-subsystem.js';
 
 /**
@@ -26,8 +26,7 @@ export function renderFlowViewShell(container, handlers) {
   header.appendChild(_el('h2', 'flow-title', 'Flows'));
 
   const headerHandlers = { addCategory: handlers.onAddCategory, addFlow: handlers.onAddFlow };
-  const configs = HEADER_BUTTONS.map(({ label, action }) => ({ label, cls: 'flow-add-btn', action }));
-  const headerRight = renderButtonBar({ containerClass: 'flow-header-right', configs, handlers: headerHandlers });
+  const headerRight = buildDomainButtonBar('flow-add-btn', 'flow-header-right', HEADER_BUTTONS, headerHandlers);
   headerRight.style.display = 'flex';
   headerRight.style.gap = '8px';
 
