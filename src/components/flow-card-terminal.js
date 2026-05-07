@@ -5,7 +5,7 @@
 import { _el } from '../utils/flow-dom.js';
 import { createModalOverlay } from '../utils/dom-dialogs.js';
 import { onKeyAction } from '../utils/event-helpers.js';
-import { _safeFit, createReadonlyTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
+import { _safeFit, createReadonlyTerminal, createPtyBoundTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
@@ -65,15 +65,13 @@ export class FlowCardTerminalManager {
 
     const containerEl = _el('div', 'flow-card-terminal');
 
-    this._createAndRegister(
-      this._liveTerminals, flowId, containerEl,
-      { scrollback: LIVE_SCROLLBACK, cursorStyle: 'bar' },
-      (rec) => {
-        const unsubData = ptyApi.onData(ptyId, (data) => { rec.term.write(data); });
-        rec.unsubData = unsubData;
-        rec.ptyId = ptyId;
-      },
-    );
+    const record = createPtyBoundTerminal(containerEl, {
+      termOpts: { scrollback: LIVE_SCROLLBACK, cursorStyle: 'bar' },
+      fitDelay: FIT_DELAY_MS,
+      onPtyData: (writeFn) => ptyApi.onData(ptyId, writeFn),
+    });
+
+    this._liveTerminals.set(flowId, { ...record, containerEl, ptyId });
 
     return containerEl;
   }

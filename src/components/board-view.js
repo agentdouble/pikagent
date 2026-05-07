@@ -1,7 +1,8 @@
 import {
   onTerminalCreated, onTerminalRemoved, onTerminalExited,
   _el, renderButtonBar, renderList,
-  _safeFit, createTerminal, disposeTerminal, disposeTerminalMap, setupTerminalAddons,
+  _safeFit, disposeTerminal, disposeTerminalMap, setupTerminalAddons,
+  createPtyBoundTerminal,
 } from '../utils/terminal-subsystem.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
@@ -142,8 +143,24 @@ export class BoardView extends ComponentBase {
     return _el('div', { className: 'board-card-header' }, nameGroup, headerBtns);
   }
 
-  _createBoardTerminal(termContainer, termId) {
-    const { term, fitAddon } = createTerminal(termContainer, BOARD_TERMINAL_OPTS);
+  addCard(termId, info) {
+    const termContainer = _el('div', { className: 'board-card-terminal' });
+    const card = _el('div', { className: 'board-card board-card-running' });
+
+    card.appendChild(this._buildCardHeader(termId, info, card));
+    card.appendChild(termContainer);
+
+    const cardData = { element: card, term: null, fitAddon: null, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
+
+    const { term, fitAddon, resizeObs, unsubData } = createPtyBoundTerminal(termContainer, {
+      readonly: false,
+      termOpts: BOARD_TERMINAL_OPTS,
+      fitDelay: FIT_SETTLE_DELAY_MS,
+      onPtyData: (writeFn) => ptyApi.onData(termId, (data) => {
+        writeFn(data);
+        cardData.dataBytes += data.length;
+      }),
+    });
 
     setupTerminalAddons(term, {
       openExternal: (url) => shellApi.openExternal(url),
@@ -153,33 +170,10 @@ export class BoardView extends ComponentBase {
     });
     term.onData((data) => ptyApi.write(termId, data));
 
-    return { term, fitAddon };
-  }
-
-  addCard(termId, info) {
-    const termContainer = _el('div', { className: 'board-card-terminal' });
-    const card = _el('div', { className: 'board-card board-card-running' });
-
-    card.appendChild(this._buildCardHeader(termId, info, card));
-    card.appendChild(termContainer);
-
-    const { term, fitAddon } = this._createBoardTerminal(termContainer, termId);
-    const fitOnly = () => _safeFit(fitAddon);
-
-    const cardData = { element: card, term, fitAddon, unsubData: null, resizeObs: null, info, status: 'running', dataBytes: DATA_VOLUME_THRESHOLD };
-
-    cardData.unsubData = ptyApi.onData(termId, (data) => {
-      term.write(data);
-      cardData.dataBytes += data.length;
-    });
+    Object.assign(cardData, { term, fitAddon, resizeObs, unsubData });
 
     this.boardEl.insertBefore(card, this.emptyEl);
-
-    cardData.resizeObs = new ResizeObserver(fitOnly);
-    cardData.resizeObs.observe(termContainer);
     this.cards.set(termId, cardData);
-
-    setTimeout(fitOnly, FIT_SETTLE_DELAY_MS);
   }
 
   removeCard(termId) {

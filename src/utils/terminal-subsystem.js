@@ -46,5 +46,5 @@ export { _el, renderButtonBar, renderList } from './terminal-dom.js';
 // ── terminal-factory (board-view) ───────────────────────────────────
 export {
   _safeFit, createTerminal, disposeTerminal, disposeTerminalMap,
-  setupTerminalAddons,
+  setupTerminalAddons, createPtyBoundTerminal,
 } from './terminal-factory.js';
