@@ -14,7 +14,7 @@ import {
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
   formatCardLabel,
 } from '../utils/board-helpers.js';
-import { ptyApi, shellApi, fsApi } from '../utils/terminal-services.js';
+import { terminalFacade } from '../utils/terminal-services.js';
 
 export class BoardView extends ComponentBase {
   constructor(container, tabManager) {
@@ -47,7 +47,7 @@ export class BoardView extends ComponentBase {
     if (this.disposed) return;
 
     try {
-      const agents = await ptyApi.checkAgents();
+      const agents = await terminalFacade.ptyCheckAgents();
 
       for (const [termId] of this.cards) {
         if (!agents[termId]) this.removeCard(termId);
@@ -156,19 +156,19 @@ export class BoardView extends ComponentBase {
       readonly: false,
       termOpts: BOARD_TERMINAL_OPTS,
       fitDelay: FIT_SETTLE_DELAY_MS,
-      onPtyData: (writeFn) => ptyApi.onData(termId, (data) => {
+      onPtyData: (writeFn) => terminalFacade.ptyOnData(termId, (data) => {
         writeFn(data);
         cardData.dataBytes += data.length;
       }),
     });
 
     setupTerminalAddons(term, {
-      openExternal: (url) => shellApi.openExternal(url),
+      openExternal: (url) => terminalFacade.openExternal(url),
       getCwd: () => null,
-      homedir: fsApi.homedir,
-      openPath: shellApi.openPath,
+      homedir: terminalFacade.homedir,
+      openPath: terminalFacade.openPath,
     });
-    term.onData((data) => ptyApi.write(termId, data));
+    term.onData((data) => terminalFacade.ptyWrite(termId, data));
 
     Object.assign(cardData, { term, fitAddon, resizeObs, unsubData });
 

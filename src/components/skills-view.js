@@ -8,7 +8,7 @@ import {
   openRoot, configurePath, importSkill, createSkill,
   deleteSkill, selectSkill, save,
 } from '../utils/skills-view-actions.js';
-import { skillsApi, shellApi, dialogApi } from '../utils/skills-services.js';
+import { skillsFacade } from '../utils/skills-services.js';
 
 export class SkillsView extends ComponentBase {
   constructor(container) {
@@ -26,8 +26,8 @@ export class SkillsView extends ComponentBase {
 
   async refresh() {
     if (this.disposed) return;
-    this.skills = await skillsApi.list();
-    if (!this.rootPath) this.rootPath = await skillsApi.getRoot();
+    this.skills = await skillsFacade.list();
+    if (!this.rootPath) this.rootPath = await skillsFacade.getRoot();
     if (this.selectedId && !this.skills.find((s) => s.id === this.selectedId)) {
       this.selectedId = null;
     }
@@ -70,7 +70,7 @@ export class SkillsView extends ComponentBase {
     if (!this.selectedId) { renderEditorEmpty(this.editorEl); return; }
     const skill = this.skills.find((s) => s.id === this.selectedId);
     if (!skill) return;
-    const content = await skillsApi.read(skill.path);
+    const content = await skillsFacade.read(skill.path);
     this.editorValue = content ?? '';
     this.editorDirty = false;
     const { dirtyBadgeEl } = renderEditorContent(this.editorEl, skill, this.editorValue, {
@@ -85,14 +85,14 @@ export class SkillsView extends ComponentBase {
     if (!this.editorDirty) { this.editorDirty = true; updateDirtyBadge(this._dirtyBadgeEl, true); }
   }
 
-  // --- Actions (delegated) ---
-  async _openRoot() { await openRoot(this.rootPath, shellApi); }
-  async _configurePath() { await configurePath(this, { dialogApi, skillsApi }); }
-  async _importSkill() { await importSkill(this, { dialogApi, skillsApi }); }
-  async _createSkill() { await createSkill(this, skillsApi); }
-  async _deleteSkill(id) { await deleteSkill(this, id, skillsApi); }
+  // --- Actions (delegated via unified facade) ---
+  async _openRoot() { await openRoot(this.rootPath, skillsFacade); }
+  async _configurePath() { await configurePath(this, { dialogApi: skillsFacade, skillsApi: skillsFacade }); }
+  async _importSkill() { await importSkill(this, { dialogApi: skillsFacade, skillsApi: skillsFacade }); }
+  async _createSkill() { await createSkill(this, skillsFacade); }
+  async _deleteSkill(id) { await deleteSkill(this, id, skillsFacade); }
   async _selectSkill(id) { await selectSkill(this, id); }
-  async _save() { await save(this, skillsApi); }
+  async _save() { await save(this, skillsFacade); }
 
   dispose() { super.dispose(); this.el.remove(); }
 }
