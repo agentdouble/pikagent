@@ -1,22 +1,8 @@
 import { _el } from './flow-dom.js';
 import { _vis as _visGeneric } from './dom.js';
+import { buildSelect } from './form-helpers.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
 import { AGENT_OPTIONS } from '../../shared/agent-registry.js';
-
-/**
- * Create a <select> element from an options map.
- * @param {{ options: Record<string, string>, value?: string, className?: string, onChange?: (e: Event) => void }} opts
- * @returns {HTMLSelectElement}
- */
-function createSelect({ options, value, className, onChange } = {}) {
-  const select = _el('select', { className: className || '' });
-  for (const [val, label] of Object.entries(options)) {
-    select.appendChild(_el('option', { value: val, textContent: label }));
-  }
-  if (value !== undefined) select.value = value;
-  if (onChange) select.addEventListener('change', onChange);
-  return select;
-}
 
 // --- Constants ---
 
@@ -38,10 +24,11 @@ export function _vis(el, show) {
 
 /**
  * Create a <select> for flow modals.
- * Thin wrapper around the centralized `createSelect` factory.
+ * Thin wrapper around the centralized `buildSelect` factory from form-helpers.
  */
 export function _createSelect(options, value) {
-  return createSelect({ options, value, className: 'flow-modal-select' });
+  const items = Object.entries(options).map(([v, label]) => ({ value: v, label }));
+  return buildSelect(items, { className: 'flow-modal-select', selected: String(value) });
 }
 
 export function _createChip(icon, content, extra = {}) {
