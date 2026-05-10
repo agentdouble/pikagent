@@ -5,15 +5,33 @@ const fs = require('fs');
 const { BASE_DIR } = require('./paths');
 
 const SOURCE_CONFIG_FILE = path.join(BASE_DIR, 'source-config.json');
+const REPO_URL = 'https://github.com/agentdouble/pikagent.git';
+const DEFAULT_SOURCE_DIR = path.join(BASE_DIR, 'source');
 
-// --- Config persistence (saves project root + shell PATH from dev mode) ---
+// Fallback PATH covering common locations for git/node/npm on macOS,
+// used when the app is launched from Finder (process.env.PATH is minimal).
+const PATH_FALLBACKS = [
+  '/opt/homebrew/bin',
+  '/opt/homebrew/sbin',
+  '/usr/local/bin',
+  '/usr/local/sbin',
+  '/usr/bin',
+  '/bin',
+  '/usr/sbin',
+  '/sbin',
+];
+
+// --- Config persistence ---
 
 function init() {
   if (!app.isPackaged) {
-    const config = { root: app.getAppPath(), shellPath: process.env.PATH };
-    fs.mkdirSync(BASE_DIR, { recursive: true });
-    fs.writeFileSync(SOURCE_CONFIG_FILE, JSON.stringify(config), 'utf8');
+    _saveConfig({ root: app.getAppPath(), shellPath: process.env.PATH });
   }
+}
+
+function _saveConfig(config) {
+  fs.mkdirSync(BASE_DIR, { recursive: true });
+  fs.writeFileSync(SOURCE_CONFIG_FILE, JSON.stringify(config), 'utf8');
 }
 
 function _loadConfig() {
@@ -24,14 +42,32 @@ function _loadConfig() {
   }
 }
 
-function _getProjectRoot() {
+// --- Source resolution ---
+
+function _hasGitCheckout(dir) {
+  return !!dir && fs.existsSync(path.join(dir, '.git'));
+}
+
+function _resolveExistingRoot() {
   if (!app.isPackaged) return app.getAppPath();
-  return _loadConfig()?.root || null;
+  const config = _loadConfig();
+  if (_hasGitCheckout(config?.root)) return config.root;
+  if (_hasGitCheckout(DEFAULT_SOURCE_DIR)) {
+    _saveConfig({ root: DEFAULT_SOURCE_DIR, shellPath: _composeShellPath() });
+    return DEFAULT_SOURCE_DIR;
+  }
+  return null;
+}
+
+function _composeShellPath() {
+  const saved = _loadConfig()?.shellPath;
+  const parts = [saved, process.env.PATH, ...PATH_FALLBACKS].filter(Boolean);
+  return [...new Set(parts.join(':').split(':').filter(Boolean))].join(':');
 }
 
 function _getShellPath() {
   if (!app.isPackaged) return process.env.PATH;
-  return _loadConfig()?.shellPath || process.env.PATH;
+  return _composeShellPath();
 }
 
 // --- Shell execution ---
@@ -50,6 +86,18 @@ function _run(cmd, cwd) {
   });
 }
 
+// --- Cloning ---
+
+async function _cloneSource() {
+  fs.mkdirSync(BASE_DIR, { recursive: true });
+  if (fs.existsSync(DEFAULT_SOURCE_DIR)) {
+    await _run(`rm -rf "${DEFAULT_SOURCE_DIR}"`, BASE_DIR);
+  }
+  await _run(`git clone ${REPO_URL} "${DEFAULT_SOURCE_DIR}"`, BASE_DIR);
+  _saveConfig({ root: DEFAULT_SOURCE_DIR, shellPath: _composeShellPath() });
+  return DEFAULT_SOURCE_DIR;
+}
+
 // --- Public API ---
 
 function getVersion() {
@@ -57,9 +105,14 @@ function getVersion() {
 }
 
 async function checkForUpdates() {
-  const root = _getProjectRoot();
-  if (!root) return { available: false, error: 'Source directory not configured. Run the app in dev mode first.' };
-
+  const root = _resolveExistingRoot();
+  if (!root) {
+    return {
+      available: true,
+      count: 1,
+      commits: ['First-time setup: source repository will be cloned'],
+    };
+  }
   try {
     await _run('git fetch origin', root);
     const branch = await _run('git rev-parse --abbrev-ref HEAD', root);
@@ -72,27 +125,38 @@ async function checkForUpdates() {
 }
 
 async function performUpdate(sendProgress) {
-  const root = _getProjectRoot();
-  if (!root) throw new Error('Source directory not configured');
-
-  const branch = await _run('git rev-parse --abbrev-ref HEAD', root);
+  let root = _resolveExistingRoot();
+  const willClone = !root;
 
   const steps = [
-    { label: 'Pulling latest changes...', cmd: `git pull origin ${branch}` },
-    { label: 'Installing dependencies...', cmd: 'npm install' },
-    { label: 'Packaging application...', cmd: 'npm run package' },
+    willClone
+      ? {
+          label: 'Cloning source repository (first run, ~1-2 min)...',
+          action: async () => { root = await _cloneSource(); },
+        }
+      : {
+          label: 'Pulling latest changes...',
+          action: async () => {
+            const branch = await _run('git rev-parse --abbrev-ref HEAD', root);
+            await _run(`git pull origin ${branch}`, root);
+          },
+        },
+    { label: 'Installing dependencies...', action: () => _run('npm install', root) },
+    { label: 'Packaging application...', action: () => _run('npm run package', root) },
+    {
+      label: 'Installing to Applications...',
+      action: async () => {
+        const src = path.join(root, 'release', 'mac-arm64', 'Pickagent.app');
+        const dest = '/Applications/Pickagent.app';
+        await _run(`rm -rf "${dest}" && cp -R "${src}" "${dest}"`, root);
+      },
+    },
   ];
 
   for (let i = 0; i < steps.length; i++) {
-    sendProgress({ step: i + 1, total: steps.length + 1, label: steps[i].label });
-    await _run(steps[i].cmd, root);
+    sendProgress({ step: i + 1, total: steps.length, label: steps[i].label });
+    await steps[i].action();
   }
-
-  // Copy to /Applications
-  sendProgress({ step: steps.length + 1, total: steps.length + 1, label: 'Installing to Applications...' });
-  const src = path.join(root, 'release', 'mac-arm64', 'Pickagent.app');
-  const dest = '/Applications/Pickagent.app';
-  await _run(`rm -rf "${dest}" && cp -R "${src}" "${dest}"`, root);
 
   return { success: true };
 }
