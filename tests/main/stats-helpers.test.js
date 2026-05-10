@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 const { computeRate, computeDuration } = require('../../main/stats-helpers');
-const { extractDateString, generateDateRange } = require('../../main/date-utils');
+const { extractDateString, generateDateRange } = require('../../shared/date-utils');
 
 describe('stats-helpers', () => {
   describe('computeRate', () => {

@@ -3,7 +3,7 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
-import { formatDateTime } from './date-utils.js';
+import { formatDateTime } from '../../shared/date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
 import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregation-utils.js';
 

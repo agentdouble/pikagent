@@ -3,7 +3,7 @@ const path = require('path');
 const { FLOWS_DIR, CLAUDE_PROJECTS_DIR } = require('./paths');
 const { readDirJson } = require('./fs-utils');
 const { DEFAULT_DAYS } = require('./stats-helpers');
-const { generateDateRange } = require('./date-utils');
+const { generateDateRange } = require('../shared/date-utils');
 const {
   newTokenTotals,
   addTokens,
