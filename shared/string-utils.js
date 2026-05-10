@@ -5,14 +5,34 @@
  */
 
 /**
- * Sanitize a name by replacing non-alphanumeric characters (except dash,
- * underscore, and space) with underscores, then truncating to 64 characters.
- * Used for config names and similar identifiers.
- * @param {string} name
+ * Sanitize a string by replacing disallowed characters with a separator and
+ * optionally truncating to a maximum length.
+ *
+ * The two sanitization patterns previously duplicated across the codebase
+ * (config names in config-helpers.js and path segments in worktree-dialog.js)
+ * are both implemented via this single parametric helper.
+ *
+ * @param {string} name - Input string to sanitize.
+ * @param {object} [opts]
+ * @param {string} [opts.allowedChars='a-zA-Z0-9_\\- '] - Character class body for the regex allowlist.
+ * @param {string} [opts.separator='_'] - Replacement character for disallowed sequences.
+ * @param {number} [opts.maxLength=64] - Maximum length of the result (0 = no limit).
+ * @param {boolean} [opts.trimSeparator=false] - When true, strips leading/trailing separator chars.
  * @returns {string}
  */
-function sanitizeName(name) {
-  return name.replace(/[^a-zA-Z0-9_\- ]/g, '_').substring(0, 64);
+function sanitizeName(name, opts = {}) {
+  const {
+    allowedChars = 'a-zA-Z0-9_\\- ',
+    separator = '_',
+    maxLength = 64,
+    trimSeparator = false,
+  } = opts;
+  const escapedSep = separator.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+  let result = name.replace(new RegExp(`[^${allowedChars}]+`, 'g'), separator);
+  if (trimSeparator) {
+    result = result.replace(new RegExp(`^${escapedSep}+|${escapedSep}+$`, 'g'), '');
+  }
+  return maxLength > 0 ? result.substring(0, maxLength) : result;
 }
 
 /**
@@ -24,7 +44,12 @@ function sanitizeName(name) {
  * @returns {string}
  */
 function sanitizeSegment(name) {
-  return name.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+  return sanitizeName(name, {
+    allowedChars: 'a-zA-Z0-9._-',
+    separator: '-',
+    maxLength: 0,
+    trimSeparator: true,
+  });
 }
 
 module.exports = { sanitizeName, sanitizeSegment };
