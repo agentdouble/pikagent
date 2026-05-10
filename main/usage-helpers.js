@@ -1,7 +1,7 @@
 const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
-const { extractDateString } = require('./date-utils');
+const { extractDateString } = require('../shared/date-utils');
 const {
   aggregateByKey,
   groupAndAggregate,

@@ -4,7 +4,7 @@ const {
   computeNumericStats,
   initializeCounters,
 } = require('../shared/aggregation-utils');
-const { generateDateRange } = require('./date-utils');
+const { generateDateRange } = require('../shared/date-utils');
 
 const DEFAULT_DAYS = 30;
 
