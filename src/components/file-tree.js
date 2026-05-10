@@ -14,7 +14,7 @@ import {
   removeTerminal as doRemoveTerminal,
   refreshSection as doRefreshSection,
 } from '../utils/file-tree-dir-ops.js';
-import { fileTreeFacade } from '../utils/file-tree-services.js';
+import { fileTreeApi } from '../utils/file-tree-facade.js';
 
 export class FileTree extends ComponentBase {
   constructor(container) {
@@ -34,12 +34,12 @@ export class FileTree extends ComponentBase {
 
   _initApi() {
     this._contextMenuApi = {
-      clipboardWrite: fileTreeFacade.clipboardWrite, fsCopy: fileTreeFacade.copy,
-      showInFolder: fileTreeFacade.showInFolder, fsTrash: fileTreeFacade.trash,
+      clipboardWrite: fileTreeApi.clipboardWrite, fsCopy: fileTreeApi.copy,
+      showInFolder: fileTreeApi.showInFolder, fsTrash: fileTreeApi.trash,
     };
     this._dropApi = {
-      copyTo: fileTreeFacade.copyTo, rename: fileTreeFacade.rename,
-      mkdir: fileTreeFacade.mkdir, writefile: fileTreeFacade.writefile,
+      copyTo: fileTreeApi.copyTo, rename: fileTreeApi.rename,
+      mkdir: fileTreeApi.mkdir, writefile: fileTreeApi.writefile,
     };
   }
 
@@ -54,14 +54,14 @@ export class FileTree extends ComponentBase {
   }
 
   listenForChanges() {
-    this._track(listenForChanges(this.debounceTimers, (id) => this.refreshSection(id), { onChanged: fileTreeFacade.onChanged }));
+    this._track(listenForChanges(this.debounceTimers, (id) => this.refreshSection(id), { onChanged: fileTreeApi.onChanged }));
   }
 
   async setTerminalRoot(termId, dirPath) {
-    await doSetTerminalRoot(this, termId, dirPath, fileTreeFacade.watch, (c) => this.refreshSection(c), fileTreeFacade.unwatch);
+    await doSetTerminalRoot(this, termId, dirPath, fileTreeApi.watch, (c) => this.refreshSection(c), fileTreeApi.unwatch);
   }
 
-  removeTerminal(termId) { doRemoveTerminal(this, termId, fileTreeFacade.unwatch); }
+  removeTerminal(termId) { doRemoveTerminal(this, termId, fileTreeApi.unwatch); }
 
   async refreshSection(watchIdOrCwd) {
     await doRefreshSection(this, watchIdOrCwd, (dp, pe, d, ed) => this.renderDir(dp, pe, d, ed));
@@ -83,12 +83,12 @@ export class FileTree extends ComponentBase {
   }
 
   async renderDir(dirPath, parentEl, depth, expandedDirs) {
-    await doRenderDir(this, dirPath, parentEl, depth, expandedDirs, fileTreeFacade.readdir);
+    await doRenderDir(this, dirPath, parentEl, depth, expandedDirs, fileTreeApi.readdir);
   }
 
   dispose() {
     super.dispose();
-    const unwatchApi = { unwatch: fileTreeFacade.unwatch };
+    const unwatchApi = { unwatch: fileTreeApi.unwatch };
     for (const [, section] of this.sections) stopWatch(section.watchId, unwatchApi);
     this.sections.clear();
     this.termCwds.clear();
