@@ -1,3 +1,5 @@
+import { persistedSetting } from './persisted-setting.js';
+
 const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
 
 function _buildTheme(chrome, ansi, bright) {
@@ -75,28 +77,30 @@ export const TERMINAL_THEMES = Object.fromEntries(
 
 const LIGHT_THEMES = new Set(THEME_DEFS.filter((d) => d.light).map((d) => d.name));
 
-const STORAGE = { theme: 'pikagent-terminal-theme', prev: 'pikagent-terminal-theme-prev' };
 const DEFAULT_LIGHT = 'Pikagent Light';
 const DEFAULT_DARK = 'Pikagent';
 
+const _themeSetting = persistedSetting('pikagent-terminal-theme', DEFAULT_DARK);
+const _prevSetting  = persistedSetting('pikagent-terminal-theme-prev', DEFAULT_DARK);
+
 export function getTerminalTheme() {
-  const name = localStorage.getItem(STORAGE.theme) || DEFAULT_DARK;
+  const name = _themeSetting.get();
   return TERMINAL_THEMES[name] || TERMINAL_THEMES[DEFAULT_DARK];
 }
 
 export function getTerminalThemeName() {
-  return localStorage.getItem(STORAGE.theme) || DEFAULT_DARK;
+  return _themeSetting.get();
 }
 
 export function setTerminalTheme(name) {
-  localStorage.setItem(STORAGE.theme, name);
+  _themeSetting.set(name);
 }
 
 export function switchTerminalForMode(mode) {
   const current = getTerminalThemeName();
   const wantLight = mode === 'light';
   if (wantLight === LIGHT_THEMES.has(current)) return false;
-  if (wantLight) localStorage.setItem(STORAGE.prev, current);
-  setTerminalTheme(wantLight ? DEFAULT_LIGHT : (localStorage.getItem(STORAGE.prev) || DEFAULT_DARK));
+  if (wantLight) _prevSetting.set(current);
+  setTerminalTheme(wantLight ? DEFAULT_LIGHT : (_prevSetting.get() || DEFAULT_DARK));
   return true;
 }
