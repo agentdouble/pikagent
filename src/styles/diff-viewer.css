@@ -1,3 +1,3 @@
 @import url('./diff-viewer-layout.css');
-@import url('./diff-viewer-split.css');
-@import url('./diff-viewer-unified.css');
+@import url('./diff-viewer-controls.css');
+@import url('./diff-viewer-syntax.css');
