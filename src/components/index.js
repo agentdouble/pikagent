@@ -2,7 +2,7 @@
 // components in the component registry.
 // Sub-components must be registered before their parents resolve them.
 
-import './config-manager.js';
+import './config-settings-panel.js';
 import './terminal-panel.js';
 import './file-tree.js';
 import './diff-viewer.js';
