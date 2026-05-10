@@ -1,0 +1,121 @@
+/* ===== Split View ===== */
+.diff-table.diff-split {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+}
+
+.diff-split .diff-row {
+  display: flex;
+  min-height: 20px;
+}
+
+.diff-split .diff-cell {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 20px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.diff-separator {
+  width: 1px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
+.diff-line-no {
+  min-width: 42px;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.diff-code {
+  flex: 1;
+  padding: 0 8px;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cell type colors */
+.diff-cell-context {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.diff-cell-add {
+  background: rgba(81, 207, 102, 0.08);
+  color: var(--text-primary);
+}
+
+.diff-cell-add .diff-line-no {
+  background: rgba(81, 207, 102, 0.12);
+  color: var(--green);
+  opacity: 1;
+}
+
+.diff-cell-remove {
+  background: rgba(255, 85, 85, 0.08);
+  color: var(--text-primary);
+}
+
+.diff-cell-remove .diff-line-no {
+  background: rgba(255, 85, 85, 0.12);
+  color: var(--red);
+  opacity: 1;
+}
+
+.diff-cell-empty {
+  background: var(--bg-primary);
+  opacity: 0.4;
+}
+
+.diff-cell-hunk {
+  background: rgba(233, 69, 96, 0.06);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.diff-cell-hunk .diff-line-no {
+  visibility: hidden;
+}
+
+/* Word-level highlighting */
+.diff-word-add {
+  background: rgba(81, 207, 102, 0.3);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.diff-word-del {
+  background: rgba(255, 85, 85, 0.3);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Hunk separator rows */
+.diff-row-hunk {
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Hunk navigation flash */
+.diff-hunk-flash {
+  animation: hunkFlash 0.6s ease-out;
+}
+
+@keyframes hunkFlash {
+  0% { background: rgba(233, 69, 96, 0.25); }
+  100% { background: transparent; }
+}

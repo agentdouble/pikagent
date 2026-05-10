@@ -1,0 +1,130 @@
+/* ===== Diff Viewer ===== */
+.diff-viewer {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+/* Toolbar */
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  min-height: 30px;
+}
+
+.diff-stats {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+}
+
+.diff-stat-add {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.diff-stat-del {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.diff-toggle-group {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-left: auto;
+}
+
+.diff-toggle-btn {
+  padding: 3px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.diff-toggle-btn:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+}
+
+.diff-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.diff-toggle-btn.active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.diff-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.diff-nav-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.diff-nav-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.diff-nav-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Content area */
+.diff-viewer-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.diff-viewer-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.diff-viewer-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diff-viewer-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
