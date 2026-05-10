@@ -4,20 +4,21 @@
  * Centralises the creation of every manager singleton and the inter-manager
  * dependencies that used to live inside ipc-handlers.js.  The main entry
  * point calls `initManagers()` once and passes the result to the IPC layer.
+ *
+ * Managers are imported through domain-grouped re-export modules to reduce
+ * the number of direct imports in this file:
+ *
+ *   io-managers.js       — ptyManager, fsManager
+ *   data-managers.js     — sessionManager, usageManager
+ *   workflow-managers.js — flowManager, skillsManager
+ *   infra-managers.js    — gitManager, configManager, updateManager
  */
 
-const PtyManager = require('./pty-manager');
-const sessionManager = require('./session-manager');
-const fsManager = require('./fs-manager');
-const gitManager = require('./git-manager');
-const configManager = require('./config-manager');
-const flowManager = require('./flow-manager');
-const usageManager = require('./usage-manager');
-const skillsManager = require('./skills-manager');
-const updateManager = require('./update-manager');
+const { ptyManager, fsManager } = require('./io-managers');
+const { sessionManager, usageManager } = require('./data-managers');
+const { flowManager, skillsManager } = require('./workflow-managers');
+const { gitManager, configManager, updateManager } = require('./infra-managers');
 const { safeSend } = require('./ipc-helpers');
-
-const ptyManager = new PtyManager();
 
 /**
  * Modules that expose a `cleanup()` method and should be torn down when
