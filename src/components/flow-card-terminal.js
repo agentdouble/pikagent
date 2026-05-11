@@ -5,7 +5,7 @@
 import { _el } from '../utils/flow-dom.js';
 import { createModalOverlay } from '../utils/dom-dialogs.js';
 import { onKeyAction } from '../utils/event-helpers.js';
-import { _safeFit, createReadonlyTerminal, createPtyBoundTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
+import { _safeFit, createPtyBoundTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
   FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
@@ -21,14 +21,6 @@ export class FlowCardTerminalManager {
   }
 
   // === Shared helpers ===
-
-  _createReadonlyTerminal(containerEl, termOpts = {}) {
-    return createReadonlyTerminal(containerEl, {
-      scrollback: LIVE_SCROLLBACK,
-      fitDelay: FIT_DELAY_MS,
-      ...termOpts,
-    });
-  }
 
   _disposeTerminalEntry(map, flowId) {
     const data = map.get(flowId);
@@ -48,7 +40,10 @@ export class FlowCardTerminalManager {
    * @returns {object} the terminal record stored in the map
    */
   _createAndRegister(map, flowId, containerEl, opts, setupFn) {
-    const record = this._createReadonlyTerminal(containerEl, opts);
+    const record = createPtyBoundTerminal(containerEl, {
+      termOpts: { scrollback: LIVE_SCROLLBACK, ...opts },
+      fitDelay: FIT_DELAY_MS,
+    });
     if (setupFn) setupFn(record);
     map.set(flowId, { ...record, containerEl });
     return record;
@@ -118,8 +113,9 @@ export class FlowCardTerminalManager {
     modal.append(this._buildLogModalHeader(flow, run), termContainer);
     document.body.appendChild(overlay);
 
-    const { term, resizeObs } = this._createReadonlyTerminal(termContainer, {
-      scrollback: LOG_SCROLLBACK,
+    const { term, resizeObs } = createPtyBoundTerminal(termContainer, {
+      termOpts: { scrollback: LOG_SCROLLBACK },
+      fitDelay: FIT_DELAY_MS,
     });
 
     term.write(log || NO_LOG_MODAL_MESSAGE);
