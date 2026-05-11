@@ -56,7 +56,7 @@ export function disposeTerminal(data) {
  * Create a readonly terminal (disableStdin, no cursor blink, auto-resize).
  * Merges caller overrides on top of shared readonly defaults.
  */
-export function createReadonlyTerminal(container, opts = {}) {
+function createReadonlyTerminal(container, opts = {}) {
   return createTerminal(container, {
     fontSize: 12,
     lineHeight: 1.3,
