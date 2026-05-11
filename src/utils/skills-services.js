@@ -6,11 +6,10 @@
  * one service module.  The previous named re-exports are kept for
  * backward-compatibility but components should prefer `skillsFacade`.
  *
- * NOTE (PR #466): createApiService produces an identical API surface to the
- * hand-crafted modules it replaces (shell-api.js, dialog-api.js).  The proxy
- * delegates every call to window.api[domain][method](...args), which is the
- * exact same pattern the original service files used.  The alias map handles
- * JS-reserved words (import → importSkill, delete → deleteSkill).
+ * All three service instances are produced by createApiService, which returns
+ * a Proxy that delegates every call to window.api[domain][method](...args).
+ * The facade composes those proxies into one flat object via a routing map,
+ * eliminating the previous hand-written (...a) => proxy.method(...a) wrappers.
  */
 import { createApiService } from '../services/create-api-service.js';
 
@@ -19,19 +18,28 @@ const skillsApi = createApiService('skills', { importSkill: 'import', deleteSkil
 const shellApi  = createApiService('shell');
 const dialogApi = createApiService('dialog');
 
-// ── unified facade (kept for non-component consumers) ───────────────
-export const skillsFacade = {
-  // skills — delegated via createApiService proxy
-  list:         (...a) => skillsApi.list(...a),
-  getRoot:      (...a) => skillsApi.getRoot(...a),
-  read:         (...a) => skillsApi.read(...a),
-  write:        (...a) => skillsApi.write(...a),
-  importSkill:  (...a) => skillsApi.importSkill(...a),
-  create:       (...a) => skillsApi.create(...a),
-  deleteSkill:  (...a) => skillsApi.deleteSkill(...a),
-  setRoot:      (...a) => skillsApi.setRoot(...a),
+// ── method → service routing ────────────────────────────────────────
+const routing = {
+  // skills
+  list:        skillsApi,
+  getRoot:     skillsApi,
+  read:        skillsApi,
+  write:       skillsApi,
+  importSkill: skillsApi,
+  create:      skillsApi,
+  deleteSkill: skillsApi,
+  setRoot:     skillsApi,
   // shell
-  openPath:     (...a) => shellApi.openPath(...a),
+  openPath:    shellApi,
   // dialog
-  openFolder:   (...a) => dialogApi.openFolder(...a),
+  openFolder:  dialogApi,
 };
+
+// ── unified facade (kept for non-component consumers) ───────────────
+export const skillsFacade = new Proxy(/** @type {Record<string, (...args: unknown[]) => unknown>} */ ({}), {
+  get: (_target, method) => {
+    const service = routing[method];
+    if (service) return service[method];
+    return undefined;
+  },
+});
