@@ -16,6 +16,7 @@ import {
   setTabColorGroup as doSetTabColorGroup,
   toggleNoShortcut as doToggleNoShortcut,
   buildPrApi, buildWorktreeApi, buildViewStore,
+  tabFacade,
 } from '../utils/tab-facade.js';
 import {
   renderActivityBar as doRenderActivityBar,
@@ -31,7 +32,6 @@ import {
   reorderTab as doReorderTab,
   renameTab as doRenameTab,
 } from '../utils/tab-manager-tab-ops.js';
-import { tabFacade } from '../utils/tab-services.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {

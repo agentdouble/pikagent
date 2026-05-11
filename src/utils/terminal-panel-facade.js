@@ -1,17 +1,14 @@
 /**
- * Domain facade for terminal-api, shell-api and fs-api services
- * used by TerminalPanel and BoardView components.
+ * Domain facade for the TerminalPanel component.
  *
- * Exposes a single flat interface so components never import more than
- * one service module.  The previous named re-exports are kept for
- * backward-compatibility but components should prefer `terminalFacade`.
+ * Aggregates the shell, fs and pty API methods needed by terminal-panel.js
+ * so the component imports a single module instead of multiple services.
  */
 import ptyApi from '../services/terminal-api.js';
 import shellApi from '../services/shell-api.js';
 import fsApi from '../services/fs-api.js';
 
-// ── unified facade (kept for non-component consumers) ───────────────
-export const terminalFacade = {
+export const terminalPanelFacade = {
   // shell
   openExternal: (...a) => shellApi.openExternal(...a),
   openPath:     (...a) => shellApi.openPath(...a),
@@ -25,5 +22,4 @@ export const terminalFacade = {
   ptyGetCwd:    (...a) => ptyApi.getCwd(...a),
   ptyResize:    (...a) => ptyApi.resize(...a),
   ptyKill:      (...a) => ptyApi.kill(...a),
-  ptyCheckAgents: (...a) => ptyApi.checkAgents(...a),
 };

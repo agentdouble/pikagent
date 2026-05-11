@@ -10,10 +10,7 @@ import gitApi from '../services/git-api.js';
 import fsApi from '../services/fs-api.js';
 import configApi from '../services/config-api.js';
 
-// ── backward-compat re-exports ──────────────────────────────────────
-export { gitApi, fsApi, configApi };
-
-// ── unified facade ──────────────────────────────────────────────────
+// ── unified facade (kept for non-component consumers) ───────────────
 export const tabFacade = {
   // git
   gitBranch:    (...a) => gitApi.branch(...a),

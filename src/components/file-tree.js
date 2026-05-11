@@ -14,7 +14,7 @@ import {
   removeTerminal as doRemoveTerminal,
   refreshSection as doRefreshSection,
 } from '../utils/file-tree-dir-ops.js';
-import { fileTreeFacade } from '../utils/file-tree-services.js';
+import { fileTreeFacade } from '../utils/file-tree-facade.js';
 
 export class FileTree extends ComponentBase {
   constructor(container) {

@@ -15,7 +15,7 @@ import {
   splitTerminal,
   focusDirection as focusDirectionHelper,
 } from '../utils/terminal-subsystem.js';
-import { terminalFacade } from '../utils/terminal-services.js';
+import { terminalPanelFacade } from '../utils/terminal-panel-facade.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {
@@ -36,16 +36,16 @@ export class TerminalPanel {
   _initApi() {
     // Injected API methods forwarded to TerminalInstance
     this._terminalApi = {
-      openExternal: terminalFacade.openExternal,
-      homedir: terminalFacade.homedir,
-      openPath: terminalFacade.openPath,
-      ptyWrite: terminalFacade.ptyWrite,
-      ptyOnData: terminalFacade.ptyOnData,
-      ptyOnExit: terminalFacade.ptyOnExit,
-      ptyCreate: terminalFacade.ptyCreate,
-      ptyGetCwd: terminalFacade.ptyGetCwd,
-      ptyResize: terminalFacade.ptyResize,
-      ptyKill: terminalFacade.ptyKill,
+      openExternal: terminalPanelFacade.openExternal,
+      homedir: terminalPanelFacade.homedir,
+      openPath: terminalPanelFacade.openPath,
+      ptyWrite: terminalPanelFacade.ptyWrite,
+      ptyOnData: terminalPanelFacade.ptyOnData,
+      ptyOnExit: terminalPanelFacade.ptyOnExit,
+      ptyCreate: terminalPanelFacade.ptyCreate,
+      ptyGetCwd: terminalPanelFacade.ptyGetCwd,
+      ptyResize: terminalPanelFacade.ptyResize,
+      ptyKill: terminalPanelFacade.ptyKill,
     };
   }
 

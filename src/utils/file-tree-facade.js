@@ -1,16 +1,13 @@
 /**
- * Domain facade for fs-api, shell-api and clipboard-api services
- * used by the FileTree component.
+ * Domain facade for the FileTree component.
  *
- * Exposes a single flat interface so the component never imports more than
- * one service module.  The previous named re-exports are kept for
- * backward-compatibility but components should prefer `fileTreeFacade`.
+ * Aggregates the fs, shell and clipboard API methods needed by file-tree.js
+ * so the component imports a single module instead of multiple services.
  */
 import fsApi from '../services/fs-api.js';
 import shellApi from '../services/shell-api.js';
 import clipboardApi from '../services/clipboard-api.js';
 
-// ── unified facade (kept for non-component consumers) ───────────────
 export const fileTreeFacade = {
   // fs
   copy:       (...a) => fsApi.copy(...a),
