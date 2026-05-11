@@ -81,16 +81,32 @@ export function createSection(title) {
  * Factory that builds the common { cards, chart, tables } shape shared by
  * run-based tabs (agents and flows).
  *
- * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
+ * Both agent and flow tabs share the same card structure:
+ *   [0] total   – caller-provided (label, value)
+ *   [1] active  – caller-provided (label, value, optional cls)
+ *   [2] success rate – auto-built from m.rate using rateCls
+ *   [3] avg duration – auto-built from m.duration using formatDuration
+ *
+ * @param {object}   m                  The metrics slice (metrics.agent or metrics.flow).
  * @param {object}   options
- * @param {Array}    options.cards    Four card descriptors (label/value/cls/sub).
- * @param {string}   options.chartTitle  Title displayed above the chart.
- * @param {Array}    options.tables   One or more table descriptors.
+ * @param {{ label: string, value: any, cls?: string }} options.totalCard   Card descriptor for the "total" card.
+ * @param {{ label: string, value: any, cls?: string }} options.activeCard  Card descriptor for the "active" card.
+ * @param {string}   options.chartTitle Title displayed above the chart.
+ * @param {Array}    options.tables     One or more table descriptors.
  * @returns {{ cards: Array, chart: object, tables: Array }}
  */
-function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {
+function _createRunBasedTabConfig(m, { totalCard, activeCard, chartTitle, tables }) {
+  const durationSub = m.duration.count > 0
+    ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}`
+    : '';
+
   return {
-    cards,
+    cards: [
+      { label: totalCard.label, value: totalCard.value, cls: totalCard.cls || '' },
+      { label: activeCard.label, value: activeCard.value, cls: activeCard.cls || '' },
+      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
+      { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: durationSub },
+    ],
     chart: { title: chartTitle, data: m.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
     tables,
   };
@@ -105,12 +121,8 @@ function _agentTabConfig(metrics) {
   const m = metrics.agent;
   const maxFileCount = metrics.mostModifiedFiles[0]?.count || 1;
   return _createRunBasedTabConfig(m, {
-    cards: [
-      { label: 'Sessions', value: m.totalSessions, cls: '' },
-      { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
-      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
-      { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
-    ],
+    totalCard:  { label: 'Sessions', value: m.totalSessions },
+    activeCard: { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
     chartTitle: 'Sessions par jour',
     tables: [
       {
@@ -182,12 +194,8 @@ function _flowTabConfig(metrics) {
     return { empty: ['Aucun flow configuré', 'Créez des flows depuis la vue FLOW'] };
   }
   return _createRunBasedTabConfig(f, {
-    cards: [
-      { label: 'Total Runs', value: f.rate.total, cls: '' },
-      { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
-      { label: 'Taux succès', value: `${f.rate.rate}%`, cls: rateCls(f.rate.rate) },
-      { label: 'Durée moy.', value: formatDuration(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${formatDuration(f.duration.min)} · max: ${formatDuration(f.duration.max)}` : '' },
-    ],
+    totalCard:  { label: 'Total Runs', value: f.rate.total },
+    activeCard: { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}` },
     chartTitle: 'Runs par jour',
     tables: [
       {
