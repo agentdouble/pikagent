@@ -8,7 +8,7 @@ import fsApi from '../services/fs-api.js';
 import shellApi from '../services/shell-api.js';
 import clipboardApi from '../services/clipboard-api.js';
 
-export const fileTreeFacade = {
+export const fileTreeViewFacade = {
   // fs
   copy:       (...a) => fsApi.copy(...a),
   copyTo:     (...a) => fsApi.copyTo(...a),

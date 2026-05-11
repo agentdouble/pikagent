@@ -8,7 +8,7 @@ import skillsApi from '../services/skills-api.js';
 import shellApi from '../services/shell-api.js';
 import dialogApi from '../services/dialog-api.js';
 
-export const skillsFacade = {
+export const skillsViewFacade = {
   // skills
   list:         (...a) => skillsApi.list(...a),
   getRoot:      (...a) => skillsApi.getRoot(...a),

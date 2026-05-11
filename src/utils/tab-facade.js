@@ -27,7 +27,7 @@ import gitApi from '../services/git-api.js';
 import fsApi from '../services/fs-api.js';
 import configApi from '../services/config-api.js';
 
-export const tabFacade = {
+export const tabViewFacade = {
   // git
   gitBranch:    (...a) => gitApi.branch(...a),
   // fs
