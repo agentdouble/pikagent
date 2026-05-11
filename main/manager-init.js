@@ -10,26 +10,26 @@
  *   managers.js — ptyManager, fsManager, sessionManager, usageManager,
  *                 flowManager, skillsManager, gitManager, configManager,
  *                 updateManager
+ *
+ * NOTE: PR #469 will replace the eager `require('./managers')` with lazy
+ * getters so that each manager is loaded on first access.  The string-based
+ * LIFECYCLE_NAMES list (rather than direct references) is intentionally
+ * structured to align with that upcoming change.
  */
 
-const {
-  ptyManager, fsManager,
-  sessionManager, usageManager,
-  flowManager, skillsManager,
-  gitManager, configManager, updateManager,
-} = require('./managers');
+const managers = require('./managers');
 const { safeSend } = require('./ipc-helpers');
 
 /**
- * Modules that expose a `cleanup()` method and should be torn down when
- * the application closes.
+ * Names of managers that expose a `cleanup()` method and should be torn
+ * down when the application closes.
  */
-const LIFECYCLE_MODULES = [
-  sessionManager,
-  ptyManager,
-  fsManager,
-  flowManager,
-  usageManager,
+const LIFECYCLE_NAMES = [
+  'sessionManager',
+  'ptyManager',
+  'fsManager',
+  'flowManager',
+  'usageManager',
 ];
 
 /**
@@ -40,10 +40,11 @@ const LIFECYCLE_MODULES = [
  */
 function initManagers(getWindow) {
   // -- Lifecycle: start managers that need runtime context --
-  updateManager.init();
-  flowManager.start(getWindow, ptyManager);
-  sessionManager.start(ptyManager);
-  usageManager.init(sessionManager);
+  // Access order matters: updateManager first, then flow, session, usage.
+  managers.updateManager.init();
+  managers.flowManager.start(getWindow, managers.ptyManager);
+  managers.sessionManager.start(managers.ptyManager);
+  managers.usageManager.init(managers.sessionManager);
 
   // -- Build target map consumed by IPC dispatching --
   const { shell, clipboard } = require('electron');
@@ -52,32 +53,33 @@ function initManagers(getWindow) {
   // getVersion, performUpdate); the IPC schema uses shorter aliases
   // (check, version, run) and `run` needs a per-call progress callback.
   const updateTarget = {
-    check:    () => updateManager.checkForUpdates(),
-    version:  () => updateManager.getVersion(),
-    relaunch: () => updateManager.relaunch(),
-    run:      () => updateManager.performUpdate((p) => safeSend(getWindow, 'update:progress', p)),
+    check:    () => managers.updateManager.checkForUpdates(),
+    version:  () => managers.updateManager.getVersion(),
+    relaunch: () => managers.updateManager.relaunch(),
+    run:      () => managers.updateManager.performUpdate((p) => safeSend(getWindow, 'update:progress', p)),
   };
 
   const targets = {
-    pty: ptyManager,
-    fs: fsManager,
-    git: gitManager,
-    config: configManager,
-    flow: flowManager,
-    usage: usageManager,
-    skills: skillsManager,
-    update: updateTarget,
+    pty:       managers.ptyManager,
+    fs:        managers.fsManager,
+    git:       managers.gitManager,
+    config:    managers.configManager,
+    flow:      managers.flowManager,
+    usage:     managers.usageManager,
+    skills:    managers.skillsManager,
+    update:    updateTarget,
     shell,
     clipboard,
   };
 
   function cleanup() {
-    for (const mod of LIFECYCLE_MODULES) {
+    for (const name of LIFECYCLE_NAMES) {
+      const mod = managers[name];
       if (typeof mod.cleanup === 'function') mod.cleanup();
     }
   }
 
-  return { targets, cleanup, ptyManager, sessionManager };
+  return { targets, cleanup, ptyManager: managers.ptyManager, sessionManager: managers.sessionManager };
 }
 
 module.exports = { initManagers };

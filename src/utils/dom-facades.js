@@ -17,20 +17,6 @@ export { _el, renderList } from './dom.js';
 // settings-keybindings, settings-update, settings-section-builder
 export { createActionButton, renderButtonBar } from './dom.js';
 
-// ── file domain ─────────────────────────────────────────────────────
-// file-tree-renderer, file-tree-drop, file-editor-renderer,
-// file-viewer-tabs, diff-viewer, …
-// (uses _el, createActionButton, renderList — already exported above)
-
-// ── tab domain ──────────────────────────────────────────────────────
-// tab-bar-renderer, tab-renderer, tab-color-filter, tab-lifecycle
-// (uses _el, renderList — already exported above)
-
-// ── terminal domain ─────────────────────────────────────────────────
-// terminal-node-builder, terminal-drop-indicator,
-// terminal-panel-helpers, board-view
-// (uses _el, renderButtonBar, renderList — already exported above)
-
 // ── git domain ──────────────────────────────────────────────────────
 // worktree-flow, worktree-dialog, open-pr-flow
 export { _vis } from './dom.js';
