@@ -4,23 +4,17 @@ const path = require('path');
 const os = require('os');
 const { BASE_DIR } = require('./paths');
 const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
-const { trySafe } = require('./logger');
 const { pathExists } = require('./fs-manager-helpers');
 const { JsonStore } = require('./json-store');
 const { sanitizeSegment } = require('../shared/string-utils');
 
 const store = new JsonStore(BASE_DIR, 'skills-manager');
-const log = store.log;
 
 const DEFAULT_SKILLS_DIR = path.join(os.homedir(), '.claude', 'skills');
 const SETTINGS_FILE = path.join(BASE_DIR, 'skills-settings.json');
 
 let _rootCache = null;
 let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
-
-function _safe(fn, fallback, label) {
-  return trySafe(fn, fallback, { log, label });
-}
 
 function parseFrontmatter(md) {
   if (!md.startsWith('---')) return {};
@@ -52,7 +46,7 @@ async function _saveRoot(newRoot) {
 async function _readSkillDir(rootDir, skillName) {
   const dir = path.join(rootDir, skillName);
   const skillPath = path.join(dir, 'SKILL.md');
-  return _safe(async () => {
+  return store.trySafe(async () => {
     const stat = await fsp.stat(skillPath);
     if (!stat.isFile()) return null;
     const raw = await fsp.readFile(skillPath, 'utf-8');
@@ -70,7 +64,7 @@ async function _readSkillDir(rootDir, skillName) {
 
 async function list() {
   const root = await _loadRoot();
-  return _safe(async () => {
+  return store.trySafe(async () => {
     const entries = await fsp.readdir(root, { withFileTypes: true });
     const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     const skills = await Promise.all(dirs.map((name) => _readSkillDir(root, name)));
@@ -80,12 +74,12 @@ async function list() {
 
 async function read(filePath) {
   if (!(await _isAllowedPath(filePath))) return null;
-  return _safe(() => fsp.readFile(filePath, 'utf-8'), null, 'read');
+  return store.trySafe(() => fsp.readFile(filePath, 'utf-8'), null, 'read');
 }
 
 async function write({ filePath, content }) {
   if (!(await _isAllowedPath(filePath))) return { success: false, error: 'Path not allowed' };
-  return _safe(async () => {
+  return store.trySafe(async () => {
     await fsp.mkdir(path.dirname(filePath), { recursive: true });
     await fsp.writeFile(filePath, content, 'utf-8');
     return { success: true };
@@ -98,7 +92,7 @@ async function create({ id, description }) {
   const root = await _loadRoot();
   const dir = path.join(root, safeId);
   const filePath = path.join(dir, 'SKILL.md');
-  return _safe(async () => {
+  return store.trySafe(async () => {
     await fsp.mkdir(dir, { recursive: true });
     try {
       await fsp.access(filePath);
@@ -117,7 +111,7 @@ async function remove(id) {
   const root = await _loadRoot();
   const dir = path.join(root, safeId);
   if (!(await _isAllowedPath(dir))) return false;
-  return _safe(async () => {
+  return store.trySafe(async () => {
     await fsp.rm(dir, { recursive: true, force: true });
     return true;
   }, false, 'remove');
@@ -125,7 +119,7 @@ async function remove(id) {
 
 async function importFrom(srcDir) {
   if (!srcDir) return { success: false, error: 'No source folder' };
-  return _safe(async () => {
+  return store.trySafe(async () => {
     const stat = await fsp.stat(srcDir);
     if (!stat.isDirectory()) return { success: false, error: 'Not a directory' };
     const skillFile = path.join(srcDir, 'SKILL.md');
@@ -156,7 +150,7 @@ async function getRoot() {
 async function setRoot(newRoot) {
   if (!newRoot) return { success: false, error: 'Empty path' };
   const resolved = path.resolve(newRoot);
-  return _safe(async () => {
+  return store.trySafe(async () => {
     await fsp.mkdir(resolved, { recursive: true });
     await _saveRoot(resolved);
     return { success: true, root: resolved };
@@ -164,7 +158,7 @@ async function setRoot(newRoot) {
 }
 
 async function resetRoot() {
-  return _safe(async () => {
+  return store.trySafe(async () => {
     await fsp.unlink(SETTINGS_FILE).catch(() => {});
     _rootCache = null;
     _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
