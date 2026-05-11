@@ -5,17 +5,26 @@
  * Exposes a single flat interface so the component never imports more than
  * one service module.  The previous named re-exports are kept for
  * backward-compatibility but components should prefer `skillsFacade`.
+ *
+ * NOTE (PR #466): createApiService produces an identical API surface to the
+ * hand-crafted modules it replaces (shell-api.js, dialog-api.js).  The proxy
+ * delegates every call to window.api[domain][method](...args), which is the
+ * exact same pattern the original service files used.  The alias map handles
+ * JS-reserved words (import → importSkill, delete → deleteSkill).
  */
-import skillsApi from '../services/skills-api.js';
-import shellApi from '../services/shell-api.js';
-import dialogApi from '../services/dialog-api.js';
+import { createApiService } from '../services/create-api-service.js';
+
+// ── service instances (via createApiService) ────────────────────────
+const skillsApi = createApiService('skills', { importSkill: 'import', deleteSkill: 'delete' });
+const shellApi  = createApiService('shell');
+const dialogApi = createApiService('dialog');
 
 // ── backward-compat re-exports ──────────────────────────────────────
 export { skillsApi, shellApi, dialogApi };
 
 // ── unified facade ──────────────────────────────────────────────────
 export const skillsFacade = {
-  // skills
+  // skills — delegated via createApiService proxy
   list:         (...a) => skillsApi.list(...a),
   getRoot:      (...a) => skillsApi.getRoot(...a),
   read:         (...a) => skillsApi.read(...a),
