@@ -45,7 +45,7 @@ export class TabManager {
   _initState() {
     this.tabs = new Map();
     this.activeTabId = this.defaultCwd = this.onOpenSettings = null;
-    this.configManager = new (getComponent('ConfigManager'))(this);
+    this.configManager = new (getComponent('ConfigSettingsPanel'))(this);
     this.boardView = this._boardContainerEl = null;
     this.flowView = this._flowContainerEl = null;
     this.usageView = this._usageContainerEl = null;

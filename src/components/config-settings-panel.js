@@ -10,7 +10,7 @@ import {
 import { registerComponent } from '../utils/component-registry.js';
 import configApi from '../services/config-api.js';
 
-export class ConfigManager {
+export class ConfigSettingsPanel {
   constructor(tabManager) {
     this.tabManager = tabManager;
     this.currentConfigName = null;
@@ -127,4 +127,4 @@ export class ConfigManager {
   }
 }
 
-registerComponent('ConfigManager', ConfigManager);
+registerComponent('ConfigSettingsPanel', ConfigSettingsPanel);
