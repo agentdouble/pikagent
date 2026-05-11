@@ -231,6 +231,5 @@ module.exports = {
   initializeCounters,
   computeRate,
   computeNumericStats,
-  buildMetrics,
   createDomainMetricsBuilder,
 };
