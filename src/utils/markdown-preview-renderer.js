@@ -4,7 +4,7 @@
  * instead of an editable textarea.
  */
 
-import { _el } from './file-dom.js';
+import { _el } from './dom-facades.js';
 import { renderMarkdown } from './markdown-renderer.js';
 
 /**

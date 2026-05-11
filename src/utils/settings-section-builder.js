@@ -3,7 +3,7 @@
  * Abstracts the heading + content + action buttons pattern
  * shared across settings-appearance, settings-configs, and settings-keybindings.
  */
-import { _el, renderButtonBar, renderList } from './settings-dom.js';
+import { _el, renderButtonBar, renderList } from './dom-facades.js';
 import { createAsyncHandler } from './event-helpers.js';
 
 /**

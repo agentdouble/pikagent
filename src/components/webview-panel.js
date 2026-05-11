@@ -1,4 +1,4 @@
-import { _el } from '../utils/workspace-dom.js';
+import { _el } from '../utils/dom-facades.js';
 import { onKeyAction } from '../utils/event-helpers.js';
 import { setupResizeHandler } from '../utils/drag-helpers.js';
 import {

@@ -9,7 +9,7 @@
 
 import { showWorktreeDialog } from './worktree-dialog.js';
 import { showConfirmDialog } from './dom-dialogs.js';
-import { _el } from './git-dom.js';
+import { _el } from './dom-facades.js';
 import { gitFlowStep } from './git-flow-helpers.js';
 
 /**
