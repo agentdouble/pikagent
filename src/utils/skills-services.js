@@ -19,10 +19,7 @@ const skillsApi = createApiService('skills', { importSkill: 'import', deleteSkil
 const shellApi  = createApiService('shell');
 const dialogApi = createApiService('dialog');
 
-// ── backward-compat re-exports ──────────────────────────────────────
-export { skillsApi, shellApi, dialogApi };
-
-// ── unified facade ──────────────────────────────────────────────────
+// ── unified facade (kept for non-component consumers) ───────────────
 export const skillsFacade = {
   // skills — delegated via createApiService proxy
   list:         (...a) => skillsApi.list(...a),
