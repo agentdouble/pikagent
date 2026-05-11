@@ -53,4 +53,4 @@ function generateDateRange(days = 30) {
   });
 }
 
-module.exports = { DATE_LOCALE, formatDateTime, extractDateString, generateDateRange };
+module.exports = { formatDateTime, extractDateString, generateDateRange };
