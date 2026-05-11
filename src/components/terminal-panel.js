@@ -1,6 +1,6 @@
 import { emitTerminalRemoved } from '../utils/terminal-events.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
-import { _el } from '../utils/terminal-dom.js';
+import { _el } from '../utils/dom-facades.js';
 import { setupDragHandler, setupResizeHandler } from '../utils/drag-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import {

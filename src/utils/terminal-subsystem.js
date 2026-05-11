@@ -3,7 +3,7 @@
  * and board-view components to access terminal infrastructure.
  *
  * Covers the split-layout, serialization, node-building, drag-drop
- * indicator, terminal-split, terminal-events, terminal-dom, and
+ * indicator, terminal-split, terminal-events, dom-facades, and
  * terminal-factory APIs.
  *
  * Reduces the import surface of terminal-panel.js and board-view.js.
@@ -40,8 +40,8 @@ export {
   onTerminalCreated, onTerminalRemoved, onTerminalExited,
 } from './terminal-events.js';
 
-// ── terminal-dom (board-view) ───────────────────────────────────────
-export { _el, renderButtonBar, renderList } from './terminal-dom.js';
+// ── dom-facades (board-view) ────────────────────────────────────────
+export { _el, renderButtonBar, renderList } from './dom-facades.js';
 
 // ── terminal-factory (board-view) ───────────────────────────────────
 export {

@@ -16,12 +16,8 @@
  *   - positionInViewport                    → ./context-menu.js (private)
  *
  * Domain facades reduce fan-in — prefer importing from these where applicable:
- *   - terminal-dom.js   (terminal-node-builder, terminal-drop-indicator, board-view, …)
- *   - tab-dom.js        (tab-bar-renderer, tab-renderer, tab-lifecycle, …)
- *   - workspace-dom.js  (workspace-layout, workspace-resize, sidebar-manager, usage-view, …)
+ *   - dom-facades.js    (consolidated: workspace, settings, file, tab, terminal, git domains)
  *   - flow-dom.js       (flow-card-renderer, flow-card-setup, …)
- *   - file-dom.js       (file-tree-renderer, file-tree-drop, diff-viewer, …)
- *   - git-dom.js        (worktree-flow, worktree-dialog, open-pr-flow)
  */
 import { onClickStopped } from './event-helpers.js';
 

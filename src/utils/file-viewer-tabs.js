@@ -3,7 +3,7 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 
-import { _el, renderList } from './file-dom.js';
+import { _el, renderList } from './dom-facades.js';
 import { attachContextMenu } from './context-menu.js';
 import { createTabElement } from './tab-renderer.js';
 

@@ -5,19 +5,19 @@
  * dependencies that used to live inside ipc-handlers.js.  The main entry
  * point calls `initManagers()` once and passes the result to the IPC layer.
  *
- * Managers are imported through domain-grouped re-export modules to reduce
- * the number of direct imports in this file:
+ * Managers are imported through a single consolidated barrel module:
  *
- *   io-managers.js       — ptyManager, fsManager
- *   data-managers.js     — sessionManager, usageManager
- *   workflow-managers.js — flowManager, skillsManager
- *   infra-managers.js    — gitManager, configManager, updateManager
+ *   managers.js — ptyManager, fsManager, sessionManager, usageManager,
+ *                 flowManager, skillsManager, gitManager, configManager,
+ *                 updateManager
  */
 
-const { ptyManager, fsManager } = require('./io-managers');
-const { sessionManager, usageManager } = require('./data-managers');
-const { flowManager, skillsManager } = require('./workflow-managers');
-const { gitManager, configManager, updateManager } = require('./infra-managers');
+const {
+  ptyManager, fsManager,
+  sessionManager, usageManager,
+  flowManager, skillsManager,
+  gitManager, configManager, updateManager,
+} = require('./managers');
 const { safeSend } = require('./ipc-helpers');
 
 /**
