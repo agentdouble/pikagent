@@ -1,22 +1,7 @@
 import { describe, it, expect } from 'vitest';
-const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('../../main/config-helpers');
+const { DEFAULT_META, buildConfigRecord, formatConfigList } = require('../../main/config-helpers');
 
 describe('config-helpers', () => {
-  describe('sanitizeName', () => {
-    it('keeps alphanumeric, dash, underscore and space', () => {
-      expect(sanitizeName('my-config_1 test')).toBe('my-config_1 test');
-    });
-
-    it('replaces special characters with underscore', () => {
-      expect(sanitizeName('foo/bar:baz!')).toBe('foo_bar_baz_');
-    });
-
-    it('truncates to 64 characters', () => {
-      const long = 'a'.repeat(100);
-      expect(sanitizeName(long)).toHaveLength(64);
-    });
-  });
-
   describe('buildConfigRecord', () => {
     it('creates a new record with createdAt = now', () => {
       const record = buildConfigRecord('test', { tabs: [1] }, null, '2025-01-01');

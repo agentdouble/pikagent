@@ -1,6 +1,7 @@
 const { CONFIG_DIR, META_FILE } = require('./paths');
 const { readJson, writeJson } = require('./fs-utils');
-const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
+const { DEFAULT_META, buildConfigRecord, formatConfigList } = require('./config-helpers');
+const { sanitizeName } = require('../shared/string-utils');
 const { Cache, cachedAsync } = require('./cache');
 const { trySafe } = require('./logger');
 const { JsonStore } = require('./json-store');
