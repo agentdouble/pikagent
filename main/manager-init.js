@@ -78,6 +78,8 @@ const { safeSend } = require('./ipc-helpers');
  * down when the application closes.  Resolved lazily via `managers[name]`
  * so the modules are not loaded until cleanup time (which is after
  * `initManagers()` has already accessed them).
+ *
+ * Guarded at definition time: every entry must correspond to a known manager.
  */
 const LIFECYCLE_NAMES = [
   'sessionManager',
