@@ -6,16 +6,19 @@
  * one service module.  The previous named re-exports are kept for
  * backward-compatibility but components should prefer `skillsFacade`.
  */
-import skillsApi from '../services/skills-api.js';
-import shellApi from '../services/shell-api.js';
-import dialogApi from '../services/dialog-api.js';
+import { createApiService } from '../services/create-api-service.js';
+
+// ── service instances (via createApiService) ────────────────────────
+const skillsApi = createApiService('skills', { importSkill: 'import', deleteSkill: 'delete' });
+const shellApi  = createApiService('shell');
+const dialogApi = createApiService('dialog');
 
 // ── backward-compat re-exports ──────────────────────────────────────
 export { skillsApi, shellApi, dialogApi };
 
 // ── unified facade ──────────────────────────────────────────────────
 export const skillsFacade = {
-  // skills
+  // skills — delegated via createApiService proxy
   list:         (...a) => skillsApi.list(...a),
   getRoot:      (...a) => skillsApi.getRoot(...a),
   read:         (...a) => skillsApi.read(...a),
