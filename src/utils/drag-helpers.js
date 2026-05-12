@@ -66,19 +66,6 @@ export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = 
 }
 
 /**
- * Named-params variant of trackMouse for callers that prefer destructuring.
- *
- * Adds mousemove and mouseup listeners on document, applies cursor and
- * userSelect on document.body, and cleans everything up automatically on
- * mouseup.
- *
- * @param {{ cursor?: string, onMove: (e: MouseEvent) => void, onUp?: () => void, bodyClass?: string }} opts
- */
-export function trackMouseDrag({ cursor = 'default', onMove, onUp = () => {}, bodyClass = 'resizing' } = {}) {
-  return trackMouse(cursor, onMove, onUp, { bodyClass });
-}
-
-/**
  * Add an event listener to a target and return a cleanup function that
  * removes it.  Calling the cleanup is idempotent.
  *
