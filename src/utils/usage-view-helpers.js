@@ -81,12 +81,12 @@ export function createSection(title) {
  * Factory that builds the common { cards, chart, tables } shape shared by
  * run-based tabs (agents and flows).
  *
- * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
- * @param {object}   options
- * @param {Array}    options.cards    Four card descriptors (label/value/cls/sub).
- * @param {string}   options.chartTitle  Title displayed above the chart.
- * @param {Array}    options.tables   One or more table descriptors.
- * @returns {{ cards: Array, chart: object, tables: Array }}
+ * @param {object} m The metrics slice (metrics.agent or metrics.flow).
+ * @param {object} options
+ * @param {Array<{ label: string, value: string|number, cls: string, sub?: string }>} options.cards Four card descriptors.
+ * @param {string} options.chartTitle Title displayed above the chart.
+ * @param {Array<object>} options.tables One or more table descriptors.
+ * @returns {{ cards: Array<object>, chart: object, tables: Array<object> }}
  */
 function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {
   return {

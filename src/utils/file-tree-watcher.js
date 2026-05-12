@@ -6,7 +6,7 @@ import { DEBOUNCE_DELAY, WATCH_PREFIX } from './file-tree-helpers.js';
 
 /**
  * Set up a debounced fs.onChanged listener.
- * @param {Map} debounceTimers - shared timer map
+ * @param {Map<string, ReturnType<typeof setTimeout>>} debounceTimers - shared timer map
  * @param {(watchIdOrCwd: string) => Promise<void>} refreshSection - callback to refresh
  * @param {{ onChanged: (cb: (event: { id: string }) => void) => (() => void) }} fsApi - injected fs API
  * @returns {() => void} unsubscribe function

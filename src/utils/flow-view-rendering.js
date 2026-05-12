@@ -122,7 +122,7 @@ export function renderFlowList(ctx) {
 /**
  * Handle the "open modal" flow: prompt user, persist, and refresh.
  * @param {{ existing: object|null, catData: object, moveFlowToCategory: Function, persistCategories: Function, refresh: Function }} ctx
- * @param {Function} getOpenFlowModal - returns the openFlowModal component
+ * @param {() => Function} getOpenFlowModal - returns the openFlowModal component
  * @param {object} flowApi - the flow API service
  */
 export async function handleOpenModal(ctx, getOpenFlowModal, flowApi) {

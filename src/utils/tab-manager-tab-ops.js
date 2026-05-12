@@ -76,7 +76,7 @@ export function bindTabOps(tm) {
 /**
  * Build the deps and call doRenderTabBar.
  * @param {object} tm - TabManager instance
- * @returns {Map} tab element map
+ * @returns {Map<string, HTMLElement>} tab element map
  */
 export function renderTabBar(tm) {
   return bindTabOps(tm).renderTabBar();
