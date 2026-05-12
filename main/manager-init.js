@@ -123,6 +123,19 @@ function initManagers(getWindow) {
     run:      () => managers.updateManager.performUpdate((p) => safeSend(getWindow, 'update:progress', p)),
   };
 
+  // Adapter: api-schema's `shell:showInFolder` channel maps to Electron's
+  // `shell.showItemInFolder`, and `clipboard:write` (string arg) maps to
+  // `clipboard.writeText` — Electron's `clipboard.write` only accepts an
+  // object payload.
+  const shellTarget = {
+    showInFolder: (p) => shell.showItemInFolder(p),
+    openExternal: (url) => shell.openExternal(url),
+    openPath:     (p) => shell.openPath(p),
+  };
+  const clipboardTarget = {
+    write: (text) => clipboard.writeText(text),
+  };
+
   const targets = {
     pty:       managers.ptyManager,
     fs:        managers.fsManager,
@@ -132,8 +145,8 @@ function initManagers(getWindow) {
     usage:     managers.usageManager,
     skills:    managers.skillsManager,
     update:    updateTarget,
-    shell,
-    clipboard,
+    shell:     shellTarget,
+    clipboard: clipboardTarget,
   };
 
   function cleanup() {
