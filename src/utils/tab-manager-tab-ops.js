@@ -73,27 +73,41 @@ export function bindTabOps(tm) {
   };
 }
 
+// Cache the bound trio per TabManager instance: each `tm` keeps its own
+// closures over `switchTo`, `closeTab`, `renameTab`, so they are reused
+// across calls instead of being rebuilt on every wrapper invocation.
+const opsCache = new WeakMap();
+
+function ops(tm) {
+  let bound = opsCache.get(tm);
+  if (!bound) {
+    bound = bindTabOps(tm);
+    opsCache.set(tm, bound);
+  }
+  return bound;
+}
+
 /**
  * Build the deps and call doRenderTabBar.
  * @param {object} tm - TabManager instance
  * @returns {Map} tab element map
  */
 export function renderTabBar(tm) {
-  return bindTabOps(tm).renderTabBar();
+  return ops(tm).renderTabBar();
 }
 
 /**
  * Build the deps and call doCreateTab.
  */
 export function createTab(tm, switchTo, name, cwd) {
-  return bindTabOps(tm).createTab(switchTo, name, cwd);
+  return ops(tm).createTab(switchTo, name, cwd);
 }
 
 /**
  * Build the deps and call doCloseTab.
  */
 export function closeTab(tm, createTabFn, switchToFn, id) {
-  return bindTabOps(tm).closeTab(createTabFn, switchToFn, id);
+  return ops(tm).closeTab(createTabFn, switchToFn, id);
 }
 
 /**

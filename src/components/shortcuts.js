@@ -9,6 +9,9 @@ import {
   mergeBindings,
   buildBindingsList,
 } from '../utils/shortcut-helpers.js';
+import { persistedJsonSetting } from '../utils/persisted-setting.js';
+
+const bindingsStore = persistedJsonSetting(STORAGE_KEY, null);
 
 export class ShortcutManager {
   constructor(tabManager) {
@@ -30,19 +33,11 @@ export class ShortcutManager {
   }
 
   loadBindings() {
-    let saved = null;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) saved = JSON.parse(raw);
-    } catch {}
-    this.bindings = mergeBindings(saved, DEFAULT_BINDINGS);
+    this.bindings = mergeBindings(bindingsStore.get(), DEFAULT_BINDINGS);
   }
 
   _saveBindings() {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(Object.fromEntries(buildActionKeysMap(this.bindings))),
-    );
+    bindingsStore.set(Object.fromEntries(buildActionKeysMap(this.bindings)));
   }
 
   getBindingsList() {
@@ -60,7 +55,7 @@ export class ShortcutManager {
   }
 
   resetToDefaults() {
-    localStorage.removeItem(STORAGE_KEY);
+    bindingsStore.remove();
     this.loadBindings();
   }
 
