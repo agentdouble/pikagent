@@ -17,6 +17,7 @@ const {
 } = require('./flow-helpers');
 const { saveLog, getRunLog, cleanLogs } = require('./flow-executor-log');
 const { recordRun } = require('./flow-executor-run');
+const { toLogFilename } = require('../shared/date-utils');
 
 // --- Top-level helpers ---
 
@@ -80,7 +81,7 @@ function execute(deps, runningFlows, flow) {
 
   const ptyId = `flow-${flow.id}-${Date.now()}`;
   const cwd = flow.cwd || os.homedir();
-  const runTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const runTimestamp = toLogFilename();
 
   try {
     const proc = ptyManager.create({

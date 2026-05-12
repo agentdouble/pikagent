@@ -53,4 +53,33 @@ function generateDateRange(days = 30) {
   });
 }
 
-module.exports = { formatDateTime, extractDateString, generateDateRange };
+/**
+ * Return the current instant as an ISO 8601 string (e.g. "2025-03-29T14:32:00.000Z").
+ * Replaces the widespread `new Date().toISOString()` pattern.
+ * @returns {string}
+ */
+function nowISO() {
+  return new Date().toISOString();
+}
+
+/**
+ * Return today's date as "YYYY-MM-DD".
+ * Replaces `new Date().toISOString().slice(0, 10)`.
+ * @returns {string}
+ */
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Convert an ISO timestamp into a filename-safe string by replacing
+ * colons and dots with dashes (e.g. "2025-03-29T14-32-00-000Z").
+ * Replaces `.toISOString().replace(/[:.]/g, '-')`.
+ * @param {string} [iso] - ISO string; defaults to nowISO()
+ * @returns {string}
+ */
+function toLogFilename(iso) {
+  return (iso || nowISO()).replace(/[:.]/g, '-');
+}
+
+module.exports = { formatDateTime, extractDateString, generateDateRange, nowISO, todayISO, toLogFilename };

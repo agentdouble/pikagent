@@ -1,11 +1,9 @@
-const { execFile } = require('child_process');
-const { promisify } = require('util');
 const { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked } = require('./git-helpers');
 const { splitLines, matchFirst } = require('./parse-utils');
 const { createLogger, trySafe } = require('./logger');
+const { execFileAsync, runCommand } = require('./command-utils');
 
 const log = createLogger('git-manager');
-const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -13,15 +11,8 @@ const execFileAsync = promisify(execFile);
 
 /** Run a git command, return trimmed stdout or `fallback` on error. */
 async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
-  return trySafe(
-    async () => {
-      const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
-      const { stdout } = await execFileAsync('git', args, opts);
-      return stdout.trim();
-    },
-    fallback,
-    { log, label: `git ${args[0]} in ${cwd}` },
-  );
+  const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
+  return runCommand('git', args, opts, { fallback, trySafe, log, label: `git ${args[0]} in ${cwd}` });
 }
 
 // ---------------------------------------------------------------------------

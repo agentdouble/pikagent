@@ -1,9 +1,10 @@
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
-const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
+const { ensureDirOnce } = require('./fs-utils');
 const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
+const { nowISO } = require('../shared/date-utils');
 const { createPollingManager } = require('../shared/polling-manager');
-const { Cache } = require('./cache');
+const { CachedJsonFile } = require('./json-store');
 const { createLogger, trySafe } = require('./logger');
 
 const log = createLogger('session-manager');
@@ -25,7 +26,7 @@ class SessionManager {
     this._previousAgents = {};
     this._activeSessions = {};
     this._polling = false;
-    this._sessionsCache = new Cache();
+    this._sessionsFile = new CachedJsonFile(SESSIONS_FILE, ensureDir, []);
   }
 
   async start(ptyManager) {
@@ -78,7 +79,7 @@ class SessionManager {
       termId,
       agent: agentName,
       cwd: cwd || os.homedir(),
-      startedAt: new Date().toISOString(),
+      startedAt: nowISO(),
     };
   }
 
@@ -98,24 +99,22 @@ class SessionManager {
   }
 
   async _saveRecord(record) {
-    await ensureDir();
-
-    const sessions = trimSessions([...(this._sessionsCache.get() || []), record]);
-    this._sessionsCache.set(sessions);
+    const current = this._sessionsFile.get() || [];
+    const sessions = trimSessions([...current, record]);
 
     trySafe(
-      () => writeJson(SESSIONS_FILE, sessions),
+      () => this._sessionsFile.write(sessions),
       undefined,
       { log, label: 'write' },
     );
   }
 
   async _loadAll() {
-    this._sessionsCache.set((await readJson(SESSIONS_FILE)) || []);
+    await this._sessionsFile.read();
   }
 
   getSessions() {
-    return this._sessionsCache.get() || [];
+    return this._sessionsFile.get() || [];
   }
 
   getActiveSessions() {

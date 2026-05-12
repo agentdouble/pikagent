@@ -4,10 +4,11 @@
  */
 
 const { buildTimestampedRecord } = require('./record-helpers');
+const { nowISO } = require('../shared/date-utils');
 
 const DEFAULT_META = { defaultConfig: null };
 
-function buildConfigRecord(name, data, existing, now = new Date().toISOString()) {
+function buildConfigRecord(name, data, existing, now = nowISO()) {
   return buildTimestampedRecord({ ...data, name }, existing, now);
 }
 
