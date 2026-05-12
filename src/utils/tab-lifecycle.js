@@ -175,6 +175,45 @@ export function findTabForTerminal(tabs, termId) {
 }
 
 /**
+ * Auto-rename a tab to the folder name when the first terminal's cwd changes
+ * and the user has not explicitly named the tab.
+ * @param {WorkspaceTab} tab
+ * @param {string} termId
+ * @param {string} cwd
+ * @param {(() => void)|undefined} renderTabBar
+ */
+function _autoRenameTab(tab, termId, cwd, renderTabBar) {
+  const firstTermId = tab.terminalPanel?.terminals
+    ? Array.from(tab.terminalPanel.terminals.keys())[0]
+    : null;
+  if (!tab.userNamed && firstTermId === termId) {
+    const newName = extractFolderName(cwd);
+    if (newName && newName !== tab.name) {
+      tab.name = newName;
+      renderTabBar?.();
+    }
+  }
+}
+
+/**
+ * Update the header path text and branch badge for the active tab.
+ * @param {WorkspaceTab} tab
+ * @param {string} cwd
+ * @param {(cwd: string) => Promise<string|null>} gitBranch
+ */
+function _updateHeaderBranch(tab, cwd, gitBranch) {
+  tab.cwd = cwd;
+  if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
+  if (tab.branchBadgeEl) {
+    gitBranch(cwd).then((branch) => {
+      if (tab.branchBadgeEl) {
+        tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
+      }
+    });
+  }
+}
+
+/**
  * Handle terminal cwd changes — update file tree, active-tab header, and
  * auto-rename the tab (to the folder name) when the first terminal's cwd
  * changes and the user has not explicitly named the tab.
@@ -194,32 +233,13 @@ export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch
     tab.fileTree.setTerminalRoot(termId, cwd);
   }
 
-  // Auto-rename tab when the first terminal moves and the user hasn't
-  // defined a custom name.
-  const firstTermId = tab.terminalPanel?.terminals
-    ? Array.from(tab.terminalPanel.terminals.keys())[0]
-    : null;
-  if (!tab.userNamed && firstTermId === termId) {
-    const newName = extractFolderName(cwd);
-    if (newName && newName !== tab.name) {
-      tab.name = newName;
-      renderTabBar?.();
-    }
-  }
+  _autoRenameTab(tab, termId, cwd, renderTabBar);
 
   // Update header path/branch only for the active tab's active terminal
   if (
     tab.id === activeTabId &&
     tab.terminalPanel?.activeTerminal?.terminal?.id === termId
   ) {
-    tab.cwd = cwd;
-    if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
-    if (tab.branchBadgeEl) {
-      gitBranch(cwd).then((branch) => {
-        if (tab.branchBadgeEl) {
-          tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
-        }
-      });
-    }
+    _updateHeaderBranch(tab, cwd, gitBranch);
   }
 }

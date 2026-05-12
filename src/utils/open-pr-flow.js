@@ -67,6 +67,40 @@ function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
  */
 
 /**
+ * Handle the result of a failed `gh pr create` call.
+ * Returns true when the failure was surfaced to the user (caller should stop);
+ * false when the caller should fall back to the browser flow.
+ */
+async function _handleGhFailure(result) {
+  if (result?.code === 'gh-not-installed') return false;
+  const retryBrowser = await showConfirmDialog(
+    _el('div', null,
+      _el('p', null, 'gh pr create failed:'),
+      _el('pre', { style: { fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' } },
+        result?.error || 'unknown error'),
+      _el('p', null, 'Open in browser instead?'),
+    ),
+    { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+  );
+  return !retryBrowser;
+}
+
+/**
+ * Handle the result of a successful `gh pr create` call.
+ * Shows a dialog and optionally opens the PR URL in the browser.
+ */
+async function _handleGhSuccess(result, api) {
+  const open = await showConfirmDialog(
+    _el('div', null,
+      _el('p', null, result.existed ? 'PR already open: ' : 'PR created: ',
+        _el('code', null, result.url || '')),
+    ),
+    { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+  );
+  if (open && result.url) await api.openExternal(result.url);
+}
+
+/**
  * Try to create a PR via the `gh` CLI. Returns true when handled (success
  * or a clean failure already surfaced to the user); returns false when the
  * caller should fall back to the browser-based flow.
@@ -88,73 +122,51 @@ async function _tryGhFlow(cwd, branch, baseBranch, api) {
 
   const result = await api.ghPrCreate({ cwd, baseBranch });
 
-  if (!result?.ok) {
-    if (result?.code === 'gh-not-installed') return false;
-    const retryBrowser = await showConfirmDialog(
-      _el('div', null,
-        _el('p', null, 'gh pr create failed:'),
-        _el('pre', { style: { fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' } },
-          result?.error || 'unknown error'),
-        _el('p', null, 'Open in browser instead?'),
-      ),
-      { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
-    );
-    return !retryBrowser;
-  }
+  if (!result?.ok) return _handleGhFailure(result);
 
-  const open = await showConfirmDialog(
-    _el('div', null,
-      _el('p', null, result.existed ? 'PR already open: ' : 'PR created: ',
-        _el('code', null, result.url || '')),
-    ),
-    { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
-  );
-  if (open && result.url) await api.openExternal(result.url);
+  await _handleGhSuccess(result, api);
   return true;
 }
 
 /**
- * Drive the open-PR flow end-to-end for a given repo cwd.
- *
- * For GitHub repos, attempts `gh pr create` first (no secret management
- * required — uses the user's existing gh auth). Falls back to push + open
- * the compare URL in the browser when gh is unavailable or the host is not
- * GitHub.
- *
- * @param {{ cwd: string, baseBranch?: string|null, api: OpenPrApi }} opts
+ * Validate branch and remote, returning the parsed remote info or null
+ * (after showing the appropriate error dialog).
+ * @param {string} cwd
+ * @param {OpenPrApi} api
+ * @returns {Promise<{ branch: string, parsed: { host: string, owner: string, repo: string } } | null>}
  */
-export async function openPrFlow({ cwd, baseBranch = null, api }) {
+async function _validateBranchAndRemote(cwd, api) {
   const [branch, remote] = await Promise.all([api.branch(cwd), api.remoteUrl(cwd)]);
 
   if (!branch) {
     await showErrorAlert('No git branch detected in ', cwd);
-    return;
+    return null;
   }
   if (!remote) {
     await showConfirmDialog(
       _el('p', null, 'No ', _el('code', null, 'origin'), ' remote configured.'),
       { confirmLabel: 'OK', cancelLabel: 'Close' },
     );
-    return;
+    return null;
   }
 
   const parsed = parseRemoteUrl(remote);
   if (!parsed) {
     await showErrorAlert('Could not parse remote URL: ', remote);
-    return;
+    return null;
   }
 
-  if (parsed.host.endsWith('github.com')) {
-    const handled = await _tryGhFlow(cwd, branch, baseBranch, api);
-    if (handled) return;
-  }
+  return { branch, parsed };
+}
 
-  const url = buildPrUrl(parsed, branch, baseBranch);
-  if (!url) {
-    await showErrorAlert('Unsupported git provider: ', parsed.host);
-    return;
-  }
-
+/**
+ * Prompt the user to push and open a browser-based PR flow.
+ * @param {string} cwd
+ * @param {string} branch
+ * @param {string} url - the compare/PR URL to open
+ * @param {OpenPrApi} api
+ */
+async function _browserPrFlow(cwd, branch, url, api) {
   const ok = await showConfirmDialog(
     _el('div', null,
       _el('p', null, 'Push ', _el('code', null, branch), ' to ', _el('code', null, 'origin'), ' and open a PR?'),
@@ -168,6 +180,35 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
   if (!push) return;
 
   await api.openExternal(url);
+}
+
+/**
+ * Drive the open-PR flow end-to-end for a given repo cwd.
+ *
+ * For GitHub repos, attempts `gh pr create` first (no secret management
+ * required — uses the user's existing gh auth). Falls back to push + open
+ * the compare URL in the browser when gh is unavailable or the host is not
+ * GitHub.
+ *
+ * @param {{ cwd: string, baseBranch?: string|null, api: OpenPrApi }} opts
+ */
+export async function openPrFlow({ cwd, baseBranch = null, api }) {
+  const result = await _validateBranchAndRemote(cwd, api);
+  if (!result) return;
+  const { branch, parsed } = result;
+
+  if (parsed.host.endsWith('github.com')) {
+    const handled = await _tryGhFlow(cwd, branch, baseBranch, api);
+    if (handled) return;
+  }
+
+  const url = buildPrUrl(parsed, branch, baseBranch);
+  if (!url) {
+    await showErrorAlert('Unsupported git provider: ', parsed.host);
+    return;
+  }
+
+  await _browserPrFlow(cwd, branch, url, api);
 }
 
 /** @internal Exposed for unit tests only. */
