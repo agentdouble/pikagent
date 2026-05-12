@@ -9,7 +9,7 @@ import { pinnedFiles } from './editor-helpers.js';
  * Open a file and add it to the open-files map.
  * If already open, returns false (caller should just activate the tab).
  *
- * @param {Map} openFiles
+ * @param {Map<string, {name: string, content: string, savedContent: string, lang: string, error: string|null, viewMode: string}>} openFiles
  * @param {string} filePath
  * @param {string} fileName
  * @param {{ readfile: (path: string) => Promise<{ content?: string, error?: string }> }} fsApi - injected fs API

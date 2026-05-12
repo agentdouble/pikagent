@@ -1,8 +1,9 @@
 /**
  * Split raw text into lines, filter empty, optionally map.
  * @param {string} raw
- * @param {((line: string) => *)?} [mapFn]
- * @returns {Array}
+ * @template [T=string]
+ * @param {((line: string) => T)?} [mapFn]
+ * @returns {Array<T>}
  */
 function splitLines(raw, mapFn) {
   if (!raw) return [];
