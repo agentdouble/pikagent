@@ -2,7 +2,7 @@
  * Split raw text into lines, filter empty, optionally map.
  * @param {string} raw
  * @param {((line: string) => *)?} [mapFn]
- * @returns {Array}
+ * @returns {Array<string>}
  */
 function splitLines(raw, mapFn) {
   if (!raw) return [];

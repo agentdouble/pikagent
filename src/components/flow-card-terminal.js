@@ -32,7 +32,7 @@ export class FlowCardTerminalManager {
   /**
    * Create a readonly terminal, register it in the given map, and run an
    * optional setup callback.  Returns the terminal record.
-   * @param {Map} map - target map (_liveTerminals or _logTerminals)
+   * @param {Map<string, {term: object, fitAddon: object, containerEl: HTMLElement}>} map - target map (_liveTerminals or _logTerminals)
    * @param {string} flowId
    * @param {HTMLElement} containerEl
    * @param {object} opts - extra terminal options (scrollback, cursorStyle, …)
