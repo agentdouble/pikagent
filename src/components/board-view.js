@@ -1,6 +1,6 @@
 import {
   onTerminalCreated, onTerminalRemoved, onTerminalExited,
-  _el, renderButtonBar, renderList,
+  _el, buildDomainButtonBar, renderList,
   _safeFit, disposeTerminal, disposeTerminalMap, setupTerminalAddons,
   createPtyBoundTerminal,
 } from '../utils/terminal-subsystem.js';
@@ -132,13 +132,7 @@ export class BoardView extends ComponentBase {
       },
     };
 
-    const configs = HEADER_BUTTONS.map(({ text, title, action }) => ({
-      text,
-      title,
-      cls: 'board-card-btn',
-      action,
-    }));
-    const headerBtns = renderButtonBar({ containerClass: 'board-card-btns', configs, handlers: actionHandlers });
+    const headerBtns = buildDomainButtonBar('board-card-btn', 'board-card-btns', HEADER_BUTTONS, actionHandlers);
 
     return _el('div', { className: 'board-card-header' }, nameGroup, headerBtns);
   }

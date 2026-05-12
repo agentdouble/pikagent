@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('../../main/config-helpers');
+const { DEFAULT_META, buildConfigRecord, formatConfigList } = require('../../main/config-helpers');
+const { sanitizeName } = require('../../shared/string-utils');
 
 describe('config-helpers', () => {
-  describe('sanitizeName', () => {
+  describe('sanitizeName (shared/string-utils)', () => {
     it('keeps alphanumeric, dash, underscore and space', () => {
       expect(sanitizeName('my-config_1 test')).toBe('my-config_1 test');
     });
