@@ -5,6 +5,7 @@
  */
 
 const { MAX_RUN_HISTORY } = require('./flow-helpers');
+const { nowISO, extractDateString } = require('../shared/date-utils');
 
 /**
  * Appends a run record to the flow's history.
@@ -17,10 +18,10 @@ const { MAX_RUN_HISTORY } = require('./flow-helpers');
 async function recordRun(deps, flowId, status, runTimestamp) {
   const flow = await deps.getFlow(flowId);
   if (!flow) return;
-  const now = new Date().toISOString();
+  const now = nowISO();
   const runs = flow.runs || [];
   runs.push({
-    date: now.slice(0, 10),
+    date: extractDateString(now),
     timestamp: now,
     logTimestamp: runTimestamp,
     status,

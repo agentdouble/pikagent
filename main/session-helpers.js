@@ -1,4 +1,5 @@
 const { buildRecord } = require('./record-helpers');
+const { nowISO } = require('../shared/date-utils');
 
 const MAX_SESSIONS = 200;
 const MS_PER_SEC = 1000;
@@ -19,7 +20,7 @@ function isFlowTerminal(termId) {
 
 function buildEndedRecord(session, status) {
   return buildRecord(session, {
-    endedAt: new Date().toISOString(),
+    endedAt: nowISO(),
     durationSec: durationSec(session.startedAt),
     status,
   });
