@@ -7,12 +7,15 @@
  */
 export { _el, createActionButton, renderButtonBar } from './dom.js';
 
-import { renderButtonBar as _renderButtonBar } from './dom.js';
+import { renderPrefixedButtonBar } from './dom.js';
 
 /**
- * Build a domain-specific button bar from a list of action definitions.
- * Each action's `cls` is prefixed with `baseClass` and `stopPropagation` is set
- * to true — the two repetitive steps previously duplicated across renderers.
+ * Build a flow-domain button bar from a list of action definitions.
+ * Each action's `cls` is prefixed with `baseClass` and `stopPropagation` is
+ * forced to `true` — flow cards/categories sit inside clickable containers
+ * so their buttons must stop event bubbling.
+ *
+ * Thin wrapper around the generic `renderPrefixedButtonBar` helper.
  *
  * @param {string} baseClass   - CSS class prefix for each button (e.g. "flow-card-btn")
  * @param {string} containerClass - CSS class for the bar container
@@ -21,12 +24,11 @@ import { renderButtonBar as _renderButtonBar } from './dom.js';
  * @returns {HTMLElement}
  */
 export function buildDomainButtonBar(baseClass, containerClass, actions, handlers) {
-  const configs = actions.map(({ text, title, action, cls }) => ({
-    text,
-    title,
-    cls: cls ? `${baseClass} ${cls}` : baseClass,
-    action,
+  return renderPrefixedButtonBar({
+    baseClass,
+    containerClass,
+    actions,
+    handlers,
     stopPropagation: true,
-  }));
-  return _renderButtonBar({ containerClass, configs, handlers });
+  });
 }

@@ -41,7 +41,7 @@ export {
 } from './terminal-events.js';
 
 // ── dom-facades (board-view) ────────────────────────────────────────
-export { _el, renderButtonBar, renderList } from './dom-facades.js';
+export { _el, renderButtonBar, renderPrefixedButtonBar, renderList } from './dom-facades.js';
 
 // ── terminal-factory (board-view) ───────────────────────────────────
 export {

@@ -5,6 +5,22 @@
  */
 
 /**
+ * Generic sanitizer: replaces characters outside `allowedChars` with `replacement`,
+ * then optionally post-processes the result. Centralises the
+ * "replace forbidden chars, then transform" pattern shared by sanitizeName
+ * and sanitizeSegment.
+ *
+ * @param {string} name
+ * @param {{ allowedChars: string, replacement: string, plus?: boolean, postProcess?: (s: string) => string }} opts
+ * @returns {string}
+ */
+function _sanitize(name, { allowedChars, replacement, plus = false, postProcess }) {
+  const pattern = new RegExp(`[^${allowedChars}]${plus ? '+' : ''}`, 'g');
+  const replaced = name.replace(pattern, replacement);
+  return postProcess ? postProcess(replaced) : replaced;
+}
+
+/**
  * Sanitize a name by replacing non-alphanumeric characters (except dash,
  * underscore, and space) with underscores, then truncating to 64 characters.
  * Used for config names and similar identifiers.
@@ -12,7 +28,11 @@
  * @returns {string}
  */
 function sanitizeName(name) {
-  return name.replace(/[^a-zA-Z0-9_\- ]/g, '_').substring(0, 64);
+  return _sanitize(name, {
+    allowedChars: 'a-zA-Z0-9_\\- ',
+    replacement: '_',
+    postProcess: (s) => s.substring(0, 64),
+  });
 }
 
 /**
@@ -24,7 +44,12 @@ function sanitizeName(name) {
  * @returns {string}
  */
 function sanitizeSegment(name) {
-  return name.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+  return _sanitize(name, {
+    allowedChars: 'a-zA-Z0-9._-',
+    replacement: '-',
+    plus: true,
+    postProcess: (s) => s.replace(/^-+|-+$/g, ''),
+  });
 }
 
 module.exports = { sanitizeName, sanitizeSegment };

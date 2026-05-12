@@ -112,6 +112,28 @@ export function renderButtonBar({ containerClass, configs, handlers }) {
 }
 
 /**
+ * Render a button bar where every action's `cls` is prefixed with `baseClass`.
+ * Centralises the "prefix CSS class on every button + call renderButtonBar"
+ * pattern previously duplicated across domain renderers.
+ *
+ * @param {{ baseClass: string, containerClass: string,
+ *           actions: Array<{ text: string, title?: string, action: string, cls?: string }>,
+ *           handlers: Record<string, (e: MouseEvent) => void>,
+ *           stopPropagation?: boolean }} opts
+ * @returns {HTMLElement}
+ */
+export function renderPrefixedButtonBar({ baseClass, containerClass, actions, handlers, stopPropagation = false }) {
+  const configs = actions.map(({ text, title, action, cls }) => ({
+    text,
+    title,
+    cls: cls ? `${baseClass} ${cls}` : baseClass,
+    action,
+    stopPropagation,
+  }));
+  return renderButtonBar({ containerClass, configs, handlers });
+}
+
+/**
  * Clear a container and populate it by calling `renderItem` for each item.
  * @param {HTMLElement} container
  * @param {Array<unknown>} items

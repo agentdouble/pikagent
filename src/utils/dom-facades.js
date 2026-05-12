@@ -15,7 +15,7 @@ export { _el, renderList } from './dom.js';
 // ── settings domain ─────────────────────────────────────────────────
 // settings-modal, settings-appearance, settings-configs,
 // settings-keybindings, settings-update, settings-section-builder
-export { createActionButton, renderButtonBar } from './dom.js';
+export { createActionButton, renderButtonBar, renderPrefixedButtonBar } from './dom.js';
 
 // ── git domain ──────────────────────────────────────────────────────
 // worktree-flow, worktree-dialog, open-pr-flow
