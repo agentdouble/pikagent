@@ -9,6 +9,8 @@
  *   Data      — sessionManager, usageManager
  *   Workflow  — flowManager, skillsManager
  *   Infra     — gitManager, configManager, updateManager
+ *
+ * @see https://github.com/agentdouble/pikagent/issues/462
  */
 
 // ── IO managers ─────────────────────────────────────────────────────
