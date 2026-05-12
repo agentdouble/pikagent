@@ -1,12 +1,8 @@
 import { _el } from '../utils/dom-facades.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import {
-  setupDropZone, handleFileDrop,
-  promptRename as doPromptRename,
-  promptNewEntry as doPromptNewEntry,
-  listenForChanges, stopWatch,
-} from '../utils/file-tree-subsystem.js';
+import { setupDropZone, handleFileDrop, promptRename as doPromptRename, promptNewEntry as doPromptNewEntry } from '../utils/file-tree-drop.js';
+import { listenForChanges, stopWatch } from '../utils/file-tree-watcher.js';
 import { rebuildSectionDOM } from '../utils/file-tree-section-dom.js';
 import {
   renderDir as doRenderDir,

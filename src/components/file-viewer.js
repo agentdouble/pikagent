@@ -1,6 +1,7 @@
 import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { pinnedFiles } from '../utils/editor-helpers.js';
-import { renderModeBar, setupFileViewerListeners } from '../utils/file-viewer-subsystem.js';
+import { renderModeBar } from '../utils/file-viewer-mode-bar.js';
+import { setupFileViewerListeners } from '../utils/file-viewer-listeners.js';
 import {
   openFileEntry, isModified as isFileModified, isPinned as isFilePinned,
   togglePin as toggleFilePin, isMarkdown as isFileMarkdown, closeFileEntry,

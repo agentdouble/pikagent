@@ -1,9 +1,9 @@
+import { onTerminalCreated, onTerminalRemoved, onTerminalExited } from '../utils/terminal-events.js';
+import { _el, renderButtonBar, renderList } from '../utils/dom-facades.js';
 import {
-  onTerminalCreated, onTerminalRemoved, onTerminalExited,
-  _el, renderButtonBar, renderList,
   _safeFit, disposeTerminal, disposeTerminalMap, setupTerminalAddons,
   createPtyBoundTerminal,
-} from '../utils/terminal-subsystem.js';
+} from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
 import { ComponentBase } from '../utils/component-base.js';

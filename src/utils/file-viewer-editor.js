@@ -14,9 +14,9 @@ import {
   updateStatusBar as doUpdateStatusBar,
   saveFile as doSaveFile,
   initCodeEditor,
-  createMarkdownPreviewDOM, updatePreviewStatusBar,
-  renderTabs as doRenderTabs,
-} from './file-viewer-subsystem.js';
+} from './file-editor-renderer.js';
+import { createMarkdownPreviewDOM, updatePreviewStatusBar } from './markdown-preview-renderer.js';
+import { renderTabs as doRenderTabs } from './file-viewer-tabs.js';
 
 /**
  * Build the FileViewer shell DOM inside `container`.
