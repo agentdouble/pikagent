@@ -78,19 +78,45 @@ export function createSection(title) {
 // --- Tab configurations ---
 
 /**
+ * Build the success-rate card (3rd card in run-based tabs).
+ * @param {{ rate: { rate: number } }} m
+ */
+function _rateCard(m) {
+  return { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) };
+}
+
+/**
+ * Build the average-duration card (4th card in run-based tabs).
+ * Includes min/max sub-text when duration samples exist.
+ * @param {{ duration: { avg: number, min: number, max: number, count: number } }} m
+ */
+function _durationCard(m) {
+  return {
+    label: 'Durée moy.',
+    value: formatDuration(m.duration.avg),
+    cls: 'usage-stat-value-blue',
+    sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '',
+  };
+}
+
+/**
  * Factory that builds the common { cards, chart, tables } shape shared by
  * run-based tabs (agents and flows).
  *
- * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
+ * The 3rd and 4th cards (success rate + avg duration) follow an identical
+ * pattern across tabs and are derived from `m` automatically. Callers only
+ * supply the two domain-specific leading cards.
+ *
+ * @param {object}   m                  The metrics slice (metrics.agent or metrics.flow).
  * @param {object}   options
- * @param {Array}    options.cards    Four card descriptors (label/value/cls/sub).
+ * @param {Array}    options.leadingCards Two card descriptors (total + active).
  * @param {string}   options.chartTitle  Title displayed above the chart.
- * @param {Array}    options.tables   One or more table descriptors.
+ * @param {Array}    options.tables     One or more table descriptors.
  * @returns {{ cards: Array, chart: object, tables: Array }}
  */
-function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {
+function _createRunBasedTabConfig(m, { leadingCards, chartTitle, tables }) {
   return {
-    cards,
+    cards: [...leadingCards, _rateCard(m), _durationCard(m)],
     chart: { title: chartTitle, data: m.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
     tables,
   };
@@ -105,11 +131,9 @@ function _agentTabConfig(metrics) {
   const m = metrics.agent;
   const maxFileCount = metrics.mostModifiedFiles[0]?.count || 1;
   return _createRunBasedTabConfig(m, {
-    cards: [
+    leadingCards: [
       { label: 'Sessions', value: m.totalSessions, cls: '' },
       { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
-      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
-      { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
     ],
     chartTitle: 'Sessions par jour',
     tables: [
@@ -182,11 +206,9 @@ function _flowTabConfig(metrics) {
     return { empty: ['Aucun flow configuré', 'Créez des flows depuis la vue FLOW'] };
   }
   return _createRunBasedTabConfig(f, {
-    cards: [
+    leadingCards: [
       { label: 'Total Runs', value: f.rate.total, cls: '' },
       { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
-      { label: 'Taux succès', value: `${f.rate.rate}%`, cls: rateCls(f.rate.rate) },
-      { label: 'Durée moy.', value: formatDuration(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${formatDuration(f.duration.min)} · max: ${formatDuration(f.duration.max)}` : '' },
     ],
     chartTitle: 'Runs par jour',
     tables: [
