@@ -88,6 +88,17 @@ export function createSection(title) {
  * @param {Array}    options.tables   One or more table descriptors.
  * @returns {{ cards: Array, chart: object, tables: Array }}
  */
+/**
+ * Build the two run-metric cards shared by agents and flows tabs:
+ * success rate + average duration (with min/max sub-text).
+ */
+function _runMetricCards(m) {
+  return [
+    { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
+    { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
+  ];
+}
+
 function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {
   return {
     cards,
@@ -108,8 +119,7 @@ function _agentTabConfig(metrics) {
     cards: [
       { label: 'Sessions', value: m.totalSessions, cls: '' },
       { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
-      { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
-      { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
+      ..._runMetricCards(m),
     ],
     chartTitle: 'Sessions par jour',
     tables: [
@@ -185,8 +195,7 @@ function _flowTabConfig(metrics) {
     cards: [
       { label: 'Total Runs', value: f.rate.total, cls: '' },
       { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
-      { label: 'Taux succès', value: `${f.rate.rate}%`, cls: rateCls(f.rate.rate) },
-      { label: 'Durée moy.', value: formatDuration(f.duration.avg), cls: 'usage-stat-value-blue', sub: f.duration.count > 0 ? `min: ${formatDuration(f.duration.min)} · max: ${formatDuration(f.duration.max)}` : '' },
+      ..._runMetricCards(f),
     ],
     chartTitle: 'Runs par jour',
     tables: [
