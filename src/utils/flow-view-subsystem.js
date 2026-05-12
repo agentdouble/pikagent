@@ -3,11 +3,16 @@
  * to access helpers, category rendering, and card setup.
  *
  * Reduces the import surface of flow-view.js by consolidating
- * flow-view-helpers, flow-category-renderer, and flow-card-setup.
+ * flow-view-helpers, flow-category-renderer, flow-card-setup,
+ * flow-dom, and form-helpers.
  *
  * Created for issue #384 to reduce coupling in flow-view.js.
+ * Kept as-is per issue #462 — 3 active consumers (flow-view.js,
+ * flow-view-rendering.js, flow-view-categories.js) rely on this facade
+ * as their single import point for 5 source modules.
  *
  * @module flow-view-subsystem
+ * @see https://github.com/agentdouble/pikagent/issues/462
  */
 
 // ── flow-view-helpers ───────────────────────────────────────────────
