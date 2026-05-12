@@ -83,9 +83,9 @@ export function createSection(title) {
  *
  * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
  * @param {object}   options
- * @param {Array}    options.cards    Four card descriptors (label/value/cls/sub).
+ * @param {Array<{ label: string, value: string|number, cls: string, sub?: string }>} options.cards    Four card descriptors (label/value/cls/sub).
  * @param {string}   options.chartTitle  Title displayed above the chart.
- * @param {Array}    options.tables   One or more table descriptors.
+ * @param {Array<{ title: string, headers: string[], tableCls: string, data: Array<object>, renderRow: (row: object) => HTMLTableRowElement }>} options.tables   One or more table descriptors.
  * @returns {{ cards: Array, chart: object, tables: Array }}
  */
 function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {

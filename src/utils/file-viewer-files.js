@@ -1,6 +1,9 @@
 /**
  * File management helpers extracted from FileViewer.
  * Handles open-file state, pinning, modification tracking, and close logic.
+ *
+ * @typedef {{ name: string, content: string, savedContent: string, lang: string, error: string|null, viewMode: 'edit'|'preview' }} OpenFileEntry
+ * @typedef {Map<string, OpenFileEntry>} OpenFilesMap
  */
 import { detectLanguage } from './file-icons.js';
 import { pinnedFiles } from './editor-helpers.js';
@@ -9,7 +12,7 @@ import { pinnedFiles } from './editor-helpers.js';
  * Open a file and add it to the open-files map.
  * If already open, returns false (caller should just activate the tab).
  *
- * @param {Map} openFiles
+ * @param {OpenFilesMap} openFiles
  * @param {string} filePath
  * @param {string} fileName
  * @param {{ readfile: (path: string) => Promise<{ content?: string, error?: string }> }} fsApi - injected fs API

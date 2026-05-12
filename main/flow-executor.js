@@ -6,6 +6,9 @@
  *
  * Logging helpers live in flow-executor-log.js; run-recording
  * helpers live in flow-executor-run.js.
+ *
+ * @typedef {{ ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout> }} RunningFlowEntry
+ * @typedef {Map<string, RunningFlowEntry>} RunningFlowsMap
  */
 
 const os = require('os');
@@ -25,7 +28,7 @@ const { recordRun } = require('./flow-executor-run');
  * and notifies the renderer.
  *
  * @param {{ getPtyManager: Function, sendToWindow: Function }} deps
- * @param {Map} runningFlows
+ * @param {RunningFlowsMap} runningFlows
  * @param {string} flowId
  * @param {string} ptyId
  * @param {number} exitCode
@@ -43,7 +46,7 @@ function cleanupFlowProcess(deps, runningFlows, flowId, ptyId, exitCode) {
  * Wires up PTY data/exit listeners for a running flow process.
  *
  * @param {{ sendToWindow: Function, getPtyManager: Function, getFlow: Function, saveFlow: Function, log: object }} deps
- * @param {Map} runningFlows
+ * @param {RunningFlowsMap} runningFlows
  * @param {object} proc
  * @param {object} flow
  * @param {string} ptyId
@@ -71,7 +74,7 @@ function setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp) 
  * Executes a single flow inside a new PTY process.
  *
  * @param {{ getPtyManager: Function, sendToWindow: Function, log: object, getFlow: Function, saveFlow: Function }} deps
- * @param {Map} runningFlows
+ * @param {RunningFlowsMap} runningFlows
  * @param {object} flow
  */
 function execute(deps, runningFlows, flow) {
@@ -120,7 +123,7 @@ function execute(deps, runningFlows, flow) {
  * Kills all running flow processes and clears the map.
  *
  * @param {{ getPtyManager: Function }} deps
- * @param {Map} runningFlows
+ * @param {RunningFlowsMap} runningFlows
  */
 function stopAll(deps, runningFlows) {
   const ptyManager = deps.getPtyManager();
@@ -134,7 +137,7 @@ function stopAll(deps, runningFlows) {
 /**
  * Returns a plain object mapping flow IDs to their PTY IDs.
  *
- * @param {Map} runningFlows
+ * @param {RunningFlowsMap} runningFlows
  * @returns {Record<string, string>}
  */
 function getRunning(runningFlows) {
@@ -157,7 +160,7 @@ function getRunning(runningFlows) {
  * }} deps
  * @returns {{
  *   execute: (flow: object) => void,
- *   runningFlows: Map<string, { ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout> }>,
+ *   runningFlows: RunningFlowsMap,
  *   stopAll: () => void,
  *   getRunning: () => Record<string, string>,
  *   getRunLog: (flowId: string, timestamp: string) => Promise<string | null>,
