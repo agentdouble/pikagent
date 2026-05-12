@@ -4,7 +4,6 @@
  */
 
 const { buildTimestampedRecord } = require('./record-helpers');
-const { sanitizeName } = require('../shared/string-utils');
 
 const DEFAULT_META = { defaultConfig: null };
 
@@ -23,4 +22,4 @@ function formatConfigList(configs, defaultConfigName) {
     }));
 }
 
-module.exports = { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList };
+module.exports = { DEFAULT_META, buildConfigRecord, formatConfigList };
