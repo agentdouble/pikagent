@@ -95,6 +95,33 @@ function _pairChanges(removes, adds, oldLine, newLine) {
   return { rows, oldLine, newLine };
 }
 
+/** Build the hunk header row for side-by-side display. */
+function _hunkHeaderRow(hunk) {
+  return {
+    type: 'hunk',
+    left: { content: `@@ -${hunk.oldStart},${hunk.oldCount}${hunk.context}`, type: 'hunk' },
+    right: { content: `+${hunk.newStart},${hunk.newCount} @@${hunk.context}`, type: 'hunk' },
+  };
+}
+
+/** Build a context row (unchanged line appearing on both sides). */
+function _contextRow(content, oldLine, newLine) {
+  return {
+    type: 'context',
+    left: { lineNo: oldLine, content, type: 'context' },
+    right: { lineNo: newLine, content, type: 'context' },
+  };
+}
+
+/** Build a standalone addition row (no paired removal). */
+function _addOnlyRow(content, newLine) {
+  return {
+    type: 'change',
+    left: { content: '', type: 'empty' },
+    right: { lineNo: newLine, content, type: 'add' },
+  };
+}
+
 /**
  * Build side-by-side rows from parsed hunks.
  * Each row: { left: { lineNo, content, type }, right: { lineNo, content, type } }
@@ -103,11 +130,7 @@ export function buildSideBySideRows(hunks) {
   const rows = [];
 
   for (const hunk of hunks) {
-    rows.push({
-      type: 'hunk',
-      left: { content: `@@ -${hunk.oldStart},${hunk.oldCount}${hunk.context}`, type: 'hunk' },
-      right: { content: `+${hunk.newStart},${hunk.newCount} @@${hunk.context}`, type: 'hunk' },
-    });
+    rows.push(_hunkHeaderRow(hunk));
 
     let oldLine = hunk.oldStart;
     let newLine = hunk.newStart;
@@ -118,11 +141,7 @@ export function buildSideBySideRows(hunks) {
       const change = changes[i];
 
       if (change.type === 'context') {
-        rows.push({
-          type: 'context',
-          left: { lineNo: oldLine++, content: change.content, type: 'context' },
-          right: { lineNo: newLine++, content: change.content, type: 'context' },
-        });
+        rows.push(_contextRow(change.content, oldLine++, newLine++));
         i++;
       } else if (change.type === 'remove') {
         const { items: removes, end: afterRem } = _collectRun(changes, i, 'remove');
@@ -133,11 +152,7 @@ export function buildSideBySideRows(hunks) {
         oldLine = paired.oldLine;
         newLine = paired.newLine;
       } else if (change.type === 'add') {
-        rows.push({
-          type: 'change',
-          left: { content: '', type: 'empty' },
-          right: { lineNo: newLine++, content: change.content, type: 'add' },
-        });
+        rows.push(_addOnlyRow(change.content, newLine++));
         i++;
       }
     }

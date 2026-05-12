@@ -33,16 +33,14 @@ export function buildSidePanel(deps, { side, contentCls, title }) {
 }
 
 /**
- * Build the center panel with path info, branch badge, and terminal area.
+ * Build the path-info bar with collapse arrows, path text, and branch badge.
  * @param {PanelInteractionDeps} deps
  * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} leftPanel
  * @param {HTMLElement} rightPanel
+ * @returns {HTMLElement}
  */
-export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
-  const panel = _el('div', 'panel panel-center');
-  const header = _el('div', 'panel-header');
-
+function _buildPathInfo(deps, tab, leftPanel, rightPanel) {
   const pathInfo = _el('div', 'path-info');
 
   const pathArrowLeft = _el('span', 'path-arrow', '\u2190');
@@ -57,14 +55,29 @@ export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
   pathArrowRight.addEventListener('click', () => togglePanel(deps, rightPanel, 'right', pathArrowRight));
 
   pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
-  header.appendChild(pathInfo);
+
+  tab.pathTextEl = pathText;
+  tab.branchBadgeEl = branchBadge;
+
+  return pathInfo;
+}
+
+/**
+ * Build the center panel with path info, branch badge, and terminal area.
+ * @param {PanelInteractionDeps} deps
+ * @param {import('./tab-types.js').WorkspaceTab} tab
+ * @param {HTMLElement} leftPanel
+ * @param {HTMLElement} rightPanel
+ */
+export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
+  const panel = _el('div', 'panel panel-center');
+  const header = _el('div', 'panel-header');
+
+  header.appendChild(_buildPathInfo(deps, tab, leftPanel, rightPanel));
   panel.appendChild(header);
 
   const termContainer = _el('div', 'terminal-area');
   panel.appendChild(termContainer);
-
-  tab.pathTextEl = pathText;
-  tab.branchBadgeEl = branchBadge;
 
   return { panel, termContainer };
 }
