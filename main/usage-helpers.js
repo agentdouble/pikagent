@@ -1,7 +1,7 @@
 const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
-const { extractDateString } = require('../shared/date-utils');
+const { extractDateString, toDateString } = require('../shared/date-utils');
 const {
   aggregateByKey,
   groupAndAggregate,
@@ -79,7 +79,7 @@ function parseTokenUsage(line, cutoffMs) {
   if (entry.timestamp) {
     const ts = typeof entry.timestamp === 'number' ? entry.timestamp : new Date(entry.timestamp).getTime();
     if (ts < cutoffMs) return null;
-    dateKey = extractDateString(new Date(ts).toISOString());
+    dateKey = toDateString(ts);
   }
 
   return {

@@ -82,4 +82,19 @@ function toLogFilename(iso) {
   return (iso || nowISO()).replace(/[:.]/g, '-');
 }
 
-module.exports = { formatDateTime, extractDateString, generateDateRange, nowISO, todayISO, toLogFilename };
+/**
+ * Extract "YYYY-MM-DD" from a Date object or numeric timestamp.
+ *
+ * Unlike `extractDateString` (which operates on an existing ISO string),
+ * this helper avoids the intermediate `new Date(x).toISOString()` step
+ * callers would otherwise need.
+ *
+ * @param {Date|number} dateOrTs - Date instance or epoch-ms timestamp
+ * @returns {string} "YYYY-MM-DD"
+ */
+function toDateString(dateOrTs) {
+  const d = typeof dateOrTs === 'number' ? new Date(dateOrTs) : dateOrTs;
+  return d.toISOString().slice(0, 10);
+}
+
+module.exports = { formatDateTime, extractDateString, generateDateRange, nowISO, todayISO, toLogFilename, toDateString };
