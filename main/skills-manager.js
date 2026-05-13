@@ -82,33 +82,24 @@ const list = _safe(async function list() {
   return skills.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 }, []);
 
-async function read(filePath) {
+const read = _safe(async function read(filePath) {
   if (!(await _isAllowedPath(filePath))) return null;
-  return _safeRead(filePath);
-}
-const _safeRead = _safe(async function read(filePath) {
   return fsp.readFile(filePath, 'utf-8');
 }, null);
 
-async function write({ filePath, content }) {
+const write = _safe(async function write({ filePath, content }) {
   if (!(await _isAllowedPath(filePath))) return { success: false, error: 'Path not allowed' };
-  return _safeWrite(filePath, content);
-}
-const _safeWrite = _safe(async function write(filePath, content) {
   await fsp.mkdir(path.dirname(filePath), { recursive: true });
   await fsp.writeFile(filePath, content, 'utf-8');
   return { success: true };
 }, { success: false });
 
-async function create({ id, description }) {
+const create = _safe(async function create({ id, description }) {
   const safeId = sanitizeSegment(String(id || '').trim());
   if (!safeId) return { success: false, error: 'Invalid id' };
   const root = await _loadRoot();
   const dir = path.join(root, safeId);
   const filePath = path.join(dir, 'SKILL.md');
-  return _safeCreate(dir, filePath, safeId, description);
-}
-const _safeCreate = _safe(async function create(dir, filePath, safeId, description) {
   await fsp.mkdir(dir, { recursive: true });
   try {
     await fsp.access(filePath);
@@ -120,15 +111,12 @@ const _safeCreate = _safe(async function create(dir, filePath, safeId, descripti
   return { success: true, id: safeId, path: filePath };
 }, { success: false });
 
-async function remove(id) {
+const remove = _safe(async function remove(id) {
   const safeId = String(id || '').trim();
   if (!safeId) return false;
   const root = await _loadRoot();
   const dir = path.join(root, safeId);
   if (!(await _isAllowedPath(dir))) return false;
-  return _safeRemove(dir);
-}
-const _safeRemove = _safe(async function remove(dir) {
   await fsp.rm(dir, { recursive: true, force: true });
   return true;
 }, false);
@@ -157,16 +145,13 @@ const importFrom = _safe(async function importFrom(srcDir) {
   return { success: true, id: destName, path: path.join(destDir, 'SKILL.md') };
 }, { success: false, error: 'Import failed' });
 
-async function getRoot() {
+const getRoot = _safe(async function getRoot() {
   return _loadRoot();
-}
+}, null);
 
-async function setRoot(newRoot) {
+const setRoot = _safe(async function setRoot(newRoot) {
   if (!newRoot) return { success: false, error: 'Empty path' };
   const resolved = path.resolve(newRoot);
-  return _safeSetRoot(resolved);
-}
-const _safeSetRoot = _safe(async function setRoot(resolved) {
   await fsp.mkdir(resolved, { recursive: true });
   await _saveRoot(resolved);
   return { success: true, root: resolved };
