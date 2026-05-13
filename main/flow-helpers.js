@@ -3,7 +3,7 @@ const { LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
 const { getLastRun } = require('../shared/flow-utils');
 const AGENT_IDS = ['claude', 'codex', 'opencode'];
-const { extractDateString } = require('../shared/date-utils');
+const { toDateString } = require('../shared/date-utils');
 
 const MS_PER_HOUR = 3_600_000;
 const SCHEDULER_INTERVAL_MS = 60_000;
@@ -62,7 +62,7 @@ function _isTimeMatch(schedule, now) {
 }
 
 function _notRunToday(lastRun, now) {
-  return !lastRun || lastRun.date !== extractDateString(now.toISOString());
+  return !lastRun || lastRun.date !== toDateString(now);
 }
 
 function shouldRun(flow, now) {
