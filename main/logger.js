@@ -1,4 +1,4 @@
-const { createSafeWrapper } = require('./safe-handler');
+const { trySafe } = require('./safe-handler');
 
 /**
  * Lightweight logger factory for main-process modules.
@@ -27,18 +27,6 @@ function createLogger(module) {
   };
 }
 
-/**
- * Generic safe-execution wrapper.
- * Runs `fn`, returns its result on success or `defaultValue` on error.
- * Optionally logs failures via a logger's `warn` method.
- *
- * @param {() => unknown} fn - async or sync function to execute
- * @param {unknown} defaultValue - value returned when fn throws
- * @param {{ log: { warn: (msg: string, err?: unknown) => void }, label: string }} [opts] - optional logger & label
- * @returns {Promise<unknown>}
- */
-function trySafe(fn, defaultValue, { log, label } = {}) {
-  return createSafeWrapper({ defaultValue, log, label })(fn)();
-}
-
+// Re-export trySafe from safe-handler.js so existing consumers that import
+// { trySafe } from './logger' continue to work without changes.
 module.exports = { createLogger, trySafe };

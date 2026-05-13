@@ -1,9 +1,12 @@
 /**
  * Shared factory for wrapping async functions with try-catch error handling.
  *
- * IPC handlers use the { success, data, error } shape.
- * Lower-level helpers (wrapSafe, trySafe) are unified via createSafeWrapper
- * which itself delegates to runSafe.
+ * Every safe-execution variant in the codebase is built on top of
+ * `createSafeWrapper`, the single configurable factory:
+ *
+ * - `wrapSafe`          – passthrough mode (no envelope, returns `{ error }` on failure)
+ * - `createSafeHandler` – IPC envelope mode (`{ success, data }` / `{ error }`)
+ * - `trySafe`           – one-shot execution with defaultValue + optional logging
  */
 
 /**
@@ -63,16 +66,41 @@ function createSafeWrapper({ envelope = false, defaultValue, log, label } = {}) 
   };
 }
 
+// ---------------------------------------------------------------------------
+// Pre-built variants — every safe-execution helper is a thin alias.
+// ---------------------------------------------------------------------------
+
 /**
- * Factory that returns a wrapped async function.
+ * Higher-order wrapper: passthrough mode (no envelope).
+ * On success returns the result of fn directly.
+ * On failure returns { error: err.message }.
+ *
+ * @param {(...args: unknown[]) => Promise<unknown>} fn - async function to wrap
+ * @returns {(...args: unknown[]) => Promise<unknown>} wrapped function with same signature
+ */
+const wrapSafe = createSafeWrapper();
+
+/**
+ * Higher-order wrapper: IPC envelope mode.
  * On success: returns { success: true, data: <result> }.
  * On failure: returns { error: <message> }.
- *
- * Intended for IPC handlers that need a uniform {success/error} envelope.
  *
  * @param {(...args: unknown[]) => Promise<unknown>} asyncFn
  * @returns {(...args: unknown[]) => Promise<{ success: true, data: unknown } | { error: string }>}
  */
 const createSafeHandler = createSafeWrapper({ envelope: true });
 
-module.exports = { runSafe, createSafeWrapper, createSafeHandler };
+/**
+ * One-shot safe execution with a fallback value and optional logging.
+ * Runs `fn` once, returns its result on success or `defaultValue` on error.
+ *
+ * @param {() => unknown} fn - async or sync function to execute
+ * @param {unknown} defaultValue - value returned when fn throws
+ * @param {{ log?: { warn: (msg: string, err?: unknown) => void }, label?: string }} [opts]
+ * @returns {Promise<unknown>}
+ */
+function trySafe(fn, defaultValue, { log, label } = {}) {
+  return createSafeWrapper({ defaultValue, log, label })(fn)();
+}
+
+module.exports = { runSafe, createSafeWrapper, createSafeHandler, wrapSafe, trySafe };
