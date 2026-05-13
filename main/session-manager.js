@@ -1,7 +1,7 @@
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
 const { ensureDirOnce } = require('./fs-utils');
-const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
+const { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
 const { nowISO } = require('../shared/date-utils');
 const { createPollingManager } = require('../shared/polling-manager');
 const { CachedJsonFile } = require('./json-store');
