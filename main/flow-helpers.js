@@ -2,7 +2,7 @@ const path = require('path');
 const { LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
 const { getLastRun } = require('../shared/flow-utils');
-const { AGENT_IDS } = require('../shared/agent-registry');
+const AGENT_IDS = ['claude', 'codex', 'opencode'];
 const { extractDateString } = require('../shared/date-utils');
 
 const MS_PER_HOUR = 3_600_000;
