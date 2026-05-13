@@ -68,10 +68,12 @@ export const TAB_DISPOSABLES = ['terminalPanel', 'fileViewer', 'fileTree'];
 // ── Side-view descriptor table ──
 // Each non-"work" sidebar mode owns a view instance and a container element
 // on the TabManager.  `pauseOnDetach` means the view is kept alive (paused)
-// when switching away, instead of being fully disposed.
+// when switching away, instead of being fully disposed.  `componentName` is the
+// registered component key resolved via the component registry, and
+// `ctorArgsKey` (optional) names the field in `extraArgs` carrying constructor args.
 export const SIDE_VIEWS = {
-  board:  { viewKey: 'boardView',  containerKey: '_boardContainerEl', pauseOnDetach: true },
-  flow:   { viewKey: 'flowView',   containerKey: '_flowContainerEl' },
-  skills: { viewKey: 'skillsView', containerKey: '_skillsContainerEl' },
-  usage:  { viewKey: 'usageView',  containerKey: '_usageContainerEl' },
+  board:  { viewKey: 'boardView',  containerKey: '_boardContainerEl', componentName: 'BoardView',  ctorArgsKey: 'boardCtorArgs', pauseOnDetach: true },
+  flow:   { viewKey: 'flowView',   containerKey: '_flowContainerEl',  componentName: 'FlowView',   ctorArgsKey: 'flowCtorArgs' },
+  skills: { viewKey: 'skillsView', containerKey: '_skillsContainerEl', componentName: 'SkillsView' },
+  usage:  { viewKey: 'usageView',  containerKey: '_usageContainerEl', componentName: 'UsageView' },
 };

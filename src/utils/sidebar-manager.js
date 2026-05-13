@@ -29,48 +29,24 @@ function buildActivityButton(label, iconSvg, extraClass = '') {
 }
 
 /**
- * Declarative map for sidebar view rendering — single source of truth for
- * component name (resolved via injected resolver), constructor args, and post-reattach behavior.
+ * Per-mode reattach overrides.  Default reattach behavior is `view.refresh()`
+ * (see `defaultReattach` below); only modes needing custom logic appear here.
  */
-const SIDE_VIEW_RENDERERS = {
-  board: {
-    componentName: 'BoardView',
-    ctorArgs: (extraArgs) => extraArgs.boardCtorArgs || [],
-    onReattach: (viewStore) => {
-      const boardView = viewStore.getView('boardView');
-      if (boardView) {
-        for (const [, card] of boardView.cards) {
-          try { card.fitAddon.fit(); } catch (e) { /* fit may fail on detached terminal */ }
-        }
-        boardView.resume();
-      }
-    },
-  },
-  flow: {
-    componentName: 'FlowView',
-    ctorArgs: (extraArgs) => extraArgs.flowCtorArgs || [],
-    onReattach: (viewStore) => {
-      const flowView = viewStore.getView('flowView');
-      if (flowView) flowView.refresh();
-    },
-  },
-  usage: {
-    componentName: 'UsageView',
-    ctorArgs: () => [],
-    onReattach: (viewStore) => {
-      const usageView = viewStore.getView('usageView');
-      if (usageView) usageView.refresh();
-    },
-  },
-  skills: {
-    componentName: 'SkillsView',
-    ctorArgs: () => [],
-    onReattach: (viewStore) => {
-      const skillsView = viewStore.getView('skillsView');
-      if (skillsView) skillsView.refresh();
-    },
+const SIDE_VIEW_REATTACH_OVERRIDES = {
+  board: (viewStore) => {
+    const boardView = viewStore.getView('boardView');
+    if (!boardView) return;
+    for (const [, card] of boardView.cards) {
+      try { card.fitAddon.fit(); } catch (e) { /* fit may fail on detached terminal */ }
+    }
+    boardView.resume();
   },
 };
+
+function defaultReattach(viewStore, viewKey) {
+  const view = viewStore.getView(viewKey);
+  if (view) view.refresh();
+}
 
 // ── Activity Bar ──
 
@@ -134,21 +110,23 @@ function renderSideView({ workspaceContainer, viewStore }, viewKey, containerKey
 }
 
 /**
- * Activate a side view by mode using SIDE_VIEW_RENDERERS config.
+ * Activate a side view by mode using the SIDE_VIEWS descriptor.
  * @param {SideViewDeps & { resolveComponent: (name: string) => Function }} deps
  * @param {string} mode         - Side view mode (board, flow, usage)
  * @param {{ boardCtorArgs?: unknown[], flowCtorArgs?: unknown[] }} extraArgs - Additional constructor args per mode
  */
 function activateSideView(deps, mode, extraArgs = {}) {
-  const sideView = SIDE_VIEWS[mode];
-  const renderer = SIDE_VIEW_RENDERERS[mode];
-  if (!sideView || !renderer) return;
-  const ViewClass = deps.resolveComponent(renderer.componentName);
+  const cfg = SIDE_VIEWS[mode];
+  if (!cfg || !cfg.componentName) return;
+  const ViewClass = deps.resolveComponent(cfg.componentName);
+  const ctorArgs = cfg.ctorArgsKey ? (extraArgs[cfg.ctorArgsKey] || []) : [];
   const reattached = renderSideView(
-    deps, sideView.viewKey, sideView.containerKey,
-    ViewClass, ...renderer.ctorArgs(extraArgs),
+    deps, cfg.viewKey, cfg.containerKey, ViewClass, ...ctorArgs,
   );
-  if (reattached) renderer.onReattach(deps.viewStore);
+  if (!reattached) return;
+  const override = SIDE_VIEW_REATTACH_OVERRIDES[mode];
+  if (override) override(deps.viewStore);
+  else defaultReattach(deps.viewStore, cfg.viewKey);
 }
 
 // ── Sidebar mode switching ──
