@@ -37,7 +37,7 @@ const SIDE_VIEW_REATTACH_OVERRIDES = {
     const boardView = viewStore.getView('boardView');
     if (!boardView) return;
     for (const [, card] of boardView.cards) {
-      try { card.fitAddon.fit(); } catch (e) { /* fit may fail on detached terminal */ }
+      try { card.fitAddon.fit(); } catch (e) { console.warn('card.fitAddon.fit() failed (detached terminal?)', e); }
     }
     boardView.resume();
   },
