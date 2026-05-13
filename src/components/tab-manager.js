@@ -26,9 +26,7 @@ import {
   disposeSideView, disposeAllSideViews, disposeAllTabs,
 } from '../utils/tab-manager-sidebar.js';
 import {
-  renderTabBar as doRenderTabBar,
-  createTab as doCreateTab,
-  closeTab as doCloseTab,
+  bindTabOps,
   reorderTab as doReorderTab,
   renameTab as doRenameTab,
 } from '../utils/tab-manager-tab-ops.js';
@@ -53,6 +51,7 @@ export class TabManager {
     this.sidebarMode = 'work';
     this.activeColorFilter = null;
     this.excludedColors = new Set();
+    this._tabOps = bindTabOps(this);
   }
 
   _initApi() { this._api = { gitBranch: tabViewFacade.gitBranch }; }
@@ -105,12 +104,12 @@ export class TabManager {
 
   // --- Tab lifecycle (delegated) ---
 
-  createTab(name = null, cwd = null) { return doCreateTab(this, (id) => this.switchTo(id), name, cwd); }
-  closeTab(id) { return doCloseTab(this, () => this.createTab(), (tabId) => this.switchTo(tabId), id); }
+  createTab(name = null, cwd = null) { return this._tabOps.createTab((id) => this.switchTo(id), name, cwd); }
+  closeTab(id) { return this._tabOps.closeTab(() => this.createTab(), (tabId) => this.switchTo(tabId), id); }
 
   switchTo(id) { return doSwitchTo(buildSwitchToDeps(this), id); }
 
-  renderTabBar() { this._tabElements = doRenderTabBar(this); }
+  renderTabBar() { this._tabElements = this._tabOps.renderTabBar(); }
   reorderTab(fromId, toId, before) { doReorderTab(this, fromId, toId, before); }
   renameTab(id, nameEl) { doRenameTab(this, id)(nameEl); }
 
