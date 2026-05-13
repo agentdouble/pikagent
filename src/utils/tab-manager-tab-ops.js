@@ -30,7 +30,7 @@ import {
  *
  * @param {object} tm - TabManager instance
  */
-function bindTabOps(tm) {
+export function bindTabOps(tm) {
   // Stable closures over `tm`, captured once.
   const renderTabBar = () => tm.renderTabBar();
   const switchTo = (id) => tm.switchTo(id);
