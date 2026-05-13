@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('../../main/session-helpers');
+const { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('../../main/session-helpers');
 
 describe('session-helpers', () => {
   describe('generateSessionId', () => {
@@ -11,16 +11,6 @@ describe('session-helpers', () => {
       const a = generateSessionId();
       const b = generateSessionId();
       expect(a).not.toBe(b);
-    });
-  });
-
-  describe('durationSec', () => {
-    it('computes seconds since startedAt', () => {
-      const now = Date.now();
-      vi.setSystemTime(now);
-      const startedAt = new Date(now - 5000).toISOString();
-      expect(durationSec(startedAt)).toBe(5);
-      vi.useRealTimers();
     });
   });
 

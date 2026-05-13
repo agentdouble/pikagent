@@ -37,4 +37,4 @@ function trimSessions(sessions, max = MAX_SESSIONS) {
   return sessions.length > max ? sessions.slice(-max) : sessions;
 }
 
-module.exports = { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions };
+module.exports = { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions };

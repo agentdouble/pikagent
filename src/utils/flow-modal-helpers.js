@@ -2,11 +2,9 @@ import { _el } from './dom.js';
 import { _vis as _visGeneric } from './dom.js';
 import { buildSelect } from './form-helpers.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
-import { AGENT_OPTIONS } from '../../shared/agent-registry.js';
-
 // --- Constants ---
 
-export { AGENT_OPTIONS };
+export const AGENT_OPTIONS = { claude: 'Claude', codex: 'Codex', opencode: 'OpenCode' };
 
 export const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
 
