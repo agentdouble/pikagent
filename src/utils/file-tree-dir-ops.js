@@ -166,7 +166,7 @@ export async function refreshSection(ft, watchIdOrCwd, renderDirFn) {
     section._refreshing = false;
     if (section._pendingRefresh) {
       section._pendingRefresh = false;
-      ft.refreshSection(cwd).catch(() => {});
+      ft.refreshSection(cwd).catch((err) => console.warn('refreshSection failed', err));
     }
   }
 }

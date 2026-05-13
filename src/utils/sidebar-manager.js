@@ -40,7 +40,7 @@ const SIDE_VIEW_RENDERERS = {
       const boardView = viewStore.getView('boardView');
       if (boardView) {
         for (const [, card] of boardView.cards) {
-          try { card.fitAddon.fit(); } catch {}
+          try { card.fitAddon.fit(); } catch (e) { /* fit may fail on detached terminal */ }
         }
         boardView.resume();
       }
