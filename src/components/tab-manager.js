@@ -17,7 +17,7 @@ import {
   toggleNoShortcut as doToggleNoShortcut,
   buildPrApi, buildWorktreeApi, buildViewStore,
   tabViewFacade,
-} from '../utils/tab-facade.js';
+} from '../facades/tab-facade.js';
 import {
   renderActivityBar as doRenderActivityBar,
   setSidebarMode as doSetSidebarMode,

@@ -8,7 +8,7 @@ import {
   openRoot, configurePath, importSkill, createSkill,
   deleteSkill, selectSkill, save,
 } from '../utils/skills-view-actions.js';
-import { skillsViewFacade } from '../utils/skills-facade.js';
+import { skillsViewFacade } from '../facades/skills-facade.js';
 
 export class SkillsView extends ComponentBase {
   constructor(container) {

@@ -14,7 +14,7 @@ import {
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
   formatCardLabel,
 } from '../utils/board-helpers.js';
-import { boardFacade } from '../utils/board-facade.js';
+import { boardFacade } from '../facades/board-facade.js';
 
 export class BoardView extends ComponentBase {
   constructor(container, tabManager) {

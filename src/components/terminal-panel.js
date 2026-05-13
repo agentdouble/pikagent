@@ -15,7 +15,7 @@ import {
   splitTerminal,
   focusDirection as focusDirectionHelper,
 } from '../utils/terminal-subsystem.js';
-import { terminalPanelFacade } from '../utils/terminal-panel-facade.js';
+import { terminalPanelFacade } from '../facades/terminal-panel-facade.js';
 
 export class TerminalPanel {
   constructor(container, cwd) {

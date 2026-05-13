@@ -11,7 +11,7 @@ import {
   closeTab as doCloseTab,
   reorderEntries,
   inlineRenameTab as doInlineRenameTab,
-} from './tab-facade.js';
+} from '../facades/tab-facade.js';
 
 /**
  * Bind the tab-ops trio to a TabManager instance.
