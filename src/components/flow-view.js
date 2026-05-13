@@ -1,6 +1,6 @@
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import { moveFlowInOrder } from '../utils/flow-view-subsystem.js';
+import { moveFlowInOrder } from '../utils/flow-view-helpers.js';
 import {
   addCategory, renameCategoryInline, deleteCategory,
 } from '../utils/flow-view-categories.js';

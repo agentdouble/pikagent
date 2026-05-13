@@ -14,8 +14,10 @@ import { attachContextMenu } from './context-menu.js';
 import { emitWorkspaceCreateWorktree, emitWorkspaceOpenPr } from './workspace-events.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
-  extractFolderName, buildSectionActions, buildDirContextItems,
-} from './file-tree-subsystem.js';
+  extractFolderName,
+} from './file-tree-helpers.js';
+import { buildSectionActions } from './file-tree-renderer.js';
+import { buildDirContextItems } from './file-tree-context-menu.js';
 
 /**
  * Rebuild the DOM for a file-tree section: header + content container.
