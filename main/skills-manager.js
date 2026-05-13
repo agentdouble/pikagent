@@ -193,7 +193,7 @@ async function _isAllowedPath(p) {
 module.exports = {
   list, read, write, create,
   getRoot, setRoot, resetRoot,
-  // Channel-suffix aliases
+  // `delete` and `import` are reserved words — aliases required.
   delete: remove,
   import: importFrom,
 };

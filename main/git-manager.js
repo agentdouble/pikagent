@@ -19,11 +19,11 @@ async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
 // Public API
 // ---------------------------------------------------------------------------
 
-async function getBranch(cwd) {
+async function branch(cwd) {
   return runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
 }
 
-async function getLocalChanges(cwd) {
+async function localChanges(cwd) {
   return trySafe(
     async () => {
       const [stagedRaw, unstagedRaw, untrackedRaw] = await Promise.all([
@@ -39,11 +39,11 @@ async function getLocalChanges(cwd) {
       };
     },
     { staged: [], unstaged: [], untracked: [] },
-    { log, label: 'getLocalChanges' },
+    { log, label: 'localChanges' },
   );
 }
 
-async function getFileDiff(cwd, filePath, isStaged) {
+async function fileDiff(cwd, filePath, isStaged) {
   const args = isStaged ? ['diff', '--cached', '--', filePath] : ['diff', '--', filePath];
   const result = await runGit(cwd, args, { fallback: '', maxBuffer: DIFF_MAX_BUFFER });
   return result;
@@ -53,7 +53,7 @@ async function getFileDiff(cwd, filePath, isStaged) {
 // Worktree / branch API
 // ---------------------------------------------------------------------------
 
-async function isGitRepo(cwd) {
+async function isRepo(cwd) {
   const out = await runGit(cwd, ['rev-parse', '--is-inside-work-tree']);
   return out === 'true';
 }
@@ -138,7 +138,7 @@ async function worktreeRemove(cwd, worktreePath, force) {
   return executeGitCommand(cwd, args, `worktree remove ${worktreePath}`);
 }
 
-async function getRemoteUrl(cwd) {
+async function remoteUrl(cwd) {
   return runGit(cwd, ['config', '--get', 'remote.origin.url']);
 }
 
@@ -203,17 +203,7 @@ async function ghPrCreate(cwd, baseBranch) {
 }
 
 module.exports = {
-  // Method aliases matching channel suffixes (git:branch → branch, etc.)
-  branch: getBranch,
-  localChanges: getLocalChanges,
-  fileDiff: getFileDiff,
-  isRepo: isGitRepo,
-  listBranches,
-  worktreeList,
-  worktreeAdd,
-  worktreeRemove,
-  remoteUrl: getRemoteUrl,
-  pushBranch,
-  ghAvailable,
-  ghPrCreate,
+  branch, localChanges, fileDiff, isRepo,
+  listBranches, worktreeList, worktreeAdd, worktreeRemove,
+  remoteUrl, pushBranch, ghAvailable, ghPrCreate,
 };
