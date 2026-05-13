@@ -7,17 +7,19 @@ import {
 } from '../utils/workspace-ops.js';
 import {
   isTabVisible,
-  switchTo as doSwitchTo,
   setColorFilter as doSetColorFilter,
   toggleExcludeColor as doToggleExcludeColor,
   ensureVisibleTabActive as doEnsureVisibleTabActive,
+} from '../utils/tab-color-filter.js';
+import { switchTo as doSwitchTo } from '../utils/tab-lifecycle.js';
+import {
   nextTab as doNextTab, prevTab as doPrevTab,
   goToColorGroup as doGoToColorGroup, focusDirection as doFocusDirection,
   setTabColorGroup as doSetTabColorGroup,
   toggleNoShortcut as doToggleNoShortcut,
-  buildPrApi, buildWorktreeApi, buildViewStore,
-  tabViewFacade,
-} from '../utils/tab-facade.js';
+} from '../utils/tab-navigation.js';
+import { buildPrApi, buildWorktreeApi, buildViewStore } from '../utils/tab-manager-api.js';
+import { tabViewFacade } from '../utils/tab-facade.js';
 import {
   renderActivityBar as doRenderActivityBar,
   setSidebarMode as doSetSidebarMode,

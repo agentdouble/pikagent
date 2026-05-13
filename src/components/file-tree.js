@@ -5,8 +5,8 @@ import {
   setupDropZone, handleFileDrop,
   promptRename as doPromptRename,
   promptNewEntry as doPromptNewEntry,
-  listenForChanges, stopWatch,
-} from '../utils/file-tree-subsystem.js';
+} from '../utils/file-tree-drop.js';
+import { listenForChanges, stopWatch } from '../utils/file-tree-watcher.js';
 import { rebuildSectionDOM } from '../utils/file-tree-section-dom.js';
 import {
   renderDir as doRenderDir,
