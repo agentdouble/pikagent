@@ -5,7 +5,7 @@
  * management (setTerminalRoot, removeTerminal, refreshSection).
  */
 
-import { _el } from './dom-facades.js';
+import { _el } from './dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   resolveWatchCwd,

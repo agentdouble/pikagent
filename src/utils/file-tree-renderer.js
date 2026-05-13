@@ -4,8 +4,8 @@
  */
 
 import { emitFileOpen } from './workspace-events.js';
-import { _el, createActionButton } from './dom-facades.js';
-import { buildChevronRow } from './chevron-row.js';
+import { _el, createActionButton } from './dom.js';
+import { buildChevronRow } from './dom.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS, HEADER_ACTIONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';

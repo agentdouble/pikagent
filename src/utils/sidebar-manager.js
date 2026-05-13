@@ -16,7 +16,7 @@
  * @typedef {{ getActiveTab: () => import('./tab-types.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-types.js').WorkspaceTab) => void, viewStore: SideViewStore }} DetachDeps
  */
 
-import { _el, renderList } from './dom-facades.js';
+import { _el, renderList } from './dom.js';
 import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-constants.js';
 import { createAsyncHandler } from './event-helpers.js';
 

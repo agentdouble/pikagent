@@ -4,7 +4,7 @@
  *
  * Reduces the import surface of flow-view.js by consolidating
  * flow-view-helpers, flow-category-renderer, flow-card-setup,
- * flow-dom, and form-helpers.
+ * dom, and form-helpers.
  *
  * Created for issue #384 to reduce coupling in flow-view.js.
  * Kept as-is per issue #462 — 3 active consumers (flow-view.js,
@@ -28,8 +28,8 @@ export { createCategoryGroup } from './flow-category-renderer.js';
 // ── flow-card-setup ─────────────────────────────────────────────────
 export { createFlowCard } from './flow-card-setup.js';
 
-// ── flow-dom (DOM primitives for the flow domain) ───────────────────
-export { _el, buildDomainButtonBar } from './flow-dom.js';
+// ── dom (DOM primitives) ─────────────────────────────────────────────
+export { _el, buildDomainButtonBar } from './dom.js';
 
 // ── form-helpers (inline rename used by category management) ────────
 export { startInlineRename } from './form-helpers.js';

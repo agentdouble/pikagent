@@ -10,10 +10,8 @@
  * rather than at module-load time.  This reduces coupling and speeds up
  * initial require of this file.
  *
- * All managers are sourced from the consolidated barrel:
- *   managers.js — ptyManager, fsManager, sessionManager, usageManager,
- *                 flowManager, skillsManager, gitManager, configManager,
- *                 updateManager
+ * Each manager is imported directly from its own module (the former
+ * managers.js barrel has been inlined — see #462).
  */
 
 /**
@@ -40,35 +38,34 @@ function lazyProp(obj, name, factory) {
 }
 
 /**
- * Resolve a manager from the consolidated barrel module.
- *
- * @param {string} name  Manager export name, e.g. 'ptyManager'.
- * @returns {any}
- */
-function resolveManager(name) {
-  return require('./managers')[name];
-}
-
-/**
  * Lazy accessor object — each property loads its manager on first access,
  * then caches the result by replacing itself with a plain data property.
+ *
+ * Manager module map: maps property name to { module, instantiate? }.
+ * When `instantiate` is true the module export is a constructor and must
+ * be called with `new`.
  */
+const MANAGER_DEFS = {
+  ptyManager:     { module: './pty-manager',     instantiate: true },
+  fsManager:      { module: './fs-manager' },
+  sessionManager: { module: './session-manager' },
+  usageManager:   { module: './usage-manager' },
+  flowManager:    { module: './flow-manager' },
+  skillsManager:  { module: './skills-manager' },
+  gitManager:     { module: './git-manager' },
+  configManager:  { module: './config-manager' },
+  updateManager:  { module: './update-manager' },
+};
+
+const ALL_MANAGER_NAMES = Object.keys(MANAGER_DEFS);
+
 const managers = {};
 
-const ALL_MANAGER_NAMES = [
-  'ptyManager',
-  'fsManager',
-  'sessionManager',
-  'usageManager',
-  'flowManager',
-  'skillsManager',
-  'gitManager',
-  'configManager',
-  'updateManager',
-];
-
-for (const name of ALL_MANAGER_NAMES) {
-  lazyProp(managers, name, () => resolveManager(name));
+for (const [name, def] of Object.entries(MANAGER_DEFS)) {
+  lazyProp(managers, name, () => {
+    const mod = require(def.module);
+    return def.instantiate ? new mod() : mod;
+  });
 }
 
 const { safeSend } = require('./ipc-helpers');

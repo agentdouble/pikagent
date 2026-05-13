@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom-facades.js';
+import { _el } from '../utils/dom.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';

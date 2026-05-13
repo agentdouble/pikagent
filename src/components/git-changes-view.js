@@ -1,5 +1,5 @@
 import { emitFileOpen } from '../utils/workspace-events.js';
-import { _el } from '../utils/dom-facades.js';
+import { _el } from '../utils/dom.js';
 import { onClickStopped } from '../utils/event-helpers.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';

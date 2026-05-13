@@ -4,7 +4,7 @@
  * Pure DOM-construction functions. State is passed in, never owned here.
  */
 
-import { _el, renderList } from './dom-facades.js';
+import { _el, renderList } from './dom.js';
 
 /**
  * Build the top header bar with action buttons.
