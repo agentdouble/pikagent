@@ -15,9 +15,8 @@
  *   - createSelect                          → ./flow-modal-helpers.js (private)
  *   - positionInViewport                    → ./context-menu.js (private)
  *
- * Domain facades reduce fan-in — prefer importing from these where applicable:
- *   - dom-facades.js    (consolidated: workspace, settings, file, tab, terminal, git domains)
- *   - flow-dom.js       (flow-card-renderer, flow-card-setup, …)
+ * All consumers now import directly from this module (dom-facades.js and
+ * flow-dom.js were removed as redundant pass-through re-exports — see #462).
  */
 import { onClickStopped } from './event-helpers.js';
 
