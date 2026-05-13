@@ -7,19 +7,19 @@
  * Other consumers should continue importing from the original modules.
  */
 
-export { inlineRenameTab } from './tab-renderer.js';
-export { renderTabBar } from './tab-bar-renderer.js';
+export { inlineRenameTab } from '../utils/tab-renderer.js';
+export { renderTabBar } from '../utils/tab-bar-renderer.js';
 export {
   isTabVisible, setColorFilter, toggleExcludeColor, ensureVisibleTabActive,
-} from './tab-color-filter.js';
-export { createTab, closeTab, switchTo } from './tab-lifecycle.js';
+} from '../utils/tab-color-filter.js';
+export { createTab, closeTab, switchTo } from '../utils/tab-lifecycle.js';
 export {
   reorderEntries,
-} from './tab-manager-helpers.js';
+} from '../utils/tab-manager-helpers.js';
 export {
   nextTab, prevTab, goToColorGroup, focusDirection,
   setTabColorGroup, toggleNoShortcut,
-} from './tab-navigation.js';
+} from '../utils/tab-navigation.js';
 export { buildPrApi, buildWorktreeApi, buildViewStore } from './tab-manager-api.js';
 
 // ── domain service facade (git, fs, config APIs) ─────────────────────

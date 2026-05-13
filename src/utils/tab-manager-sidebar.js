@@ -16,7 +16,7 @@ import {
   capturePanelWidths, disposeAllTabs as doDisposeAllTabs,
 } from './workspace-ops.js';
 import { getComponent } from './tab-manager-init.js';
-import { buildViewStore } from './tab-facade.js';
+import { buildViewStore } from '../facades/tab-facade.js';
 
 export function renderActivityBar(tm) {
   doRenderActivityBar({
