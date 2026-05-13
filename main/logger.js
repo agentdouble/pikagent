@@ -1,4 +1,4 @@
-const { runSafe } = require('./safe-handler');
+const { createSafeWrapper } = require('./safe-handler');
 
 /**
  * Lightweight logger factory for main-process modules.
@@ -37,11 +37,8 @@ function createLogger(module) {
  * @param {{ log: { warn: (msg: string, err?: unknown) => void }, label: string }} [opts] - optional logger & label
  * @returns {Promise<unknown>}
  */
-async function trySafe(fn, defaultValue, { log, label } = {}) {
-  return runSafe(fn, (err) => {
-    if (log && label) log.warn(`${label} failed`, err);
-    return defaultValue;
-  });
+function trySafe(fn, defaultValue, { log, label } = {}) {
+  return createSafeWrapper({ defaultValue, log, label })(fn)();
 }
 
 module.exports = { createLogger, trySafe };

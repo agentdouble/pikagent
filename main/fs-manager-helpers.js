@@ -1,7 +1,7 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const { runSafe } = require('./safe-handler');
+const { createSafeWrapper } = require('./safe-handler');
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
@@ -16,11 +16,7 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
  * @param {(...args: unknown[]) => Promise<unknown>} fn - async function to wrap
  * @returns {(...args: unknown[]) => Promise<unknown>} wrapped function with same signature
  */
-function wrapSafe(fn) {
-  return function (...args) {
-    return runSafe(() => fn(...args), (err) => ({ error: err.message }));
-  };
-}
+const wrapSafe = createSafeWrapper();
 
 async function pathExists(filePath) {
   try {
