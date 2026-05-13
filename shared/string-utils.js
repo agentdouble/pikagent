@@ -5,9 +5,20 @@
  */
 
 /**
- * Sanitize a name by replacing non-alphanumeric characters (except dash,
- * underscore, and space) with underscores, then truncating to 64 characters.
- * Used for config names and similar identifiers.
+ * Sanitize a name for use as a **config identifier / display name**.
+ *
+ * Rules (intentionally different from {@link sanitizeSegment}):
+ * - Keeps alphanumerics, dashes, underscores, and **spaces** (spaces are
+ *   meaningful in user-facing config names).
+ * - Replaces everything else with underscores (`_`).
+ * - Truncates to 64 characters to avoid overly long filenames.
+ *
+ * **Why not reuse `sanitizeSegment`?**
+ * Config names are displayed to the user and may contain spaces; they are
+ * mapped to filenames via `sanitizeName(name) + '.json'`.  Git branch names
+ * (handled by `sanitizeSegment`) forbid spaces and use hyphens as the
+ * replacement character instead, following `git check-ref-format` conventions.
+ *
  * @param {string} name
  * @returns {string}
  */
@@ -16,10 +27,20 @@ function sanitizeName(name) {
 }
 
 /**
- * Sanitize a string into a filesystem-safe path segment by replacing
- * non-alphanumeric characters (except dot, underscore, dash) with hyphens
- * and trimming leading/trailing hyphens.
- * Used for branch names and worktree paths.
+ * Sanitize a string into a **filesystem-safe / git-ref-safe path segment**.
+ *
+ * Rules (intentionally different from {@link sanitizeName}):
+ * - Keeps alphanumerics, dots, underscores, and dashes.
+ * - Collapses any other characters (including spaces) into a single hyphen.
+ * - Trims leading and trailing hyphens.
+ *
+ * **Why not reuse `sanitizeName`?**
+ * Branch names and worktree directory names must not contain spaces and
+ * should follow `git check-ref-format` conventions.  Using hyphens as the
+ * replacement character produces idiomatic branch names (e.g.
+ * `feat/my-branch`) whereas `sanitizeName` would yield underscores and
+ * preserve spaces, which are invalid in refs.
+ *
  * @param {string} name
  * @returns {string}
  */
