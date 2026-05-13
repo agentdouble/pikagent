@@ -14,17 +14,17 @@ const log = createLogger('fs-manager');
 const watchers = new Map();
 
 function watchDir(id, dirPath, callback) {
-  unwatchDir(id);
+  unwatch(id);
   try {
     const watcher = fs.watch(dirPath, { recursive: true }, (eventType, filename) => {
       callback({ id, dirPath, eventType, filename });
     });
-    watcher.on('error', () => unwatchDir(id));
+    watcher.on('error', () => unwatch(id));
     watchers.set(id, watcher);
   } catch (err) { log.warn('watchDir failed', dirPath, err); }
 }
 
-function unwatchDir(id) {
+function unwatch(id) {
   const w = watchers.get(id);
   if (w) {
     w.close();
@@ -41,7 +41,7 @@ function unwatchAll() {
 // Public API
 // ---------------------------------------------------------------------------
 
-async function readDirectory(dirPath) {
+async function readdir(dirPath) {
   try {
     const entries = await fsp.readdir(dirPath, { withFileTypes: true });
     return entries.sort(dirFirstCompare).map((e) => ({
@@ -54,40 +54,40 @@ async function readDirectory(dirPath) {
   }
 }
 
-const readFile = wrapSafe(async (filePath) => {
+const readfile = wrapSafe(async (filePath) => {
   const stat = await fsp.stat(filePath);
   if (stat.size > MAX_FILE_SIZE) return { error: 'File too large (>2MB)' };
   const content = await fsp.readFile(filePath, 'utf-8');
   return { content, size: stat.size };
 });
 
-const writeFile = wrapSafe(async (filePath, content) => {
+const writefile = wrapSafe(async (filePath, content) => {
   await fsp.writeFile(filePath, content, 'utf-8');
   return { success: true };
 });
 
-const makeDir = wrapSafe(async (dirPath) => {
+const mkdir = wrapSafe(async (dirPath) => {
   await fsp.mkdir(dirPath, { recursive: true });
   return { success: true };
 });
 
-const copyEntry = wrapSafe(async (srcPath) => {
+const copy = wrapSafe(async (srcPath) => {
   const destPath = await doCopy(srcPath, path.dirname(srcPath), true);
   return { success: true, destPath };
 });
 
-const copyFileTo = wrapSafe(async (srcPath, destDir) => {
+const copyTo = wrapSafe(async (srcPath, destDir) => {
   const destPath = await doCopy(srcPath, destDir, false);
   return { success: true, destPath };
 });
 
-const renameEntry = wrapSafe(async (oldPath, newName) => {
+const rename = wrapSafe(async (oldPath, newName) => {
   const newPath = path.join(path.dirname(oldPath), newName);
   await fsp.rename(oldPath, newPath);
   return { success: true, newPath };
 });
 
-function getHomedir() {
+function homedir() {
   return os.homedir();
 }
 
@@ -96,16 +96,8 @@ function cleanup() {
 }
 
 module.exports = {
-  // Method aliases matching channel suffixes (fs:readdir → readdir, etc.)
-  readdir: readDirectory,
-  readfile: readFile,
-  writefile: writeFile,
-  mkdir: makeDir,
-  copy: copyEntry,
-  copyTo: copyFileTo,
-  rename: renameEntry,
-  homedir: getHomedir,
-  unwatch: unwatchDir,
+  readdir, readfile, writefile, mkdir,
+  copy, copyTo, rename, homedir, unwatch,
   // Used directly by ipc-handlers.js (custom fs:watch handler) and manager-init.js (cleanup)
   watchDir, cleanup,
 };
