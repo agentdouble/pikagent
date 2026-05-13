@@ -1,8 +1,7 @@
 const os = require('os');
 const fs = require('fs');
 const pty = require('node-pty');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
+const { execFileAsync } = require('./command-utils');
 const { createLogger } = require('./logger');
 
 const log = createLogger('pty-manager');
@@ -29,8 +28,6 @@ const {
   parseChildPids,
   parseCwdFromLsof,
 } = require('./pty-helpers');
-
-const execFileAsync = promisify(execFile);
 
 class PtyManager {
   constructor() {
