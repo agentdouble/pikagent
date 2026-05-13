@@ -92,18 +92,37 @@ function _runMetricCards(m) {
  * Factory that builds the common { cards, chart, tables } shape shared by
  * run-based tabs (agents and flows).
  *
- * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
+ * Both run-based tabs follow the same pattern:
+ *  1. Extract a metrics slice from the top-level metrics object.
+ *  2. Build 2 tab-specific "header" cards, then append the 2 shared run-metric
+ *     cards (success rate + avg duration) via _runMetricCards().
+ *  3. Create a daily-run chart with RUN_CHART_SEGMENTS.
+ *  4. Attach one or more data tables.
+ *
+ * Callers only supply the parts that differ (sliceKey, headerCards, chartTitle,
+ * tables builder) — everything else is handled here.
+ *
+ * @param {object}   metrics          The full metrics object.
  * @param {object}   options
- * @param {Array<{label: string, value: string|number, cls: string, sub?: string}>} options.cards Four card descriptors (label/value/cls/sub).
- * @param {string}   options.chartTitle  Title displayed above the chart.
- * @param {Array<{title: string, headers: string[], tableCls: string, data: Array<object>, renderRow: (item: object) => HTMLTableRowElement}>} options.tables One or more table descriptors.
- * @returns {{ cards: Array, chart: object, tables: Array }}
+ * @param {string}   options.sliceKey          Key to extract the metrics slice (e.g. 'agent', 'flow').
+ * @param {(m: object) => Array}  options.headerCards  Returns the first 2 cards specific to this tab.
+ * @param {string}   options.chartTitle        Title displayed above the chart.
+ * @param {(m: object, metrics: object) => Array} options.tables  Returns table descriptor(s).
+ * @param {(m: object) => {empty: string[]}|null} [options.emptyGuard]  Optional early-return for empty state.
+ * @returns {{ cards: Array, chart: object, tables: Array } | { empty: string[] }}
  */
-function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {
+function _createRunBasedTabConfig(metrics, { sliceKey, headerCards, chartTitle, tables, emptyGuard }) {
+  const m = metrics[sliceKey];
+
+  if (emptyGuard) {
+    const guard = emptyGuard(m);
+    if (guard) return guard;
+  }
+
   return {
-    cards,
+    cards: [...headerCards(m), ..._runMetricCards(m)],
     chart: { title: chartTitle, data: m.perDay, segments: RUN_CHART_SEGMENTS, tooltip: runTooltip },
-    tables,
+    tables: tables(m, metrics),
   };
 }
 
@@ -130,24 +149,25 @@ function _renderFileRow(maxFileCount) {
   ]);
 }
 
-function _agentSessionCards(m) {
+function _agentHeaderCards(m) {
   return [
     { label: 'Sessions', value: m.totalSessions, cls: '' },
     { label: 'En cours', value: m.activeSessions, cls: m.activeSessions > 0 ? 'usage-stat-value-green' : '' },
-    ..._runMetricCards(m),
   ];
 }
 
 function _agentTabConfig(metrics) {
-  const m = metrics.agent;
-  const maxFileCount = metrics.mostModifiedFiles[0]?.count || 1;
-  return _createRunBasedTabConfig(m, {
-    cards: _agentSessionCards(m),
+  return _createRunBasedTabConfig(metrics, {
+    sliceKey: 'agent',
+    headerCards: _agentHeaderCards,
     chartTitle: 'Sessions par jour',
-    tables: [
-      { title: 'Par agent', headers: ['Agent', 'Sessions', 'Actifs', 'Succès', 'Durée moy.'], tableCls: 'usage-flow-table', data: m.byAgent, renderRow: _renderAgentRow },
-      { title: 'Fichiers les plus modifiés (30 jours)', headers: ['Fichier', 'Modifs', ''], tableCls: 'usage-files-table', data: metrics.mostModifiedFiles, renderRow: _renderFileRow(maxFileCount) },
-    ],
+    tables: (m, allMetrics) => {
+      const maxFileCount = allMetrics.mostModifiedFiles[0]?.count || 1;
+      return [
+        { title: 'Par agent', headers: ['Agent', 'Sessions', 'Actifs', 'Succès', 'Durée moy.'], tableCls: 'usage-flow-table', data: m.byAgent, renderRow: _renderAgentRow },
+        { title: 'Fichiers les plus modifiés (30 jours)', headers: ['Fichier', 'Modifs', ''], tableCls: 'usage-files-table', data: allMetrics.mostModifiedFiles, renderRow: _renderFileRow(maxFileCount) },
+      ];
+    },
   });
 }
 
@@ -210,23 +230,22 @@ function _renderFlowRow(flow) {
   ]);
 }
 
-function _flowCards(f) {
+function _flowHeaderCards(f) {
   return [
     { label: 'Total Runs', value: f.rate.total, cls: '' },
     { label: 'Flows actifs', value: `${f.activeFlows}/${f.totalFlows}`, cls: '' },
-    ..._runMetricCards(f),
   ];
 }
 
 function _flowTabConfig(metrics) {
-  const f = metrics.flow;
-  if (f.totalFlows === 0) {
-    return { empty: ['Aucun flow configuré', 'Créez des flows depuis la vue FLOW'] };
-  }
-  return _createRunBasedTabConfig(f, {
-    cards: _flowCards(f),
+  return _createRunBasedTabConfig(metrics, {
+    sliceKey: 'flow',
+    headerCards: _flowHeaderCards,
     chartTitle: 'Runs par jour',
-    tables: [
+    emptyGuard: (f) => f.totalFlows === 0
+      ? { empty: ['Aucun flow configuré', 'Créez des flows depuis la vue FLOW'] }
+      : null,
+    tables: (f) => [
       { title: 'Par flow', headers: ['Flow', 'Runs', 'Succès', 'Durée moy.'], tableCls: 'usage-flow-table', data: f.flowStats, renderRow: _renderFlowRow },
     ],
   });
