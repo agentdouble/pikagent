@@ -19,16 +19,16 @@ let _rootCache = null;
 let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
 
 /**
- * Wrap an async operation with trySafe, auto-deriving the label from fn.name.
- * Eliminates the repeated `_safe(async () => {...}, fallback, 'manualLabel')` ceremony.
+ * Higher-order function that wraps `fn` with trySafe.
+ * Returns a new function with the same signature that catches errors
+ * and returns `fallback` instead, logging via the module logger.
  *
- * @param {Function} fn       - named async function to execute
+ * @param {Function} fn       - named async function to wrap
  * @param {*} fallback        - value returned on error
- * @returns {Promise<*>}
+ * @returns {Function}        - wrapped function (...args) => Promise<*>
  */
-function _safe(fn, fallback) {
-  return trySafe(fn, fallback, { log, label: fn.name || 'skills-op' });
-}
+const _safe = (fn, fallback) => (...args) =>
+  trySafe(() => fn(...args), fallback, { log, label: fn.name || 'skills-op' });
 
 function parseFrontmatter(md) {
   if (!md.startsWith('---')) return {};
@@ -57,50 +57,48 @@ async function _saveRoot(newRoot) {
   _ensureRootDir = ensureDirOnce(newRoot);
 }
 
-async function _readSkillDir(rootDir, skillName) {
+const _readSkillDir = _safe(async function readSkillDir(rootDir, skillName) {
   const dir = path.join(rootDir, skillName);
   const skillPath = path.join(dir, 'SKILL.md');
-  return _safe(async function readSkillDir() {
-    const stat = await fsp.stat(skillPath);
-    if (!stat.isFile()) return null;
-    const raw = await fsp.readFile(skillPath, 'utf-8');
-    const meta = parseFrontmatter(raw);
-    return {
-      id: skillName,
-      name: meta.name || skillName,
-      description: meta.description || '',
-      dir,
-      path: skillPath,
-      source: 'user',
-    };
-  }, null);
-}
+  const stat = await fsp.stat(skillPath);
+  if (!stat.isFile()) return null;
+  const raw = await fsp.readFile(skillPath, 'utf-8');
+  const meta = parseFrontmatter(raw);
+  return {
+    id: skillName,
+    name: meta.name || skillName,
+    description: meta.description || '',
+    dir,
+    path: skillPath,
+    source: 'user',
+  };
+}, null);
 
-async function list() {
+const list = _safe(async function list() {
   const root = await _loadRoot();
-  return _safe(async function list() {
-    const entries = await fsp.readdir(root, { withFileTypes: true });
-    const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    const skills = await Promise.all(dirs.map((name) => _readSkillDir(root, name)));
-    return skills.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
-  }, []);
-}
+  const entries = await fsp.readdir(root, { withFileTypes: true });
+  const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  const skills = await Promise.all(dirs.map((name) => _readSkillDir(root, name)));
+  return skills.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+}, []);
 
 async function read(filePath) {
   if (!(await _isAllowedPath(filePath))) return null;
-  return _safe(async function read() {
-    return fsp.readFile(filePath, 'utf-8');
-  }, null);
+  return _safeRead(filePath);
 }
+const _safeRead = _safe(async function read(filePath) {
+  return fsp.readFile(filePath, 'utf-8');
+}, null);
 
 async function write({ filePath, content }) {
   if (!(await _isAllowedPath(filePath))) return { success: false, error: 'Path not allowed' };
-  return _safe(async function write() {
-    await fsp.mkdir(path.dirname(filePath), { recursive: true });
-    await fsp.writeFile(filePath, content, 'utf-8');
-    return { success: true };
-  }, { success: false });
+  return _safeWrite(filePath, content);
 }
+const _safeWrite = _safe(async function write(filePath, content) {
+  await fsp.mkdir(path.dirname(filePath), { recursive: true });
+  await fsp.writeFile(filePath, content, 'utf-8');
+  return { success: true };
+}, { success: false });
 
 async function create({ id, description }) {
   const safeId = sanitizeSegment(String(id || '').trim());
@@ -108,18 +106,19 @@ async function create({ id, description }) {
   const root = await _loadRoot();
   const dir = path.join(root, safeId);
   const filePath = path.join(dir, 'SKILL.md');
-  return _safe(async function create() {
-    await fsp.mkdir(dir, { recursive: true });
-    try {
-      await fsp.access(filePath);
-      return { success: false, error: 'Skill already exists' };
-    } catch {}
-    const desc = (description || '').replace(/\n/g, ' ').trim();
-    const body = `---\nname: ${safeId}\ndescription: ${desc}\n---\n\n# ${safeId}\n\nDécris ici ce que fait ce skill.\n`;
-    await fsp.writeFile(filePath, body, 'utf-8');
-    return { success: true, id: safeId, path: filePath };
-  }, { success: false });
+  return _safeCreate(dir, filePath, safeId, description);
 }
+const _safeCreate = _safe(async function create(dir, filePath, safeId, description) {
+  await fsp.mkdir(dir, { recursive: true });
+  try {
+    await fsp.access(filePath);
+    return { success: false, error: 'Skill already exists' };
+  } catch {}
+  const desc = (description || '').replace(/\n/g, ' ').trim();
+  const body = `---\nname: ${safeId}\ndescription: ${desc}\n---\n\n# ${safeId}\n\nDécris ici ce que fait ce skill.\n`;
+  await fsp.writeFile(filePath, body, 'utf-8');
+  return { success: true, id: safeId, path: filePath };
+}, { success: false });
 
 async function remove(id) {
   const safeId = String(id || '').trim();
@@ -127,37 +126,36 @@ async function remove(id) {
   const root = await _loadRoot();
   const dir = path.join(root, safeId);
   if (!(await _isAllowedPath(dir))) return false;
-  return _safe(async function remove() {
-    await fsp.rm(dir, { recursive: true, force: true });
-    return true;
-  }, false);
+  return _safeRemove(dir);
 }
+const _safeRemove = _safe(async function remove(dir) {
+  await fsp.rm(dir, { recursive: true, force: true });
+  return true;
+}, false);
 
-async function importFrom(srcDir) {
+const importFrom = _safe(async function importFrom(srcDir) {
   if (!srcDir) return { success: false, error: 'No source folder' };
-  return _safe(async function importFrom() {
-    const stat = await fsp.stat(srcDir);
-    if (!stat.isDirectory()) return { success: false, error: 'Not a directory' };
-    const skillFile = path.join(srcDir, 'SKILL.md');
-    try {
-      await fsp.access(skillFile);
-    } catch {
-      return { success: false, error: 'No SKILL.md found in folder' };
-    }
-    const root = await _loadRoot();
-    await _ensureRootDir();
-    const baseName = path.basename(srcDir);
-    let destName = baseName;
-    let destDir = path.join(root, destName);
-    let i = 1;
-    while (await pathExists(destDir)) {
-      destName = `${baseName}-${i++}`;
-      destDir = path.join(root, destName);
-    }
-    await fsp.cp(srcDir, destDir, { recursive: true });
-    return { success: true, id: destName, path: path.join(destDir, 'SKILL.md') };
-  }, { success: false, error: 'Import failed' });
-}
+  const stat = await fsp.stat(srcDir);
+  if (!stat.isDirectory()) return { success: false, error: 'Not a directory' };
+  const skillFile = path.join(srcDir, 'SKILL.md');
+  try {
+    await fsp.access(skillFile);
+  } catch {
+    return { success: false, error: 'No SKILL.md found in folder' };
+  }
+  const root = await _loadRoot();
+  await _ensureRootDir();
+  const baseName = path.basename(srcDir);
+  let destName = baseName;
+  let destDir = path.join(root, destName);
+  let i = 1;
+  while (await pathExists(destDir)) {
+    destName = `${baseName}-${i++}`;
+    destDir = path.join(root, destName);
+  }
+  await fsp.cp(srcDir, destDir, { recursive: true });
+  return { success: true, id: destName, path: path.join(destDir, 'SKILL.md') };
+}, { success: false, error: 'Import failed' });
 
 async function getRoot() {
   return _loadRoot();
@@ -166,22 +164,21 @@ async function getRoot() {
 async function setRoot(newRoot) {
   if (!newRoot) return { success: false, error: 'Empty path' };
   const resolved = path.resolve(newRoot);
-  return _safe(async function setRoot() {
-    await fsp.mkdir(resolved, { recursive: true });
-    await _saveRoot(resolved);
-    return { success: true, root: resolved };
-  }, { success: false, error: 'Could not set path' });
+  return _safeSetRoot(resolved);
 }
+const _safeSetRoot = _safe(async function setRoot(resolved) {
+  await fsp.mkdir(resolved, { recursive: true });
+  await _saveRoot(resolved);
+  return { success: true, root: resolved };
+}, { success: false, error: 'Could not set path' });
 
-async function resetRoot() {
-  return _safe(async function resetRoot() {
-    await fsp.unlink(SETTINGS_FILE).catch(() => {});
-    _rootCache = null;
-    _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
-    const root = await _loadRoot();
-    return { success: true, root };
-  }, { success: false });
-}
+const resetRoot = _safe(async function resetRoot() {
+  await fsp.unlink(SETTINGS_FILE).catch(() => {});
+  _rootCache = null;
+  _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
+  const root = await _loadRoot();
+  return { success: true, root };
+}, { success: false });
 
 async function _isAllowedPath(p) {
   if (!p) return false;
