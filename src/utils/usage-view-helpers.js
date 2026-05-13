@@ -78,17 +78,6 @@ export function createSection(title) {
 // --- Tab configurations ---
 
 /**
- * Factory that builds the common { cards, chart, tables } shape shared by
- * run-based tabs (agents and flows).
- *
- * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
- * @param {object}   options
- * @param {Array<{label: string, value: string|number, cls: string, sub?: string}>} options.cards Four card descriptors (label/value/cls/sub).
- * @param {string}   options.chartTitle  Title displayed above the chart.
- * @param {Array<{title: string, headers: string[], tableCls: string, data: Array<object>, renderRow: (item: object) => HTMLTableRowElement}>} options.tables One or more table descriptors.
- * @returns {{ cards: Array, chart: object, tables: Array }}
- */
-/**
  * Build the two run-metric cards shared by agents and flows tabs:
  * success rate + average duration (with min/max sub-text).
  */
@@ -99,6 +88,17 @@ function _runMetricCards(m) {
   ];
 }
 
+/**
+ * Factory that builds the common { cards, chart, tables } shape shared by
+ * run-based tabs (agents and flows).
+ *
+ * @param {object}   m               The metrics slice (metrics.agent or metrics.flow).
+ * @param {object}   options
+ * @param {Array<{label: string, value: string|number, cls: string, sub?: string}>} options.cards Four card descriptors (label/value/cls/sub).
+ * @param {string}   options.chartTitle  Title displayed above the chart.
+ * @param {Array<{title: string, headers: string[], tableCls: string, data: Array<object>, renderRow: (item: object) => HTMLTableRowElement}>} options.tables One or more table descriptors.
+ * @returns {{ cards: Array, chart: object, tables: Array }}
+ */
 function _createRunBasedTabConfig(m, { cards, chartTitle, tables }) {
   return {
     cards,
