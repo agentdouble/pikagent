@@ -1,5 +1,8 @@
 const { CONFIG_DIR, META_FILE } = require('./paths');
 const { DEFAULT_META, buildConfigRecord, formatConfigList } = require('./config-helpers');
+// sanitizeName: config-oriented sanitization — keeps spaces, replaces
+// special chars with underscores, truncates at 64 chars.  This differs from
+// sanitizeSegment (git-ref-safe, hyphen-based) by design; see string-utils.js.
 const { sanitizeName } = require('../shared/string-utils');
 const { trySafe } = require('./logger');
 const { JsonStore, CachedJsonFile } = require('./json-store');

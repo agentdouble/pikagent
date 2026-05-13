@@ -12,6 +12,10 @@
 import { _el, createActionButton, _vis } from './dom-facades.js';
 import { createDialogBase } from './dom-dialogs.js';
 import { onKeyAction } from './event-helpers.js';
+// sanitizeSegment: git-ref-safe sanitization — collapses invalid chars into
+// hyphens, trims leading/trailing hyphens, no spaces allowed.  This differs
+// from sanitizeName (config-oriented, keeps spaces, uses underscores) by
+// design; see string-utils.js for the rationale.
 import { sanitizeSegment } from '../../shared/string-utils.js';
 import { buildSelect } from './form-helpers.js';
 
