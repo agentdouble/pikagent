@@ -9,9 +9,10 @@ import {
   EMPTY_LIST_MESSAGE, UNCATEGORIZED, HEADER_BUTTONS,
   getFlowsForCategory, getUncategorizedFlows,
   removeFlowFromOrder,
-  createCategoryGroup, createFlowCard,
-  _el, buildDomainButtonBar,
-} from './flow-view-subsystem.js';
+} from './flow-view-helpers.js';
+import { createCategoryGroup } from './flow-category-renderer.js';
+import { createFlowCard } from './flow-card-setup.js';
+import { _el, buildDomainButtonBar } from './dom.js';
 
 /**
  * Build the outer shell DOM for the FlowView (wrapper + header + listEl).

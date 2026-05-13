@@ -1,28 +1,13 @@
 /**
- * Tab Facade — re-exports tab utilities and service APIs used by tab-manager.js.
+ * Tab Facade — domain service facade for tab-manager.js.
  *
- * This module exists to reduce the number of direct imports in
- * tab-manager.js (issues #130, #416).  It contains NO logic of its own.
+ * Wraps git, fs, and config service APIs behind a single object so
+ * tab-manager.js does not couple directly to three service modules.
  *
- * Other consumers should continue importing from the original modules.
+ * Re-exports that previously lived here have been inlined into consumers
+ * (see issue #462).
  */
 
-export { inlineRenameTab } from '../utils/tab-renderer.js';
-export { renderTabBar } from '../utils/tab-bar-renderer.js';
-export {
-  isTabVisible, setColorFilter, toggleExcludeColor, ensureVisibleTabActive,
-} from '../utils/tab-color-filter.js';
-export { createTab, closeTab, switchTo } from '../utils/tab-lifecycle.js';
-export {
-  reorderEntries,
-} from '../utils/tab-manager-helpers.js';
-export {
-  nextTab, prevTab, goToColorGroup, focusDirection,
-  setTabColorGroup, toggleNoShortcut,
-} from '../utils/tab-navigation.js';
-export { buildPrApi, buildWorktreeApi, buildViewStore } from './tab-manager-api.js';
-
-// ── domain service facade (git, fs, config APIs) ─────────────────────
 import gitApi from '../services/git-api.js';
 import fsApi from '../services/fs-api.js';
 import configApi from '../services/config-api.js';

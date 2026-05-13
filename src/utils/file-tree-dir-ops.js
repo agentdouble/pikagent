@@ -9,9 +9,9 @@ import { _el } from './dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   resolveWatchCwd,
-  renderDirEntry, renderFileEntry,
-  startWatch, stopWatch,
-} from './file-tree-subsystem.js';
+} from './file-tree-helpers.js';
+import { renderDirEntry, renderFileEntry } from './file-tree-renderer.js';
+import { startWatch, stopWatch } from './file-tree-watcher.js';
 import { rebuildSectionDOM } from './file-tree-section-dom.js';
 
 /**

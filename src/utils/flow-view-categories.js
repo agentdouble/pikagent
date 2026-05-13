@@ -6,7 +6,8 @@
 
 import { showPromptDialog } from './dom-dialogs.js';
 import { generateId } from './id.js';
-import { deleteCategoryData, startInlineRename } from './flow-view-subsystem.js';
+import { deleteCategoryData } from './flow-view-helpers.js';
+import { startInlineRename } from './form-helpers.js';
 
 /**
  * Prompt the user to create a new category, add it to catData, and persist.

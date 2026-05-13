@@ -5,13 +5,10 @@
  * color-filter operations.
  */
 
-import {
-  renderTabBar as doRenderTabBar,
-  createTab as doCreateTab,
-  closeTab as doCloseTab,
-  reorderEntries,
-  inlineRenameTab as doInlineRenameTab,
-} from '../facades/tab-facade.js';
+import { inlineRenameTab as doInlineRenameTab } from './tab-renderer.js';
+import { renderTabBar as doRenderTabBar } from './tab-bar-renderer.js';
+import { createTab as doCreateTab, closeTab as doCloseTab } from './tab-lifecycle.js';
+import { reorderEntries } from './tab-manager-helpers.js';
 
 /**
  * Bind the tab-ops trio to a TabManager instance.
