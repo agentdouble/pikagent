@@ -3,6 +3,9 @@ const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { MAX_FILE_SIZE, wrapSafe, doCopy, dirFirstCompare } = require('./fs-manager-helpers');
+const { createLogger } = require('./logger');
+
+const log = createLogger('fs-manager');
 
 // ---------------------------------------------------------------------------
 // File Watcher
@@ -18,7 +21,7 @@ function watchDir(id, dirPath, callback) {
     });
     watcher.on('error', () => unwatchDir(id));
     watchers.set(id, watcher);
-  } catch {}
+  } catch (err) { log.warn('watchDir failed', dirPath, err); }
 }
 
 function unwatchDir(id) {

@@ -130,7 +130,7 @@ class PtyManager {
 
       const psOut = await this._exec('ps', ['-o', 'args=', '-p', childPids.join(',')]);
       return matchAgent(psOut);
-    } catch {}
+    } catch (err) { log.warn('_checkAgent failed', err); }
     return null;
   }
 

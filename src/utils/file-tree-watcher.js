@@ -20,7 +20,7 @@ export function listenForChanges(debounceTimers, refreshSection, fsApi) {
       id,
       setTimeout(() => {
         debounceTimers.delete(id);
-        refreshSection(id).catch(() => {});
+        refreshSection(id).catch((err) => console.warn('refreshSection failed', err));
       }, DEBOUNCE_DELAY),
     );
   });

@@ -7,7 +7,7 @@ import { disposeResources } from './disposable.js';
 
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
-  try { fitAddon.fit(); } catch {}
+  try { fitAddon.fit(); } catch (e) { /* fit may fail on detached terminal */ }
 }
 
 const BASE_FONT_FAMILY =
