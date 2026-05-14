@@ -103,4 +103,4 @@ function trySafe(fn, defaultValue, { log, label } = {}) {
   return createSafeWrapper({ defaultValue, log, label })(fn)();
 }
 
-module.exports = { runSafe, createSafeWrapper, createSafeHandler, wrapSafe, trySafe };
+module.exports = { createSafeHandler, wrapSafe, trySafe };
