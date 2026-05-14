@@ -112,6 +112,24 @@ function countBy(items, keyFn) {
 }
 
 /**
+ * Rank entries of a map into a sorted, truncated array of records.
+ * For each `[key, value]` pair, calls `itemBuilder(key, value)` to produce a record,
+ * then sorts records by `record[valueKey]` descending and keeps the top `limit`.
+ *
+ * @param {Record<string, unknown>} map
+ * @param {(key: string, value: unknown) => Record<string, unknown>} itemBuilder
+ * @param {string} valueKey - record property name used for descending sort
+ * @param {number} limit
+ * @returns {Array<Record<string, unknown>>}
+ */
+function rankTopByDesc(map, itemBuilder, valueKey, limit) {
+  return Object.entries(map)
+    .map(([k, v]) => itemBuilder(k, v))
+    .sort((a, b) => b[valueKey] - a[valueKey])
+    .slice(0, limit);
+}
+
+/**
  * Build a Map keyed by `keyFn(item)` for O(1) lookup.
  * @param {Array<unknown>} items
  * @param {(item: unknown) => string} keyFn - extracts the lookup key from each item
@@ -226,6 +244,7 @@ module.exports = {
   sumByKeys,
   mapFields,
   countBy,
+  rankTopByDesc,
   createLookupMap,
   resolveFromMap,
   initializeCounters,

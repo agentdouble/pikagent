@@ -9,6 +9,7 @@ const {
   sumByKeys,
   mapFields,
   countBy,
+  rankTopByDesc,
   initializeCounters,
   createDomainMetricsBuilder,
 } = require('../shared/aggregation-utils');
@@ -124,10 +125,12 @@ function buildPerProjectRanking(projectResults) {
     },
   );
 
-  return Object.entries(perProjectAgg)
-    .map(([project, data]) => ({ project, ...data }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, TOP_PROJECTS_LIMIT);
+  return rankTopByDesc(
+    perProjectAgg,
+    (project, data) => ({ project, ...data }),
+    'total',
+    TOP_PROJECTS_LIMIT,
+  );
 }
 
 function aggregateTokenData(labels, projectResults) {
@@ -252,10 +255,12 @@ function buildFileKey(cwd, filePath) {
 
 function rankModifiedFiles(results, limit = TOP_FILES_LIMIT) {
   const allFiles = results.flatMap(({ cwd, files }) => files.map(f => buildFileKey(cwd, f)));
-  return Object.entries(countBy(allFiles, k => k))
-    .map(([file, count]) => ({ file, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+  return rankTopByDesc(
+    countBy(allFiles, k => k),
+    (file, count) => ({ file, count }),
+    'count',
+    limit,
+  );
 }
 
 function collectUniqueCwds(flowRuns, sessions) {
