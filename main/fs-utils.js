@@ -29,8 +29,13 @@ async function readDirJson(dirPath) {
   }
 }
 
+async function listDirNames(dirPath) {
+  const entries = await fsp.readdir(dirPath, { withFileTypes: true });
+  return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+}
+
 async function writeJson(filePath, data) {
   await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-module.exports = { readJson, writeJson, ensureDirOnce, readDirJson };
+module.exports = { readJson, writeJson, ensureDirOnce, readDirJson, listDirNames };

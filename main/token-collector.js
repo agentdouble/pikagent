@@ -1,7 +1,7 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const { FLOWS_DIR, CLAUDE_PROJECTS_DIR } = require('./paths');
-const { readDirJson } = require('./fs-utils');
+const { readDirJson, listDirNames } = require('./fs-utils');
 const { DEFAULT_DAYS } = require('./stats-helpers');
 const { generateDateRange } = require('../shared/date-utils');
 const {
@@ -51,8 +51,7 @@ async function collectProjectTokens(days) {
 
   return trySafe(
     async () => {
-      const allEntries = await fsp.readdir(CLAUDE_PROJECTS_DIR, { withFileTypes: true });
-      const projects = allEntries.filter((d) => d.isDirectory()).map((d) => d.name);
+      const projects = await listDirNames(CLAUDE_PROJECTS_DIR);
       return Promise.all(
         projects.map(async (proj) => {
           const data = await readProjectTokens(path.join(CLAUDE_PROJECTS_DIR, proj), cutoffMs);

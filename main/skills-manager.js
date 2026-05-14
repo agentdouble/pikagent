@@ -3,7 +3,7 @@ const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { BASE_DIR } = require('./paths');
-const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
+const { readJson, writeJson, ensureDirOnce, listDirNames } = require('./fs-utils');
 const { trySafe } = require('./logger');
 const { pathExists } = require('./fs-manager-helpers');
 const { JsonStore } = require('./json-store');
@@ -78,8 +78,7 @@ const _readSkillDir = _safe(async function readSkillDir(rootDir, skillName) {
 
 const list = _safe(async function list() {
   const root = await _loadRoot();
-  const entries = await fsp.readdir(root, { withFileTypes: true });
-  const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  const dirs = await listDirNames(root);
   const skills = await Promise.all(dirs.map((name) => _readSkillDir(root, name)));
   return skills.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 }, []);
