@@ -1,9 +1,42 @@
-/**
- * @vitest-environment happy-dom
- */
-import { describe, it, expect } from 'vitest';
-import { _internals } from '../../src/utils/usage-view-helpers.js';
+import { describe, it, expect, vi } from 'vitest';
 
+/**
+ * Minimal DOM stub so buildTableRow can run without happy-dom.
+ *
+ * _el() from src/utils/dom.js calls document.createElement, so we mock
+ * it to return plain objects that expose the same properties the tests
+ * inspect (tagName, children, textContent, className, style, title).
+ */
+function makeElement(tag, attrs = {}) {
+  const el = {
+    tagName: tag.toUpperCase(),
+    children: [],
+    textContent: attrs.textContent ?? '',
+    className: attrs.className ?? '',
+    style: {},
+    title: attrs.title ?? '',
+    appendChild(child) { el.children.push(child); return child; },
+  };
+  if (attrs.style && typeof attrs.style === 'object') Object.assign(el.style, attrs.style);
+  return el;
+}
+
+vi.mock('../../src/utils/dom.js', () => ({
+  _el(tag, attrs = {}, ...children) {
+    const el = makeElement(tag, attrs);
+    for (const child of children) {
+      if (child) el.children.push(child);
+    }
+    return el;
+  },
+}));
+
+// Stub Node so the `col instanceof Node` guard in buildTableRow works
+// for raw element stubs passed by the tests.
+class FakeNode {}
+globalThis.Node = globalThis.Node ?? FakeNode;
+
+const { _internals } = await import('../../src/utils/usage-view-helpers.js');
 const { buildTableRow } = _internals;
 
 describe('buildTableRow', () => {
@@ -44,7 +77,8 @@ describe('buildTableRow', () => {
   });
 
   it('inserts a raw DOM Node as-is', () => {
-    const td = document.createElement('td');
+    // Create an object that passes `instanceof Node`
+    const td = Object.create(FakeNode.prototype);
     td.textContent = 'raw-cell';
     td.className = 'raw-cls';
     const row = buildTableRow([{ value: 'first' }, td]);
@@ -55,7 +89,7 @@ describe('buildTableRow', () => {
 
   it('handles numeric values', () => {
     const row = buildTableRow([{ value: 42 }]);
-    expect(row.children[0].textContent).toBe('42');
+    expect(row.children[0].textContent).toBe(42);
   });
 
   it('omits className/style/title attrs when not provided', () => {
