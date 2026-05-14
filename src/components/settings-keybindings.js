@@ -5,7 +5,7 @@
 import { formatCombo } from '../utils/shortcut-helpers.js';
 import { _el, createActionButton } from '../utils/dom.js';
 import { onClickStopped } from '../utils/event-helpers.js';
-import { buildSettingsSection } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
 /**
@@ -46,10 +46,7 @@ function createKeyBadge(binding, index, shortcutManager, startRecordingFn, rende
 /**
  * Build a single keybinding row with badge elements and an add button.
  */
-function _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKeybindingsFn) {
-  const row = _el('div', 'keybinding-row');
-  row.appendChild(_el('div', 'keybinding-label', binding.label));
-
+function _buildKeysContainer(binding, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const keysContainer = _el('div', 'keybinding-keys');
   for (let i = 0; i < binding.keys.length; i++) {
     keysContainer.appendChild(createKeyBadge(binding, i, shortcutManager, startRecordingFn, renderKeybindingsFn));
@@ -67,8 +64,17 @@ function _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKey
   });
   keysContainer.appendChild(addBtn);
 
-  row.appendChild(keysContainer);
-  return row;
+  return keysContainer;
+}
+
+function _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+  return createSettingsItem({
+    cls: 'keybinding-row',
+    content: [
+      _el('div', 'keybinding-label', binding.label),
+      _buildKeysContainer(binding, shortcutManager, startRecordingFn, renderKeybindingsFn),
+    ],
+  });
 }
 
 /**

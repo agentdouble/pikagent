@@ -6,7 +6,7 @@ import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalThe
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
 import { _el, createActionButton } from '../utils/dom.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
-import { buildSettingsSection } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
 
@@ -32,11 +32,7 @@ function _createThemePreviewLine(segments, theme) {
   return line;
 }
 
-function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn) {
-  const card = _el('div', 'theme-card');
-  if (isActive) card.classList.add('theme-active');
-
-  // Preview block
+function _buildThemePreview(name, theme) {
   const preview = _el('div', 'theme-preview');
   preview.style.background = theme.background;
 
@@ -53,15 +49,23 @@ function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn)
   }
   preview.appendChild(dots);
 
-  card.appendChild(preview);
-  card.appendChild(_el('div', 'theme-card-label', name));
+  return preview;
+}
 
-  card.addEventListener('click', createAsyncHandler(
-    { stopProp: false, onSuccess: renderAppearanceFn },
-    () => { setTerminalTheme(name); applyThemeToTerminals(tabManager); },
-  ));
-
-  return card;
+function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn) {
+  return createSettingsItem({
+    cls: 'theme-card',
+    isActive,
+    activeCls: 'theme-active',
+    onClick: {
+      handler: () => { setTerminalTheme(name); applyThemeToTerminals(tabManager); },
+      opts: { stopProp: false, onSuccess: renderAppearanceFn },
+    },
+    content: [
+      _buildThemePreview(name, theme),
+      _el('div', 'theme-card-label', name),
+    ],
+  });
 }
 
 /**
