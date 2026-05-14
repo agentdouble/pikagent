@@ -11,7 +11,7 @@ function makeElement(tag, attrs = {}) {
   const el = {
     tagName: tag.toUpperCase(),
     children: [],
-    textContent: attrs.textContent ?? '',
+    textContent: attrs.textContent != null ? String(attrs.textContent) : '',
     className: attrs.className ?? '',
     style: {},
     title: attrs.title ?? '',
@@ -89,7 +89,7 @@ describe('buildTableRow', () => {
 
   it('handles numeric values', () => {
     const row = buildTableRow([{ value: 42 }]);
-    expect(row.children[0].textContent).toBe(42);
+    expect(row.children[0].textContent).toBe('42');
   });
 
   it('omits className/style/title attrs when not provided', () => {
