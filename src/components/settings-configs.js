@@ -4,9 +4,8 @@
  */
 import { _el } from '../utils/dom.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
-import { buildSettingsSection, createActionBar } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createActionBar, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { createAsyncHandler } from '../utils/event-helpers.js';
 import configApi from '../services/config-api.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
@@ -43,17 +42,19 @@ function _buildConfigRowLeft(config) {
 }
 
 function _createConfigRow(config, currentName, tabManager, renderConfigsFn) {
-  const row = _el('div', 'config-row');
-  if (config.name === currentName) row.classList.add('config-active');
-
-  row.addEventListener('click', createAsyncHandler(
-    { stopProp: false, guard: () => !!tabManager, onSuccess: renderConfigsFn },
-    () => tabManager.configManager.switchConfig(config.name),
-  ));
-
-  row.appendChild(_buildConfigRowLeft(config));
-  row.appendChild(_createConfigActions(config, tabManager, renderConfigsFn));
-  return row;
+  return createSettingsItem({
+    cls: 'config-row',
+    isActive: config.name === currentName,
+    activeCls: 'config-active',
+    onClick: {
+      handler: () => tabManager.configManager.switchConfig(config.name),
+      opts: { stopProp: false, guard: () => !!tabManager, onSuccess: renderConfigsFn },
+    },
+    content: [
+      _buildConfigRowLeft(config),
+      _createConfigActions(config, tabManager, renderConfigsFn),
+    ],
+  });
 }
 
 function _createBottomActions(currentName, tabManager, renderConfigsFn) {
