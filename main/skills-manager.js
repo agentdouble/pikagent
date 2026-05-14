@@ -23,9 +23,11 @@ let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
  * Returns a new function with the same signature that catches errors
  * and returns `fallback` instead, logging via the module logger.
  *
- * @param {Function} fn       - named async function to wrap
- * @param {*} fallback        - value returned on error
- * @returns {Function}        - wrapped function (...args) => Promise<*>
+ * @template T
+ * @template {any[]} A
+ * @param {(...args: A) => Promise<T>} fn   - named async function to wrap
+ * @param {T} fallback                       - value returned on error
+ * @returns {(...args: A) => Promise<T>}    - wrapped function
  */
 const _safe = (fn, fallback) => (...args) =>
   trySafe(() => fn(...args), fallback, { log, label: fn.name || 'skills-op' });
