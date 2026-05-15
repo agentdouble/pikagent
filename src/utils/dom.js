@@ -157,6 +157,40 @@ export function renderList(container, items, renderItem) {
 }
 
 /**
+ * Toggle a value in a Set (add if absent, delete if present).
+ * Centralises the repeated `set.has(v) ? set.delete(v) : set.add(v)` pattern
+ * found across flow-view, tab-color-filter, flow-modal, etc.
+ *
+ * @param {Set<unknown>} set
+ * @param {unknown} value
+ * @returns {boolean} true if the value is now in the set
+ */
+export function toggleInSet(set, value) {
+  if (set.has(value)) { set.delete(value); return false; }
+  set.add(value);
+  return true;
+}
+
+/**
+ * Toggle a collapsible section: flip the `collapsed` CSS class on `contentEl`
+ * and update `chevronEl` text between `expandedText` and `collapsedText`.
+ *
+ * Extracts the repeated pattern shared by file-tree-section-dom and similar
+ * collapsible UI widgets.
+ *
+ * @param {HTMLElement} contentEl  - element whose `collapsed` class is toggled
+ * @param {HTMLElement} chevronEl  - chevron element whose textContent is updated
+ * @param {string} expandedText    - chevron text when section is expanded
+ * @param {string} collapsedText   - chevron text when section is collapsed
+ * @returns {boolean} true if the section is now collapsed
+ */
+export function toggleCollapsible(contentEl, chevronEl, expandedText, collapsedText) {
+  const collapsed = contentEl.classList.toggle('collapsed');
+  chevronEl.textContent = collapsed ? collapsedText : expandedText;
+  return collapsed;
+}
+
+/**
  * Build a row containing an optional chevron span and a name span.
  *
  * Used by file-tree rows, flow-category headers, and tab elements — any

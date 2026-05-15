@@ -4,7 +4,7 @@
  */
 import { _el } from '../utils/dom.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
-import { buildSettingsSection, createActionBar, createSettingsItem } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createActionBar, createListItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 import configApi from '../services/config-api.js';
 
@@ -42,7 +42,7 @@ function _buildConfigRowLeft(config) {
 }
 
 function _createConfigRow(config, currentName, tabManager, renderConfigsFn) {
-  return createSettingsItem({
+  return createListItem({
     cls: 'config-row',
     isActive: config.name === currentName,
     activeCls: 'config-active',

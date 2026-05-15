@@ -7,17 +7,9 @@ import { formatDateTime } from '../../shared/date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
 import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregation-utils.js';
 
-/**
- * Toggle a value in a Set (add if absent, delete if present).
- * @param {Set<string>} set
- * @param {string} value
- * @returns {boolean} true if the value is now in the set
- */
-export function toggleInSet(set, value) {
-  if (set.has(value)) { set.delete(value); return false; }
-  set.add(value);
-  return true;
-}
+// Re-export toggleInSet from its canonical location in dom.js so that
+// existing consumers of flow-view-helpers continue to work unchanged.
+export { toggleInSet } from './dom.js';
 
 export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 5000;

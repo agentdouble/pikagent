@@ -1,5 +1,5 @@
 import { generateId } from '../utils/id.js';
-import { _el, createActionButton } from '../utils/dom.js';
+import { _el, createActionButton, toggleInSet } from '../utils/dom.js';
 import { createModalOverlay } from '../utils/dom-dialogs.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
@@ -132,7 +132,7 @@ function _buildDaysChip(existing) {
       cls: 'flow-day-btn',
       onClick: (e) => {
         e.preventDefault();
-        selectedDays.has(d) ? selectedDays.delete(d) : selectedDays.add(d);
+        toggleInSet(selectedDays, d);
         dayBtn.classList.toggle('active');
       },
     });

@@ -2,7 +2,7 @@
  * Color filter logic for tab manager.
  * Extracted from tab-manager.js to reduce component size.
  */
-import { _el } from './dom.js';
+import { _el, toggleInSet } from './dom.js';
 import { COLOR_GROUPS } from './tab-constants.js';
 import { attachContextMenu } from './context-menu.js';
 
@@ -46,8 +46,7 @@ export function setColorFilter(state, colorGroupId, renderTabBar, ensureVisibleT
  */
 export function toggleExcludeColor(state, colorGroupId, renderTabBar, ensureVisibleTabActive) {
   state.activeColorFilter = null;
-  if (state.excludedColors.has(colorGroupId)) state.excludedColors.delete(colorGroupId);
-  else state.excludedColors.add(colorGroupId);
+  toggleInSet(state.excludedColors, colorGroupId);
   renderTabBar();
   ensureVisibleTabActive();
 }

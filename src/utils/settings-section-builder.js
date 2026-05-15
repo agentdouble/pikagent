@@ -7,11 +7,14 @@ import { _el, renderButtonBar, renderList } from './dom.js';
 import { createAsyncHandler } from './event-helpers.js';
 
 /**
- * Create a settings row or card container with optional active state and click handler.
+ * Create a list-item / row / card container with optional active state and click handler.
  *
- * Encapsulates the repeated pattern across settings components where a container
- * element is created, conditionally receives an "active" CSS class, and optionally
- * gets a click handler attached.
+ * Encapsulates the repeated pattern across settings components (and other list
+ * renderers) where a container element is created, conditionally receives an
+ * "active" CSS class, and optionally gets a click handler attached.
+ *
+ * Exported as both `createListItem` (generic name) and `createSettingsItem`
+ * (legacy alias kept for backward compatibility with existing consumers).
  *
  * @param {{
  *   cls: string,
@@ -22,7 +25,7 @@ import { createAsyncHandler } from './event-helpers.js';
  * }} opts
  * @returns {HTMLElement}
  */
-export function createSettingsItem({ cls, content, isActive = false, activeCls, onClick }) {
+export function createListItem({ cls, content, isActive = false, activeCls, onClick }) {
   const el = _el('div', cls);
   if (isActive && activeCls) el.classList.add(activeCls);
 
@@ -43,6 +46,9 @@ export function createSettingsItem({ cls, content, isActive = false, activeCls, 
 
   return el;
 }
+
+/** @deprecated Use {@link createListItem} instead. */
+export const createSettingsItem = createListItem;
 
 /**
  * Build a settings section and populate the given container.

@@ -5,7 +5,7 @@
 import { formatCombo } from '../utils/shortcut-helpers.js';
 import { _el, createActionButton } from '../utils/dom.js';
 import { onClickStopped } from '../utils/event-helpers.js';
-import { buildSettingsSection, createSettingsItem } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createListItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
 /**
@@ -68,7 +68,7 @@ function _buildKeysContainer(binding, shortcutManager, startRecordingFn, renderK
 }
 
 function _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKeybindingsFn) {
-  return createSettingsItem({
+  return createListItem({
     cls: 'keybinding-row',
     content: [
       _el('div', 'keybinding-label', binding.label),
