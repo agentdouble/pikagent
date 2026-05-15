@@ -7,19 +7,10 @@
 import skillsApi from '../services/skills-api.js';
 import shellApi from '../services/shell-api.js';
 import dialogApi from '../services/dialog-api.js';
+import { composeFacade } from './compose-facade.js';
 
-export const skillsViewFacade = {
-  // skills
-  list:         (...a) => skillsApi.list(...a),
-  getRoot:      (...a) => skillsApi.getRoot(...a),
-  read:         (...a) => skillsApi.read(...a),
-  write:        (...a) => skillsApi.write(...a),
-  importSkill:  (...a) => skillsApi.importSkill(...a),
-  create:       (...a) => skillsApi.create(...a),
-  deleteSkill:  (...a) => skillsApi.deleteSkill(...a),
-  setRoot:      (...a) => skillsApi.setRoot(...a),
-  // shell
-  openPath:     (...a) => shellApi.openPath(...a),
-  // dialog
-  openFolder:   (...a) => dialogApi.openFolder(...a),
-};
+export const skillsViewFacade = composeFacade([
+  [skillsApi, ['list', 'getRoot', 'read', 'write', 'importSkill', 'create', 'deleteSkill', 'setRoot']],
+  [shellApi, ['openPath']],
+  [dialogApi, ['openFolder']],
+]);

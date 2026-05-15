@@ -24,7 +24,8 @@ export class TerminalPanel {
     this.container = container;
     this.cwd = cwd;
     this._initState();
-    this._initApi();
+    // Injected API methods forwarded to TerminalInstance (read-only, never mutated).
+    this._terminalApi = terminalPanelFacade;
     this._initDragState();
     this.init();
   }
@@ -33,22 +34,6 @@ export class TerminalPanel {
     this.root = null;
     this.activeTerminal = null;
     this.terminals = new Map();
-  }
-
-  _initApi() {
-    // Injected API methods forwarded to TerminalInstance
-    this._terminalApi = {
-      openExternal: terminalPanelFacade.openExternal,
-      homedir: terminalPanelFacade.homedir,
-      openPath: terminalPanelFacade.openPath,
-      ptyWrite: terminalPanelFacade.ptyWrite,
-      ptyOnData: terminalPanelFacade.ptyOnData,
-      ptyOnExit: terminalPanelFacade.ptyOnExit,
-      ptyCreate: terminalPanelFacade.ptyCreate,
-      ptyGetCwd: terminalPanelFacade.ptyGetCwd,
-      ptyResize: terminalPanelFacade.ptyResize,
-      ptyKill: terminalPanelFacade.ptyKill,
-    };
   }
 
   _initDragState() {

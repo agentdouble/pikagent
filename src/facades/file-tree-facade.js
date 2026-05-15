@@ -7,21 +7,10 @@
 import fsApi from '../services/fs-api.js';
 import shellApi from '../services/shell-api.js';
 import clipboardApi from '../services/clipboard-api.js';
+import { composeFacade } from './compose-facade.js';
 
-export const fileTreeViewFacade = {
-  // fs
-  copy:       (...a) => fsApi.copy(...a),
-  copyTo:     (...a) => fsApi.copyTo(...a),
-  rename:     (...a) => fsApi.rename(...a),
-  mkdir:      (...a) => fsApi.mkdir(...a),
-  writefile:  (...a) => fsApi.writefile(...a),
-  readdir:    (...a) => fsApi.readdir(...a),
-  watch:      (...a) => fsApi.watch(...a),
-  unwatch:    (...a) => fsApi.unwatch(...a),
-  onChanged:  (...a) => fsApi.onChanged(...a),
-  trash:      (...a) => fsApi.trash(...a),
-  // shell
-  showInFolder: (...a) => shellApi.showInFolder(...a),
-  // clipboard
-  clipboardWrite: (...a) => clipboardApi.write(...a),
-};
+export const fileTreeViewFacade = composeFacade([
+  [fsApi, ['copy', 'copyTo', 'rename', 'mkdir', 'writefile', 'readdir', 'watch', 'unwatch', 'onChanged', 'trash']],
+  [shellApi, ['showInFolder']],
+  [clipboardApi, { clipboardWrite: 'write' }],
+]);

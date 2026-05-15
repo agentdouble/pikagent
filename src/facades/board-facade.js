@@ -7,15 +7,10 @@
 import ptyApi from '../services/terminal-api.js';
 import shellApi from '../services/shell-api.js';
 import fsApi from '../services/fs-api.js';
+import { composeFacade } from './compose-facade.js';
 
-export const boardFacade = {
-  // shell
-  openExternal: (...a) => shellApi.openExternal(...a),
-  openPath:     (...a) => shellApi.openPath(...a),
-  // fs
-  homedir:      (...a) => fsApi.homedir(...a),
-  // pty
-  ptyWrite:       (...a) => ptyApi.write(...a),
-  ptyOnData:      (...a) => ptyApi.onData(...a),
-  ptyCheckAgents: (...a) => ptyApi.checkAgents(...a),
-};
+export const boardFacade = composeFacade([
+  [shellApi, ['openExternal', 'openPath']],
+  [fsApi, ['homedir']],
+  [ptyApi, { ptyWrite: 'write', ptyOnData: 'onData', ptyCheckAgents: 'checkAgents' }],
+]);
