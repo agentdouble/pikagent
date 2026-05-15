@@ -94,6 +94,58 @@ for (const name of LIFECYCLE_NAMES) {
 }
 
 /**
+ * Build the IPC adapter for the update domain.
+ *
+ * Adapter: update-manager exposes functional names (checkForUpdates,
+ * getVersion, performUpdate); the IPC schema uses shorter aliases
+ * (check, version, run) and `run` needs a per-call progress callback.
+ *
+ * @param {Record<string, object>} managers  Lazy manager accessor object.
+ * @param {() => import('electron').BrowserWindow} getWindow
+ * @returns {Record<string, () => any>}
+ */
+function buildUpdateTarget(managers, getWindow) {
+  return {
+    check:    () => managers.updateManager.checkForUpdates(),
+    version:  () => managers.updateManager.getVersion(),
+    relaunch: () => managers.updateManager.relaunch(),
+    run:      () => managers.updateManager.performUpdate((p) => safeSend(getWindow, 'update:progress', p)),
+  };
+}
+
+/**
+ * Build the IPC adapter for the shell domain.
+ *
+ * Adapter: api-schema's `shell:showInFolder` channel maps to Electron's
+ * `shell.showItemInFolder`.
+ *
+ * @returns {Record<string, (arg: string) => any>}
+ */
+function buildShellTarget() {
+  const { shell } = require('electron');
+  return {
+    showInFolder: (p) => shell.showItemInFolder(p),
+    openExternal: (url) => shell.openExternal(url),
+    openPath:     (p) => shell.openPath(p),
+  };
+}
+
+/**
+ * Build the IPC adapter for the clipboard domain.
+ *
+ * Adapter: `clipboard:write` (string arg) maps to `clipboard.writeText` —
+ * Electron's `clipboard.write` only accepts an object payload.
+ *
+ * @returns {Record<string, (text: string) => any>}
+ */
+function buildClipboardTarget() {
+  const { clipboard } = require('electron');
+  return {
+    write: (text) => clipboard.writeText(text),
+  };
+}
+
+/**
  * Wire inter-manager dependencies and start runtime services.
  *
  * @param {() => import('electron').BrowserWindow} getWindow
@@ -108,31 +160,6 @@ function initManagers(getWindow) {
   managers.usageManager.init(managers.sessionManager);
 
   // -- Build target map consumed by IPC dispatching --
-  const { shell, clipboard } = require('electron');
-
-  // Adapter: update-manager exposes functional names (checkForUpdates,
-  // getVersion, performUpdate); the IPC schema uses shorter aliases
-  // (check, version, run) and `run` needs a per-call progress callback.
-  const updateTarget = {
-    check:    () => managers.updateManager.checkForUpdates(),
-    version:  () => managers.updateManager.getVersion(),
-    relaunch: () => managers.updateManager.relaunch(),
-    run:      () => managers.updateManager.performUpdate((p) => safeSend(getWindow, 'update:progress', p)),
-  };
-
-  // Adapter: api-schema's `shell:showInFolder` channel maps to Electron's
-  // `shell.showItemInFolder`, and `clipboard:write` (string arg) maps to
-  // `clipboard.writeText` — Electron's `clipboard.write` only accepts an
-  // object payload.
-  const shellTarget = {
-    showInFolder: (p) => shell.showItemInFolder(p),
-    openExternal: (url) => shell.openExternal(url),
-    openPath:     (p) => shell.openPath(p),
-  };
-  const clipboardTarget = {
-    write: (text) => clipboard.writeText(text),
-  };
-
   const targets = {
     pty:       managers.ptyManager,
     fs:        managers.fsManager,
@@ -141,9 +168,9 @@ function initManagers(getWindow) {
     flow:      managers.flowManager,
     usage:     managers.usageManager,
     skills:    managers.skillsManager,
-    update:    updateTarget,
-    shell:     shellTarget,
-    clipboard: clipboardTarget,
+    update:    buildUpdateTarget(managers, getWindow),
+    shell:     buildShellTarget(),
+    clipboard: buildClipboardTarget(),
   };
 
   function cleanup() {
