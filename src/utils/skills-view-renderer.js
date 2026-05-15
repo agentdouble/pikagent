@@ -5,6 +5,7 @@
  */
 
 import { _el, renderList } from './dom.js';
+import { buildViewHeader } from './view-header.js';
 
 /**
  * Build the top header bar with action buttons.
@@ -19,39 +20,41 @@ export function renderHeader(rootPath, handlers) {
     textContent: rootPath || '…',
   });
 
-  const header = _el('div', 'skills-header',
-    _el('div', 'skills-header-left',
-      _el('h2', 'skills-title', 'Skills'),
-      rootBadgeEl,
-    ),
-    _el('div', 'skills-header-right',
-      _el('button', {
-        className: 'skills-btn skills-btn-secondary',
-        textContent: 'Configurer le chemin…',
-        onClick: handlers.onConfigurePath,
-      }),
-      _el('button', {
-        className: 'skills-btn skills-btn-secondary',
-        textContent: 'Ouvrir le dossier',
-        onClick: handlers.onOpenRoot,
-      }),
-      _el('button', {
-        className: 'skills-btn skills-btn-secondary',
-        textContent: 'Importer',
-        onClick: handlers.onImport,
-      }),
-      _el('button', {
-        className: 'skills-btn skills-btn-primary',
-        textContent: '+ Nouveau skill',
-        onClick: handlers.onCreate,
-      }),
-      _el('button', {
-        className: 'skills-btn skills-btn-secondary',
-        textContent: 'Rafraîchir',
-        onClick: handlers.onRefresh,
-      }),
-    ),
+  const actions = _el('div', 'skills-header-right',
+    _el('button', {
+      className: 'skills-btn skills-btn-secondary',
+      textContent: 'Configurer le chemin…',
+      onClick: handlers.onConfigurePath,
+    }),
+    _el('button', {
+      className: 'skills-btn skills-btn-secondary',
+      textContent: 'Ouvrir le dossier',
+      onClick: handlers.onOpenRoot,
+    }),
+    _el('button', {
+      className: 'skills-btn skills-btn-secondary',
+      textContent: 'Importer',
+      onClick: handlers.onImport,
+    }),
+    _el('button', {
+      className: 'skills-btn skills-btn-primary',
+      textContent: '+ Nouveau skill',
+      onClick: handlers.onCreate,
+    }),
+    _el('button', {
+      className: 'skills-btn skills-btn-secondary',
+      textContent: 'Rafraîchir',
+      onClick: handlers.onRefresh,
+    }),
   );
+
+  const header = buildViewHeader({
+    baseClass: 'skills',
+    title: 'Skills',
+    wrapLeft: true,
+    leftExtra: [rootBadgeEl],
+    actions,
+  });
 
   return { header, rootBadgeEl };
 }

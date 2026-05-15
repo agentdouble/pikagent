@@ -4,6 +4,7 @@
  */
 
 import { _el } from './dom.js';
+import { renderStatusBar } from './view-header.js';
 import { getCursorPosition, insertTab, SAVE_FLASH_MS, TAB_SPACES } from './editor-helpers.js';
 
 /**
@@ -117,13 +118,13 @@ export function updateStatusBar(statusBar, editorEl, file) {
   if (!statusBar || !editorEl || !file) return;
   const { line, col, totalLines } = getCursorPosition(editorEl.value, editorEl.selectionStart);
   const modified = file.content !== file.savedContent;
-  statusBar.replaceChildren(
-    _el('span', 'status-item', file.lang),
-    _el('span', 'status-item', `Ln ${line}, Col ${col}`),
-    _el('span', 'status-item', `${totalLines} lines`),
-    _el('span', modified ? 'status-item status-modified' : 'status-item status-saved', modified ? 'Modified' : 'Saved'),
-    _el('span', 'status-save-hint', modified ? '\u2318S to save' : ''),
-  );
+  renderStatusBar(statusBar, [
+    { text: file.lang },
+    { text: `Ln ${line}, Col ${col}` },
+    { text: `${totalLines} lines` },
+    { text: modified ? 'Modified' : 'Saved', cls: modified ? 'status-modified' : 'status-saved' },
+    { text: modified ? '\u2318S to save' : '', isHint: true },
+  ]);
 }
 
 /**
