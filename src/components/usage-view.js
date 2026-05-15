@@ -1,4 +1,5 @@
 import { _el, buildTabBar } from '../utils/dom.js';
+import { buildViewHeader } from '../utils/view-header.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
@@ -19,12 +20,12 @@ export class UsageView extends ComponentBase {
   async render() {
     this.el.replaceChildren();
 
-    this.el.appendChild(_el('div', { className: 'usage-header' },
-      _el('div', { className: 'usage-header-left' },
-        _el('h2', { className: 'usage-title', textContent: 'Usage' }),
-      ),
-      _el('button', { className: 'usage-refresh-btn', textContent: 'Refresh', onClick: () => this.render() }),
-    ));
+    this.el.appendChild(buildViewHeader({
+      baseClass: 'usage',
+      title: 'Usage',
+      wrapLeft: true,
+      actions: _el('button', { className: 'usage-refresh-btn', textContent: 'Refresh', onClick: () => this.render() }),
+    }));
 
     const { bar, setActive } = buildTabBar(TABS, {
       activeId: this.activeTab,

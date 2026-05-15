@@ -13,6 +13,7 @@ import {
 import { createCategoryGroup } from './flow-category-renderer.js';
 import { createFlowCard } from './flow-card-setup.js';
 import { _el, buildDomainButtonBar } from './dom.js';
+import { buildViewHeader } from './view-header.js';
 
 /**
  * Build the outer shell DOM for the FlowView (wrapper + header + listEl).
@@ -23,15 +24,13 @@ import { _el, buildDomainButtonBar } from './dom.js';
 export function renderFlowViewShell(container, handlers) {
   container.replaceChildren();
   const wrapper = _el('div', 'flow-container');
-  const header = _el('div', 'flow-header');
-  header.appendChild(_el('h2', 'flow-title', 'Flows'));
 
   const headerHandlers = { addCategory: handlers.onAddCategory, addFlow: handlers.onAddFlow };
   const headerRight = buildDomainButtonBar('flow-add-btn', 'flow-header-right', HEADER_BUTTONS, headerHandlers);
   headerRight.style.display = 'flex';
   headerRight.style.gap = '8px';
 
-  header.appendChild(headerRight);
+  const header = buildViewHeader({ baseClass: 'flow', title: 'Flows', actions: headerRight });
   wrapper.appendChild(header);
   const listEl = _el('div', 'flow-list');
   wrapper.appendChild(listEl);

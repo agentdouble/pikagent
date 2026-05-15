@@ -5,6 +5,7 @@
  */
 
 import { _el } from './dom.js';
+import { renderStatusBar } from './view-header.js';
 import { renderMarkdown } from './markdown-renderer.js';
 
 /**
@@ -39,10 +40,10 @@ export function createMarkdownPreviewDOM(editorWrapper, file) {
 export function updatePreviewStatusBar(statusBar, file) {
   if (!statusBar || !file) return;
   const lines = (file.content || '').split('\n').length;
-  statusBar.replaceChildren(
-    _el('span', 'status-item', 'markdown'),
-    _el('span', 'status-item', 'Preview'),
-    _el('span', 'status-item', `${lines} lines`),
-    _el('span', 'status-save-hint', 'Right-click tab to edit'),
-  );
+  renderStatusBar(statusBar, [
+    { text: 'markdown' },
+    { text: 'Preview' },
+    { text: `${lines} lines` },
+    { text: 'Right-click tab to edit', isHint: true },
+  ]);
 }
