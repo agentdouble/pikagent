@@ -15,7 +15,7 @@ import { getCursorPosition, insertTab, SAVE_FLASH_MS, TAB_SPACES } from './edito
  * @param {{ content: string }} file
  * @returns {{ lineNumbers: HTMLElement, highlightLayer: HTMLElement, editorEl: HTMLTextAreaElement }}
  */
-export function createEditorDOM(editorWrapper, file) {
+function createEditorDOM(editorWrapper, file) {
   const lineNumbers = _el('div', 'editor-line-numbers');
   const highlightLayer = _el('pre', 'editor-highlight-layer');
 
@@ -41,7 +41,7 @@ export function createEditorDOM(editorWrapper, file) {
  * @param {{ content: string }} file - mutable file object (content is updated on input)
  * @param {{ onUpdate: () => void, onSave: () => void }} callbacks
  */
-export function bindEditorEvents(editorEl, lineNumbers, highlightLayer, file, { onUpdate, onSave }) {
+function bindEditorEvents(editorEl, lineNumbers, highlightLayer, file, { onUpdate, onSave }) {
   editorEl.addEventListener('input', () => {
     file.content = editorEl.value;
     onUpdate();

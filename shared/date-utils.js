@@ -63,15 +63,6 @@ function nowISO() {
 }
 
 /**
- * Return today's date as "YYYY-MM-DD".
- * Replaces `new Date().toISOString().slice(0, 10)`.
- * @returns {string}
- */
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/**
  * Convert an ISO timestamp into a filename-safe string by replacing
  * colons and dots with dashes (e.g. "2025-03-29T14-32-00-000Z").
  * Replaces `.toISOString().replace(/[:.]/g, '-')`.
@@ -97,4 +88,4 @@ function toDateString(dateOrTs) {
   return d.toISOString().slice(0, 10);
 }
 
-module.exports = { formatDateTime, extractDateString, generateDateRange, nowISO, todayISO, toLogFilename, toDateString };
+module.exports = { formatDateTime, extractDateString, generateDateRange, nowISO, toLogFilename, toDateString };

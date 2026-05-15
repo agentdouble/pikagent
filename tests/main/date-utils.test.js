@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-const { extractDateString, generateDateRange, formatDateTime, nowISO, todayISO, toLogFilename, toDateString } = require('../../shared/date-utils');
+const { extractDateString, generateDateRange, formatDateTime, nowISO, toLogFilename, toDateString } = require('../../shared/date-utils');
 
 describe('date-utils', () => {
   describe('extractDateString', () => {
@@ -73,17 +73,6 @@ describe('date-utils', () => {
       const after = Date.now();
       expect(result).toBeGreaterThanOrEqual(before);
       expect(result).toBeLessThanOrEqual(after);
-    });
-  });
-
-  describe('todayISO', () => {
-    it('returns YYYY-MM-DD format', () => {
-      expect(todayISO()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    });
-
-    it('matches current date', () => {
-      const today = new Date().toISOString().slice(0, 10);
-      expect(todayISO()).toBe(today);
     });
   });
 
