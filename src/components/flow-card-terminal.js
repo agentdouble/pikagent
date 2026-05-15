@@ -12,7 +12,7 @@ import {
   formatRunDateTime,
 } from '../utils/flow-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { ptyApi, flowApi } from '../utils/flow-card-terminal-services.js';
+import { ptyApi, flowApi } from '../facades/flow-card-terminal-services.js';
 
 export class FlowCardTerminalManager {
   constructor() {

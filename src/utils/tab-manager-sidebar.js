@@ -3,7 +3,8 @@
  *
  * These functions build the deps objects and call into sidebar-manager and
  * workspace-ops on behalf of the TabManager.  State is passed in via the
- * `tm` (TabManager instance) parameter.
+ * `tm` (TabManager instance) parameter, which also exposes `_viewStore()`
+ * so this leaf-level helper never imports the facade layer directly.
  */
 
 import {
@@ -16,7 +17,6 @@ import {
   capturePanelWidths, disposeAllTabs as doDisposeAllTabs,
 } from './workspace-ops.js';
 import { getComponent } from './tab-manager-init.js';
-import { buildViewStore } from '../facades/tab-manager-api.js';
 
 export function renderActivityBar(tm) {
   doRenderActivityBar({
@@ -32,7 +32,7 @@ export function setSidebarMode(tm, mode) {
   doChangeSidebarMode({
     getActiveTab: () => tm._activeTab(),
     capturePanelWidths,
-    viewStore: buildViewStore(tm),
+    viewStore: tm._viewStore(),
     workspaceContainer: tm.workspaceContainer,
     reattachLayout,
     renderWorkspace: (tab) => tm.renderWorkspace(tab),
@@ -73,17 +73,17 @@ export function buildSwitchToDeps(tm) {
     detachSidebarView: (mode) => detachSidebarView({
       getActiveTab: () => tm._activeTab(),
       capturePanelWidths,
-      viewStore: buildViewStore(tm),
+      viewStore: tm._viewStore(),
     }, mode),
   };
 }
 
 export function disposeSideView(tm, mode) {
-  doDisposeSideView(buildViewStore(tm), mode);
+  doDisposeSideView(tm._viewStore(), mode);
 }
 
 export function disposeAllSideViews(tm) {
-  doDisposeAllSideViews(buildViewStore(tm));
+  doDisposeAllSideViews(tm._viewStore());
 }
 
 export function disposeAllTabs(tm) {
