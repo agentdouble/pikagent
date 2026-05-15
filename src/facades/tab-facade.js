@@ -11,13 +11,10 @@
 import gitApi from '../services/git-api.js';
 import fsApi from '../services/fs-api.js';
 import configApi from '../services/config-api.js';
+import { composeFacade } from './compose-facade.js';
 
-export const tabViewFacade = {
-  // git
-  gitBranch:    (...a) => gitApi.branch(...a),
-  // fs
-  homedir:      (...a) => fsApi.homedir(...a),
-  // config
-  getDefault:   (...a) => configApi.getDefault(...a),
-  loadDefault:  (...a) => configApi.loadDefault(...a),
-};
+export const tabViewFacade = composeFacade([
+  [gitApi, { gitBranch: 'branch' }],
+  [fsApi, ['homedir']],
+  [configApi, ['getDefault', 'loadDefault']],
+]);
