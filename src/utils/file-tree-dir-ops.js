@@ -36,7 +36,7 @@ function collapseDir(dirPath, childContainer, chevron, expandedDirs) {
 
 /**
  * Build the callbacks object for renderDirEntry.
- * @param {object} ft - FileTree instance
+ * @param {import('../components/file-tree.js').FileTree} ft - FileTree instance
  * @param {Set<string>} expandedDirs
  */
 function getDirEntryCallbacks(ft, expandedDirs) {

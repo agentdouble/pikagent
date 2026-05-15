@@ -32,12 +32,12 @@ export class FlowCardTerminalManager {
   /**
    * Create a readonly terminal, register it in the given map, and run an
    * optional setup callback.  Returns the terminal record.
-   * @param {Map<string, {term: object, fitAddon: object, containerEl: HTMLElement}>} map - target map (_liveTerminals or _logTerminals)
+   * @param {Map<string, { term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null, containerEl: HTMLElement }>} map - target map (_liveTerminals or _logTerminals)
    * @param {string} flowId
    * @param {HTMLElement} containerEl
-   * @param {object} opts - extra terminal options (scrollback, cursorStyle, …)
-   * @param {(record: object) => void} [setupFn] - called with the record before it is stored
-   * @returns {object} the terminal record stored in the map
+   * @param {{ scrollback?: number, cursorStyle?: string, [key: string]: unknown }} opts - extra terminal options (scrollback, cursorStyle, …)
+   * @param {(record: { term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null }) => void} [setupFn] - called with the record before it is stored
+   * @returns {{ term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null }} the terminal record stored in the map
    */
   _createAndRegister(map, flowId, containerEl, opts, setupFn) {
     const record = createPtyBoundTerminal(containerEl, {

@@ -18,8 +18,8 @@ export async function openRoot(rootPath, shellApi) {
 
 /**
  * Configure the skills root path.
- * @param {object} sv - SkillsView instance (state is mutated)
- * @param {object} deps - { dialogApi, skillsApi }
+ * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance (state is mutated)
+ * @param {{ dialogApi: { openFolder: () => Promise<string|null> }, skillsApi: { setRoot: (path: string) => Promise<{ success: boolean, root: string }> } }} deps
  */
 export async function configurePath(sv, deps) {
   const picked = await deps.dialogApi.openFolder();
@@ -35,8 +35,8 @@ export async function configurePath(sv, deps) {
 
 /**
  * Import a skill from a folder.
- * @param {object} sv - SkillsView instance
- * @param {object} deps - { dialogApi, skillsApi }
+ * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance
+ * @param {{ dialogApi: { openFolder: () => Promise<string|null> }, skillsApi: { importSkill: (path: string) => Promise<{ success: boolean, id?: string, error?: string }> } }} deps
  */
 export async function importSkill(sv, deps) {
   const picked = await deps.dialogApi.openFolder();
@@ -55,8 +55,8 @@ export async function importSkill(sv, deps) {
 
 /**
  * Create a new skill via prompts.
- * @param {object} sv - SkillsView instance
- * @param {object} skillsApi
+ * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance
+ * @param {{ create: (opts: { id: string, description: string }) => Promise<{ success: boolean, id?: string }> }} skillsApi
  */
 export async function createSkill(sv, skillsApi) {
   const id = await showPromptDialog({
@@ -81,9 +81,9 @@ export async function createSkill(sv, skillsApi) {
 
 /**
  * Delete a skill after confirmation.
- * @param {object} sv - SkillsView instance
+ * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance
  * @param {string} id - skill id
- * @param {object} skillsApi
+ * @param {{ deleteSkill: (id: string) => Promise<unknown> }} skillsApi
  */
 export async function deleteSkill(sv, id, skillsApi) {
   const ok = await showConfirmDialog(
@@ -98,7 +98,7 @@ export async function deleteSkill(sv, id, skillsApi) {
 
 /**
  * Select a skill (with dirty-check).
- * @param {object} sv - SkillsView instance
+ * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance
  * @param {string} id - skill id
  */
 export async function selectSkill(sv, id) {
@@ -117,8 +117,8 @@ export async function selectSkill(sv, id) {
 
 /**
  * Save the active skill.
- * @param {object} sv - SkillsView instance
- * @param {object} skillsApi
+ * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance
+ * @param {{ write: (path: string, content: string) => Promise<{ success: boolean }> }} skillsApi
  */
 export async function save(sv, skillsApi) {
   const skill = sv.skills.find((s) => s.id === sv.selectedId);

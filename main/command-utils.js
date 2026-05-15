@@ -15,12 +15,12 @@ const execFileAsync = promisify(execFile);
  *
  * @param {string} cmd          - executable name (e.g. 'git')
  * @param {string[]} args       - command arguments
- * @param {object} opts         - options forwarded to execFile
- * @param {{ fallback?: *, trySafe: Function, log: object, label: string }} ctx
+ * @param {import('child_process').ExecFileOptions} opts - options forwarded to execFile
+ * @param {{ fallback?: unknown, trySafe: (fn: () => unknown, defaultValue: unknown, opts: { log: { warn: (msg: string, err?: unknown) => void }, label: string }) => Promise<unknown>, log: { warn: (msg: string, err?: unknown) => void }, label: string }} ctx
  *   trySafe - the trySafe wrapper to use for error handling
  *   log     - logger instance
  *   label   - human-readable label for the log message
- * @returns {Promise<string|*>}
+ * @returns {Promise<string|unknown>}
  */
 async function runCommand(cmd, args, opts, { fallback = null, trySafe, log, label }) {
   return trySafe(

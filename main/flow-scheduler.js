@@ -13,10 +13,10 @@ const { SCHEDULER_INTERVAL_MS, shouldRun } = require('./flow-helpers');
  * Creates a flow scheduler that polls at a fixed interval and invokes
  * `executeFn(flow)` for every enabled flow whose schedule is due.
  *
- * @param {{ list: () => Promise<Array<object>>, isRunning: (id: string) => boolean }} flowSource
+ * @param {{ list: () => Promise<Array<import('./flow-executor').Flow & { enabled?: boolean }>>, isRunning: (id: string) => boolean }} flowSource
  *   - list()      — returns all saved flows
  *   - isRunning() — returns true if a flow is already executing
- * @param {(flow: object) => void} executeFn — called for each flow that should run
+ * @param {(flow: import('./flow-executor').Flow) => void} executeFn — called for each flow that should run
  * @returns {{ start: () => void, stop: () => void }}
  */
 function createFlowScheduler(flowSource, executeFn) {

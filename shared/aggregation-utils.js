@@ -201,10 +201,10 @@ function computeNumericStats(values) {
  * of items and merges any extra fields supplied by the caller.
  *
  * @param {Array<{ status?: string, [key: string]: unknown }>} items
- * @param {{ rateFn: (items: Array) => Record<string, unknown>,
+ * @param {{ rateFn: (items: Array<unknown>) => Record<string, unknown>,
  *           durationMapper: (item: unknown) => number|null,
  *           dateExtractor: (item: unknown) => string,
- *           perDayFn: (items: Array, dateExtractor: Function, days: number) => Array,
+ *           perDayFn: (items: Array<unknown>, dateExtractor: (item: unknown) => string, days: number) => Array<unknown>,
  *           days?: number,
  *           extra?: Record<string, unknown> }} config
  * @returns {Record<string, unknown>}
@@ -226,10 +226,10 @@ function buildMetrics(items, { rateFn, durationMapper, dateExtractor, perDayFn, 
  *   const buildMetrics = createDomainMetricsBuilder({ rateFn, perDayFn, days });
  *   buildMetrics(items, { durationMapper, dateExtractor, extra });
  *
- * @param {{ rateFn: (items: Array) => Record<string, unknown>,
- *           perDayFn: (items: Array, dateExtractor: Function, days: number) => Array,
+ * @param {{ rateFn: (items: Array<unknown>) => Record<string, unknown>,
+ *           perDayFn: (items: Array<unknown>, dateExtractor: (item: unknown) => string, days: number) => Array<unknown>,
  *           days?: number }} domainConfig
- * @returns {(items: Array, opts: { durationMapper: Function, dateExtractor: Function, extra?: Record<string, unknown> }) => Record<string, unknown>}
+ * @returns {(items: Array<unknown>, opts: { durationMapper: (item: unknown) => number|null, dateExtractor: (item: unknown) => string, extra?: Record<string, unknown> }) => Record<string, unknown>}
  */
 function createDomainMetricsBuilder({ rateFn, perDayFn, days = 30 }) {
   return function domainBuildMetrics(items, { durationMapper, dateExtractor, extra = {} }) {

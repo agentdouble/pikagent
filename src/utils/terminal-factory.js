@@ -101,11 +101,11 @@ export function setupTerminalAddons(term, { openExternal, getCwd, homedir, openP
  *   3. Return all handles needed for cleanup.
  *
  * @param {HTMLElement} container - DOM element the terminal opens into.
- * @param {object} options
+ * @param {{ onPtyData?: (cb: (data: string) => void) => (() => void), termOpts?: import('@xterm/xterm').ITerminalOptions, readonly?: boolean, fitDelay?: number }} options
  * @param {(cb: (data: string) => void) => (() => void)} options.onPtyData
  *   Subscribe to PTY output — receives a callback that writes to the
  *   terminal; must return an unsubscribe function.
- * @param {object}  [options.termOpts]  Extra terminal options forwarded to
+ * @param {import('@xterm/xterm').ITerminalOptions}  [options.termOpts]  Extra terminal options forwarded to
  *   createReadonlyTerminal / createTerminal.
  * @param {boolean} [options.readonly=true]  When true (default) the terminal
  *   is created via createReadonlyTerminal; otherwise via createTerminal with
