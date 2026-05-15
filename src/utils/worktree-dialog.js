@@ -106,7 +106,7 @@ function populateModal(modal, { btnNew, btnExisting, els, pathEl, cancel, confir
 
 /**
  * Build all form elements needed by the worktree dialog.
- * @returns {{ els: object, pathEl: HTMLElement, btnNew: HTMLElement, btnExisting: HTMLElement }}
+ * @returns {{ els: { newInput: HTMLInputElement, baseSelect: HTMLSelectElement, baseLabel: HTMLElement, existingSelect: HTMLSelectElement }, pathEl: HTMLElement, btnNew: HTMLElement, btnExisting: HTMLElement }}
  */
 function _buildWorktreeForm({ allBranches, existingBranches, currentBranch }) {
   const els = {

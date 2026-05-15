@@ -102,14 +102,14 @@ function _runMetricCards(m) {
  * Callers only supply the parts that differ (sliceKey, headerCards, chartTitle,
  * tables builder) — everything else is handled here.
  *
- * @param {object}   metrics          The full metrics object.
+ * @param {Record<string, object>}   metrics          The full metrics object.
  * @param {object}   options
  * @param {string}   options.sliceKey          Key to extract the metrics slice (e.g. 'agent', 'flow').
- * @param {(m: object) => Array}  options.headerCards  Returns the first 2 cards specific to this tab.
+ * @param {(m: object) => Array<object>}  options.headerCards  Returns the first 2 cards specific to this tab.
  * @param {string}   options.chartTitle        Title displayed above the chart.
- * @param {(m: object, metrics: object) => Array} options.tables  Returns table descriptor(s).
+ * @param {(m: object, metrics: Record<string, object>) => Array<object>} options.tables  Returns table descriptor(s).
  * @param {(m: object) => {empty: string[]}|null} [options.emptyGuard]  Optional early-return for empty state.
- * @returns {{ cards: Array, chart: object, tables: Array } | { empty: string[] }}
+ * @returns {{ cards: Array<object>, chart: object, tables: Array<object> } | { empty: string[] }}
  */
 function _createRunBasedTabConfig(metrics, { sliceKey, headerCards, chartTitle, tables, emptyGuard }) {
   const m = metrics[sliceKey];

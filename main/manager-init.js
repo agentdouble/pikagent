@@ -21,9 +21,9 @@
  * replaces the getter with a plain data property, so subsequent reads are
  * zero-cost.
  *
- * @param {object} obj      Target object.
+ * @param {Record<string, unknown>} obj      Target object.
  * @param {string} name     Property name.
- * @param {() => any} factory  Called once to produce the value.
+ * @param {() => unknown} factory  Called once to produce the value.
  */
 function lazyProp(obj, name, factory) {
   Object.defineProperty(obj, name, {

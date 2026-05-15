@@ -39,7 +39,7 @@ async function runSafe(fn, onError) {
  * - `log` + `label`: if both provided, `log.warn('<label> failed', err)` is
  *   called on failure.
  *
- * @param {{ envelope?: boolean, defaultValue?: unknown, log?: { warn: Function }, label?: string }} [opts]
+ * @param {{ envelope?: boolean, defaultValue?: unknown, log?: { warn: (msg: string, err?: unknown) => void }, label?: string }} [opts]
  * @returns {(fn: (...args: unknown[]) => Promise<unknown>) => (...args: unknown[]) => Promise<unknown>}
  */
 function createSafeWrapper({ envelope = false, defaultValue, log, label } = {}) {

@@ -19,14 +19,48 @@ const { saveLog, getRunLog, cleanLogs } = require('./flow-executor-log');
 const { recordRun } = require('./flow-executor-run');
 const { toLogFilename } = require('../shared/date-utils');
 
+// --- Shared typedefs ---
+
+/**
+ * @typedef {object} PtyProcess
+ * @property {(cb: (data: string) => void) => void} onData   - subscribe to PTY output
+ * @property {(cb: (info: { exitCode: number }) => void) => void} onExit - subscribe to PTY exit
+ */
+
+/**
+ * @typedef {object} Flow
+ * @property {string} id
+ * @property {string} [name]
+ * @property {string} [agent]
+ * @property {string} [cwd]
+ * @property {Array<{ date: string, timestamp: string, logTimestamp?: string, status: string }>} [runs]
+ */
+
+/**
+ * @typedef {object} FlowLogger
+ * @property {(msg: string, err?: unknown) => void} error
+ * @property {(msg: string, err?: unknown) => void} warn
+ */
+
+/**
+ * @typedef {object} RunningFlowEntry
+ * @property {string} ptyId
+ * @property {PtyProcess} proc
+ * @property {ReturnType<typeof setTimeout>} timeout
+ */
+
+/**
+ * @typedef {Map<string, RunningFlowEntry>} RunningFlows
+ */
+
 // --- Top-level helpers ---
 
 /**
  * Cleans up a finished flow process: clears timeout, removes PTY,
  * and notifies the renderer.
  *
- * @param {{ getPtyManager: Function, sendToWindow: Function }} deps
- * @param {Map<string, {ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout>}>} runningFlows
+ * @param {{ getPtyManager: () => { processes: Map<string, unknown> }, sendToWindow: (channel: string, payload: object) => void }} deps
+ * @param {RunningFlows} runningFlows
  * @param {string} flowId
  * @param {string} ptyId
  * @param {number} exitCode
@@ -43,10 +77,10 @@ function cleanupFlowProcess(deps, runningFlows, flowId, ptyId, exitCode) {
 /**
  * Wires up PTY data/exit listeners for a running flow process.
  *
- * @param {{ sendToWindow: Function, getPtyManager: Function, getFlow: Function, saveFlow: Function, log: object }} deps
- * @param {Map<string, {ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout>}>} runningFlows
- * @param {object} proc
- * @param {object} flow
+ * @param {{ sendToWindow: (channel: string, payload: object) => void, getPtyManager: () => { processes: Map<string, unknown> }, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown>, log: FlowLogger }} deps
+ * @param {RunningFlows} runningFlows
+ * @param {PtyProcess} proc
+ * @param {Flow} flow
  * @param {string} ptyId
  * @param {string} runTimestamp
  */
@@ -71,9 +105,9 @@ function setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp) 
 /**
  * Executes a single flow inside a new PTY process.
  *
- * @param {{ getPtyManager: Function, sendToWindow: Function, log: object, getFlow: Function, saveFlow: Function }} deps
- * @param {Map<string, {ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout>}>} runningFlows
- * @param {object} flow
+ * @param {{ getPtyManager: () => { create: (opts: object) => PtyProcess, kill: (id: string) => void, write: (id: string, data: string) => void } | null, sendToWindow: (channel: string, payload: object) => void, log: FlowLogger, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown> }} deps
+ * @param {RunningFlows} runningFlows
+ * @param {Flow} flow
  */
 function execute(deps, runningFlows, flow) {
   const ptyManager = deps.getPtyManager();
@@ -120,8 +154,8 @@ function execute(deps, runningFlows, flow) {
 /**
  * Kills all running flow processes and clears the map.
  *
- * @param {{ getPtyManager: Function }} deps
- * @param {Map<string, {ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout>}>} runningFlows
+ * @param {{ getPtyManager: () => { kill: (id: string) => void } | null }} deps
+ * @param {RunningFlows} runningFlows
  */
 function stopAll(deps, runningFlows) {
   const ptyManager = deps.getPtyManager();
@@ -135,7 +169,7 @@ function stopAll(deps, runningFlows) {
 /**
  * Returns a plain object mapping flow IDs to their PTY IDs.
  *
- * @param {Map<string, {ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout>}>} runningFlows
+ * @param {RunningFlows} runningFlows
  * @returns {Record<string, string>}
  */
 function getRunning(runningFlows) {
@@ -152,13 +186,13 @@ function getRunning(runningFlows) {
  * @param {{
  *   getPtyManager: () => object | null,
  *   sendToWindow: (channel: string, payload: object) => void,
- *   getFlow: (id: string) => Promise<object | null>,
- *   saveFlow: (flow: object) => Promise<object>,
- *   log: { error: (msg: string, err?: unknown) => void, warn: (msg: string, err?: unknown) => void },
+ *   getFlow: (id: string) => Promise<Flow | null>,
+ *   saveFlow: (flow: Flow) => Promise<unknown>,
+ *   log: FlowLogger,
  * }} deps
  * @returns {{
- *   execute: (flow: object) => void,
- *   runningFlows: Map<string, { ptyId: string, proc: object, timeout: ReturnType<typeof setTimeout> }>,
+ *   execute: (flow: Flow) => void,
+ *   runningFlows: RunningFlows,
  *   stopAll: () => void,
  *   getRunning: () => Record<string, string>,
  *   getRunLog: (flowId: string, timestamp: string) => Promise<string | null>,

@@ -16,7 +16,7 @@ const ensureLogsDir = ensureDirOnce(LOGS_DIR);
 /**
  * Persists the raw output of a flow run to disk.
  *
- * @param {{ log: object }} deps
+ * @param {{ log: import('./flow-executor').FlowLogger }} deps
  * @param {string} flowId
  * @param {string} runTimestamp
  * @param {string} output
@@ -33,7 +33,7 @@ async function saveLog(deps, flowId, runTimestamp, output) {
 /**
  * Reads a previously saved run log from disk.
  *
- * @param {{ log: object }} deps
+ * @param {{ log: import('./flow-executor').FlowLogger }} deps
  * @param {string} flowId
  * @param {string} timestamp
  * @returns {Promise<string | null>}
@@ -49,7 +49,7 @@ async function getRunLog(deps, flowId, timestamp) {
 /**
  * Removes all log files for a given flow.
  *
- * @param {{ log: object }} deps
+ * @param {{ log: import('./flow-executor').FlowLogger }} deps
  * @param {string} flowId
  */
 async function cleanLogs(deps, flowId) {

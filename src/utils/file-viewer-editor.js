@@ -52,7 +52,7 @@ export function renderFileViewerShell(container, components) {
 
 /**
  * Render the active editor content (code, markdown preview, or error).
- * @param {object} fv - FileViewer-like state: { editorWrapper, statusBar, breadcrumb, openFiles, activeFile }
+ * @param {import('../components/file-viewer.js').FileViewer} fv - FileViewer-like state: { editorWrapper, statusBar, breadcrumb, openFiles, activeFile }
  * @param {{ onUpdate: () => void, onSave: () => void }} callbacks
  * @returns {{ lineNumbers: HTMLElement|null, highlightLayer: HTMLElement|null, editorEl: HTMLElement|null }}
  */
@@ -150,7 +150,7 @@ export function switchMode(fv, mode, webviewMgr, renderModeBar) {
 
 /**
  * Render file tabs bar.
- * @param {object} fv - FileViewer instance (for callbacks)
+ * @param {import('../components/file-viewer.js').FileViewer} fv - FileViewer instance (for callbacks)
  */
 export function renderTabs(fv) {
   doRenderTabs(fv.tabsBar, fv.openFiles, fv.activeFile,

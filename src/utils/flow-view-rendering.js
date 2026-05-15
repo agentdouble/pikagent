@@ -40,7 +40,18 @@ export function renderFlowViewShell(container, handlers) {
 
 /**
  * Build the shared groupParams object for a category section.
- * @param {{ cat: object, flows: Array, isUncat: boolean, collapsedCategories: Set<string>, createCard: Function, onToggleCollapse: Function, onRenameCategory: Function, onDeleteCategory: Function, onDropFlow: Function, dragState: object }} opts
+ * @param {{
+ *   cat: { id: string, name: string },
+ *   flows: Array<import('./flow-card-setup.js').FlowDescriptor>,
+ *   isUncat: boolean,
+ *   collapsedCategories: Set<string>,
+ *   createCard: (flow: import('./flow-card-setup.js').FlowDescriptor, catId: string) => HTMLElement,
+ *   onToggleCollapse: (catId: string) => void,
+ *   onRenameCategory: (catId: string, nameEl: HTMLElement) => void,
+ *   onDeleteCategory: (catId: string) => void,
+ *   onDropFlow: (flowId: string, catId: string, insertIndex: number) => void,
+ *   dragState: { getDragFlowId: () => string|null, clearDrag: () => void },
+ * }} opts
  */
 export function buildGroupParams(opts) {
   const { cat, flows, isUncat, collapsedCategories, createCard, onToggleCollapse, onRenameCategory, onDeleteCategory, onDropFlow, dragState } = opts;
@@ -60,8 +71,19 @@ export function buildGroupParams(opts) {
 
 /**
  * Build the config object for createFlowCard.
- * @param {{ runningMap: object, expandedCards: Set, drag: object, termManager: object, onRenderList: Function, onRun: Function, onToggle: Function, onRefresh: Function, onOpenModal: Function, onDeleteFlow: Function }} deps
- * @param {object} flow
+ * @param {{
+ *   runningMap: Record<string, string>,
+ *   expandedCards: Set<string>,
+ *   drag: { flowId: string|null, catId: string|null },
+ *   termManager: import('../components/flow-card-terminal.js').FlowCardTerminalManager,
+ *   onRenderList: () => void,
+ *   onRun: (flowId: string) => void,
+ *   onToggle: (flowId: string) => Promise<void>,
+ *   onRefresh: () => void,
+ *   onOpenModal: (flow: import('./flow-card-setup.js').FlowDescriptor) => void,
+ *   onDeleteFlow: (flowId: string) => void,
+ * }} deps
+ * @param {import('./flow-card-setup.js').FlowDescriptor} flow
  * @param {string} catId
  * @returns {HTMLElement}
  */
@@ -83,7 +105,15 @@ export function buildFlowCard(deps, flow, catId) {
 
 /**
  * Render the full flow list (categories + uncategorized).
- * @param {{ listEl: HTMLElement, flows: Array, catData: object, termManager: object, runningMap: object, buildParams: (cat: object, flows: Array, isUncat?: boolean) => object, createCard: (flow: object, catId: string) => HTMLElement }} ctx
+ * @param {{
+ *   listEl: HTMLElement,
+ *   flows: Array<import('./flow-card-setup.js').FlowDescriptor>,
+ *   catData: { categories: Array<{ id: string, name: string }>, order: Record<string, string[]> },
+ *   termManager: import('../components/flow-card-terminal.js').FlowCardTerminalManager,
+ *   runningMap: Record<string, string>,
+ *   buildParams: (cat: { id: string, name: string }, flows: Array<import('./flow-card-setup.js').FlowDescriptor>, isUncat?: boolean) => object,
+ *   createCard: (flow: import('./flow-card-setup.js').FlowDescriptor, catId: string) => HTMLElement,
+ * }} ctx
  */
 export function renderFlowList(ctx) {
   const { listEl, flows, catData, termManager, runningMap, buildParams, createCard } = ctx;
@@ -121,9 +151,15 @@ export function renderFlowList(ctx) {
 
 /**
  * Handle the "open modal" flow: prompt user, persist, and refresh.
- * @param {{ existing: object|null, catData: object, moveFlowToCategory: Function, persistCategories: Function, refresh: Function }} ctx
- * @param {() => (existing: object|null, categories: Array<object>) => Promise<object|null>} getOpenFlowModal - returns the openFlowModal component
- * @param {object} flowApi - the flow API service
+ * @param {{
+ *   existing: import('./flow-card-setup.js').FlowDescriptor|null,
+ *   catData: { categories: Array<{ id: string, name: string }>, order: Record<string, string[]> },
+ *   moveFlowToCategory: (flowId: string, catId: string) => void,
+ *   persistCategories: () => Promise<void>,
+ *   refresh: () => void,
+ * }} ctx
+ * @param {() => (existing: import('./flow-card-setup.js').FlowDescriptor|null, categories: Array<{ id: string, name: string }>) => Promise<(import('./flow-card-setup.js').FlowDescriptor & { _category?: string })|null>} getOpenFlowModal - returns the openFlowModal component
+ * @param {{ save: (flow: import('./flow-card-setup.js').FlowDescriptor) => Promise<unknown> }} flowApi - the flow API service
  */
 export async function handleOpenModal(ctx, getOpenFlowModal, flowApi) {
   const { existing, catData, moveFlowToCategory, persistCategories, refresh } = ctx;
@@ -152,9 +188,14 @@ export async function handleOpenModal(ctx, getOpenFlowModal, flowApi) {
 
 /**
  * Delete a flow: dispose terminal, remove from order, persist, delete, refresh.
- * @param {{ termManager: object, catDataOrder: object, persistCategories: Function, refresh: Function }} deps
+ * @param {{
+ *   termManager: import('../components/flow-card-terminal.js').FlowCardTerminalManager,
+ *   catDataOrder: Record<string, string[]>,
+ *   persistCategories: () => Promise<void>,
+ *   refresh: () => void,
+ * }} deps
  * @param {string} flowId
- * @param {object} flowApi
+ * @param {{ deleteFlow: (flowId: string) => Promise<unknown> }} flowApi
  */
 export async function deleteFlow(deps, flowId, flowApi) {
   deps.termManager.disposeLiveTerminal(flowId);

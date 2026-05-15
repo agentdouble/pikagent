@@ -10,7 +10,7 @@ const { nowISO, extractDateString } = require('../shared/date-utils');
 /**
  * Appends a run record to the flow's history.
  *
- * @param {{ getFlow: Function, saveFlow: Function }} deps
+ * @param {{ getFlow: (id: string) => Promise<import('./flow-executor').Flow|null>, saveFlow: (flow: import('./flow-executor').Flow) => Promise<unknown> }} deps
  * @param {string} flowId
  * @param {string} status
  * @param {string} runTimestamp

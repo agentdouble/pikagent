@@ -25,7 +25,7 @@ import { reorderEntries } from './tab-manager-helpers.js';
  * Public standalone exports (`renderTabBar`, `createTab`, `closeTab`)
  * delegate here so existing call sites keep working unchanged.
  *
- * @param {object} tm - TabManager instance
+ * @param {import('../components/tab-manager.js').TabManager} tm - TabManager instance
  */
 export function bindTabOps(tm) {
   // Stable closures over `tm`, captured once.
@@ -72,7 +72,7 @@ export function bindTabOps(tm) {
 
 /**
  * Build the deps and call doRenderTabBar.
- * @param {object} tm - TabManager instance
+ * @param {import('../components/tab-manager.js').TabManager} tm - TabManager instance
  * @returns {Map<string, HTMLElement>} tab element map
  */
 export function renderTabBar(tm) {

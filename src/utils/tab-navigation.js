@@ -45,7 +45,7 @@ export function goToColorGroup(tabs, activeTabId, colorGroupId, switchTo) {
  * Move focus in a direction — delegates to board view or terminal panel.
  * @param {string} direction
  * @param {string} sidebarMode
- * @param {object|null} boardView
+ * @param {import('../components/board-view.js').BoardView|null} boardView
  * @param {() => import('./tab-types.js').WorkspaceTab|undefined} getActiveTab
  */
 export function focusDirection(direction, sidebarMode, boardView, getActiveTab) {
