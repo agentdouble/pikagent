@@ -2,8 +2,8 @@
  * @typedef {{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<ContextMenuItem> }} ContextMenuItem
  */
 
-import { _el, renderList } from './dom.js';
-import { onClickStopped, onKeyAction } from './event-helpers.js';
+import { _el, renderList, createListItem } from './dom.js';
+import { onKeyAction } from './event-helpers.js';
 import { addListener } from './drag-helpers.js';
 
 /**
@@ -50,20 +50,23 @@ class ContextMenu {
       return wrapper;
     }
 
-    const children = [];
+    const itemChildren = [];
     if (item.colorDot) {
       const dot = _el('span', { className: 'context-menu-color-dot' });
       dot.style.background = item.colorDot;
-      children.push(dot);
+      itemChildren.push(dot);
     }
-    children.push(_el('span', { textContent: item.label }));
+    itemChildren.push(_el('span', { textContent: item.label }));
     if (item.shortcut) {
-      children.push(_el('span', { className: 'context-menu-shortcut', textContent: item.shortcut }));
+      itemChildren.push(_el('span', { className: 'context-menu-shortcut', textContent: item.shortcut }));
     }
 
-    const itemEl = _el('div', { className: 'context-menu-item' }, ...children);
-    onClickStopped(itemEl, () => { this.close(); item.action(); });
-    return itemEl;
+    return createListItem({
+      cls: 'context-menu-item',
+      children: itemChildren,
+      onClick: () => { this.close(); item.action(); },
+      stopPropagation: true,
+    });
   }
 
   show(x, y, items) {
