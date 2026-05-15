@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom.js';
+import { _el, buildTabBar } from '../utils/dom.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
@@ -26,23 +26,18 @@ export class UsageView extends ComponentBase {
       _el('button', { className: 'usage-refresh-btn', textContent: 'Refresh', onClick: () => this.render() }),
     ));
 
-    const tabBar = _el('div', { className: 'usage-tabs' });
-    const tabBtns = [];
-    for (const tab of TABS) {
-      const btn = _el('button', {
-        className: `usage-tab ${this.activeTab === tab.id ? 'usage-tab-active' : ''}`,
-        textContent: tab.label,
-        onClick: () => {
-          this.activeTab = tab.id;
-          this._renderBody();
-          for (const b of tabBtns) b.classList.remove('usage-tab-active');
-          btn.classList.add('usage-tab-active');
-        },
-      });
-      tabBtns.push(btn);
-      tabBar.appendChild(btn);
-    }
-    this.el.appendChild(tabBar);
+    const { bar, setActive } = buildTabBar(TABS, {
+      activeId: this.activeTab,
+      barClass: 'usage-tabs',
+      itemClass: 'usage-tab',
+      activeClass: 'usage-tab-active',
+      onSelect: (id) => {
+        this.activeTab = id;
+        this._renderBody();
+        setActive(id);
+      },
+    });
+    this.el.appendChild(bar);
 
     this.bodyEl = _el('div', { className: 'usage-body' });
     this.el.appendChild(this.bodyEl);
