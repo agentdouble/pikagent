@@ -152,31 +152,38 @@ export class DiffViewer {
     const table = _el('div', 'diff-table diff-unified');
 
     for (const hunk of this.hunks) {
-      const hunkRow = _el('div', 'diff-row diff-row-hunk');
-      this.hunkElements.push(hunkRow);
-      hunkRow.appendChild(_el('div', 'diff-cell diff-cell-hunk diff-cell-full',
-        `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.context}`));
-      table.appendChild(hunkRow);
-
-      let oldLine = hunk.oldStart;
-      let newLine = hunk.newStart;
-
-      for (const change of hunk.changes) {
-        const config = UNIFIED_CHANGE_CONFIG[change.type];
-        if (!config) continue;
-
-        const row = _el('div', `diff-row ${config.cssClass}`);
-        row.append(
-          _el('div', 'diff-line-no', config.showOld ? oldLine++ : ''),
-          _el('div', 'diff-line-no', config.showNew ? newLine++ : ''),
-          _el('div', 'diff-prefix', config.prefix),
-          _el('div', 'diff-code', change.content),
-        );
-        table.appendChild(row);
-      }
+      table.appendChild(this._buildUnifiedHunkHeader(hunk));
+      this._appendUnifiedChanges(table, hunk);
     }
 
     this.content.appendChild(table);
+  }
+
+  _buildUnifiedHunkHeader(hunk) {
+    const hunkRow = _el('div', 'diff-row diff-row-hunk');
+    this.hunkElements.push(hunkRow);
+    hunkRow.appendChild(_el('div', 'diff-cell diff-cell-hunk diff-cell-full',
+      `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.context}`));
+    return hunkRow;
+  }
+
+  _appendUnifiedChanges(table, hunk) {
+    let oldLine = hunk.oldStart;
+    let newLine = hunk.newStart;
+
+    for (const change of hunk.changes) {
+      const config = UNIFIED_CHANGE_CONFIG[change.type];
+      if (!config) continue;
+
+      const row = _el('div', `diff-row ${config.cssClass}`);
+      row.append(
+        _el('div', 'diff-line-no', config.showOld ? oldLine++ : ''),
+        _el('div', 'diff-line-no', config.showNew ? newLine++ : ''),
+        _el('div', 'diff-prefix', config.prefix),
+        _el('div', 'diff-code', change.content),
+      );
+      table.appendChild(row);
+    }
   }
 
   _createCell(lineNo, content, type, wordSegments) {

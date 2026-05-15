@@ -79,13 +79,24 @@ export class GitChangesView extends ComponentBase {
     const key = buildFileKey(file.path, isStaged);
     const isExpanded = this.expandedFile === key;
 
+    const row = this._buildFileRow(file, key, isExpanded);
+    const item = _el('div', 'git-file-row', row);
+
+    if (isExpanded && file.status !== '?') {
+      this._appendDiffContainer(item, file.path, isStaged);
+    }
+
+    return item;
+  }
+
+  _buildFileRow(file, key, isExpanded) {
     const openBtn = _el('span', { className: 'git-open-btn', textContent: '→', title: 'Open file' });
     onClickStopped(openBtn, () => {
       /** @fires file:open {{ path: string, name: string }} */
       emitFileOpen({ path: `${this.gitCwd}/${file.path}`, name: file.path.split('/').pop() });
     });
 
-    const row = _el('div', { className: 'git-file-item', onClick: () => {
+    return _el('div', { className: 'git-file-item', onClick: () => {
       this.expandedFile = this.expandedFile === key ? null : key;
       this.loadChanges();
     }},
@@ -94,18 +105,14 @@ export class GitChangesView extends ComponentBase {
       _el('span', { className: 'git-file-name-label', textContent: file.path, title: file.path }),
       openBtn,
     );
+  }
 
-    const item = _el('div', 'git-file-row', row);
-
-    if (isExpanded && file.status !== '?') {
-      const diffContainer = _el('div', 'git-diff-container',
-        _el('div', 'git-loading', 'Loading diff...'),
-      );
-      item.appendChild(diffContainer);
-      this._loadFileDiff(file.path, isStaged, diffContainer);
-    }
-
-    return item;
+  _appendDiffContainer(item, filePath, isStaged) {
+    const diffContainer = _el('div', 'git-diff-container',
+      _el('div', 'git-loading', 'Loading diff...'),
+    );
+    item.appendChild(diffContainer);
+    this._loadFileDiff(filePath, isStaged, diffContainer);
   }
 
   _renderSection(container, title, files, isStaged) {

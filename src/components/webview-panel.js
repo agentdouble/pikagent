@@ -36,13 +36,22 @@ export class WebviewInstance {
 
   _buildNavBar() {
     const nav = _el('div', 'webview-nav');
+    this._appendNavActions(nav);
+    this._buildUrlInput();
+    this._buildExtraButtons();
+    nav.append(this.urlInput, this._mobileBtn, this._openExtBtn, this.consoleToggle);
+    return nav;
+  }
 
+  _appendNavActions(nav) {
     for (const { text, title, method } of WEBVIEW_NAV_ACTIONS) {
       const btn = _el('button', 'webview-nav-btn', { textContent: text, title });
       btn.addEventListener('click', () => { try { this.webview[method](); } catch {} });
       nav.appendChild(btn);
     }
+  }
 
+  _buildUrlInput() {
     this.urlInput = _el('input', 'webview-url-input');
     this.urlInput.type = 'text';
     this.urlInput.value = this.url;
@@ -53,18 +62,17 @@ export class WebviewInstance {
         this.navigate(this.urlInput.value.trim());
       },
     });
+  }
 
+  _buildExtraButtons() {
     this._mobileBtn = _el('button', 'webview-nav-btn', { textContent: '\u{1F4F1}', title: 'Mobile view' });
     this._mobileBtn.addEventListener('click', () => this.toggleMobile());
 
-    const openExtBtn = _el('button', 'webview-nav-btn', { textContent: '\u2197', title: 'Open in browser' });
-    openExtBtn.addEventListener('click', () => shellApi.openExternal(this.url));
+    this._openExtBtn = _el('button', 'webview-nav-btn', { textContent: '\u2197', title: 'Open in browser' });
+    this._openExtBtn.addEventListener('click', () => shellApi.openExternal(this.url));
 
     this.consoleToggle = _el('button', 'webview-nav-btn', { textContent: CONSOLE_ICONS.closed, title: 'Toggle console' });
     this.consoleToggle.addEventListener('click', () => this.toggleConsole());
-
-    nav.append(this.urlInput, this._mobileBtn, openExtBtn, this.consoleToggle);
-    return nav;
   }
 
   _buildWebview() {
@@ -72,7 +80,14 @@ export class WebviewInstance {
     this.webview.className = 'webview-frame';
     this.webview.src = this.url;
     this.webview.setAttribute('allowpopups', '');
+    this._setupWebviewListeners();
 
+    const wrapper = _el('div', 'webview-wrapper');
+    wrapper.appendChild(this.webview);
+    return wrapper;
+  }
+
+  _setupWebviewListeners() {
     this.webview.addEventListener('did-navigate', (e) => {
       this.url = e.url;
       this.urlInput.value = e.url;
@@ -88,10 +103,6 @@ export class WebviewInstance {
     this.webview.addEventListener('console-message', (e) => {
       this._addLog(e.level, e.message, e.sourceId, e.line);
     });
-
-    const wrapper = _el('div', 'webview-wrapper');
-    wrapper.appendChild(this.webview);
-    return wrapper;
   }
 
   _buildConsolePanel() {
