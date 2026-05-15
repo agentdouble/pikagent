@@ -3,7 +3,7 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 
-import { _el, renderList } from './dom.js';
+import { buildTabButton, renderList } from './dom.js';
 import { STATIC_MODES } from './editor-helpers.js';
 
 /**
@@ -16,11 +16,10 @@ import { STATIC_MODES } from './editor-helpers.js';
  */
 export function renderModeBar(modeBar, currentMode, { switchMode }, webviewMgr) {
   const allItems = [
-    ...STATIC_MODES.map(({ key, label }) => {
-      const btn = _el('button', `mode-btn${currentMode === key ? ' active' : ''}`, label);
-      btn.addEventListener('click', () => switchMode(key));
-      return btn;
-    }),
+    ...STATIC_MODES.map(({ key, label }) => buildTabButton(
+      { id: key, label },
+      { activeId: currentMode, onSelect: switchMode, itemClass: 'mode-btn', activeClass: 'active' },
+    )),
     ...webviewMgr.webviewTabs.map(wt => webviewMgr.buildWebviewModeBtn(wt, currentMode)),
     webviewMgr.buildAddWebviewBtn(modeBar),
   ];
