@@ -203,6 +203,26 @@ function _buildModalDom(existing, categories, state) {
   return { fields, bottom, catPicker, modalChildren };
 }
 
+function _collectResult(existing, fields, bottom, catPicker, state) {
+  const name = fields.nameInput.value.trim();
+  const prompt = fields.promptArea.value.trim();
+  if (!name || !prompt) return null;
+
+  const result = {
+    id: existing?.id || generateId(),
+    name,
+    prompt,
+    agent: bottom.agentSelect.value,
+    cwd: state.selectedCwd || undefined,
+    schedule: buildScheduleData(bottom.schedSelect.value, bottom.timeInput.value, bottom.intervalInput.value, bottom.selectedDays),
+    dangerouslySkipPermissions: !!SKIP_PERM_CONFIG[bottom.agentSelect.value] && bottom.skipPermCheckbox.checked,
+    enabled: existing?.enabled ?? true,
+    runs: existing?.runs || [],
+  };
+  if (catPicker) result._category = catPicker.select.value || '';
+  return result;
+}
+
 function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef, resolve) {
   const close = () => { overlayRef.overlay.remove(); resolve(null); };
 
@@ -216,23 +236,9 @@ function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef,
       text: existing ? 'Enregistrer' : 'Créer',
       cls: 'flow-modal-btn flow-modal-btn-create',
       onClick: () => {
-        const name = fields.nameInput.value.trim();
-        const prompt = fields.promptArea.value.trim();
-        if (!name || !prompt) return;
-
+        const result = _collectResult(existing, fields, bottom, catPicker, state);
+        if (!result) return;
         overlayRef.overlay.remove();
-        const result = {
-          id: existing?.id || generateId(),
-          name,
-          prompt,
-          agent: bottom.agentSelect.value,
-          cwd: state.selectedCwd || undefined,
-          schedule: buildScheduleData(bottom.schedSelect.value, bottom.timeInput.value, bottom.intervalInput.value, bottom.selectedDays),
-          dangerouslySkipPermissions: !!SKIP_PERM_CONFIG[bottom.agentSelect.value] && bottom.skipPermCheckbox.checked,
-          enabled: existing?.enabled ?? true,
-          runs: existing?.runs || [],
-        };
-        if (catPicker) result._category = catPicker.select.value || '';
         resolve(result);
       },
     }),
