@@ -8,8 +8,7 @@
  * @typedef {{ setupDropZone: (el: HTMLElement, targetDir: string|(() => string|null)) => void, promptNewEntry: (dirPath: string, cEl: HTMLElement, depth: number, eDirs: Set<string>, type: string) => void, promptRename: (path: string, nameEl: HTMLElement) => void, refreshSection: (cwd: string) => void, contextMenuApi: unknown }} SectionDOMCallbacks
  */
 
-import { _el } from './dom.js';
-import { buildChevronRow } from './dom.js';
+import { _el, buildChevronRow, toggleCollapsible } from './dom.js';
 import { attachContextMenu } from './context-menu.js';
 import { emitWorkspaceCreateWorktree, emitWorkspaceOpenPr } from './workspace-events.js';
 import {
@@ -18,6 +17,15 @@ import {
 } from './file-tree-helpers.js';
 import { buildSectionActions } from './file-tree-renderer.js';
 import { buildDirContextItems } from './file-tree-context-menu.js';
+
+/**
+ * Internal Set used to track section collapsed state via toggleCollapsible.
+ * A section whose cwd is present in this Set is considered *expanded* (not collapsed).
+ * The Set is rebuilt from the DOM on each rebuildSectionDOM call.
+ */
+const _sectionExpandedState = new Set();
+/** _sectionExpandedState tracks expanded sections — key present = expanded. */
+const SECTION_CHEVRON_TEXTS = { presentText: CHEVRON_EXPANDED, absentText: CHEVRON_COLLAPSED };
 
 /**
  * Rebuild the DOM for a file-tree section: header + content container.
@@ -32,6 +40,10 @@ export function rebuildSectionDOM(section, cwd, callbacks) {
   const wasCollapsed =
     section.sectionEl.querySelector('.file-tree-section-content.collapsed') !== null;
   section.sectionEl.replaceChildren();
+
+  // Sync the module-level expanded state Set with the DOM-derived collapsed flag
+  if (wasCollapsed) _sectionExpandedState.delete(cwd);
+  else _sectionExpandedState.add(cwd);
 
   const contentEl = _el('div', { className: `file-tree-section-content${wasCollapsed ? ' collapsed' : ''}` });
   const { header } = _buildSectionHeader(cwd, contentEl, wasCollapsed, section.expandedDirs, callbacks);
@@ -70,8 +82,7 @@ function _buildSectionHeader(cwd, contentEl, wasCollapsed, expandedDirs, callbac
   labelEl.title = cwd;
 
   header.addEventListener('click', () => {
-    const collapsed = contentEl.classList.toggle('collapsed');
-    chevron.textContent = collapsed ? CHEVRON_COLLAPSED : CHEVRON_EXPANDED;
+    toggleCollapsible(_sectionExpandedState, cwd, chevron, SECTION_CHEVRON_TEXTS, { el: contentEl, absentCls: 'collapsed' });
   });
 
   attachContextMenu(header, () => buildDirContextItems(

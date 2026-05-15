@@ -5,7 +5,7 @@
  * management (setTerminalRoot, removeTerminal, refreshSection).
  */
 
-import { _el } from './dom.js';
+import { _el, toggleCollapsible } from './dom.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   resolveWatchCwd,
@@ -14,13 +14,16 @@ import { renderDirEntry, renderFileEntry } from './file-tree-renderer.js';
 import { startWatch, stopWatch } from './file-tree-watcher.js';
 import { rebuildSectionDOM } from './file-tree-section-dom.js';
 
+/** expandedDirs tracks expanded dirs — key present = expanded. */
+const FILE_TREE_CHEVRON_TEXTS = { presentText: CHEVRON_EXPANDED, absentText: CHEVRON_COLLAPSED };
+
 /**
  * Expand a directory in the tree.
  */
 async function expandDir(dirPath, childContainer, chevron, depth, expandedDirs, renderDirFn) {
-  expandedDirs.add(dirPath);
-  chevron.textContent = CHEVRON_EXPANDED;
-  chevron.classList.add('expanded');
+  if (!expandedDirs.has(dirPath)) {
+    toggleCollapsible(expandedDirs, dirPath, chevron, FILE_TREE_CHEVRON_TEXTS, { el: chevron, presentCls: 'expanded' });
+  }
   await renderDirFn(dirPath, childContainer, depth + 1, expandedDirs);
 }
 
@@ -28,10 +31,10 @@ async function expandDir(dirPath, childContainer, chevron, depth, expandedDirs, 
  * Collapse a directory in the tree.
  */
 function collapseDir(dirPath, childContainer, chevron, expandedDirs) {
-  expandedDirs.delete(dirPath);
+  if (expandedDirs.has(dirPath)) {
+    toggleCollapsible(expandedDirs, dirPath, chevron, FILE_TREE_CHEVRON_TEXTS, { el: chevron, presentCls: 'expanded' });
+  }
   childContainer.replaceChildren();
-  chevron.textContent = CHEVRON_COLLAPSED;
-  chevron.classList.remove('expanded');
 }
 
 /**

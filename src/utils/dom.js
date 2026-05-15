@@ -259,4 +259,76 @@ export function buildChevronRow(opts) {
   return { chevron, name };
 }
 
+/**
+ * Toggle a key in a Set and optionally update chevron text and a CSS class
+ * on a DOM element.
+ *
+ * Extracts the repeated expand/collapse pattern shared by file-tree
+ * section headers, file-tree directory rows, and flow-category groups.
+ *
+ * The Set semantics are *caller-defined*: the Set may track expanded keys
+ * (file-tree directories) or collapsed keys (flow categories).  This
+ * function simply toggles membership and returns whether the key is now
+ * present (`true`) or absent (`false`).
+ *
+ * @param {Set<string>} set - the Set to toggle the key in
+ * @param {string} key - the key to toggle
+ * @param {HTMLElement|null} [chevronEl] - chevron element whose textContent is updated
+ * @param {{ presentText: string, absentText: string }} [chevronTexts]
+ *   Text to set on the chevron: `presentText` when the key is now *in* the Set,
+ *   `absentText` when it has been removed.
+ * @param {{ el?: HTMLElement, presentCls?: string, absentCls?: string }} [domToggle]
+ *   `presentCls` is toggled *on* when the key is present, *off* when absent.
+ *   `absentCls` is toggled *on* when the key is absent, *off* when present.
+ * @returns {boolean} `true` if the key is now in the Set, `false` otherwise
+ */
+export function toggleCollapsible(set, key, chevronEl, chevronTexts, domToggle) {
+  const wasPresent = set.has(key);
+  if (wasPresent) set.delete(key);
+  else set.add(key);
+  const isPresent = !wasPresent;
+
+  if (chevronEl && chevronTexts) {
+    chevronEl.textContent = isPresent ? chevronTexts.presentText : chevronTexts.absentText;
+  }
+
+  if (domToggle?.el) {
+    if (domToggle.presentCls) {
+      domToggle.el.classList.toggle(domToggle.presentCls, isPresent);
+    }
+    if (domToggle.absentCls) {
+      domToggle.el.classList.toggle(domToggle.absentCls, !isPresent);
+    }
+  }
+
+  return isPresent;
+}
+
+/**
+ * Generic factory for creating a list-item element with optional children
+ * and click handler.
+ *
+ * Captures the shared pattern across context-menu items, settings rows,
+ * and similar list-like UI elements: create a container div, append
+ * child elements, and optionally wire a click handler.
+ *
+ * @param {{
+ *   cls: string,
+ *   children?: Array<HTMLElement|Node>,
+ *   onClick?: (e: MouseEvent) => void,
+ *   stopPropagation?: boolean,
+ * }} opts
+ * @returns {HTMLElement}
+ */
+export function createListItem({ cls, children = [], onClick, stopPropagation = false }) {
+  const el = _el('div', cls);
+  for (const child of children) {
+    if (child) el.appendChild(child);
+  }
+  if (onClick) {
+    if (stopPropagation) onClickStopped(el, onClick);
+    else el.addEventListener('click', onClick);
+  }
+  return el;
+}
 
