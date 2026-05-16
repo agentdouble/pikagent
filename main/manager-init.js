@@ -102,7 +102,7 @@ for (const name of LIFECYCLE_NAMES) {
  *
  * @param {Record<string, object>} managers  Lazy manager accessor object.
  * @param {() => import('electron').BrowserWindow} getWindow
- * @returns {Record<string, () => Promise<unknown>>}
+ * @returns {Record<string, () => string | void | Promise<unknown>>}
  */
 function buildUpdateTarget(managers, getWindow) {
   return {
@@ -119,7 +119,7 @@ function buildUpdateTarget(managers, getWindow) {
  * Adapter: api-schema's `shell:showInFolder` channel maps to Electron's
  * `shell.showItemInFolder`.
  *
- * @returns {Record<string, (arg: string) => void | Promise<string>>}
+ * @returns {Record<string, (arg: string) => void | Promise<string | void>>}
  */
 function buildShellTarget() {
   const { shell } = require('electron');
