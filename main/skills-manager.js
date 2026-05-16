@@ -24,7 +24,7 @@ let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
  * and returns `fallback` instead, logging via the module logger.
  *
  * @template T
- * @template {any[]} A
+ * @template {unknown[]} A
  * @param {(...args: A) => Promise<T>} fn   - named async function to wrap
  * @param {T} fallback                       - value returned on error
  * @returns {(...args: A) => Promise<T>}    - wrapped function

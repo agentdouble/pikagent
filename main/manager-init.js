@@ -102,7 +102,7 @@ for (const name of LIFECYCLE_NAMES) {
  *
  * @param {Record<string, object>} managers  Lazy manager accessor object.
  * @param {() => import('electron').BrowserWindow} getWindow
- * @returns {Record<string, () => any>}
+ * @returns {Record<string, () => Promise<unknown>>}
  */
 function buildUpdateTarget(managers, getWindow) {
   return {
@@ -119,7 +119,7 @@ function buildUpdateTarget(managers, getWindow) {
  * Adapter: api-schema's `shell:showInFolder` channel maps to Electron's
  * `shell.showItemInFolder`.
  *
- * @returns {Record<string, (arg: string) => any>}
+ * @returns {Record<string, (arg: string) => void | Promise<string>>}
  */
 function buildShellTarget() {
   const { shell } = require('electron');
@@ -136,7 +136,7 @@ function buildShellTarget() {
  * Adapter: `clipboard:write` (string arg) maps to `clipboard.writeText` —
  * Electron's `clipboard.write` only accepts an object payload.
  *
- * @returns {Record<string, (text: string) => any>}
+ * @returns {Record<string, (text: string) => void>}
  */
 function buildClipboardTarget() {
   const { clipboard } = require('electron');
