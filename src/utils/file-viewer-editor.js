@@ -130,7 +130,7 @@ export async function saveActive(openFiles, activeFile, statusBar, callbacks, fs
 /**
  * Set mode visibility on FileViewer DOM elements.
  */
-export function setModeVisibility(fv, mode, webviewMgr) {
+function setModeVisibility(fv, mode, webviewMgr) {
   const visible = new Set(MODE_CONFIG[mode]?.elements || []);
   for (const key of ALL_STATIC_ELEMENTS) {
     fv[key].style.display = visible.has(key) ? '' : 'none';
