@@ -21,8 +21,8 @@ import { renderTabs as doRenderTabs } from './file-viewer-tabs.js';
 /**
  * Build the FileViewer shell DOM inside `container`.
  * @param {HTMLElement} container
- * @param {{ GitChangesView: Function }} components
- * @returns {{ modeBar: HTMLElement, tabsBar: HTMLElement, breadcrumb: HTMLElement, editorWrapper: HTMLElement, gitViewEl: HTMLElement, gitChanges: object, statusBar: HTMLElement }}
+ * @param {{ GitChangesView: typeof import('../components/git-changes-view.js').GitChangesView }} components
+ * @returns {{ modeBar: HTMLElement, tabsBar: HTMLElement, breadcrumb: HTMLElement, editorWrapper: HTMLElement, gitViewEl: HTMLElement, gitChanges: import('../components/git-changes-view.js').GitChangesView, statusBar: HTMLElement }}
  */
 export function renderFileViewerShell(container, components) {
   container.replaceChildren();

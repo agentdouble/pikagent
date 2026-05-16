@@ -75,6 +75,49 @@ export function createSection(title) {
   );
 }
 
+// --- Tab config typedefs ---
+
+/**
+ * A per-tab metrics slice extracted from the full metrics object. Its shape
+ * varies per tab (agent / flow / token), so it is kept as a loose record.
+ * @typedef {Record<string, unknown>} MetricsSlice
+ */
+
+/**
+ * @typedef {object} UsageCard
+ * @property {string} label         - card label
+ * @property {string|number} value  - card value
+ * @property {string} cls           - CSS class applied to the value
+ * @property {string} [sub]         - optional sub-text shown below the value
+ */
+
+/**
+ * @typedef {object} UsageChart
+ * @property {string} title                                 - chart title
+ * @property {Array<Record<string, unknown>>} data          - per-day data points
+ * @property {Array<{ key: string, cls: string }>} segments - stacked-bar segment definitions
+ * @property {(day: Record<string, unknown>) => string} tooltip - builds the tooltip text for a day
+ */
+
+/**
+ * @typedef {object} UsageTable
+ * @property {string} title      - table title
+ * @property {string[]} headers  - column headers
+ * @property {string} tableCls   - CSS class applied to the <table>
+ * @property {Array<Record<string, unknown>>} data - row data
+ * @property {(row: Record<string, unknown>) => HTMLTableRowElement} renderRow - renders one <tr>
+ */
+
+/**
+ * A built tab configuration.
+ * @typedef {{ cards: UsageCard[], chart: UsageChart, tables: UsageTable[] }} TabConfig
+ */
+
+/**
+ * An empty-state descriptor returned in place of a TabConfig.
+ * @typedef {{ empty: string[] }} EmptyTabConfig
+ */
+
 // --- Tab configurations ---
 
 /**
@@ -102,14 +145,14 @@ function _runMetricCards(m) {
  * Callers only supply the parts that differ (sliceKey, headerCards, chartTitle,
  * tables builder) — everything else is handled here.
  *
- * @param {Record<string, object>}   metrics          The full metrics object.
+ * @param {Record<string, MetricsSlice>}   metrics          The full metrics object.
  * @param {object}   options
  * @param {string}   options.sliceKey          Key to extract the metrics slice (e.g. 'agent', 'flow').
- * @param {(m: object) => Array<object>}  options.headerCards  Returns the first 2 cards specific to this tab.
+ * @param {(m: MetricsSlice) => UsageCard[]}  options.headerCards  Returns the first 2 cards specific to this tab.
  * @param {string}   options.chartTitle        Title displayed above the chart.
- * @param {(m: object, metrics: Record<string, object>) => Array<object>} options.tables  Returns table descriptor(s).
- * @param {(m: object) => {empty: string[]}|null} [options.emptyGuard]  Optional early-return for empty state.
- * @returns {{ cards: Array<object>, chart: object, tables: Array<object> } | { empty: string[] }}
+ * @param {(m: MetricsSlice, metrics: Record<string, MetricsSlice>) => UsageTable[]} options.tables  Returns table descriptor(s).
+ * @param {(m: MetricsSlice) => {empty: string[]}|null} [options.emptyGuard]  Optional early-return for empty state.
+ * @returns {TabConfig | EmptyTabConfig}
  */
 function _createRunBasedTabConfig(metrics, { sliceKey, headerCards, chartTitle, tables, emptyGuard }) {
   const m = metrics[sliceKey];

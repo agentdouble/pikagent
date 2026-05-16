@@ -53,13 +53,26 @@ const { toLogFilename } = require('../shared/date-utils');
  * @typedef {Map<string, RunningFlowEntry>} RunningFlows
  */
 
+/**
+ * Sends an IPC message to the renderer window.
+ * @typedef {(channel: string, payload: Record<string, unknown>) => void} SendToWindow
+ */
+
+/**
+ * @typedef {object} PtyCreateOpts
+ * @property {string} id    - unique PTY identifier
+ * @property {string} cwd   - working directory for the process
+ * @property {number} cols  - terminal column count
+ * @property {number} rows  - terminal row count
+ */
+
 // --- Top-level helpers ---
 
 /**
  * Cleans up a finished flow process: clears timeout, removes PTY,
  * and notifies the renderer.
  *
- * @param {{ getPtyManager: () => { processes: Map<string, unknown> }, sendToWindow: (channel: string, payload: object) => void }} deps
+ * @param {{ getPtyManager: () => { processes: Map<string, unknown> }, sendToWindow: SendToWindow }} deps
  * @param {RunningFlows} runningFlows
  * @param {string} flowId
  * @param {string} ptyId
@@ -77,7 +90,7 @@ function cleanupFlowProcess(deps, runningFlows, flowId, ptyId, exitCode) {
 /**
  * Wires up PTY data/exit listeners for a running flow process.
  *
- * @param {{ sendToWindow: (channel: string, payload: object) => void, getPtyManager: () => { processes: Map<string, unknown> }, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown>, log: FlowLogger }} deps
+ * @param {{ sendToWindow: SendToWindow, getPtyManager: () => { processes: Map<string, unknown> }, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown>, log: FlowLogger }} deps
  * @param {RunningFlows} runningFlows
  * @param {PtyProcess} proc
  * @param {Flow} flow
@@ -105,7 +118,7 @@ function setupPtyListeners(deps, runningFlows, proc, flow, ptyId, runTimestamp) 
 /**
  * Executes a single flow inside a new PTY process.
  *
- * @param {{ getPtyManager: () => { create: (opts: object) => PtyProcess, kill: (id: string) => void, write: (id: string, data: string) => void } | null, sendToWindow: (channel: string, payload: object) => void, log: FlowLogger, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown> }} deps
+ * @param {{ getPtyManager: () => { create: (opts: PtyCreateOpts) => PtyProcess, kill: (id: string) => void, write: (id: string, data: string) => void } | null, sendToWindow: SendToWindow, log: FlowLogger, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown> }} deps
  * @param {RunningFlows} runningFlows
  * @param {Flow} flow
  */
