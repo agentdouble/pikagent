@@ -22,9 +22,6 @@ import { reorderEntries } from './tab-manager-helpers.js';
  * the bound closures over `tm` are shared. This preserves the exact
  * pre-refactor semantics where `renderTabBar(tm)` re-reads tm state.
  *
- * Public standalone exports (`renderTabBar`, `createTab`, `closeTab`)
- * delegate here so existing call sites keep working unchanged.
- *
  * @param {import('../components/tab-manager.js').TabManager} tm - TabManager instance
  */
 export function bindTabOps(tm) {
@@ -68,29 +65,6 @@ export function bindTabOps(tm) {
       configManager: tm.configManager,
     }, createTabFn, switchToFn, id),
   };
-}
-
-/**
- * Build the deps and call doRenderTabBar.
- * @param {import('../components/tab-manager.js').TabManager} tm - TabManager instance
- * @returns {Map<string, HTMLElement>} tab element map
- */
-export function renderTabBar(tm) {
-  return bindTabOps(tm).renderTabBar();
-}
-
-/**
- * Build the deps and call doCreateTab.
- */
-export function createTab(tm, switchTo, name, cwd) {
-  return bindTabOps(tm).createTab(switchTo, name, cwd);
-}
-
-/**
- * Build the deps and call doCloseTab.
- */
-export function closeTab(tm, createTabFn, switchToFn, id) {
-  return bindTabOps(tm).closeTab(createTabFn, switchToFn, id);
 }
 
 /**
