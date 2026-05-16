@@ -14,7 +14,7 @@ import {
   shortLevelLabel,
 } from '../utils/webview-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import shellApi from '../services/shell-api.js';
+import { boardFacade } from '../facades/board-facade.js';
 
 export class WebviewInstance {
   constructor(container, url) {
@@ -69,7 +69,7 @@ export class WebviewInstance {
     this._mobileBtn.addEventListener('click', () => this.toggleMobile());
 
     this._openExtBtn = _el('button', 'webview-nav-btn', { textContent: '\u2197', title: 'Open in browser' });
-    this._openExtBtn.addEventListener('click', () => shellApi.openExternal(this.url));
+    this._openExtBtn.addEventListener('click', () => boardFacade.openExternal(this.url));
 
     this.consoleToggle = _el('button', 'webview-nav-btn', { textContent: CONSOLE_ICONS.closed, title: 'Toggle console' });
     this.consoleToggle.addEventListener('click', () => this.toggleConsole());

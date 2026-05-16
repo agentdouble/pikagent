@@ -5,7 +5,7 @@ import { onClickStopped } from '../utils/event-helpers.js';
 import { STATUS_LABELS, CHEVRON, CHANGE_SECTIONS, computeTotalChanges, buildFileKey } from '../utils/git-changes-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import gitApi from '../services/git-api.js';
+import { tabViewFacade } from '../facades/tab-facade.js';
 
 export class GitChangesView extends ComponentBase {
   constructor(container) {
@@ -44,7 +44,7 @@ export class GitChangesView extends ComponentBase {
 
     this._renderMessage(this.container, 'git-loading', 'Loading changes...');
 
-    const changes = await gitApi.localChanges(this.gitCwd);
+    const changes = await tabViewFacade.gitLocalChanges(this.gitCwd);
     this._renderChanges(changes);
   }
 
@@ -127,7 +127,7 @@ export class GitChangesView extends ComponentBase {
   }
 
   async _loadFileDiff(filePath, isStaged, container) {
-    const diff = await gitApi.fileDiff(this.gitCwd, filePath, isStaged);
+    const diff = await tabViewFacade.gitFileDiff(this.gitCwd, filePath, isStaged);
 
     if (!diff) {
       this._setContent(container, _el('div', { className: 'git-empty', textContent: 'No diff available', style: { height: 'auto', padding: '8px' } }));

@@ -6,7 +6,7 @@ import { _el } from '../utils/dom.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
 import { buildSettingsSection, createActionBar, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
-import configApi from '../services/config-api.js';
+import { configFacade as configApi } from '../facades/config-facade.js';
 
 function _createConfigActions(config, tabManager, renderConfigsFn) {
   return createActionBar({
