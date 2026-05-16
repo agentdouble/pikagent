@@ -66,6 +66,14 @@ const { toLogFilename } = require('../shared/date-utils');
  * @property {number} rows  - terminal row count
  */
 
+/**
+ * @typedef {object} PtyManager
+ * @property {Map<string, unknown>} processes - active PTY processes by id
+ * @property {(opts: PtyCreateOpts) => PtyProcess} create - spawn a PTY process
+ * @property {(id: string) => void} kill - kill a PTY process
+ * @property {(id: string, data: string) => void} write - write input to a PTY process
+ */
+
 // --- Top-level helpers ---
 
 /**
@@ -197,8 +205,8 @@ function getRunning(runningFlows) {
  * Creates a flow executor bound to external dependencies.
  *
  * @param {{
- *   getPtyManager: () => object | null,
- *   sendToWindow: (channel: string, payload: object) => void,
+ *   getPtyManager: () => PtyManager | null,
+ *   sendToWindow: SendToWindow,
  *   getFlow: (id: string) => Promise<Flow | null>,
  *   saveFlow: (flow: Flow) => Promise<unknown>,
  *   log: FlowLogger,
