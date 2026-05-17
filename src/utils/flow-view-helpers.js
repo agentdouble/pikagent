@@ -7,20 +7,6 @@ import { formatDateTime } from '../../shared/date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
 import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregation-utils.js';
 
-/**
- * Toggle a value in a Set (add if absent, delete if present).
- * @deprecated Use `toggleCollapsible` from `dom-lists.js` instead — it handles
- * the same Set toggle plus optional chevron/DOM updates in a single call.
- * @param {Set<string>} set
- * @param {string} value
- * @returns {boolean} true if the value is now in the set
- */
-export function toggleInSet(set, value) {
-  if (set.has(value)) { set.delete(value); return false; }
-  set.add(value);
-  return true;
-}
-
 export const FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 5000;
 export const LIVE_SCROLLBACK = 3000;
