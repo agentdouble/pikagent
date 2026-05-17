@@ -19,10 +19,6 @@ import { fileTreeViewFacade } from '../facades/file-tree-facade.js';
 export class FileTree extends ComponentBase {
   constructor(container) {
     super(container);
-    this._initState();
-    this._initApi();
-    this.render();
-    this.listenForChanges();
   }
 
   _initState() {
@@ -30,9 +26,6 @@ export class FileTree extends ComponentBase {
     this.sections = new Map();
     this.debounceTimers = new Map();
     this._activeRow = null;
-  }
-
-  _initApi() {
     this._contextMenuApi = {
       clipboardWrite: fileTreeViewFacade.clipboardWrite, fsCopy: fileTreeViewFacade.copy,
       showInFolder: fileTreeViewFacade.showInFolder, fsTrash: fileTreeViewFacade.trash,
@@ -41,6 +34,10 @@ export class FileTree extends ComponentBase {
       copyTo: fileTreeViewFacade.copyTo, rename: fileTreeViewFacade.rename,
       mkdir: fileTreeViewFacade.mkdir, writefile: fileTreeViewFacade.writefile,
     };
+  }
+
+  _bindEvents() {
+    this.listenForChanges();
   }
 
   render() {

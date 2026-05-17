@@ -13,15 +13,16 @@ import { skillsViewFacade } from '../facades/skills-facade.js';
 export class SkillsView extends ComponentBase {
   constructor(container) {
     super(container);
+  }
+
+  _initState() {
     this.skills = [];
     this.selectedId = null;
     this.rootPath = '';
     this.editorDirty = false;
     this.editorValue = '';
-
     this.el = _el('div', 'skills-container');
-    container.appendChild(this.el);
-    this.render();
+    this.container.appendChild(this.el);
   }
 
   async refresh() {

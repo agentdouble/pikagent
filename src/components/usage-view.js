@@ -10,11 +10,13 @@ import { usageFacade as usageApi } from '../facades/usage-facade.js';
 export class UsageView extends ComponentBase {
   constructor(container) {
     super(container);
+  }
+
+  _initState() {
     this.el = _el('div', { className: 'usage-container' });
-    container.appendChild(this.el);
+    this.container.appendChild(this.el);
     this.activeTab = 'agents';
     this.metrics = null;
-    this.render();
   }
 
   async render() {

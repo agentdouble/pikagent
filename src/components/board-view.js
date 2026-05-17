@@ -22,9 +22,13 @@ export class BoardView extends ComponentBase {
   constructor(container, tabManager) {
     super(container);
     this.tabManager = tabManager;
-    this._initState();
-    this.render();
+  }
+
+  _bindEvents() {
     this._setupListeners();
+  }
+
+  _afterInit() {
     this._startPolling();
   }
 

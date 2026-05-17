@@ -26,7 +26,6 @@ export class FileViewer extends ComponentBase {
     super(container);
     this.isActive = isActive || (() => true);
     this._components = components;
-    this._initState();
     this.render();
     this._initWebviewManager();
     this._initBusListeners();
@@ -37,6 +36,12 @@ export class FileViewer extends ComponentBase {
     this.activeFile = this.editorEl = this.lineNumbers = this.highlightLayer = null;
     this.mode = 'files';
     this.gitChanges = null;
+  }
+
+  render() {
+    if (!this._components) return;
+    Object.assign(this, renderFileViewerShell(this.container, this._components));
+    this.showEmpty();
   }
 
   _initWebviewManager() {
