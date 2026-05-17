@@ -15,6 +15,6 @@ import { composeFacade } from './compose-facade.js';
 
 export const tabViewFacade = composeFacade([
   [gitApi, { gitBranch: 'branch', gitLocalChanges: 'localChanges', gitFileDiff: 'fileDiff' }],
-  [fsApi, ['homedir']],
+  [fsApi, ['homedir', 'readfile', 'writefile']],
   [configApi, ['getDefault', 'loadDefault']],
 ]);

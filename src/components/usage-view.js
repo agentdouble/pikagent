@@ -3,7 +3,7 @@ import { buildViewHeader } from '../utils/view-header.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import usageApi from '../services/usage-api.js';
+import { usageFacade as usageApi } from '../facades/usage-facade.js';
 
 // --- Component ---
 

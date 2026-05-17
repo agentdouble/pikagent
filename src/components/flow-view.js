@@ -8,7 +8,7 @@ import {
   renderFlowViewShell, buildGroupParams, buildFlowCard,
   renderFlowList, handleOpenModal, deleteFlow,
 } from '../utils/flow-view-rendering.js';
-import flowApi from '../services/flow-api.js';
+import { flowFacade as flowApi } from '../facades/flow-facade.js';
 
 
 export class FlowView extends ComponentBase {
