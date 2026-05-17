@@ -15,9 +15,9 @@ export class FlowView extends ComponentBase {
   constructor(container, tabManager) {
     super(container);
     this.tabManager = tabManager;
-    this._initState();
-    this._bindEvents();
-    this.render();
+  }
+
+  _afterInit() {
     this._initRunning();
   }
 
