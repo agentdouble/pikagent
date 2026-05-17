@@ -5,7 +5,8 @@ const { DEFAULT_META, buildConfigRecord, formatConfigList } = require('./config-
 // sanitizeSegment (git-ref-safe, hyphen-based) by design; see string-utils.js.
 const { sanitizeName } = require('../shared/string-utils');
 const { trySafe } = require('./logger');
-const { JsonStore, CachedJsonFile } = require('./json-store');
+const { JsonStore } = require('./json-store');
+const { CachedJsonFile } = require('./cached-json-file');
 
 const store = new JsonStore(CONFIG_DIR, 'config-manager', {
   idToFile: (name) => `${sanitizeName(name)}.json`,
