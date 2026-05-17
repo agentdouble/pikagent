@@ -4,7 +4,7 @@ const { ensureDirOnce } = require('./fs-utils');
 const { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
 const { nowISO } = require('../shared/date-utils');
 const { createPollingManager } = require('../shared/polling-manager');
-const { CachedJsonFile } = require('./json-store');
+const { CachedJsonFile } = require('./cached-json-file');
 const { createLogger, trySafe } = require('./logger');
 
 const log = createLogger('session-manager');
