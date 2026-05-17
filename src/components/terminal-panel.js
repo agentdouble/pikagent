@@ -1,22 +1,15 @@
 import { emitTerminalRemoved } from '../utils/terminal-events.js';
 import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { _el } from '../utils/dom.js';
-import { setupDragHandler, setupResizeHandler } from '../utils/drag-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { SplitNode, RESIZE_CURSOR, doResize } from '../utils/terminal-panel-helpers.js';
-import { DropIndicatorManager } from '../utils/terminal-drop-indicator.js';
-import { serializeLayout, serializeElement } from '../utils/terminal-serializer.js';
-import { detachElement } from '../utils/split-layout.js';
+import { setupDragHandler, setupResizeHandler, DropIndicatorManager, detachElement } from '../utils/terminal-panel-drag.js';
+import { serializeLayout, serializeElement, moveTerminal as moveTerminalHelper, splitTerminal, focusDirection as focusDirectionHelper } from '../utils/terminal-panel-state.js';
 import {
   buildTopBar,
   createTerminalNode as createTerminalNodeHelper,
   buildFromTree as buildFromTreeHelper,
 } from '../utils/terminal-node-builder.js';
-import {
-  moveTerminal as moveTerminalHelper,
-  splitTerminal,
-  focusDirection as focusDirectionHelper,
-} from '../utils/terminal-split.js';
 import { terminalPanelFacade } from '../facades/terminal-panel-facade.js';
 
 export class TerminalPanel {
