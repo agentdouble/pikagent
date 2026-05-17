@@ -19,7 +19,7 @@ import {
 } from '../utils/file-viewer-editor.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import fsApi from '../services/fs-api.js';
+import { tabViewFacade } from '../facades/tab-facade.js';
 
 export class FileViewer extends ComponentBase {
   constructor(container, isActive, components = {}) {
@@ -66,7 +66,7 @@ export class FileViewer extends ComponentBase {
   switchMode(mode) { doSwitchMode(this, mode, this._webviewMgr, () => this._renderModeBar()); }
 
   async openFile(filePath, fileName) {
-    await openFileEntry(this.openFiles, filePath, fileName, { readfile: fsApi.readfile });
+    await openFileEntry(this.openFiles, filePath, fileName, { readfile: tabViewFacade.readfile });
     this.setActiveTab(filePath);
   }
 
@@ -97,7 +97,7 @@ export class FileViewer extends ComponentBase {
 
   async saveActive() {
     await doSaveActive(this.openFiles, this.activeFile, this.statusBar,
-      { onSuccess: () => { this.renderTabs(); this.updateStatusBar(); } }, fsApi.writefile);
+      { onSuccess: () => { this.renderTabs(); this.updateStatusBar(); } }, tabViewFacade.writefile);
   }
 
   closeFile(filePath) {
