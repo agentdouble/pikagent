@@ -1,14 +1,26 @@
-import { emitTerminalRemoved } from '../utils/terminal-events.js';
-import { emitLayoutChanged } from '../utils/workspace-events.js';
-import { _el } from '../utils/dom.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { SplitNode, RESIZE_CURSOR, doResize } from '../utils/terminal-panel-helpers.js';
-import { setupDragHandler, setupResizeHandler, DropIndicatorManager, detachElement } from '../utils/terminal-panel-drag.js';
-import { serializeLayout, serializeElement, moveTerminal as moveTerminalHelper, splitTerminal, focusDirection as focusDirectionHelper } from '../utils/terminal-panel-state.js';
+import {
+  setupDragHandler,
+  setupResizeHandler,
+  DropIndicatorManager,
+  detachElement,
+  RESIZE_CURSOR,
+  doResize,
+  emitLayoutChanged,
+} from '../utils/terminal-panel-drag.js';
+import {
+  serializeLayout,
+  serializeElement,
+  moveTerminal as moveTerminalHelper,
+  splitTerminal,
+  focusDirection as focusDirectionHelper,
+  emitTerminalRemoved,
+} from '../utils/terminal-panel-state.js';
 import {
   buildTopBar,
   createTerminalNode as createTerminalNodeHelper,
   buildFromTree as buildFromTreeHelper,
+  createSplitHandle as createSplitHandleHelper,
 } from '../utils/terminal-node-builder.js';
 import { terminalPanelFacade } from '../facades/terminal-panel-facade.js';
 
@@ -38,9 +50,9 @@ export class TerminalPanel {
   // ===== DOM Helpers =====
 
   _createSplitHandle(direction, splitEl) {
-    const handle = _el('div', `split-handle split-handle-${direction}`);
-    this.setupResizeHandle(handle, splitEl, direction);
-    return handle;
+    return createSplitHandleHelper(direction, splitEl, (h, s, d) =>
+      this.setupResizeHandle(h, s, d)
+    );
   }
 
   _findTerminalCwd(el) {
