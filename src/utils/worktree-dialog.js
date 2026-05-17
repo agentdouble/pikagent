@@ -10,7 +10,7 @@
  */
 
 import { _el, createActionButton, _vis } from './dom.js';
-import { createDialogBase } from './dom-dialogs.js';
+import { createDialogBase, buildDialogButtons } from './dom-dialogs.js';
 import { onKeyAction } from './event-helpers.js';
 // sanitizeSegment: git-ref-safe sanitization — collapses invalid chars into
 // hyphens, trims leading/trailing hyphens, no spaces allowed.  This differs
@@ -67,10 +67,12 @@ function buildModeButtons(onNew, onExisting) {
 
 /** Build the Cancel / Create action buttons row. */
 function buildActionButtons(cancel, confirm) {
-  return _el('div', 'prompt-dialog-btns',
-    createActionButton({ text: 'Cancel', cls: 'prompt-dialog-cancel', onClick: cancel }),
-    createActionButton({ text: 'Create', cls: 'prompt-dialog-confirm', onClick: confirm }),
-  );
+  return buildDialogButtons({
+    containerClass: 'prompt-dialog-btns',
+    confirmLabel: 'Create', cancelLabel: 'Cancel',
+    confirmClass: 'prompt-dialog-confirm', cancelClass: 'prompt-dialog-cancel',
+    onConfirm: confirm, onCancel: cancel,
+  });
 }
 
 /** Apply visibility for the given mode to the form elements. */
