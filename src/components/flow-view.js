@@ -1,6 +1,7 @@
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
-import { moveFlowInOrder, toggleInSet } from '../utils/flow-view-helpers.js';
+import { moveFlowInOrder } from '../utils/flow-view-helpers.js';
+import { toggleCollapsible } from '../utils/dom.js';
 import {
   addCategory, renameCategoryInline, deleteCategory,
 } from '../utils/flow-view-categories.js';
@@ -99,7 +100,7 @@ export class FlowView extends ComponentBase {
   }
 
   _toggleCollapse(catId) {
-    toggleInSet(this._collapsedCategories, catId);
+    toggleCollapsible(this._collapsedCategories, catId);
     this._renderList();
   }
 

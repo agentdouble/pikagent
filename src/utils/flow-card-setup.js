@@ -8,8 +8,8 @@
  * @typedef {{ id: string, runs?: Array<FlowRun>, enabled?: boolean }} FlowDescriptor
  */
 
-import { _el } from './dom.js';
-import { getLastRun, toggleInSet } from './flow-view-helpers.js';
+import { _el, toggleCollapsible } from './dom.js';
+import { getLastRun } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-drag-cleanup.js';
 import { createCardHeader } from './flow-card-renderer.js';
 import { onDragEvents } from './event-helpers.js';
@@ -80,7 +80,7 @@ function buildCardBody(flow, isRunning, isExpanded, termManager, runningMap) {
 function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
   headerRow.addEventListener('click', () => {
     if (isRunning) {
-      toggleInSet(expandedCards, flow.id);
+      toggleCollapsible(expandedCards, flow.id);
       onRenderList();
       return;
     }
@@ -88,7 +88,7 @@ function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRen
       onOpenModal(flow);
       return;
     }
-    if (!toggleInSet(expandedCards, flow.id)) {
+    if (!toggleCollapsible(expandedCards, flow.id)) {
       termManager.disposeLogTerminal(flow.id);
     }
     onRenderList();
@@ -121,7 +121,7 @@ export function createFlowCard(deps, flow, catId) {
 
   const headerRow = createCardHeader(flow, isRunning, isExpanded, {
     onToggleOutput: (flowId) => {
-      toggleInSet(deps.expandedCards, flowId);
+      toggleCollapsible(deps.expandedCards, flowId);
       deps.onRenderList();
     },
     onShowLog: (f, run) => deps.onShowLog(f, run),

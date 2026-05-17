@@ -9,6 +9,8 @@ import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregati
 
 /**
  * Toggle a value in a Set (add if absent, delete if present).
+ * @deprecated Use `toggleCollapsible` from `dom-lists.js` instead — it handles
+ * the same Set toggle plus optional chevron/DOM updates in a single call.
  * @param {Set<string>} set
  * @param {string} value
  * @returns {boolean} true if the value is now in the set
