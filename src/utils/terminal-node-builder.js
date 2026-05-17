@@ -69,6 +69,20 @@ export function createTerminalNode(cwd, defaultCwd, terminals, { buildTopBar: bu
 }
 
 /**
+ * Create a split-handle DOM element and wire up its resize behaviour.
+ *
+ * @param {string} direction - split direction ('horizontal' | 'vertical')
+ * @param {HTMLElement} splitEl - the split container the handle belongs to
+ * @param {(handle: HTMLElement, splitEl: HTMLElement, direction: string) => void} setupResizeHandle - resize wiring callback
+ * @returns {HTMLElement}
+ */
+export function createSplitHandle(direction, splitEl, setupResizeHandle) {
+  const handle = _el('div', `split-handle split-handle-${direction}`);
+  setupResizeHandle(handle, splitEl, direction);
+  return handle;
+}
+
+/**
  * Recursively build a split-panel tree from a serialised layout descriptor.
  *
  * @param {import('./terminal-serializer.js').SplitTreeNode} tree - serialized layout node
