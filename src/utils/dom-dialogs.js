@@ -26,6 +26,29 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
   return { overlay, modal };
 }
 
+/**
+ * Build a dialog button row containing a cancel button followed by a confirm
+ * button.  Extracts the cancel/confirm pair previously duplicated across
+ * showPromptDialog, showConfirmDialog and the worktree dialog.
+ *
+ * @param {{ containerClass: string,
+ *           confirmLabel?: string, cancelLabel?: string,
+ *           confirmClass?: string, cancelClass?: string,
+ *           onConfirm: () => void, onCancel: () => void }} opts
+ * @returns {HTMLElement} the button-row container element
+ */
+export function buildDialogButtons({
+  containerClass,
+  confirmLabel = 'OK', cancelLabel = 'Cancel',
+  confirmClass, cancelClass,
+  onConfirm, onCancel,
+}) {
+  return _el('div', containerClass,
+    createActionButton({ text: cancelLabel, cls: cancelClass, onClick: onCancel }),
+    createActionButton({ text: confirmLabel, cls: confirmClass, onClick: onConfirm }),
+  );
+}
+
 // ── Dialog lifecycle ──
 
 /**
@@ -78,10 +101,12 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
       modal.append(
         _el('label', 'prompt-dialog-label', title),
         input,
-        _el('div', 'prompt-dialog-btns',
-          createActionButton({ text: cancelLabel, cls: 'prompt-dialog-cancel', onClick: cancel }),
-          createActionButton({ text: confirmLabel, cls: 'prompt-dialog-confirm', onClick: confirm }),
-        ),
+        buildDialogButtons({
+          containerClass: 'prompt-dialog-btns',
+          confirmLabel, cancelLabel,
+          confirmClass: 'prompt-dialog-confirm', cancelClass: 'prompt-dialog-cancel',
+          onConfirm: confirm, onCancel: cancel,
+        }),
       );
       return () => {
         input.focus();
@@ -123,10 +148,12 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
       if (typeof message === 'string') modal.appendChild(_el('p', null, message));
       else modal.appendChild(message);
 
-      const btnRow = _el('div', 'confirm-buttons',
-        createActionButton({ text: cancelLabel, cls: 'confirm-cancel', onClick: cancel }),
-        createActionButton({ text: confirmLabel, cls: 'confirm-ok', onClick: () => cleanup(true) }),
-      );
+      const btnRow = buildDialogButtons({
+        containerClass: 'confirm-buttons',
+        confirmLabel, cancelLabel,
+        confirmClass: 'confirm-ok', cancelClass: 'confirm-cancel',
+        onConfirm: () => cleanup(true), onCancel: cancel,
+      });
       modal.appendChild(btnRow);
 
       onKeyAction(overlay, {
