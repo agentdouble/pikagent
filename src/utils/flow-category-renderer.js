@@ -6,7 +6,7 @@
 import { _el, buildDomainButtonBar } from './dom.js';
 import { buildChevronRow } from './dom.js';
 import { setupDropZone } from './drop-zone-helpers.js';
-import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
+import { CATEGORY_ACTIONS } from './flow-view-helpers.js';
 import { computeInsertionIndex } from './drag-helpers.js';
 import { clearIndicators } from './flow-drag-cleanup.js';
 
