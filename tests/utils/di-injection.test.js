@@ -120,8 +120,10 @@ describe('DI: file-tree-drop handleFileDrop', () => {
   let handleFileDrop;
 
   beforeAll(async () => {
-    vi.doMock('../../src/utils/dom.js', () => ({
+    vi.doMock('../../src/utils/dom-core.js', () => ({
       _el: () => ({}),
+    }));
+    vi.doMock('../../src/utils/form-helpers.js', () => ({
       setupInlineInput: vi.fn(),
     }));
     vi.doMock('../../src/utils/event-bus.js', () => {
@@ -163,7 +165,7 @@ describe('DI: file-editor-renderer saveFile', () => {
   let saveFile;
 
   beforeAll(async () => {
-    vi.doMock('../../src/utils/dom.js', () => ({
+    vi.doMock('../../src/utils/dom-core.js', () => ({
       _el: (tag, cls, text) => {
         return { tag, className: cls, textContent: text, replaceChildren: vi.fn(), classList: { add: vi.fn(), remove: vi.fn() } };
       },

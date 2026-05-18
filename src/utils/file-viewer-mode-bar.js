@@ -3,7 +3,8 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 
-import { buildTabButton, renderList } from './dom.js';
+import { buildTabButton } from './dom-tabs.js';
+import { renderList } from './dom-lists.js';
 import { STATIC_MODES } from './editor-helpers.js';
 
 /**

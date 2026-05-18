@@ -8,7 +8,7 @@
  * letting each caller keep its own CSS class prefixes and DOM shape.
  */
 
-import { _el } from './dom.js';
+import { _el } from './dom-core.js';
 
 /**
  * Build a view header: container + title (left) + actions zone (right).

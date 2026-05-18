@@ -12,8 +12,10 @@ describe('DI: tab-lifecycle onTerminalCwdChanged', () => {
   let onTerminalCwdChanged;
 
   beforeAll(async () => {
-    vi.doMock('../../src/utils/dom.js', () => ({
+    vi.doMock('../../src/utils/dom-core.js', () => ({
       _el: () => ({}),
+    }));
+    vi.doMock('../../src/utils/dom-dialogs.js', () => ({
       showConfirmDialog: vi.fn().mockResolvedValue(true),
     }));
     vi.doMock('../../src/utils/event-bus.js', () => {

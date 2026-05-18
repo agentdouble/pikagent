@@ -3,7 +3,8 @@
  * Extracted from settings-modal.js to reduce component size.
  */
 import { formatCombo } from '../utils/shortcut-helpers.js';
-import { _el, createActionButton } from '../utils/dom.js';
+import { _el } from '../utils/dom-core.js';
+import { createActionButton } from '../utils/dom-buttons.js';
 import { onClickStopped } from '../utils/event-helpers.js';
 import { buildSettingsSection, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';

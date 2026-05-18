@@ -9,7 +9,8 @@
  * Returns a Promise<{ branch, createBranch, targetPath } | null>.
  */
 
-import { _el, createActionButton, _vis } from './dom.js';
+import { _el, _vis } from './dom-core.js';
+import { createActionButton } from './dom-buttons.js';
 import { createDialogBase, buildDialogButtons } from './dom-dialogs.js';
 import { onKeyAction } from './event-helpers.js';
 // sanitizeSegment: git-ref-safe sanitization — collapses invalid chars into
