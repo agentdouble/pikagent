@@ -60,7 +60,6 @@ export class FileViewer extends ComponentBase {
 
   static get pinnedFiles() { return pinnedFiles; }
 
-  render() { Object.assign(this, renderFileViewerShell(this.container, this._components)); this.showEmpty(); }
   async loadPinnedFiles() { await doLoadPinnedFiles(this); }
 
   isPinned(filePath) { return isFilePinned(filePath); }
