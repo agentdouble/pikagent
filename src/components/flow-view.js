@@ -12,7 +12,7 @@ import {
 import { flowFacade as flowApi } from '../facades/flow-facade.js';
 
 
-export class FlowView extends ComponentBase {
+class FlowView extends ComponentBase {
   constructor(container, tabManager) {
     super(container);
     this.tabManager = tabManager;

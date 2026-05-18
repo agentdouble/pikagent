@@ -10,7 +10,7 @@ import {
 import { registerComponent } from '../utils/component-registry.js';
 import { configFacade as configApi } from '../facades/config-facade.js';
 
-export class ConfigSettingsPanel {
+class ConfigSettingsPanel {
   constructor(tabManager) {
     this.tabManager = tabManager;
     this.currentConfigName = null;

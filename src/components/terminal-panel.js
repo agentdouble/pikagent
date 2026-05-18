@@ -24,7 +24,7 @@ import {
 } from '../utils/terminal-node-builder.js';
 import { terminalPanelFacade } from '../facades/terminal-panel-facade.js';
 
-export class TerminalPanel {
+class TerminalPanel {
   constructor(container, cwd) {
     this.container = container;
     this.cwd = cwd;

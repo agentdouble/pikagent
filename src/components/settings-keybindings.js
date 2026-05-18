@@ -84,7 +84,7 @@ function _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKey
  * @param {(actionId: string, index: number, badgeEl: HTMLElement) => void} startRecordingFn
  * @param {() => void} renderKeybindingsFn - callback to re-render
  */
-export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const resetBtn = createActionButton({
     text: 'Reset to defaults',
     cls: 'settings-reset-btn',
