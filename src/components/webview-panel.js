@@ -88,16 +88,12 @@ export class WebviewInstance {
   }
 
   _setupWebviewListeners() {
-    this.webview.addEventListener('did-navigate', (e) => {
-      this.url = e.url;
-      this.urlInput.value = e.url;
-    });
+    const syncUrl = (url) => { this.url = url; this.urlInput.value = url; };
+
+    this.webview.addEventListener('did-navigate', (e) => syncUrl(e.url));
 
     this.webview.addEventListener('did-navigate-in-page', (e) => {
-      if (e.isMainFrame) {
-        this.url = e.url;
-        this.urlInput.value = e.url;
-      }
+      if (e.isMainFrame) syncUrl(e.url);
     });
 
     this.webview.addEventListener('console-message', (e) => {
