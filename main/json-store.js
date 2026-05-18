@@ -2,7 +2,7 @@ const path = require('path');
 const fsp = require('fs/promises');
 const { readJson, writeJson, readDirJson, ensureDirOnce } = require('./fs-utils');
 const { createLogger, trySafe } = require('./logger');
-const { CachedJsonFile } = require('./cached-json-file');
+
 
 /**
  * Reusable JSON-file CRUD store.
@@ -126,7 +126,4 @@ class JsonStore {
   }
 }
 
-// CachedJsonFile has been extracted to its own module (./cached-json-file.js).
-// Re-exported here for backward compatibility.
-
-module.exports = { JsonStore, CachedJsonFile };
+module.exports = { JsonStore };
