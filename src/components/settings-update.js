@@ -125,7 +125,7 @@ async function runCheck(area, btn) {
  * Render the Update section into the given content element.
  * @param {HTMLElement} contentEl
  */
-export async function renderUpdate(contentEl) {
+async function renderUpdate(contentEl) {
   createSettingsSection(contentEl, { heading: 'Update' });
   const version = await updateApi.version();
   const { area } = renderUpdateUI(contentEl, version);

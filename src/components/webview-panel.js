@@ -16,7 +16,7 @@ import {
 import { registerComponent } from '../utils/component-registry.js';
 import { boardFacade } from '../facades/board-facade.js';
 
-export class WebviewInstance {
+class WebviewInstance {
   constructor(container, url) {
     this.container = container;
     this.url = url;

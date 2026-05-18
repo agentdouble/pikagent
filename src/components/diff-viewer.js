@@ -8,7 +8,7 @@ import { registerComponent } from '../utils/component-registry.js';
  * DiffViewer component - renders a side-by-side diff with syntax highlighting,
  * line numbers, and navigation between hunks.
  */
-export class DiffViewer {
+class DiffViewer {
   constructor(container, diffText, filePath) {
     this.container = container;
     this.diffText = diffText;

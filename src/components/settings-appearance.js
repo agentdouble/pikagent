@@ -74,7 +74,7 @@ function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn)
  * @param {import('../components/tab-manager.js').TabManager|null} tabManager
  * @param {() => void} renderAppearanceFn - callback to re-render this section
  */
-export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
+function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
   // Day/Night mode toggle
   const modeRow = _el('div', 'theme-mode-row');
   modeRow.appendChild(_el('span', 'theme-mode-label', 'Mode'));

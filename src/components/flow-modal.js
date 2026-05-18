@@ -247,7 +247,7 @@ function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef,
   return { actionBar, close };
 }
 
-export function openFlowModal(existing = null, categories = []) {
+function openFlowModal(existing = null, categories = []) {
   return new Promise((resolve) => {
     const state = { selectedCwd: existing?.cwd || '' };
     const overlayRef = {};

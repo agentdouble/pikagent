@@ -7,7 +7,7 @@ import { usageFacade as usageApi } from '../facades/usage-facade.js';
 
 // --- Component ---
 
-export class UsageView extends ComponentBase {
+class UsageView extends ComponentBase {
   constructor(container) {
     super(container);
   }

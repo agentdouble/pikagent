@@ -10,7 +10,7 @@ import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { parseWebviewUrl } from '../utils/editor-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 
-export class WebviewManager {
+class WebviewManager {
   /**
    * @param {HTMLElement} container - the file-viewer container element
    * @param {HTMLElement} statusBar - the status bar element (webview containers insert before it)

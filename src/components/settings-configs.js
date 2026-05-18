@@ -86,7 +86,7 @@ function _createBottomActions(currentName, tabManager, renderConfigsFn) {
  * @param {import('../components/tab-manager.js').TabManager|null} tabManager
  * @param {() => void} renderConfigsFn - callback to re-render this section
  */
-export async function renderConfigs(contentEl, tabManager, renderConfigsFn) {
+async function renderConfigs(contentEl, tabManager, renderConfigsFn) {
   const currentName = tabManager?.configManager?.currentConfigName || 'Default';
 
   // Current loaded config indicator
