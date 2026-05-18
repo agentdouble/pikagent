@@ -12,7 +12,8 @@ import {
 } from './flow-view-helpers.js';
 import { createCategoryGroup } from './flow-category-renderer.js';
 import { createFlowCard } from './flow-card-setup.js';
-import { _el, buildDomainButtonBar } from './dom.js';
+import { _el } from './dom-core.js';
+import { buildDomainButtonBar } from './dom-buttons.js';
 import { buildViewHeader } from './view-header.js';
 
 /**

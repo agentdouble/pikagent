@@ -11,7 +11,7 @@
  */
 
 import { emitWorkspaceActivated } from './workspace-events.js';
-import { _el } from './dom.js';
+import { _el } from './dom-core.js';
 import { WORKSPACE_PANELS } from './tab-constants.js';
 import {
   buildSidePanel, buildCenterPanel,

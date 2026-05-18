@@ -7,8 +7,8 @@
  *
  * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-types.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
  */
-import { _el } from './dom.js';
-import { buildChevronRow } from './dom.js';
+import { _el } from './dom-core.js';
+import { buildChevronRow } from './dom-lists.js';
 import { startInlineRename } from './form-helpers.js';
 import { COLOR_GROUPS } from './tab-constants.js';
 import { setupTabDrag } from './tab-drag.js';

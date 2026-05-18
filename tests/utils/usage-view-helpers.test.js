@@ -21,7 +21,7 @@ function makeElement(tag, attrs = {}) {
   return el;
 }
 
-vi.mock('../../src/utils/dom.js', () => ({
+vi.mock('../../src/utils/dom-core.js', () => ({
   _el(tag, attrs = {}, ...children) {
     const el = makeElement(tag, attrs);
     for (const child of children) {

@@ -1,4 +1,5 @@
-import { _el, buildTabBar } from '../utils/dom.js';
+import { _el } from '../utils/dom-core.js';
+import { buildTabBar } from '../utils/dom-tabs.js';
 import { buildViewHeader } from '../utils/view-header.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';

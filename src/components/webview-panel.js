@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/dom-core.js';
 import { onKeyAction } from '../utils/event-helpers.js';
 import { setupResizeHandler } from '../utils/drag-helpers.js';
 import {

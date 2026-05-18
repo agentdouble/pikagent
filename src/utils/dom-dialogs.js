@@ -6,7 +6,8 @@
  * buildChevronRow, etc.) import directly from './dom.js'.
  */
 
-import { _el, createActionButton } from './dom.js';
+import { _el } from './dom-core.js';
+import { createActionButton } from './dom-buttons.js';
 import { onKeyAction } from './event-helpers.js';
 
 /**
