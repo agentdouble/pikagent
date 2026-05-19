@@ -1,12 +1,10 @@
 import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { pinnedFiles } from '../utils/editor-helpers.js';
-import { renderModeBar } from '../utils/file-viewer-mode-bar.js';
-import { setupFileViewerListeners } from '../utils/file-viewer-listeners.js';
 import {
+  renderModeBar,
+  setupFileViewerListeners,
   openFileEntry, isModified as isFileModified, isPinned as isFilePinned,
   togglePin as toggleFilePin, isMarkdown as isFileMarkdown, closeFileEntry,
-} from '../utils/file-viewer-files.js';
-import {
   renderFileViewerShell, renderEditor as doRenderEditor,
   showEmpty as doShowEmpty,
   updateLineNumbers as doUpdateLineNumbers,
@@ -16,7 +14,7 @@ import {
   switchMode as doSwitchMode,
   renderTabs as doRenderTabs,
   loadPinnedFiles as doLoadPinnedFiles,
-} from '../utils/file-viewer-editor.js';
+} from '../utils/file-viewer-utils.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 import { tabViewFacade } from '../facades/tab-facade.js';

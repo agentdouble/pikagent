@@ -1,7 +1,18 @@
 import {
-  initTabManager, setupBusListeners,
-  getComponent,
-} from '../utils/tab-manager-init.js';
+  initTabManager, setupBusListeners, getComponent,
+  renderActivityBar as doRenderActivityBar,
+  setSidebarMode as doSetSidebarMode,
+  renderWorkspace as doRenderWorkspace,
+  buildSwitchToDeps,
+  disposeSideView, disposeAllSideViews, disposeAllTabs,
+  bindTabOps,
+  reorderTab as doReorderTab,
+  renameTab as doRenameTab,
+  nextTab as doNextTab, prevTab as doPrevTab,
+  goToColorGroup as doGoToColorGroup, focusDirection as doFocusDirection,
+  setTabColorGroup as doSetTabColorGroup,
+  toggleNoShortcut as doToggleNoShortcut,
+} from '../utils/tab-manager-utils.js';
 import {
   serialize as doSerialize, restoreConfig as doRestoreConfig,
 } from '../utils/workspace-ops.js';
@@ -11,26 +22,8 @@ import {
   ensureVisibleTabActive as doEnsureVisibleTabActive,
 } from '../utils/tab-color-filter.js';
 import { switchTo as doSwitchTo } from '../utils/tab-lifecycle.js';
-import {
-  nextTab as doNextTab, prevTab as doPrevTab,
-  goToColorGroup as doGoToColorGroup, focusDirection as doFocusDirection,
-  setTabColorGroup as doSetTabColorGroup,
-  toggleNoShortcut as doToggleNoShortcut,
-} from '../utils/tab-navigation.js';
 import { buildPrApi, buildWorktreeApi, buildViewStore } from '../facades/tab-manager-api.js';
 import { tabViewFacade } from '../facades/tab-facade.js';
-import {
-  renderActivityBar as doRenderActivityBar,
-  setSidebarMode as doSetSidebarMode,
-  renderWorkspace as doRenderWorkspace,
-  buildSwitchToDeps,
-  disposeSideView, disposeAllSideViews, disposeAllTabs,
-} from '../utils/tab-manager-sidebar.js';
-import {
-  bindTabOps,
-  reorderTab as doReorderTab,
-  renameTab as doRenameTab,
-} from '../utils/tab-manager-tab-ops.js';
 
 export class TabManager {
   constructor(tabBar, workspaceContainer) {
