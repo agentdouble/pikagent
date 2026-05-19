@@ -36,13 +36,15 @@ class FlowCardTerminalManager {
    * @param {string} flowId
    * @param {HTMLElement} containerEl
    * @param {{ scrollback?: number, cursorStyle?: string, [key: string]: unknown }} opts - extra terminal options (scrollback, cursorStyle, …)
-   * @param {(record: { term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null }) => void} [setupFn] - called with the record before it is stored
+   * @param {{ onPtyData?: (cb: (data: string) => void) => (() => void), setupFn?: (record: { term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null }) => void }} [extra] - optional PTY data subscriber and/or post-creation callback
    * @returns {{ term: import('@xterm/xterm').Terminal, fitAddon: import('@xterm/addon-fit').FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null }} the terminal record stored in the map
    */
-  _createAndRegister(map, flowId, containerEl, opts, setupFn) {
+  _createAndRegister(map, flowId, containerEl, opts, extra = {}) {
+    const { onPtyData, setupFn } = typeof extra === 'function' ? { setupFn: extra } : extra;
     const record = createPtyBoundTerminal(containerEl, {
       termOpts: { scrollback: LIVE_SCROLLBACK, ...opts },
       fitDelay: FLOW_FIT_DELAY_MS,
+      ...(onPtyData ? { onPtyData } : {}),
     });
     if (setupFn) setupFn(record);
     map.set(flowId, { ...record, containerEl });
@@ -60,13 +62,14 @@ class FlowCardTerminalManager {
 
     const containerEl = _el('div', 'flow-card-terminal');
 
-    const record = createPtyBoundTerminal(containerEl, {
-      termOpts: { scrollback: LIVE_SCROLLBACK, cursorStyle: 'bar' },
-      fitDelay: FLOW_FIT_DELAY_MS,
-      onPtyData: (writeFn) => ptyApi.onData(ptyId, writeFn),
-    });
+    this._createAndRegister(
+      this._liveTerminals, flowId, containerEl,
+      { cursorStyle: 'bar' },
+      { onPtyData: (writeFn) => ptyApi.onData(ptyId, writeFn) },
+    );
 
-    this._liveTerminals.set(flowId, { ...record, containerEl, ptyId });
+    // Attach ptyId to the stored entry for external reference.
+    this._liveTerminals.get(flowId).ptyId = ptyId;
 
     return containerEl;
   }
