@@ -54,6 +54,29 @@ export class TabManager {
   _viewStore() { return buildViewStore(this); }
   _activeTab() { return this.tabs.get(this.activeTabId); }
 
+  /** Shared deps object used by tab-manager-sidebar helpers (issue #616). */
+  get _deps() {
+    return {
+      tabManager: this,
+      tabs: this.tabs,
+      activeTabId: this.activeTabId,
+      getActiveTabId: () => this.activeTabId,
+      setActiveTabId: (id) => { this.activeTabId = id; },
+      sidebarMode: this.sidebarMode,
+      getSidebarMode: () => this.sidebarMode,
+      setSidebarMode: (mode) => { this.sidebarMode = mode; },
+      workspaceContainer: this.workspaceContainer,
+      onOpenSettings: this.onOpenSettings,
+      configManager: this.configManager,
+      scheduleAutoSave: () => this.configManager.scheduleAutoSave(),
+      viewStore: this._viewStore(),
+      getActiveTab: () => this._activeTab(),
+      renderTabBar: () => this.renderTabBar(),
+      renderActivityBar: () => this.renderActivityBar(),
+      renderWorkspace: (tab) => this.renderWorkspace(tab),
+    };
+  }
+
   async init() {
     this.defaultCwd = await initTabManager({
       configManager: this.configManager,
@@ -75,10 +98,10 @@ export class TabManager {
 
   // --- Sidebar & Workspace (delegated) ---
 
-  renderActivityBar() { doRenderActivityBar(this); }
-  setSidebarMode(mode) { doSetSidebarMode(this, mode); }
+  renderActivityBar() { doRenderActivityBar(this._deps); }
+  setSidebarMode(mode) { doSetSidebarMode(this._deps, mode); }
   switchToBoard() { this.setSidebarMode('board'); }
-  async renderWorkspace(tab) { return doRenderWorkspace(this, tab, this._api); }
+  async renderWorkspace(tab) { return doRenderWorkspace(this._deps, tab, this._api); }
 
   serialize() { return doSerialize({ tabs: this.tabs, activeTabId: this.activeTabId }); }
 
@@ -101,7 +124,7 @@ export class TabManager {
   createTab(name = null, cwd = null) { return this._tabOps.createTab((id) => this.switchTo(id), name, cwd); }
   closeTab(id) { return this._tabOps.closeTab(() => this.createTab(), (tabId) => this.switchTo(tabId), id); }
 
-  switchTo(id) { return doSwitchTo(buildSwitchToDeps(this), id); }
+  switchTo(id) { return doSwitchTo(buildSwitchToDeps(this._deps), id); }
 
   renderTabBar() { this._tabElements = this._tabOps.renderTabBar(); }
   reorderTab(fromId, toId, before) { doReorderTab(this, fromId, toId, before); }
@@ -129,13 +152,13 @@ export class TabManager {
 
   // --- Dispose ---
 
-  _disposeSideView(mode) { disposeSideView(this, mode); }
-  _disposeAllTabs() { disposeAllTabs(this); }
+  _disposeSideView(mode) { disposeSideView(this._deps, mode); }
+  _disposeAllTabs() { disposeAllTabs(this._deps); }
 
   dispose() {
     for (const unsub of this._busListeners) unsub();
     this._busListeners = [];
-    disposeAllSideViews(this);
-    disposeAllTabs(this);
+    disposeAllSideViews(this._deps);
+    disposeAllTabs(this._deps);
   }
 }

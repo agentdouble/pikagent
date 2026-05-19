@@ -1,10 +1,11 @@
 /**
  * TabManager sidebar and workspace helpers — extracted from TabManager class.
  *
- * These functions build the deps objects and call into sidebar-manager and
- * workspace-ops on behalf of the TabManager.  State is passed in via the
- * `tm` (TabManager instance) parameter, which also exposes `_viewStore()`
- * so this leaf-level helper never imports the facade layer directly.
+ * These functions receive a `deps` object (built by TabManager._deps getter)
+ * instead of the full TabManager instance, keeping coupling narrow.
+ *
+ * Refactored in issue #616 — the ad-hoc deps construction that was duplicated
+ * across ~6 call-sites is now centralised in `TabManager.get _deps()`.
  */
 
 import {
@@ -18,38 +19,38 @@ import {
 } from './workspace-ops.js';
 import { getComponent } from './tab-manager-init.js';
 
-export function renderActivityBar(tm) {
+export function renderActivityBar(deps) {
   doRenderActivityBar({
-    sidebarMode: tm.sidebarMode,
-    setSidebarMode: (mode) => tm.setSidebarMode(mode),
-    onOpenSettings: tm.onOpenSettings,
+    sidebarMode: deps.sidebarMode,
+    setSidebarMode: (mode) => deps.tabManager.setSidebarMode(mode),
+    onOpenSettings: deps.onOpenSettings,
   });
 }
 
-export function setSidebarMode(tm, mode) {
-  if (mode === tm.sidebarMode) return;
+export function setSidebarMode(deps, mode) {
+  if (mode === deps.sidebarMode) return;
 
   doChangeSidebarMode({
-    getActiveTab: () => tm._activeTab(),
+    getActiveTab: deps.getActiveTab,
     capturePanelWidths,
-    viewStore: tm._viewStore(),
-    workspaceContainer: tm.workspaceContainer,
+    viewStore: deps.viewStore,
+    workspaceContainer: deps.workspaceContainer,
     reattachLayout,
-    renderWorkspace: (tab) => tm.renderWorkspace(tab),
-    tabManager: tm,
+    renderWorkspace: deps.renderWorkspace,
+    tabManager: deps.tabManager,
     resolveComponent: getComponent,
-  }, tm.sidebarMode, mode);
-  tm.sidebarMode = mode;
+  }, deps.sidebarMode, mode);
+  deps.setSidebarMode(mode);
 
-  tm.renderActivityBar();
+  deps.renderActivityBar();
 }
 
-export async function renderWorkspace(tm, tab, api) {
+export async function renderWorkspace(deps, tab, api) {
   return doRenderWorkspace({
-    workspaceContainer: tm.workspaceContainer,
-    getActiveTabId: () => tm.activeTabId,
-    getActiveTab: () => tm._activeTab(),
-    scheduleAutoSave: () => tm.configManager.scheduleAutoSave(),
+    workspaceContainer: deps.workspaceContainer,
+    getActiveTabId: deps.getActiveTabId,
+    getActiveTab: deps.getActiveTab,
+    scheduleAutoSave: deps.scheduleAutoSave,
   }, tab, api, {
     FileTree: getComponent('FileTree'),
     FileViewer: getComponent('FileViewer'),
@@ -59,33 +60,33 @@ export async function renderWorkspace(tm, tab, api) {
   });
 }
 
-export function buildSwitchToDeps(tm) {
+export function buildSwitchToDeps(deps) {
   return {
-    tabs: tm.tabs,
-    getActiveTabId: () => tm.activeTabId,
-    setActiveTabId: (newId) => { tm.activeTabId = newId; },
-    getSidebarMode: () => tm.sidebarMode,
-    setSidebarMode: (mode) => { tm.sidebarMode = mode; },
-    workspaceContainer: tm.workspaceContainer,
-    renderTabBar: () => tm.renderTabBar(),
-    renderActivityBar: () => tm.renderActivityBar(),
-    renderWorkspace: (tab) => tm.renderWorkspace(tab),
+    tabs: deps.tabs,
+    getActiveTabId: deps.getActiveTabId,
+    setActiveTabId: deps.setActiveTabId,
+    getSidebarMode: deps.getSidebarMode,
+    setSidebarMode: deps.setSidebarMode,
+    workspaceContainer: deps.workspaceContainer,
+    renderTabBar: deps.renderTabBar,
+    renderActivityBar: deps.renderActivityBar,
+    renderWorkspace: deps.renderWorkspace,
     detachSidebarView: (mode) => detachSidebarView({
-      getActiveTab: () => tm._activeTab(),
+      getActiveTab: deps.getActiveTab,
       capturePanelWidths,
-      viewStore: tm._viewStore(),
+      viewStore: deps.viewStore,
     }, mode),
   };
 }
 
-export function disposeSideView(tm, mode) {
-  doDisposeSideView(tm._viewStore(), mode);
+export function disposeSideView(deps, mode) {
+  doDisposeSideView(deps.viewStore, mode);
 }
 
-export function disposeAllSideViews(tm) {
-  doDisposeAllSideViews(tm._viewStore());
+export function disposeAllSideViews(deps) {
+  doDisposeAllSideViews(deps.viewStore);
 }
 
-export function disposeAllTabs(tm) {
-  doDisposeAllTabs({ tabs: tm.tabs, setActiveTabId: (id) => { tm.activeTabId = id; } });
+export function disposeAllTabs(deps) {
+  doDisposeAllTabs({ tabs: deps.tabs, setActiveTabId: deps.setActiveTabId });
 }
