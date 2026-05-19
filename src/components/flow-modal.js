@@ -1,7 +1,5 @@
 import { generateId } from '../utils/id.js';
-import { _el } from '../utils/dom-core.js';
-import { createActionButton } from '../utils/dom-buttons.js';
-import { createDialogBase } from '../utils/dom-dialogs.js';
+import { _el, createActionButton, createDialogBase } from '../utils/dom-api.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,

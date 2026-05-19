@@ -1,9 +1,7 @@
 import {
   onTerminalCreated, onTerminalRemoved, onTerminalExited,
 } from '../utils/terminal-events.js';
-import { _el } from '../utils/dom-core.js';
-import { buildDomainButtonBar } from '../utils/dom-buttons.js';
-import { renderList } from '../utils/dom-lists.js';
+import { _el, buildDomainButtonBar, renderList } from '../utils/dom-api.js';
 import {
   _safeFit, disposeTerminal, disposeTerminalMap, setupTerminalAddons,
   createPtyBoundTerminal,
