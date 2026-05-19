@@ -8,7 +8,7 @@
 
 import { _el } from './dom-core.js';
 import { setupResizeHandler } from './drag-helpers.js';
-import { FIT_DELAY_MS, WORKSPACE_PANELS } from './tab-constants.js';
+import { WORKSPACE_FIT_DELAY_MS, WORKSPACE_PANELS } from './tab-constants.js';
 import { clampPanelWidth, panelArrowState } from './tab-manager-helpers.js';
 
 // ── Panel building ──
@@ -127,7 +127,7 @@ function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arrowEl) {
   setTimeout(() => {
     panel.classList.remove('animating');
     getActiveTab()?.terminalPanel?.fitAll();
-  }, FIT_DELAY_MS);
+  }, WORKSPACE_FIT_DELAY_MS);
   scheduleAutoSave();
 }
 

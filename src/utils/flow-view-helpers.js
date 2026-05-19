@@ -7,7 +7,8 @@ import { formatDateTime } from '../../shared/date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
 import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregation-utils.js';
 
-export const FIT_DELAY_MS = 50;
+/** Delay before fitting xterm in flow cards (shorter — smaller terminals). */
+export const FLOW_FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 5000;
 export const LIVE_SCROLLBACK = 3000;
 

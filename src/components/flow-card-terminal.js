@@ -7,7 +7,7 @@ import { createModalOverlay } from '../utils/dom-dialogs.js';
 import { onKeyAction } from '../utils/event-helpers.js';
 import { _safeFit, createPtyBoundTerminal, disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import {
-  FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
+  FLOW_FIT_DELAY_MS, LOG_SCROLLBACK, LIVE_SCROLLBACK,
   STATUS_LABELS, NO_LOG_MESSAGE, NO_LOG_MODAL_MESSAGE,
   formatRunDateTime,
 } from '../utils/flow-view-helpers.js';
@@ -42,7 +42,7 @@ export class FlowCardTerminalManager {
   _createAndRegister(map, flowId, containerEl, opts, setupFn) {
     const record = createPtyBoundTerminal(containerEl, {
       termOpts: { scrollback: LIVE_SCROLLBACK, ...opts },
-      fitDelay: FIT_DELAY_MS,
+      fitDelay: FLOW_FIT_DELAY_MS,
     });
     if (setupFn) setupFn(record);
     map.set(flowId, { ...record, containerEl });
@@ -54,7 +54,7 @@ export class FlowCardTerminalManager {
   createLiveTerminal(flowId, ptyId) {
     const existing = this._liveTerminals.get(flowId);
     if (existing) {
-      setTimeout(() => _safeFit(existing.fitAddon), FIT_DELAY_MS);
+      setTimeout(() => _safeFit(existing.fitAddon), FLOW_FIT_DELAY_MS);
       return existing.containerEl;
     }
 
@@ -62,7 +62,7 @@ export class FlowCardTerminalManager {
 
     const record = createPtyBoundTerminal(containerEl, {
       termOpts: { scrollback: LIVE_SCROLLBACK, cursorStyle: 'bar' },
-      fitDelay: FIT_DELAY_MS,
+      fitDelay: FLOW_FIT_DELAY_MS,
       onPtyData: (writeFn) => ptyApi.onData(ptyId, writeFn),
     });
 
@@ -115,7 +115,7 @@ export class FlowCardTerminalManager {
 
     const { term, resizeObs } = createPtyBoundTerminal(termContainer, {
       termOpts: { scrollback: LOG_SCROLLBACK },
-      fitDelay: FIT_DELAY_MS,
+      fitDelay: FLOW_FIT_DELAY_MS,
     });
 
     term.write(log || NO_LOG_MODAL_MESSAGE);
