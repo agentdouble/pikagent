@@ -47,6 +47,12 @@ class TerminalPanel {
     this._drop = new DropIndicatorManager(this.container);
   }
 
+  // ===== Iteration Helper =====
+
+  _forEachTerminal(fn) {
+    for (const [id, node] of this.terminals) fn(id, node);
+  }
+
   // ===== DOM Helpers =====
 
   _createSplitHandle(direction, splitEl) {
@@ -56,10 +62,11 @@ class TerminalPanel {
   }
 
   _findTerminalCwd(el) {
-    for (const [, node] of this.terminals) {
-      if (node.element === el) return node.terminal.cwd;
-    }
-    return this.cwd;
+    let found = this.cwd;
+    this._forEachTerminal((id, node) => {
+      if (node.element === el) found = node.terminal.cwd;
+    });
+    return found;
   }
 
   _resetContainer() {
@@ -84,9 +91,9 @@ class TerminalPanel {
   }
 
   restoreFromTree(tree) {
-    for (const [id, node] of this.terminals) {
+    this._forEachTerminal((id, node) => {
       node.terminal.dispose();
-    }
+    });
     this.terminals.clear();
 
     this._resetContainer();
@@ -151,9 +158,9 @@ class TerminalPanel {
   setActive(node) {
     if (node.type !== 'terminal') return;
 
-    for (const [, n] of this.terminals) {
+    this._forEachTerminal((id, n) => {
       n.terminal.cwdPollingPaused = true;
-    }
+    });
     node.terminal.cwdPollingPaused = false;
 
     this.container.querySelectorAll('.terminal-wrapper.active').forEach((el) => {
@@ -195,11 +202,11 @@ class TerminalPanel {
 
   fitAll() {
     requestAnimationFrame(() => {
-      for (const [id, node] of this.terminals) {
+      this._forEachTerminal((id, node) => {
         if (node.terminal) {
           node.terminal.fit();
         }
-      }
+      });
     });
   }
 
@@ -238,15 +245,15 @@ class TerminalPanel {
   }
 
   applyTheme(theme) {
-    for (const [id, node] of this.terminals) {
+    this._forEachTerminal((id, node) => {
       node.terminal.terminal.options.theme = theme;
-    }
+    });
   }
 
   dispose() {
-    for (const [id, node] of this.terminals) {
+    this._forEachTerminal((id, node) => {
       node.terminal.dispose();
-    }
+    });
     this.terminals.clear();
   }
 }
