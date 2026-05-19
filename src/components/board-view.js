@@ -20,7 +20,7 @@ import {
 } from '../utils/board-helpers.js';
 import { boardFacade } from '../facades/board-facade.js';
 
-export class BoardView extends ComponentBase {
+class BoardView extends ComponentBase {
   constructor(container, tabManager) {
     super(container);
     this.tabManager = tabManager;

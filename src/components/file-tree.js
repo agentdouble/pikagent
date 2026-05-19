@@ -16,7 +16,7 @@ import {
 } from '../utils/file-tree-dir-ops.js';
 import { fileTreeViewFacade } from '../facades/file-tree-facade.js';
 
-export class FileTree extends ComponentBase {
+class FileTree extends ComponentBase {
   constructor(container) {
     super(container);
   }
