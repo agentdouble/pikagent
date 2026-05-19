@@ -7,7 +7,7 @@ import { registerComponent, getComponent } from '../utils/component-registry.js'
 import { ComponentBase } from '../utils/component-base.js';
 import { tabViewFacade } from '../facades/tab-facade.js';
 
-export class GitChangesView extends ComponentBase {
+class GitChangesView extends ComponentBase {
   constructor(container) {
     super(container);
     this.gitCwd = null;

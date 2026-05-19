@@ -10,7 +10,7 @@ import {
 } from '../utils/skills-view-actions.js';
 import { skillsViewFacade } from '../facades/skills-facade.js';
 
-export class SkillsView extends ComponentBase {
+class SkillsView extends ComponentBase {
   constructor(container) {
     super(container);
   }

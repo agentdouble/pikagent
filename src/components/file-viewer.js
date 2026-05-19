@@ -19,7 +19,7 @@ import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 import { tabViewFacade } from '../facades/tab-facade.js';
 
-export class FileViewer extends ComponentBase {
+class FileViewer extends ComponentBase {
   constructor(container, isActive, components = {}) {
     super(container);
     this.isActive = isActive || (() => true);

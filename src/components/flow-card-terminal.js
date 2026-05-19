@@ -14,7 +14,7 @@ import {
 import { registerComponent } from '../utils/component-registry.js';
 import { ptyApi, flowApi } from '../facades/flow-card-terminal-services.js';
 
-export class FlowCardTerminalManager {
+class FlowCardTerminalManager {
   constructor() {
     this._liveTerminals = new Map();
     this._logTerminals = new Map();
