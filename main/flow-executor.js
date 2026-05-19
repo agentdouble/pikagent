@@ -28,6 +28,11 @@ const { toLogFilename } = require('../shared/date-utils');
  */
 
 /**
+ * Active PTY processes keyed by their PTY id.
+ * @typedef {Map<string, PtyProcess>} PtyProcessMap
+ */
+
+/**
  * @typedef {object} Flow
  * @property {string} id
  * @property {string} [name]
@@ -68,7 +73,7 @@ const { toLogFilename } = require('../shared/date-utils');
 
 /**
  * @typedef {object} PtyManager
- * @property {Map<string, unknown>} processes - active PTY processes by id
+ * @property {PtyProcessMap} processes - active PTY processes by id
  * @property {(opts: PtyCreateOpts) => PtyProcess} create - spawn a PTY process
  * @property {(id: string) => void} kill - kill a PTY process
  * @property {(id: string, data: string) => void} write - write input to a PTY process
@@ -80,7 +85,7 @@ const { toLogFilename } = require('../shared/date-utils');
  * Cleans up a finished flow process: clears timeout, removes PTY,
  * and notifies the renderer.
  *
- * @param {{ getPtyManager: () => { processes: Map<string, unknown> }, sendToWindow: SendToWindow }} deps
+ * @param {{ getPtyManager: () => { processes: PtyProcessMap }, sendToWindow: SendToWindow }} deps
  * @param {RunningFlows} runningFlows
  * @param {string} flowId
  * @param {string} ptyId
@@ -98,7 +103,7 @@ function cleanupFlowProcess(deps, runningFlows, flowId, ptyId, exitCode) {
 /**
  * Wires up PTY data/exit listeners for a running flow process.
  *
- * @param {{ sendToWindow: SendToWindow, getPtyManager: () => { processes: Map<string, unknown> }, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown>, log: FlowLogger }} deps
+ * @param {{ sendToWindow: SendToWindow, getPtyManager: () => { processes: PtyProcessMap }, getFlow: (id: string) => Promise<Flow|null>, saveFlow: (flow: Flow) => Promise<unknown>, log: FlowLogger }} deps
  * @param {RunningFlows} runningFlows
  * @param {PtyProcess} proc
  * @param {Flow} flow

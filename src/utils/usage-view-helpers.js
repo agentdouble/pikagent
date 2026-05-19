@@ -132,6 +132,18 @@ function _runMetricCards(m) {
 }
 
 /**
+ * Options object describing the tab-specific parts of a run-based tab.
+ * Consumed by {@link _createRunBasedTabConfig}.
+ *
+ * @typedef {object} RunBasedTabOptions
+ * @property {string} sliceKey - Key to extract the metrics slice (e.g. 'agent', 'flow').
+ * @property {(m: MetricsSlice) => UsageCard[]} headerCards - Returns the first 2 cards specific to this tab.
+ * @property {string} chartTitle - Title displayed above the chart.
+ * @property {(m: MetricsSlice, metrics: Record<string, MetricsSlice>) => UsageTable[]} tables - Returns table descriptor(s).
+ * @property {(m: MetricsSlice) => {empty: string[]}|null} [emptyGuard] - Optional early-return for empty state.
+ */
+
+/**
  * Factory that builds the common { cards, chart, tables } shape shared by
  * run-based tabs (agents and flows).
  *
@@ -145,13 +157,8 @@ function _runMetricCards(m) {
  * Callers only supply the parts that differ (sliceKey, headerCards, chartTitle,
  * tables builder) — everything else is handled here.
  *
- * @param {Record<string, MetricsSlice>}   metrics          The full metrics object.
- * @param {object}   options
- * @param {string}   options.sliceKey          Key to extract the metrics slice (e.g. 'agent', 'flow').
- * @param {(m: MetricsSlice) => UsageCard[]}  options.headerCards  Returns the first 2 cards specific to this tab.
- * @param {string}   options.chartTitle        Title displayed above the chart.
- * @param {(m: MetricsSlice, metrics: Record<string, MetricsSlice>) => UsageTable[]} options.tables  Returns table descriptor(s).
- * @param {(m: MetricsSlice) => {empty: string[]}|null} [options.emptyGuard]  Optional early-return for empty state.
+ * @param {Record<string, MetricsSlice>}   metrics  The full metrics object.
+ * @param {RunBasedTabOptions} options  Tab-specific configuration.
  * @returns {TabConfig | EmptyTabConfig}
  */
 function _createRunBasedTabConfig(metrics, { sliceKey, headerCards, chartTitle, tables, emptyGuard }) {
