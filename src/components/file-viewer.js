@@ -1,4 +1,3 @@
-import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { pinnedFiles } from '../utils/editor-helpers.js';
 import {
   renderModeBar,
@@ -115,12 +114,7 @@ export class FileViewer extends ComponentBase {
   _renderModeBar() { renderModeBar(this.modeBar, this.mode, { switchMode: (m) => this.switchMode(m) }, this._webviewMgr); }
 
   addWebview(label, url) { this._webviewMgr.addWebview(label, url); }
-  removeWebview(webviewId) {
-    const removedId = this._webviewMgr.removeWebview(webviewId);
-    if (this.mode === removedId) this.switchMode('files');
-    else this._renderModeBar();
-    emitLayoutChanged();
-  }
+  removeWebview(webviewId) { this._webviewMgr.removeWebviewAndSync(webviewId, this.mode); }
   getWebviewTabs() { return this._webviewMgr.getWebviewTabs(); }
   setWebviewTabs(tabs) { this._webviewMgr.setWebviewTabs(tabs); }
 

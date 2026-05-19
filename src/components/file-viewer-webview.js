@@ -50,6 +50,21 @@ class WebviewManager {
     return webviewId; // Return so caller knows which was removed
   }
 
+  /**
+   * Remove a webview then synchronize the viewer: switch to 'files' when the
+   * removed webview was the current mode, otherwise re-render the mode bar.
+   * Emits layout:changed once done. Single entry point shared by callers.
+   * @param {string} webviewId - id of the webview to remove
+   * @param {string} currentMode - the viewer mode active before removal
+   */
+  removeWebviewAndSync(webviewId, currentMode) {
+    const removedId = this.removeWebview(webviewId);
+    if (currentMode === removedId) this._switchMode('files');
+    else this._renderModeBar();
+    /** @fires layout:changed {undefined} — webview removed */
+    emitLayoutChanged();
+  }
+
   _createWebviewContainer(wt) {
     const container = _el('div', 'webview-area');
     container.style.display = 'none';
@@ -86,13 +101,7 @@ class WebviewManager {
     const btn = _el('button', `mode-btn mode-btn-webview${currentMode === wt.id ? ' active' : ''}`);
     btn.appendChild(_el('span', null, wt.label));
     const closeBtn = _el('span', 'mode-btn-close', { textContent: '\u00d7' });
-    onClickStopped(closeBtn, () => {
-      const removedId = this.removeWebview(wt.id);
-      if (currentMode === removedId) this._switchMode('files');
-      else this._renderModeBar();
-      /** @fires layout:changed {undefined} — webview removed */
-      emitLayoutChanged();
-    });
+    onClickStopped(closeBtn, () => this.removeWebviewAndSync(wt.id, currentMode));
     btn.appendChild(closeBtn);
     btn.addEventListener('click', () => this._switchMode(wt.id));
     return btn;
