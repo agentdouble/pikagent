@@ -4,7 +4,7 @@ const { DEFAULT_META, buildConfigRecord, formatConfigList } = require('./config-
 // special chars with underscores, truncates at 64 chars.  This differs from
 // sanitizeSegment (git-ref-safe, hyphen-based) by design; see string-utils.js.
 const { sanitizeName } = require('../shared/string-utils');
-const { trySafe } = require('./logger');
+const { createManagerSafe } = require('./logger');
 const { JsonStore } = require('./json-store');
 const { CachedJsonFile } = require('./cached-json-file');
 
@@ -12,6 +12,7 @@ const store = new JsonStore(CONFIG_DIR, 'config-manager', {
   idToFile: (name) => `${sanitizeName(name)}.json`,
 });
 const _meta = new CachedJsonFile(META_FILE, () => store.ensureDir(), DEFAULT_META);
+const _safe = createManagerSafe(store.log, 'config-manager');
 
 const readMeta = () => _meta.read();
 const writeMeta = (meta) => _meta.write(meta);
@@ -30,15 +31,14 @@ async function load(name) {
 
 async function list() {
   const meta = await readMeta();
-  return trySafe(
+  return _safe(
     async () => formatConfigList(await store.list(), meta.defaultConfig),
     [],
-    { log: store.log, label: 'list' },
   );
 }
 
 async function remove(name) {
-  return trySafe(
+  return _safe(
     async () => {
       await store.removeOrThrow(name);
       const meta = await readMeta();
@@ -49,7 +49,6 @@ async function remove(name) {
       return true;
     },
     false,
-    { log: store.log, label: 'remove' },
   );
 }
 

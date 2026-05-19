@@ -5,9 +5,10 @@ const { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, 
 const { nowISO } = require('../shared/date-utils');
 const { createPollingManager } = require('../shared/polling-manager');
 const { CachedJsonFile } = require('./cached-json-file');
-const { createLogger, trySafe } = require('./logger');
+const { createLogger, createManagerSafe } = require('./logger');
 
 const log = createLogger('session-manager');
+const _safe = createManagerSafe(log, 'session-manager');
 const POLL_INTERVAL_MS = 5000;
 
 const ensureDir = ensureDirOnce(BASE_DIR);
@@ -43,7 +44,7 @@ class SessionManager {
     if (!this._ptyManager || this._polling) return;
     this._polling = true;
     try {
-      await trySafe(async () => {
+      await _safe(async () => {
         const currentAgents = await this._ptyManager.checkAgents();
 
         for (const [termId, agentName] of Object.entries(currentAgents)) {
@@ -59,7 +60,7 @@ class SessionManager {
         }
 
         this._previousAgents = { ...currentAgents };
-      }, undefined, { log, label: 'poll' });
+      }, undefined);
     } finally {
       this._polling = false;
     }
@@ -68,10 +69,9 @@ class SessionManager {
   async _startSession(termId, agentName) {
     if (isFlowTerminal(termId)) return;
 
-    const cwd = await trySafe(
+    const cwd = await _safe(
       () => this._ptyManager.getCwd(termId),
       null,
-      { log, label: 'getCwd' },
     );
 
     this._activeSessions[termId] = {
@@ -102,10 +102,9 @@ class SessionManager {
     const current = this._sessionsFile.get() || [];
     const sessions = trimSessions([...current, record]);
 
-    trySafe(
+    _safe(
       () => this._sessionsFile.write(sessions),
       undefined,
-      { log, label: 'write' },
     );
   }
 

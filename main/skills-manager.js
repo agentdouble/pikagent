@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const { BASE_DIR } = require('./paths');
 const { ensureDirOnce, listDirNames } = require('./fs-utils');
-const { trySafe } = require('./logger');
+const { createManagerSafe } = require('./logger');
 const { pathExists } = require('./fs-manager-helpers');
 const { JsonStore } = require('./json-store');
 const { CachedJsonFile } = require('./cached-json-file');
@@ -19,8 +19,10 @@ const SETTINGS_FILE = path.join(BASE_DIR, 'skills-settings.json');
 const _metaFile = new CachedJsonFile(SETTINGS_FILE, () => store.ensureDir(), null);
 let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
 
+const _managerSafe = createManagerSafe(log, 'skills-manager');
+
 /**
- * Higher-order function that wraps `fn` with trySafe.
+ * Higher-order function that wraps `fn` with the manager-level safe handler.
  * Returns a new function with the same signature that catches errors
  * and returns `fallback` instead, logging via the module logger.
  *
@@ -31,7 +33,7 @@ let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
  * @returns {(...args: A) => Promise<T>}    - wrapped function
  */
 const _safe = (fn, fallback) => (...args) =>
-  trySafe(() => fn(...args), fallback, { log, label: fn.name || 'skills-op' });
+  _managerSafe(() => fn(...args), fallback);
 
 function parseFrontmatter(md) {
   if (!md.startsWith('---')) return {};

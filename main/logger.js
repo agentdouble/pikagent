@@ -1,4 +1,4 @@
-const { trySafe } = require('./safe-handler');
+const { trySafe, createManagerSafe } = require('./safe-handler');
 
 /**
  * Lightweight logger factory for main-process modules.
@@ -27,6 +27,6 @@ function createLogger(module) {
   };
 }
 
-// Re-export trySafe from safe-handler.js so existing consumers that import
-// { trySafe } from './logger' continue to work without changes.
-module.exports = { createLogger, trySafe };
+// Re-export trySafe and createManagerSafe from safe-handler.js so existing
+// consumers that import from './logger' continue to work without changes.
+module.exports = { createLogger, trySafe, createManagerSafe };
