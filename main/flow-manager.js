@@ -12,8 +12,10 @@ const { buildTimestampedRecord } = require('./record-helpers');
 const { JsonStore } = require('./json-store');
 const { createFlowScheduler } = require('./flow-scheduler');
 const { createFlowExecutor } = require('./flow-executor');
+const { createManagerSafe } = require('./logger');
 
 const store = new JsonStore(FLOWS_DIR, 'flow-manager');
+const _safe = createManagerSafe(store.log, 'flow-manager');
 const CATEGORIES_FILE = store.resolve('categories.json');
 
 class FlowManager {
@@ -77,14 +79,13 @@ class FlowManager {
   }
 
   async remove(id) {
-    return store.trySafe(
+    return _safe(
       async () => {
         await store.removeOrThrow(id);
         await this._cleanLogs(id);
         return true;
       },
       false,
-      'remove',
     );
   }
 

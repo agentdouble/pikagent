@@ -103,4 +103,16 @@ function trySafe(fn, defaultValue, { log, label } = {}) {
   return createSafeWrapper({ defaultValue, log, label })(fn)();
 }
 
-module.exports = { createSafeHandler, wrapSafe, trySafe };
+/**
+ * Factory that returns a pre-bound `trySafe` for a specific manager.
+ * Eliminates repetitive `{ log, label }` options at every call site.
+ *
+ * @param {{ warn: (msg: string, err?: unknown) => void }} log
+ * @param {string} managerName
+ * @returns {(fn: () => unknown, fallback: unknown) => Promise<unknown>}
+ */
+function createManagerSafe(log, managerName) {
+  return (fn, fallback) => trySafe(fn, fallback, { log, label: managerName });
+}
+
+module.exports = { createSafeHandler, wrapSafe, trySafe, createManagerSafe };
