@@ -1,7 +1,7 @@
 import { generateId } from '../utils/id.js';
 import { _el } from '../utils/dom-core.js';
 import { createActionButton } from '../utils/dom-buttons.js';
-import { createModalOverlay } from '../utils/dom-dialogs.js';
+import { createDialogBase } from '../utils/dom-dialogs.js';
 import {
   SCHEDULE_LABELS, DAY_NAMES, WEEKDAY_INDICES, INTERVAL_HOURS,
   DEFAULT_TIME, buildScheduleData,
@@ -224,14 +224,12 @@ function _collectResult(existing, fields, bottom, catPicker, state) {
   return result;
 }
 
-function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef, resolve) {
-  const close = () => { overlayRef.overlay.remove(); resolve(null); };
-
-  const actionBar = _el('div', { className: 'flow-modal-actions' },
+function _buildActionBar(existing, fields, bottom, catPicker, state, cleanup, cancel) {
+  return _el('div', { className: 'flow-modal-actions' },
     createActionButton({
       text: 'Annuler',
       cls: 'flow-modal-btn flow-modal-btn-cancel',
-      onClick: close,
+      onClick: cancel,
     }),
     createActionButton({
       text: existing ? 'Enregistrer' : 'Créer',
@@ -239,31 +237,26 @@ function _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef,
       onClick: () => {
         const result = _collectResult(existing, fields, bottom, catPicker, state);
         if (!result) return;
-        overlayRef.overlay.remove();
-        resolve(result);
+        cleanup(result);
       },
     }),
   );
-
-  return { actionBar, close };
 }
 
 function openFlowModal(existing = null, categories = []) {
-  return new Promise((resolve) => {
-    const state = { selectedCwd: existing?.cwd || '' };
-    const overlayRef = {};
+  return createDialogBase({
+    overlayClass: 'flow-modal-overlay',
+    modalClass: 'flow-modal',
+    cancelValue: null,
+    builder({ modal, cleanup, cancel }) {
+      const state = { selectedCwd: existing?.cwd || '' };
+      const { fields, bottom, catPicker, modalChildren } = _buildModalDom(existing, categories, state);
 
-    const { fields, bottom, catPicker, modalChildren } = _buildModalDom(existing, categories, state);
-    const { actionBar, close } = _buildActionBar(existing, fields, bottom, catPicker, state, overlayRef, resolve);
+      modalChildren.push(_buildActionBar(existing, fields, bottom, catPicker, state, cleanup, cancel));
+      modal.append(...modalChildren);
 
-    modalChildren.push(actionBar);
-
-    const { overlay, modal } = createModalOverlay('flow-modal-overlay', 'flow-modal', close);
-    overlayRef.overlay = overlay;
-    modal.append(...modalChildren);
-
-    document.body.appendChild(overlay);
-    fields.nameInput.focus();
+      return () => fields.nameInput.focus();
+    },
   });
 }
 
