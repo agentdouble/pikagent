@@ -1,7 +1,8 @@
 // ── Layout constants ──
 export const DRAG_THRESHOLD = 5;
 export const PANEL_MIN_WIDTH = 150;
-export const FIT_DELAY_MS = 200;
+/** Delay before fitting xterm after workspace resize (longer — full layout reflow). */
+export const WORKSPACE_FIT_DELAY_MS = 200;
 
 // ── Side panel configuration (single source of truth for side-specific limits & arrows) ──
 export const SIDE_CONFIG = {
