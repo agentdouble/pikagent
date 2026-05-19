@@ -3,10 +3,11 @@ const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { BASE_DIR } = require('./paths');
-const { readJson, writeJson, ensureDirOnce, listDirNames } = require('./fs-utils');
+const { ensureDirOnce, listDirNames } = require('./fs-utils');
 const { trySafe } = require('./logger');
 const { pathExists } = require('./fs-manager-helpers');
 const { JsonStore } = require('./json-store');
+const { CachedJsonFile } = require('./cached-json-file');
 const { sanitizeSegment } = require('../shared/string-utils');
 
 const store = new JsonStore(BASE_DIR, 'skills-manager');
@@ -15,7 +16,7 @@ const log = store.log;
 const DEFAULT_SKILLS_DIR = path.join(os.homedir(), '.claude', 'skills');
 const SETTINGS_FILE = path.join(BASE_DIR, 'skills-settings.json');
 
-let _rootCache = null;
+const _metaFile = new CachedJsonFile(SETTINGS_FILE, () => store.ensureDir(), null);
 let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
 
 /**
@@ -46,16 +47,12 @@ function parseFrontmatter(md) {
 }
 
 async function _loadRoot() {
-  if (_rootCache) return _rootCache;
-  const settings = await readJson(SETTINGS_FILE);
-  _rootCache = (settings && settings.root) ? settings.root : DEFAULT_SKILLS_DIR;
-  return _rootCache;
+  const settings = await _metaFile.read();
+  return (settings && settings.root) ? settings.root : DEFAULT_SKILLS_DIR;
 }
 
 async function _saveRoot(newRoot) {
-  await store.ensureDir();
-  await writeJson(SETTINGS_FILE, { root: newRoot });
-  _rootCache = newRoot;
+  await _metaFile.write({ root: newRoot });
   _ensureRootDir = ensureDirOnce(newRoot);
 }
 
@@ -160,7 +157,7 @@ const setRoot = _safe(async function setRoot(newRoot) {
 
 const resetRoot = _safe(async function resetRoot() {
   await fsp.unlink(SETTINGS_FILE).catch(() => {});
-  _rootCache = null;
+  _metaFile.invalidate();
   _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
   const root = await _loadRoot();
   return { success: true, root };
