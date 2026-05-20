@@ -18,6 +18,7 @@ const {
 const { saveLog, getRunLog, cleanLogs } = require('./flow-executor-log');
 const { recordRun } = require('./flow-executor-run');
 const { toLogFilename } = require('../shared/date-utils');
+const { generateId } = require('../shared/id-utils');
 
 // --- Shared typedefs ---
 
@@ -139,7 +140,7 @@ function execute(deps, runningFlows, flow) {
   const ptyManager = deps.getPtyManager();
   if (!ptyManager) return;
 
-  const ptyId = `flow-${flow.id}-${Date.now()}`;
+  const ptyId = generateId(`flow-${flow.id}`);
   const cwd = flow.cwd || os.homedir();
   const runTimestamp = toLogFilename();
 
