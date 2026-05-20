@@ -4,7 +4,7 @@ const { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, 
 describe('session-helpers', () => {
   describe('generateSessionId', () => {
     it('starts with "session-"', () => {
-      expect(generateSessionId()).toMatch(/^session-\d+-[a-z0-9]+$/);
+      expect(generateSessionId()).toMatch(/^session-\d+-\d+-[a-z0-9]+$/);
     });
 
     it('generates unique ids', () => {

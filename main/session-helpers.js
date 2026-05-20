@@ -1,13 +1,13 @@
 const { buildRecord } = require('./record-helpers');
 const { nowISO } = require('../shared/date-utils');
+const { generateId } = require('../shared/id-utils');
 
 const MAX_SESSIONS = 200;
 const MS_PER_SEC = 1000;
 const FLOW_PREFIX = 'flow-';
-const ID_RAND_LEN = 8;
 
 function generateSessionId() {
-  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 2 + ID_RAND_LEN)}`;
+  return generateId('session');
 }
 
 function durationSec(startedAt) {
