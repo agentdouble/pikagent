@@ -3,6 +3,7 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { BASE_DIR } = require('./paths');
+const { readJsonSync } = require('./fs-utils');
 
 const SOURCE_CONFIG_FILE = path.join(BASE_DIR, 'source-config.json');
 
@@ -16,22 +17,14 @@ function init() {
   }
 }
 
-function _loadConfig() {
-  try {
-    return JSON.parse(fs.readFileSync(SOURCE_CONFIG_FILE, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
 function _getProjectRoot() {
   if (!app.isPackaged) return app.getAppPath();
-  return _loadConfig()?.root || null;
+  return readJsonSync(SOURCE_CONFIG_FILE)?.root || null;
 }
 
 function _getShellPath() {
   if (!app.isPackaged) return process.env.PATH;
-  return _loadConfig()?.shellPath || process.env.PATH;
+  return readJsonSync(SOURCE_CONFIG_FILE)?.shellPath || process.env.PATH;
 }
 
 // --- Shell execution ---
