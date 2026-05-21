@@ -1,8 +1,9 @@
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
 const { ensureDirOnce } = require('./fs-utils');
-const { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
+const { isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
 const { nowISO } = require('../shared/date-utils');
+const { generateId } = require('../shared/id-utils');
 const { createPollingManager } = require('../shared/polling-manager');
 const { CachedJsonFile } = require('./cached-json-file');
 const { createLogger, createManagerSafe } = require('./logger');
@@ -75,7 +76,7 @@ class SessionManager {
     );
 
     this._activeSessions[termId] = {
-      id: generateSessionId(),
+      id: generateId('session'),
       termId,
       agent: agentName,
       cwd: cwd || os.homedir(),

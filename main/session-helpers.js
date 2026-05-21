@@ -1,14 +1,9 @@
 const { buildRecord } = require('./record-helpers');
 const { nowISO } = require('../shared/date-utils');
-const { generateId } = require('../shared/id-utils');
 
 const MAX_SESSIONS = 200;
 const MS_PER_SEC = 1000;
 const FLOW_PREFIX = 'flow-';
-
-function generateSessionId() {
-  return generateId('session');
-}
 
 function durationSec(startedAt) {
   return Math.round((Date.now() - new Date(startedAt).getTime()) / MS_PER_SEC);
@@ -37,4 +32,4 @@ function trimSessions(sessions, max = MAX_SESSIONS) {
   return sessions.length > max ? sessions.slice(-max) : sessions;
 }
 
-module.exports = { generateSessionId, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions };
+module.exports = { isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions };
