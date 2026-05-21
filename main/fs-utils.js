@@ -1,9 +1,18 @@
+const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 
 async function readJson(filePath) {
   try {
     return JSON.parse(await fsp.readFile(filePath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+function readJsonSync(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   } catch {
     return null;
   }
@@ -38,4 +47,4 @@ async function writeJson(filePath, data) {
   await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-module.exports = { readJson, writeJson, ensureDirOnce, readDirJson, listDirNames };
+module.exports = { readJson, readJsonSync, writeJson, ensureDirOnce, readDirJson, listDirNames };
