@@ -11,11 +11,12 @@
  * For each item, calls `accFn(bucket, item)` to merge data into the bucket.
  * Creates new buckets via `initFn()` when a key is first seen.
  *
- * @param {Array<unknown>} items
- * @param {(item: unknown) => string|null} keyFn    - extracts grouping key from item
- * @param {() => unknown} initFn                    - creates initial bucket value
- * @param {(bucket: unknown, item: unknown) => void} accFn - mutates bucket with item
- * @returns {Record<string, unknown>} map of key -> accumulated bucket
+ * @template T, B
+ * @param {Array<T>} items
+ * @param {(item: T) => string|null} keyFn    - extracts grouping key from item
+ * @param {() => B} initFn                    - creates initial bucket value
+ * @param {(bucket: B, item: T) => void} accFn - mutates bucket with item
+ * @returns {Record<string, B>} map of key -> accumulated bucket
  */
 function aggregateByKey(items, keyFn, initFn, accFn) {
   const result = {};
@@ -31,13 +32,14 @@ function aggregateByKey(items, keyFn, initFn, accFn) {
 /**
  * Group items by key, then apply an aggregation function to each group.
  *
- * @param {Array<unknown>} items
- * @param {(item: unknown) => string|null} keyFn  - extracts grouping key from item
- * @param {(groupItems: Array<unknown>) => unknown} aggFn  - aggregation function per group
- * @returns {Record<string, unknown>} map of key -> aggregated value
+ * @template T, R
+ * @param {Array<T>} items
+ * @param {(item: T) => string|null} keyFn  - extracts grouping key from item
+ * @param {(groupItems: Array<T>) => R} aggFn  - aggregation function per group
+ * @returns {Record<string, R>} map of key -> aggregated value
  */
 function groupAndAggregate(items, keyFn, aggFn) {
-  const groups = aggregateByKey(items, keyFn, () => [], (bucket, item) => bucket.push(item));
+  const groups = aggregateByKey(items, keyFn, () => /** @type {Array<T>} */ ([]), (bucket, item) => bucket.push(item));
   const result = {};
   for (const [key, group] of Object.entries(groups)) {
     result[key] = aggFn(group);
@@ -87,7 +89,7 @@ function sumByKeys(obj, keys) {
  * Each entry in `fieldMap` must have a `key` (target name) and an `apiField` (source name).
  * Missing source values default to `defaultValue`.
  *
- * @param {Record<string, unknown>} source
+ * @param {Record<string, number|undefined>} source
  * @param {Array<{key: string, apiField: string}>} fieldMap
  * @param {number} [defaultValue=0]
  * @returns {Record<string, number>}
@@ -98,8 +100,9 @@ function mapFields(source, fieldMap, defaultValue = 0) {
 
 /**
  * Counts occurrences of each key produced by keyFn.
- * @param {Array<unknown>} items
- * @param {(item: unknown) => string} keyFn - Returns the key for each item
+ * @template T
+ * @param {Array<T>} items
+ * @param {(item: T) => string} keyFn - Returns the key for each item
  * @returns {Record<string, number>} map of key -> count
  */
 function countBy(items, keyFn) {
@@ -116,24 +119,26 @@ function countBy(items, keyFn) {
  * For each `[key, value]` pair, calls `itemBuilder(key, value)` to produce a record,
  * then sorts records by `record[valueKey]` descending and keeps the top `limit`.
  *
- * @param {Record<string, unknown>} map
- * @param {(key: string, value: unknown) => Record<string, unknown>} itemBuilder
- * @param {string} valueKey - record property name used for descending sort
+ * @template V, R
+ * @param {Record<string, V>} map
+ * @param {(key: string, value: V) => R} itemBuilder
+ * @param {keyof R & string} valueKey - record property name used for descending sort
  * @param {number} limit
- * @returns {Array<Record<string, unknown>>}
+ * @returns {Array<R>}
  */
 function rankTopByDesc(map, itemBuilder, valueKey, limit) {
   return Object.entries(map)
     .map(([k, v]) => itemBuilder(k, v))
-    .sort((a, b) => b[valueKey] - a[valueKey])
+    .sort((a, b) => Number(b[valueKey]) - Number(a[valueKey]))
     .slice(0, limit);
 }
 
 /**
  * Build a Map keyed by `keyFn(item)` for O(1) lookup.
- * @param {Array<unknown>} items
- * @param {(item: unknown) => string} keyFn - extracts the lookup key from each item
- * @returns {Map<string, unknown>}
+ * @template T
+ * @param {Array<T>} items
+ * @param {(item: T) => string} keyFn - extracts the lookup key from each item
+ * @returns {Map<string, T>}
  */
 function createLookupMap(items, keyFn) {
   return new Map(items.map(item => [keyFn(item), item]));
@@ -142,9 +147,10 @@ function createLookupMap(items, keyFn) {
 /**
  * Resolve an array of keys to their values using a lookup Map.
  * Keys not found in the map are silently skipped.
- * @param {Map<string, unknown>} map
+ * @template T
+ * @param {Map<string, T>} map
  * @param {string[]} keys
- * @returns {Array<unknown>}
+ * @returns {Array<T>}
  */
 function resolveFromMap(map, keys) {
   return keys.map(k => map.get(k)).filter(Boolean);
@@ -154,7 +160,8 @@ function resolveFromMap(map, keys) {
  * Compute a category rate from items using a category set map.
  * Generic version that accepts category definitions.
  *
- * @param {Array<Record<string, unknown>>} items
+ * @template {Record<string, unknown>} T
+ * @param {Array<T>} items
  * @param {Record<string, Set<unknown>>} categories - map of categoryName -> Set of matching values
  * @param {string} [field='status'] - field to read from each item
  * @param {string} [rateKey='success'] - category key used to compute the rate
@@ -200,11 +207,12 @@ function computeNumericStats(values) {
  * Declarative metrics builder. Computes rate, duration, and perDay from a list
  * of items and merges any extra fields supplied by the caller.
  *
- * @param {Array<{ status?: string, [key: string]: unknown }>} items
- * @param {{ rateFn: (items: Array<unknown>) => Record<string, unknown>,
- *           durationMapper: (item: unknown) => number|null,
- *           dateExtractor: (item: unknown) => string,
- *           perDayFn: (items: Array<unknown>, dateExtractor: (item: unknown) => string, days: number) => Array<unknown>,
+ * @template T
+ * @param {Array<T>} items
+ * @param {{ rateFn: (items: Array<T>) => Record<string, unknown>,
+ *           durationMapper: (item: T) => number|null,
+ *           dateExtractor: (item: T) => string,
+ *           perDayFn: (items: Array<T>, dateExtractor: (item: T) => string, days: number) => Array<unknown>,
  *           days?: number,
  *           extra?: Record<string, unknown> }} config
  * @returns {Record<string, unknown>}
@@ -226,10 +234,11 @@ function buildMetrics(items, { rateFn, durationMapper, dateExtractor, perDayFn, 
  *   const buildMetrics = createDomainMetricsBuilder({ rateFn, perDayFn, days });
  *   buildMetrics(items, { durationMapper, dateExtractor, extra });
  *
- * @param {{ rateFn: (items: Array<unknown>) => Record<string, unknown>,
- *           perDayFn: (items: Array<unknown>, dateExtractor: (item: unknown) => string, days: number) => Array<unknown>,
+ * @template T
+ * @param {{ rateFn: (items: Array<T>) => Record<string, unknown>,
+ *           perDayFn: (items: Array<T>, dateExtractor: (item: T) => string, days: number) => Array<unknown>,
  *           days?: number }} domainConfig
- * @returns {(items: Array<unknown>, opts: { durationMapper: (item: unknown) => number|null, dateExtractor: (item: unknown) => string, extra?: Record<string, unknown> }) => Record<string, unknown>}
+ * @returns {(items: Array<T>, opts: { durationMapper: (item: T) => number|null, dateExtractor: (item: T) => string, extra?: Record<string, unknown> }) => Record<string, unknown>}
  */
 function createDomainMetricsBuilder({ rateFn, perDayFn, days = 30 }) {
   return function domainBuildMetrics(items, { durationMapper, dateExtractor, extra = {} }) {
