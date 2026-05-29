@@ -5,7 +5,7 @@
  * management (setTerminalRoot, removeTerminal, refreshSection).
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { toggleCollapsible } from './dom-lists.js';
 import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,

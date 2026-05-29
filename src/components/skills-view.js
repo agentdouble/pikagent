@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom-core.js';
+import { _el } from '../utils/dom-api.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { ComponentBase } from '../utils/component-base.js';
 import {

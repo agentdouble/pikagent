@@ -8,7 +8,7 @@
  * @typedef {{ setupDropZone: (el: HTMLElement, targetDir: string|(() => string|null)) => void, promptNewEntry: (dirPath: string, cEl: HTMLElement, depth: number, eDirs: Set<string>, type: string) => void, promptRename: (path: string, nameEl: HTMLElement) => void, refreshSection: (cwd: string) => void, contextMenuApi: unknown }} SectionDOMCallbacks
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { buildChevronRow, toggleCollapsible } from './dom-lists.js';
 import { attachContextMenu } from './context-menu.js';
 import { emitWorkspaceCreateWorktree, emitWorkspaceOpenPr } from './workspace-events.js';

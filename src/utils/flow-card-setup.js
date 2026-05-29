@@ -8,7 +8,7 @@
  * @typedef {{ id: string, runs?: Array<FlowRun>, enabled?: boolean }} FlowDescriptor
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { toggleCollapsible } from './dom-lists.js';
 import { getLastRun } from './flow-view-helpers.js';
 import { cleanupAllDragState } from './flow-drag-cleanup.js';

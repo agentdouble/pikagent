@@ -2,7 +2,7 @@
  * Color filter logic for tab manager.
  * Extracted from tab-manager.js to reduce component size.
  */
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { COLOR_GROUPS } from './tab-constants.js';
 import { attachContextMenu } from './context-menu.js';
 

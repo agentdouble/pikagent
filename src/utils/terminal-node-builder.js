@@ -4,7 +4,7 @@
  */
 
 import { emitTerminalCreated } from './terminal-events.js';
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { onClickStopped } from './event-helpers.js';
 import { SplitNode, DRAG_GRIP, createSplitContainer } from './terminal-panel-helpers.js';
 import { TerminalInstance } from './terminal-instance.js';

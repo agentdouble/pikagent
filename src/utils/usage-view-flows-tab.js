@@ -3,7 +3,7 @@
  * Builds the cards / chart / tables descriptor consumed by the view.
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { formatDuration, rateColor } from './usage-formatters.js';
 import { buildTableRow, createRunBasedTabConfig } from './usage-view-shared.js';
 

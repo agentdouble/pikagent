@@ -1,4 +1,4 @@
-import { _el } from '../utils/dom-core.js';
+import { _el } from '../utils/dom-api.js';
 import { buildTabBar } from '../utils/dom-tabs.js';
 import { buildViewHeader } from '../utils/view-header.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';

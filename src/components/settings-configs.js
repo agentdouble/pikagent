@@ -2,7 +2,7 @@
  * Workspace Configs section renderer for SettingsModal.
  * Extracted from settings-modal.js to reduce component size.
  */
-import { _el } from '../utils/dom-core.js';
+import { _el } from '../utils/dom-api.js';
 import { CONFIG_ACTIONS, BOTTOM_CONFIG_BUTTONS, formatConfigMeta } from '../utils/settings-helpers.js';
 import { buildSettingsSection, createActionBar, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
