@@ -6,6 +6,7 @@ const {
 } = require('./usage-helpers');
 const { createLogger, trySafe } = require('./logger');
 const { runCommand } = require('./command-utils');
+const { splitLines } = require('./parse-utils');
 
 const log = createLogger('git-metrics-collector');
 
@@ -18,7 +19,7 @@ async function getMostModifiedFiles(cwds) {
         { cwd, encoding: 'utf-8', timeout: GIT_TIMEOUT_MS },
         { fallback: '', trySafe, log, label: `git log in ${cwd}` },
       );
-      const files = stdout ? stdout.split('\n').map((l) => l.trim()).filter(Boolean) : [];
+      const files = stdout ? splitLines(stdout, (l) => l.trim()).filter(Boolean) : [];
       return { cwd, files };
     })
   );

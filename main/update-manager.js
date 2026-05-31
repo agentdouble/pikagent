@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { BASE_DIR } = require('./paths');
 const { readJsonSync } = require('./fs-utils');
+const { splitLines } = require('./parse-utils');
 
 const SOURCE_CONFIG_FILE = path.join(BASE_DIR, 'source-config.json');
 
@@ -58,7 +59,7 @@ async function checkForUpdates() {
   try {
     await _run('git fetch origin', root);
     const log = await _run(`git log HEAD..origin/${UPDATE_BRANCH} --oneline`, root);
-    const commits = log ? log.split('\n').filter(Boolean) : [];
+    const commits = log ? splitLines(log) : [];
     return { available: commits.length > 0, commits, count: commits.length };
   } catch (err) {
     return { available: false, error: err.message };
