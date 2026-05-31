@@ -1,5 +1,5 @@
 import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
-import { _el } from '../utils/dom-core.js';
+import { _el } from '../utils/dom-api.js';
 import { createActionButton } from '../utils/dom-buttons.js';
 import { buildTabBar } from '../utils/dom-tabs.js';
 import { createModalOverlay } from '../utils/dom-dialogs.js';

@@ -2,7 +2,7 @@
  * Pure rendering helpers for flow cards.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { createActionButton, buildDomainButtonBar } from './dom-buttons.js';
 import { formatSchedule } from './flow-schedule-helpers.js';
 import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flow-view-helpers.js';

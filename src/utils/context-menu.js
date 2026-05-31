@@ -2,7 +2,7 @@
  * @typedef {{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<ContextMenuItem> }} ContextMenuItem
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { renderList, createListItem } from './dom-lists.js';
 import { onKeyAction } from './event-helpers.js';
 import { addListener } from './drag-helpers.js';

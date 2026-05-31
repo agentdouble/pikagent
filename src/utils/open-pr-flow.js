@@ -7,7 +7,7 @@
  */
 
 import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { gitFlowStep } from './git-flow-helpers.js';
 
 /**

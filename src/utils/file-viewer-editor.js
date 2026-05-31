@@ -5,7 +5,7 @@
  * line numbers, and file close logic.  State is passed in, never owned here.
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { EMPTY_MESSAGE, MODE_CONFIG, ALL_STATIC_ELEMENTS, MODE_ACTIVATE } from './editor-helpers.js';
 import { pinnedFiles } from './editor-helpers.js';
 import {

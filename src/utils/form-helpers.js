@@ -4,7 +4,7 @@
  * Provides utilities for inline <input> wiring and inline rename workflows.
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { onClickStopped, onKeyAction } from './event-helpers.js';
 
 /**

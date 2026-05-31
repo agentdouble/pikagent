@@ -4,7 +4,7 @@
  */
 
 import { emitFileOpen } from './workspace-events.js';
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { createActionButton } from './dom-buttons.js';
 import { buildChevronRow } from './dom-lists.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS, HEADER_ACTIONS } from './file-tree-helpers.js';

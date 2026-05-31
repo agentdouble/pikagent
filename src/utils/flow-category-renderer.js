@@ -3,7 +3,7 @@
  * Handles category headers, collapse state, and drag-drop zone setup.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { buildDomainButtonBar } from './dom-buttons.js';
 import { buildChevronRow } from './dom-lists.js';
 import { setupDropZone } from './drop-zone-helpers.js';

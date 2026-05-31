@@ -1,4 +1,4 @@
-import { _el, _vis as _visGeneric } from './dom-core.js';
+import { _el, _vis as _visGeneric } from './dom-api.js';
 import { buildSelect } from './form-helpers.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
 // --- Constants ---

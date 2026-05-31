@@ -4,7 +4,7 @@
  * Pure DOM-construction functions. State is passed in, never owned here.
  */
 
-import { _el } from './dom-core.js';
+import { _el } from './dom-api.js';
 import { renderList } from './dom-lists.js';
 import { buildViewHeader } from './view-header.js';
 
