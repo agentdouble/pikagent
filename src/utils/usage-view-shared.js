@@ -16,7 +16,7 @@ export const TABS = [
 
 // --- Chart segment definitions ---
 
-export const RUN_CHART_SEGMENTS = [
+const RUN_CHART_SEGMENTS = [
   { key: 'success', cls: 'usage-chart-bar-success' },
   { key: 'error', cls: 'usage-chart-bar-error' },
   { key: 'running', cls: 'usage-chart-bar-running' },
@@ -124,7 +124,7 @@ export function createSection(title) {
  * Build the two run-metric cards shared by agents and flows tabs:
  * success rate + average duration (with min/max sub-text).
  */
-export function runMetricCards(m) {
+function runMetricCards(m) {
   return [
     { label: 'Taux succès', value: `${m.rate.rate}%`, cls: rateCls(m.rate.rate) },
     { label: 'Durée moy.', value: formatDuration(m.duration.avg), cls: 'usage-stat-value-blue', sub: m.duration.count > 0 ? `min: ${formatDuration(m.duration.min)} · max: ${formatDuration(m.duration.max)}` : '' },
