@@ -7,16 +7,6 @@ const COLOR_SHORTCUTS = COLOR_GROUPS.map((cg) => ({
   colorId: cg.id,
 }));
 
-const DIRECT_TAB_SHORTCUTS = Array.from({ length: 9 }, (_, i) => {
-  const index = i + 1;
-  return {
-    id: `goToTab${index}`,
-    label: `Go to Workspace ${index}`,
-    index,
-    keys: [`control+${index}`],
-  };
-});
-
 // Ordered list of modifier keys for combo string building
 const MODIFIERS = [
   { key: 'shiftKey', name: 'shift' },
@@ -65,7 +55,6 @@ export const DEFAULT_BINDINGS = [
   { id: 'focusDown', label: 'Focus Panel Down', keys: ['control+arrowdown'] },
   { id: 'nextTab', label: 'Next Workspace', keys: ['control+tab'] },
   { id: 'prevTab', label: 'Previous Workspace', keys: ['shift+control+tab'] },
-  ...DIRECT_TAB_SHORTCUTS.map(({ id, label, keys }) => ({ id, label, keys })),
   { id: 'showBoard', label: 'Show Board', keys: ['meta+b', 'control+b'] },
   { id: 'showWork', label: 'Show Work', keys: ['meta+e', 'control+e'] },
   { id: 'showFlow', label: 'Show Flow', keys: ['shift+meta+f', 'shift+control+f'] },
@@ -85,9 +74,6 @@ export const ACTION_HANDLERS = {
   focusDown: (tm) => tm.focusDirection('down'),
   nextTab: (tm) => tm.nextTab(),
   prevTab: (tm) => tm.prevTab(),
-  ...Object.fromEntries(
-    DIRECT_TAB_SHORTCUTS.map(({ id, index }) => [id, (tm) => tm.goToTabIndex(index)]),
-  ),
   showBoard: (tm) => tm.switchToBoard(),
   showWork: (tm) => tm.setSidebarMode('work'),
   showFlow: (tm) => tm.setSidebarMode('flow'),
@@ -100,7 +86,6 @@ export const ACTION_HANDLERS = {
 export const ALWAYS_ALLOWED_IDS = new Set([
   'nextTab', 'prevTab', 'showBoard', 'showWork', 'showFlow',
   'splitVertical', 'splitHorizontal',
-  ...DIRECT_TAB_SHORTCUTS.map(({ id }) => id),
   ...COLOR_SHORTCUTS.map(({ id }) => id),
 ]);
 

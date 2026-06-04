@@ -68,10 +68,9 @@ export class TerminalInstance {
     }));
     this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd, { homedir, openPath }));
 
-    // Let app-level workspace navigation shortcuts bubble up to the shortcut manager.
+    // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
     this.terminal.attachCustomKeyEventHandler((e) => {
       if (e.key === 'Tab' && e.ctrlKey) return false;
-      if (e.ctrlKey && !e.metaKey && !e.altKey && /^[1-9]$/.test(e.key)) return false;
       return true;
     });
 
@@ -109,9 +108,6 @@ export class TerminalInstance {
         this.cwd = cwd;
         /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
         bus.emit(EVENTS.TERMINAL_CWD_CHANGED, { id: this.id, cwd });
-      } else if (cwd) {
-        /** @fires terminal:branchCheck {{ id: string, cwd: string }} — branch may have changed */
-        bus.emit(EVENTS.TERMINAL_BRANCH_CHECK, { id: this.id, cwd });
       }
     }, CWD_POLL_MS);
   }

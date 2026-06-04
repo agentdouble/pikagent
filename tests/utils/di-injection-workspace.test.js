@@ -9,17 +9,14 @@ import * as path from 'node:path';
 // ── 5. tab-lifecycle: onTerminalCwdChanged uses injected gitBranch ──
 
 describe('DI: tab-lifecycle onTerminalCwdChanged', () => {
-  let onTerminalCwdChanged, refreshTerminalBranch;
+  let onTerminalCwdChanged;
 
   beforeAll(async () => {
     vi.doMock('../../src/utils/dom.js', () => ({
       _el: () => ({}),
       showConfirmDialog: vi.fn().mockResolvedValue(true),
     }));
-    vi.doMock('../../src/utils/events.js', () => ({
-      bus: { emit: vi.fn(), on: vi.fn() },
-      EVENTS: { WORKSPACE_ACTIVATED: 'workspace:activated' },
-    }));
+    vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
     vi.doMock('../../src/utils/id.js', () => ({ generateId: (prefix) => prefix + '-1' }));
     vi.doMock('../../src/utils/tab-manager-helpers.js', () => ({
       WorkspaceTab: class { constructor(id, name, cwd) { this.id = id; this.name = name; this.cwd = cwd; } },
@@ -33,12 +30,11 @@ describe('DI: tab-lifecycle onTerminalCwdChanged', () => {
 
     const mod = await import('../../src/utils/tab-lifecycle.js');
     onTerminalCwdChanged = mod.onTerminalCwdChanged;
-    refreshTerminalBranch = mod.refreshTerminalBranch;
   });
 
   afterAll(() => { vi.restoreAllMocks(); });
 
-  it('calls injected gitBranch when active terminal changes cwd', async () => {
+  it('calls injected gitBranch when active terminal changes cwd', () => {
     const gitBranch = vi.fn().mockResolvedValue('main');
 
     const tabs = new Map();
@@ -54,54 +50,9 @@ describe('DI: tab-lifecycle onTerminalCwdChanged', () => {
       },
     });
 
-    await onTerminalCwdChanged(tabs, 'tab1', 'term1', '/new', { gitBranch });
+    onTerminalCwdChanged(tabs, 'tab1', 'term1', '/new', { gitBranch });
 
     expect(gitBranch).toHaveBeenCalledWith('/new');
-    expect(tabs.get('tab1').branchBadgeEl.textContent).toBe(' main');
-    expect(tabs.get('tab1').currentBranch).toBe('main');
-  });
-
-  it('refreshes branch badge when cwd is unchanged', async () => {
-    const gitBranch = vi.fn().mockResolvedValue('main');
-
-    const tabs = new Map();
-    tabs.set('tab1', {
-      id: 'tab1',
-      cwd: '/repo',
-      currentBranch: 'dev',
-      branchBadgeEl: { textContent: ' dev' },
-      terminalPanel: {
-        activeTerminal: { terminal: { id: 'term1' } },
-        terminals: new Map([['term1', { id: 'term1' }]]),
-      },
-    });
-
-    await refreshTerminalBranch(tabs, 'tab1', 'term1', '/repo', { gitBranch });
-
-    expect(gitBranch).toHaveBeenCalledWith('/repo');
-    expect(tabs.get('tab1').branchBadgeEl.textContent).toBe(' main');
-    expect(tabs.get('tab1').currentBranch).toBe('main');
-  });
-
-  it('does not refresh branch for inactive terminal branch checks', async () => {
-    const gitBranch = vi.fn().mockResolvedValue('main');
-
-    const tabs = new Map();
-    tabs.set('tab1', {
-      id: 'tab1',
-      cwd: '/repo',
-      currentBranch: 'dev',
-      branchBadgeEl: { textContent: ' dev' },
-      terminalPanel: {
-        activeTerminal: { terminal: { id: 'term2' } },
-        terminals: new Map([['term1', { id: 'term1' }]]),
-      },
-    });
-
-    await refreshTerminalBranch(tabs, 'tab1', 'term1', '/repo', { gitBranch });
-
-    expect(gitBranch).not.toHaveBeenCalled();
-    expect(tabs.get('tab1').branchBadgeEl.textContent).toBe(' dev');
   });
 
   it('does not call gitBranch for non-active terminal', () => {

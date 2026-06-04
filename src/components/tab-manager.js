@@ -16,7 +16,6 @@ import {
   createTab as doCreateTab, closeTab as doCloseTab,
   switchTo as doSwitchTo,
   reorderEntries, findCycleTarget, findColorGroupTarget,
-  findIndexedTabTarget,
 } from '../utils/tab-facade.js';
 
 export class TabManager {
@@ -328,11 +327,6 @@ export class TabManager {
 
   prevTab() {
     const target = findCycleTarget(this.tabs, this.activeTabId, -1);
-    if (target) this.switchTo(target);
-  }
-
-  goToTabIndex(index) {
-    const target = findIndexedTabTarget(this.tabs, index, (tab) => this._isTabVisible(tab));
     if (target) this.switchTo(target);
   }
 }

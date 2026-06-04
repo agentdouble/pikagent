@@ -80,8 +80,6 @@ export class WorkspaceTab {
     this.layoutElement = null;
     this.pathTextEl = null;
     this.branchBadgeEl = null;
-    this.currentBranch = null;
-    this._branchRefreshId = null;
     this._panelWidths = null;
     /**
      * When set, this tab owns a git worktree and should offer cleanup on close.
@@ -130,19 +128,6 @@ export function findCycleTarget(tabs, activeTabId, step) {
     if (tab.noShortcut) continue;
     if ((tab.colorGroup ?? null) !== activeColor) continue;
     return candidate;
-  }
-  return null;
-}
-
-/** Find the nth keyboard-addressable tab in current tab order. */
-export function findIndexedTabTarget(tabs, index, isVisible = () => true) {
-  if (!Number.isInteger(index) || index < 1) return null;
-  let visibleIndex = 0;
-  for (const [id, tab] of tabs) {
-    if (tab.noShortcut) continue;
-    if (!isVisible(tab)) continue;
-    visibleIndex += 1;
-    if (visibleIndex === index) return id;
   }
   return null;
 }

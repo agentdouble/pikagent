@@ -8,7 +8,7 @@
 
 import { subscribeBus, EVENTS } from './events.js';
 import { extractFolderName } from './file-tree-helpers.js';
-import { findTabForTerminal, onTerminalCwdChanged, refreshTerminalBranch } from './tab-lifecycle.js';
+import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
 import { createWorktreeFlow } from './worktree-flow.js';
 import { openPrFlow } from './open-pr-flow.js';
 
@@ -79,12 +79,6 @@ export function setupBusListeners(deps) {
         renderTabBar: deps.renderTabBar,
       });
       deps.configManager.scheduleAutoSave();
-    }],
-    /** @listens terminal:branchCheck {{ id: string, cwd: string }} */
-    [EVENTS.TERMINAL_BRANCH_CHECK, ({ id, cwd }) => {
-      refreshTerminalBranch(deps.tabs, deps.getActiveTabId(), id, cwd, {
-        gitBranch: deps.api.gitBranch,
-      });
     }],
     /** @listens terminal:created {{ id: string, cwd: string }} */
     [EVENTS.TERMINAL_CREATED, ({ id, cwd }) => {

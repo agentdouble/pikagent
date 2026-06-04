@@ -57,7 +57,6 @@ function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId) {
     if (firstTermId) tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
   }
 }
-
 /**
  * Render the full workspace layout for a tab.
  * @param {RenderWorkspaceDeps} deps
@@ -88,8 +87,7 @@ export async function renderWorkspace({ workspaceContainer, getActiveTabId, getA
   _initTabComponents(tab, layout, sides, termContainer, getActiveTabId);
 
   const branch = await gitBranch(tab.cwd);
-  tab.currentBranch = branch || null;
-  if (tab.branchBadgeEl) tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
+  if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
 
   /** @fires workspace:activated {undefined} — initial workspace render complete */
   bus.emit(EVENTS.WORKSPACE_ACTIVATED);
