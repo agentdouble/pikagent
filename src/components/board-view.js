@@ -11,7 +11,8 @@ import {
   STATUS_CONFIG, ALL_CARD_CLASSES,
   HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
-  formatCardLabel, appendPreviewChunk, getPreviewText, formatElapsed, sendBoardReply,
+  formatCardLabel, appendPreviewChunk, getPreviewText, formatElapsed,
+  getTerminalBufferPreview, sendBoardReply,
 } from '../utils/board-helpers.js';
 import { boardFacade } from '../facades/board-facade.js';
 
@@ -213,12 +214,25 @@ class BoardView extends ComponentBase {
     if (data.activityEl) data.activityEl.textContent = formatElapsed(Date.now() - data.lastActivityAt);
   }
 
-  _updateCardPreview(data) {
+  _updateCardPreview(termId, data) {
     if (!data.previewEl) return;
-    const previewText = getPreviewText(data.preview);
+    const terminal = this._getTerminalNode(termId)?.terminal?.terminal;
+    const previewText = getTerminalBufferPreview(terminal) || getPreviewText(data.preview);
     data.previewEl.textContent = previewText
       ? previewText
       : 'No recent output';
+  }
+
+  _queuePreviewRefresh(termId, data) {
+    if (data.previewRefreshQueued) return;
+    data.previewRefreshQueued = true;
+    const schedule = typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame
+      : (callback) => setTimeout(callback, 0);
+    schedule(() => {
+      data.previewRefreshQueued = false;
+      if (this.cards.has(termId)) this._updateCardPreview(termId, data);
+    });
   }
 
   addCard(termId, info) {
@@ -245,6 +259,7 @@ class BoardView extends ComponentBase {
       statusBadge,
       activityEl,
       lastActivityAt: Date.now(),
+      previewRefreshQueued: false,
     };
 
     card.addEventListener('click', (event) => {
@@ -260,7 +275,8 @@ class BoardView extends ComponentBase {
       cardData.dataBytes += data.length;
       cardData.lastActivityAt = Date.now();
       appendPreviewChunk(cardData.preview, data);
-      this._updateCardPreview(cardData);
+      this._updateCardPreview(termId, cardData);
+      this._queuePreviewRefresh(termId, cardData);
     });
 
     this.boardEl.insertBefore(card, this.emptyEl);
@@ -341,7 +357,10 @@ class BoardView extends ComponentBase {
         if (!this.disposed) {
           this.scanAgents();
           this._checkIdleCards();
-          for (const [termId, data] of this.cards) this._refreshCardMeta(termId, data);
+          for (const [termId, data] of this.cards) {
+            this._refreshCardMeta(termId, data);
+            this._updateCardPreview(termId, data);
+          }
         }
       });
     }

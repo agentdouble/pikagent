@@ -55,24 +55,65 @@ export function formatElapsed(ms) {
   return `${Math.floor(minutes / 60)}h ago`;
 }
 
+function applyBackspaces(text) {
+  const chars = [];
+  for (const char of text) {
+    if (char === '\b') chars.pop();
+    else chars.push(char);
+  }
+  return chars.join('');
+}
+
 export function stripAnsi(text) {
-  return String(text || '')
-    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '')
+  const withoutEscapes = String(text || '')
     .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, '')
-    .replace(/\r/g, '\n');
+    .replace(/\x1B[P^_][\s\S]*?(?:\x1B\\|\x07)/g, '')
+    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '')
+    .replace(/\x1B[()][A-Za-z0-9]/g, '')
+    .replace(/\x1B[@-Z\\-_]/g, '');
+
+  return applyBackspaces(withoutEscapes)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 }
 
 export function appendPreviewChunk(state, chunk, lineLimit = PREVIEW_LINE_LIMIT) {
   const cleaned = stripAnsi(chunk);
-  const combined = `${state.remainder || ''}${cleaned}`;
-  const parts = combined.split('\n');
-  state.remainder = parts.pop() || '';
+  let i = 0;
 
-  const lines = parts
-    .map((line) => line.trimEnd())
-    .filter((line) => line.trim().length > 0);
+  const commitLine = () => {
+    const line = (state.remainder || '').trimEnd();
+    if (line.trim()) state.lines.push(line);
+    state.remainder = '';
+  };
 
-  state.lines.push(...lines);
+  if (state.pendingCarriageReturn) {
+    if (cleaned[0] === '\n') {
+      commitLine();
+      i = 1;
+    } else {
+      state.remainder = '';
+    }
+    state.pendingCarriageReturn = false;
+  }
+
+  for (; i < cleaned.length; i += 1) {
+    const char = cleaned[i];
+    if (char === '\r') {
+      if (i + 1 >= cleaned.length) {
+        state.pendingCarriageReturn = true;
+      } else if (cleaned[i + 1] === '\n') {
+        commitLine();
+        i += 1;
+      } else {
+        state.remainder = '';
+      }
+    } else if (char === '\n') {
+      commitLine();
+    } else {
+      state.remainder = `${state.remainder || ''}${char}`;
+    }
+  }
+
   state.lines = state.lines.slice(-lineLimit);
   return state.lines;
 }
@@ -81,6 +122,42 @@ export function getPreviewText(state) {
   const lines = [...state.lines];
   if (state.remainder?.trim()) lines.push(state.remainder.trimEnd());
   return lines.slice(-PREVIEW_LINE_LIMIT).join('\n');
+}
+
+function cleanBufferLine(text) {
+  return stripAnsi(text).replace(/[\r\n]/g, '').trimEnd();
+}
+
+export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMIT) {
+  const buffer = terminal?.buffer?.active;
+  if (!buffer || typeof buffer.getLine !== 'function') return '';
+
+  const length = Number.isFinite(buffer.length) ? buffer.length : 0;
+  if (length <= 0) return '';
+
+  const rows = Number.isFinite(terminal.rows) && terminal.rows > 0
+    ? terminal.rows
+    : Math.min(length, Math.max(lineLimit, 24));
+  const baseY = Number.isFinite(buffer.baseY)
+    ? buffer.baseY
+    : Math.max(0, length - rows);
+  const end = Math.min(length, baseY + rows);
+  const start = Math.max(0, end - Math.max(rows, lineLimit * 3));
+  const lines = [];
+
+  for (let i = start; i < end; i += 1) {
+    const line = buffer.getLine(i);
+    const text = cleanBufferLine(line?.translateToString?.(true) ?? '');
+    if (!text.trim()) continue;
+
+    if (line?.isWrapped && lines.length > 0) {
+      lines[lines.length - 1] = `${lines[lines.length - 1]}${text}`;
+    } else {
+      lines.push(text);
+    }
+  }
+
+  return lines.slice(-lineLimit).join('\n');
 }
 
 export function sendBoardReply(termId, value, writeFn) {
