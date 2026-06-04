@@ -83,6 +83,13 @@ export function getPreviewText(state) {
   return lines.slice(-PREVIEW_LINE_LIMIT).join('\n');
 }
 
+export function sendBoardReply(termId, value, writeFn) {
+  const text = String(value || '').trim();
+  if (!text) return false;
+  writeFn(termId, `${text}\n`);
+  return true;
+}
+
 /**
  * Determine card status based on data volume.
  * @param {number} dataBytes - bytes received in the poll interval

@@ -11,7 +11,7 @@ import {
   STATUS_CONFIG, ALL_CARD_CLASSES,
   HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
-  formatCardLabel, appendPreviewChunk, getPreviewText, formatElapsed, formatShortPath,
+  formatCardLabel, appendPreviewChunk, getPreviewText, formatElapsed, sendBoardReply,
 } from '../utils/board-helpers.js';
 import { boardFacade } from '../facades/board-facade.js';
 
@@ -144,6 +144,7 @@ class BoardView extends ComponentBase {
     const activityEl = _el('span', { className: 'board-card-activity', textContent: 'now' });
     const nameGroup = _el('div', { className: 'board-card-name-group' },
       _el('span', { className: 'board-card-agent', textContent: info.agent }),
+      _el('span', { className: 'board-card-title-inline', textContent: info.tabName }),
       statusBadge,
       activityEl,
     );
@@ -173,25 +174,42 @@ class BoardView extends ComponentBase {
     };
   }
 
+  _sendReply(termId, inputEl) {
+    if (sendBoardReply(termId, inputEl.value, boardFacade.ptyWrite)) inputEl.value = '';
+  }
+
+  _buildReplyForm(termId) {
+    const inputEl = _el('input', {
+      className: 'board-reply-input',
+      type: 'text',
+      placeholder: 'Reply to agent...',
+    });
+    const sendBtn = _el('button', {
+      className: 'board-reply-send',
+      type: 'button',
+      textContent: 'Send',
+      title: 'Send reply',
+      onClick: () => this._sendReply(termId, inputEl),
+    });
+    inputEl.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      this._sendReply(termId, inputEl);
+    });
+    return { replyForm: _el('div', { className: 'board-reply-form' }, inputEl, sendBtn), inputEl };
+  }
+
   _buildCardBody(termId, info) {
-    const cwdEl = _el('span', { className: 'board-card-meta-value', textContent: formatShortPath(this._getTerminalCwd(termId)) });
     const previewEl = _el('pre', { className: 'board-card-preview', textContent: 'No recent output' });
+    const { replyForm, inputEl } = this._buildReplyForm(termId);
     const body = _el('div', { className: 'board-card-body' },
-      _el('div', { className: 'board-card-title-row' },
-        _el('div', { className: 'board-card-title', textContent: info.tabName }),
-        _el('div', { className: 'board-card-term-id', textContent: termId }),
-      ),
-      _el('div', { className: 'board-card-meta' },
-        _el('span', { className: 'board-card-meta-label', textContent: 'cwd' }),
-        cwdEl,
-      ),
       previewEl,
+      replyForm,
     );
-    return { body, cwdEl, previewEl };
+    return { body, previewEl, inputEl };
   }
 
   _refreshCardMeta(termId, data) {
-    if (data.cwdEl) data.cwdEl.textContent = formatShortPath(this._getTerminalCwd(termId));
     if (data.activityEl) data.activityEl.textContent = formatElapsed(Date.now() - data.lastActivityAt);
   }
 
@@ -209,7 +227,7 @@ class BoardView extends ComponentBase {
     card.title = 'Open terminal';
 
     const { header, statusBadge, activityEl } = this._buildCardHeader(termId, info, card);
-    const { body, cwdEl, previewEl } = this._buildCardBody(termId, info);
+    const { body, previewEl, inputEl } = this._buildCardBody(termId, info);
     card.append(header, body);
 
     const cardData = {
@@ -223,17 +241,18 @@ class BoardView extends ComponentBase {
       dataBytes: DATA_VOLUME_THRESHOLD,
       preview: { lines: [], remainder: '' },
       previewEl,
-      cwdEl,
+      inputEl,
       statusBadge,
       activityEl,
       lastActivityAt: Date.now(),
     };
 
     card.addEventListener('click', (event) => {
-      if (event.target.closest('button')) return;
+      if (event.target.closest('button, input')) return;
       this._openTerminal(termId);
     });
     card.addEventListener('keydown', (event) => {
+      if (event.target.closest('button, input')) return;
       if (event.key === 'Enter') this._openTerminal(termId);
     });
 

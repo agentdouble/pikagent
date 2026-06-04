@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   appendPreviewChunk,
   formatElapsed,
   formatShortPath,
   getPreviewText,
+  sendBoardReply,
   stripAnsi,
 } from '../../src/utils/board-helpers.js';
 
@@ -41,5 +42,15 @@ describe('board-helpers', () => {
 
     appendPreviewChunk(state, 'ing\nnext', 3);
     expect(getPreviewText(state)).toBe('working\nnext');
+  });
+
+  it('sends board replies with a newline and ignores empty values', () => {
+    const write = vi.fn();
+
+    expect(sendBoardReply('term_1', ' continue ', write)).toBe(true);
+    expect(write).toHaveBeenCalledWith('term_1', 'continue\n');
+
+    expect(sendBoardReply('term_1', ' ', write)).toBe(false);
+    expect(write).toHaveBeenCalledTimes(1);
   });
 });
