@@ -88,7 +88,8 @@ export async function renderWorkspace({ workspaceContainer, getActiveTabId, getA
   _initTabComponents(tab, layout, sides, termContainer, getActiveTabId);
 
   const branch = await gitBranch(tab.cwd);
-  if (branch) tab.branchBadgeEl.textContent = ` ${branch}`;
+  tab.currentBranch = branch || null;
+  if (tab.branchBadgeEl) tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
 
   /** @fires workspace:activated {undefined} — initial workspace render complete */
   bus.emit(EVENTS.WORKSPACE_ACTIVATED);
@@ -131,4 +132,3 @@ export function syncFileTree(tab) {
     }
   }
 }
-

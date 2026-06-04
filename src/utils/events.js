@@ -36,6 +36,8 @@
 export const EVENTS = {
   /** @see EVENT_CATALOG['terminal:cwdChanged'] */
   TERMINAL_CWD_CHANGED: 'terminal:cwdChanged',
+  /** @see EVENT_CATALOG['terminal:branchCheck'] */
+  TERMINAL_BRANCH_CHECK: 'terminal:branchCheck',
   /** @see EVENT_CATALOG['terminal:created'] */
   TERMINAL_CREATED: 'terminal:created',
   /** @see EVENT_CATALOG['terminal:removed'] */
@@ -70,6 +72,19 @@ const EVENT_CATALOG = {
     payload: '{ id: string, cwd: string }',
     emitters: ['terminal-instance.js'],
     consumers: ['tab-manager.js', 'file-viewer.js'],
+  },
+
+  /**
+   * Fired when a terminal stays in the same working directory but repo state
+   * may have changed (e.g. user ran `git switch` or `git checkout`).
+   * @event terminal:branchCheck
+   * @type {{ id: string, cwd: string }}
+   */
+  'terminal:branchCheck': {
+    description: 'Terminal branch may have changed without a cwd change',
+    payload: '{ id: string, cwd: string }',
+    emitters: ['terminal-instance.js'],
+    consumers: ['tab-manager.js'],
   },
 
   /**

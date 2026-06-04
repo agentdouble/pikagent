@@ -108,6 +108,9 @@ export class TerminalInstance {
         this.cwd = cwd;
         /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
         bus.emit(EVENTS.TERMINAL_CWD_CHANGED, { id: this.id, cwd });
+      } else if (cwd) {
+        /** @fires terminal:branchCheck {{ id: string, cwd: string }} — branch may have changed */
+        bus.emit(EVENTS.TERMINAL_BRANCH_CHECK, { id: this.id, cwd });
       }
     }, CWD_POLL_MS);
   }
