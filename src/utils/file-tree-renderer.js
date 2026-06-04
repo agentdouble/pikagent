@@ -10,6 +10,7 @@ import { buildChevronRow } from './dom-lists.js';
 import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS, HEADER_ACTIONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';
+import { isAgentsMarkdownFile, shouldEditAgentsOnDoubleClick } from './agents-editor-settings.js';
 
 // ── SVG icon parsing ──
 
@@ -109,6 +110,12 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
     activeRowRef.current = row;
     /** @fires file:open {{ path: string, name: string }} */
     emitFileOpen({ path: entry.path, name: entry.name });
+  });
+
+  row.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    if (!shouldEditAgentsOnDoubleClick() || !isAgentsMarkdownFile(entry)) return;
+    emitFileOpen({ path: entry.path, name: entry.name, viewMode: 'edit' });
   });
 
   attachContextMenu(row, () => buildFileContextItems(

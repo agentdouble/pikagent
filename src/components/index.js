@@ -17,6 +17,7 @@ import './flow-view.js';
 import './usage-view.js';
 import './skills-view.js';
 import './settings-appearance.js';
+import './settings-editor.js';
 import './settings-keybindings.js';
 import './settings-configs.js';
 import './settings-update.js';

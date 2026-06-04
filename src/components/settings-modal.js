@@ -16,6 +16,7 @@ export class SettingsModal {
     this._updateUnsub = null;
     this.sectionRenderers = {
       keybindings: () => this._renderKeybindings(),
+      editor: () => this._renderEditor(),
       appearance: () => this._renderAppearance(),
       configs: () => this._renderConfigs(),
       update: () => this._renderUpdate(),
@@ -111,6 +112,13 @@ export class SettingsModal {
       this.shortcutManager,
       (actionId, index, badgeEl) => this.startRecording(actionId, index, badgeEl),
       () => this._renderKeybindings(),
+    );
+  }
+
+  _renderEditor() {
+    getComponent('renderEditorSettings')(
+      this.content,
+      () => this._renderEditor(),
     );
   }
 

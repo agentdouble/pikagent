@@ -9,6 +9,7 @@ export { renderModeBar } from './file-viewer-mode-bar.js';
 export { setupFileViewerListeners } from './file-viewer-listeners.js';
 export {
   openFileEntry, isModified, isPinned, togglePin, isMarkdown, closeFileEntry,
+  applyRequestedViewMode, resolveInitialViewMode,
 } from './file-viewer-files.js';
 export {
   renderFileViewerShell, renderEditor, showEmpty,

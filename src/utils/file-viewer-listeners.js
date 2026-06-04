@@ -13,7 +13,7 @@ import { onFileOpen, onWorkspaceActivated } from './workspace-events.js';
  * @param {{ isActive: () => boolean }} guards
  * @param {{
  *   switchMode: (mode: string) => void,
- *   openFile: (path: string, name: string) => void,
+ *   openFile: (path: string, name: string, options?: { viewMode?: string }) => void,
  *   gitChanges: { setCwd: (cwd: string) => void, loadChanges: () => void },
  *   getMode: () => string,
  *   loadPinnedFiles: () => void,
@@ -22,10 +22,10 @@ import { onFileOpen, onWorkspaceActivated } from './workspace-events.js';
  */
 export function setupFileViewerListeners({ isActive }, handlers) {
   return [
-    onFileOpen(({ path, name }) => {
+    onFileOpen(({ path, name, viewMode }) => {
       if (!isActive()) return;
       handlers.switchMode('files');
-      handlers.openFile(path, name);
+      handlers.openFile(path, name, { viewMode });
     }),
     onTerminalCwdChanged(({ cwd }) => {
       if (!isActive()) return;

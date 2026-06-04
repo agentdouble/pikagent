@@ -42,6 +42,7 @@ const { on: onTabWorktreeClosed, emit: emitTabWorktreeClosed } =
   createTypedEvent('tab:worktreeClosed');
 
 // ── fileOpen ────────────────────────────────────────────────────────
+// Payload: { path: string, name: string, viewMode?: 'edit'|'preview' }
 
 const { on: onFileOpen, emit: emitFileOpen } =
   createTypedEvent('file:open');

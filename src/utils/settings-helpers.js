@@ -7,6 +7,7 @@ export const MODIFIER_KEYS = ['Shift', 'Control', 'Alt', 'Meta'];
 /** Settings sidebar navigation entries. */
 export const NAV_SECTIONS = [
   { key: 'keybindings', label: 'Keyboard Shortcuts' },
+  { key: 'editor', label: 'Editor' },
   { key: 'appearance', label: 'Appearance' },
   { key: 'configs', label: 'Workspace Configs' },
   { key: 'update', label: 'Update' },

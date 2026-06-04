@@ -4,6 +4,7 @@ import {
   setupFileViewerListeners,
   openFileEntry, isModified as isFileModified, isPinned as isFilePinned,
   togglePin as toggleFilePin, isMarkdown as isFileMarkdown, closeFileEntry,
+  applyRequestedViewMode,
   renderFileViewerShell, renderEditor as doRenderEditor,
   showEmpty as doShowEmpty,
   updateLineNumbers as doUpdateLineNumbers,
@@ -50,7 +51,7 @@ class FileViewer extends ComponentBase {
   _initBusListeners() {
     const unsubs = setupFileViewerListeners(
       { isActive: () => this.isActive() },
-      { switchMode: (m) => this.switchMode(m), openFile: (p, n) => this.openFile(p, n), gitChanges: this.gitChanges, getMode: () => this.mode, loadPinnedFiles: () => this.loadPinnedFiles() },
+      { switchMode: (m) => this.switchMode(m), openFile: (p, n, opts) => this.openFile(p, n, opts), gitChanges: this.gitChanges, getMode: () => this.mode, loadPinnedFiles: () => this.loadPinnedFiles() },
     );
     for (const unsub of unsubs) this._track(unsub);
   }
@@ -66,8 +67,9 @@ class FileViewer extends ComponentBase {
 
   switchMode(mode) { doSwitchMode(this, mode, this._webviewMgr, () => this._renderModeBar()); }
 
-  async openFile(filePath, fileName) {
-    await openFileEntry(this.openFiles, filePath, fileName, { readfile: tabViewFacade.readfile });
+  async openFile(filePath, fileName, options = {}) {
+    await openFileEntry(this.openFiles, filePath, fileName, { readfile: tabViewFacade.readfile }, options);
+    applyRequestedViewMode(this.openFiles.get(filePath), options.viewMode);
     this.setActiveTab(filePath);
   }
 

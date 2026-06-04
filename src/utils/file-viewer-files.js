@@ -13,9 +13,10 @@ import { pinnedFiles } from './editor-helpers.js';
  * @param {string} filePath
  * @param {string} fileName
  * @param {{ readfile: (path: string) => Promise<{ content?: string, error?: string }> }} fsApi - injected fs API
+ * @param {{ viewMode?: string }} options
  * @returns {Promise<boolean>} true if the file was newly opened
  */
-export async function openFileEntry(openFiles, filePath, fileName, fsApi) {
+export async function openFileEntry(openFiles, filePath, fileName, fsApi, options = {}) {
   if (openFiles.has(filePath)) return false;
 
   const result = await fsApi.readfile(filePath);
@@ -23,9 +24,24 @@ export async function openFileEntry(openFiles, filePath, fileName, fsApi) {
     openFiles.set(filePath, { name: fileName, content: '', savedContent: '', lang: 'plaintext', error: result.error, viewMode: 'edit' });
   } else {
     const lang = detectLanguage(fileName);
-    const viewMode = lang === 'markdown' ? 'preview' : 'edit';
+    const viewMode = resolveInitialViewMode(lang, options.viewMode);
     openFiles.set(filePath, { name: fileName, content: result.content, savedContent: result.content, lang, error: null, viewMode });
   }
+  return true;
+}
+
+export function resolveInitialViewMode(lang, requestedViewMode) {
+  if (lang === 'markdown' && (requestedViewMode === 'edit' || requestedViewMode === 'preview')) {
+    return requestedViewMode;
+  }
+  return lang === 'markdown' ? 'preview' : 'edit';
+}
+
+export function applyRequestedViewMode(file, requestedViewMode) {
+  if (!file || file.lang !== 'markdown') return false;
+  if (requestedViewMode !== 'edit' && requestedViewMode !== 'preview') return false;
+  if (file.viewMode === requestedViewMode) return false;
+  file.viewMode = requestedViewMode;
   return true;
 }
 
