@@ -6,11 +6,57 @@
   overflow: hidden;
 }
 
+.board-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px 6px;
+  flex-shrink: 0;
+}
+
+.board-summary-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.board-summary-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.board-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.board-summary-running {
+  color: var(--yellow);
+  background: var(--yellow-soft);
+  border-color: rgba(234, 179, 8, 0.22);
+}
+
+.board-summary-waiting {
+  color: var(--green);
+  background: var(--green-soft);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
 .board-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 600px));
-  grid-auto-rows: minmax(250px, 400px);
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   padding: 12px;
   overflow-y: auto;
   flex: 1;
@@ -29,12 +75,13 @@
 .board-card {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 148px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-surface);
   box-shadow: var(--shadow-soft);
+  cursor: pointer;
   transition: border-color 0.4s ease,
               box-shadow 0.4s ease,
               transform var(--duration-base) var(--ease-out);
@@ -55,11 +102,11 @@
 }
 
 .board-card-running .board-card-header {
-  background: var(--yellow-soft);
+  background: linear-gradient(90deg, var(--yellow-soft), transparent);
 }
 
 .board-card-waiting .board-card-header {
-  background: var(--green-soft);
+  background: linear-gradient(90deg, var(--green-soft), transparent);
 }
 
 .board-card-hidden {
@@ -70,7 +117,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 8px 10px 8px 12px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
@@ -83,7 +131,7 @@
   min-width: 0;
 }
 
-.board-card-name {
+.board-card-agent {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -103,6 +151,12 @@
   transition: background 0.4s ease, color 0.4s ease;
 }
 
+.board-card-activity {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .board-status-running {
   background: var(--yellow-soft);
   color: var(--yellow);
@@ -115,7 +169,8 @@
 
 .board-card-btns {
   display: flex;
-  gap: 6px;
+  gap: 5px;
+  flex-shrink: 0;
 }
 
 .board-card-btn {
@@ -125,7 +180,9 @@
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  padding: 5px 12px;
+  width: 28px;
+  height: 26px;
+  padding: 0;
   border-radius: var(--radius-sm);
   transition: background var(--duration-fast) var(--ease-out),
               color var(--duration-fast) var(--ease-out),
@@ -138,23 +195,106 @@
   border-color: var(--text-secondary);
 }
 
-/* ===== Card Terminal (fully interactive) ===== */
-.board-card-terminal {
-  flex: 1;
+.board-card-btn-danger:hover {
+  color: var(--red);
+  border-color: rgba(239, 68, 68, 0.45);
+  background: var(--red-soft);
+}
+
+.board-card-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(320px, 1.25fr);
+  gap: 10px 16px;
+  align-items: start;
+  padding: 12px;
   min-height: 0;
+}
+
+.board-card-title-row {
+  min-width: 0;
+}
+
+.board-card-title {
+  color: var(--text-primary);
+  font-weight: 650;
+  font-size: 14px;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 7px;
 }
 
-.board-card-terminal .xterm {
-  height: 100%;
-  padding: 4px;
+.board-card-term-id {
+  display: inline-flex;
+  max-width: 100%;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Hide the board xterm cursor — it's always mispositioned because
-   the board card has different cols/rows than the PTY (controlled
-   by the workspace terminal). The real cursor is in the workspace. */
-.board-card-terminal .xterm-cursor-layer {
-  display: none !important;
+.board-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  grid-column: 1;
+}
+
+.board-card-meta-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.board-card-meta-value {
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.board-card-preview {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 86px;
+  max-height: 118px;
+  overflow: hidden;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+  .board-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .board-card-body {
+    grid-template-columns: 1fr;
+  }
+
+  .board-card-preview {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 
 /* ===== Hidden bar (minimized agents) ===== */
@@ -193,4 +333,3 @@
   color: var(--text-primary);
   border-color: var(--text-secondary);
 }
-

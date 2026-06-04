@@ -12,8 +12,7 @@ export { findTabForTerminal };
 // results) is much larger. 200 bytes/3s is well above idle noise.
 export const DATA_VOLUME_THRESHOLD = 200;
 export const POLL_INTERVAL_MS = 3000;
-export const FIT_SETTLE_DELAY_MS = 100;
-export const FIT_UNHIDE_DELAY_MS = 50;
+export const PREVIEW_LINE_LIMIT = 8;
 
 export const STATUS_CONFIG = {
   running: { label: 'Running', cardClass: 'board-card-running', badgeClass: 'board-card-status board-status-running' },
@@ -23,20 +22,11 @@ export const STATUS_CONFIG = {
 /** All card-level CSS classes derived from STATUS_CONFIG — single source of truth for class removal. */
 export const ALL_CARD_CLASSES = Object.values(STATUS_CONFIG).map(c => c.cardClass);
 
-/** Terminal options used by board card mini-terminals. */
-export const BOARD_TERMINAL_OPTS = {
-  fontSize: 11,
-  lineHeight: 1.2,
-  cursorBlink: false,
-  cursorStyle: 'bar',
-  scrollback: 10000,
-  allowProposedApi: true,
-};
-
 /** Declarative table for card header buttons — drives the button row via table-driven loop. */
 export const HEADER_BUTTONS = [
-  { text: '\u2197', title: 'Go to workspace', action: 'navigate' },
-  { text: '\u2212', title: 'Hide',            action: 'hide' },
+  { text: '\u2197', title: 'Open terminal', action: 'navigate' },
+  { text: '\u25A0', title: 'Stop terminal', action: 'stop', cls: 'board-card-btn-danger' },
+  { text: '\u2212', title: 'Hide',          action: 'hide' },
 ];
 
 /**
@@ -47,6 +37,50 @@ export const HEADER_BUTTONS = [
  */
 export function formatCardLabel(agent, tabName) {
   return `${agent} \u2014 ${tabName}`;
+}
+
+export function formatShortPath(cwd, fallback = '-') {
+  if (!cwd) return fallback;
+  const parts = String(cwd).split('/').filter(Boolean);
+  if (parts.length <= 2) return cwd;
+  return `.../${parts.slice(-2).join('/')}`;
+}
+
+export function formatElapsed(ms) {
+  if (!Number.isFinite(ms) || ms < 1000) return 'now';
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  return `${Math.floor(minutes / 60)}h ago`;
+}
+
+export function stripAnsi(text) {
+  return String(text || '')
+    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '')
+    .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, '')
+    .replace(/\r/g, '\n');
+}
+
+export function appendPreviewChunk(state, chunk, lineLimit = PREVIEW_LINE_LIMIT) {
+  const cleaned = stripAnsi(chunk);
+  const combined = `${state.remainder || ''}${cleaned}`;
+  const parts = combined.split('\n');
+  state.remainder = parts.pop() || '';
+
+  const lines = parts
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  state.lines.push(...lines);
+  state.lines = state.lines.slice(-lineLimit);
+  return state.lines;
+}
+
+export function getPreviewText(state) {
+  const lines = [...state.lines];
+  if (state.remainder?.trim()) lines.push(state.remainder.trimEnd());
+  return lines.slice(-PREVIEW_LINE_LIMIT).join('\n');
 }
 
 /**

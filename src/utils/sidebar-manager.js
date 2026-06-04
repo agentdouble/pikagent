@@ -20,7 +20,6 @@ import { _el } from './dom-api.js';
 import { renderList } from './dom-lists.js';
 import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-constants.js';
 import { createAsyncHandler } from './event-helpers.js';
-import { _safeFit } from './terminal-factory.js';
 
 function buildActivityButton(label, iconSvg, extraClass = '') {
   const btn = _el('button', `activity-btn ${extraClass}`.trim());
@@ -38,9 +37,6 @@ const SIDE_VIEW_REATTACH_OVERRIDES = {
   board: (viewStore) => {
     const boardView = viewStore.getView('boardView');
     if (!boardView) return;
-    for (const [, card] of boardView.cards) {
-      _safeFit(card.fitAddon);
-    }
     boardView.resume();
   },
 };

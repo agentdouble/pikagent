@@ -35,7 +35,7 @@ const definitions = [
   ['boardFacade', [
     [shellApi, ['openExternal', 'openPath']],
     [fsApi, ['homedir']],
-    [ptyApi, { ptyWrite: 'write', ptyOnData: 'onData', ptyCheckAgents: 'checkAgents' }],
+    [ptyApi, { ptyWrite: 'write', ptyOnData: 'onData', ptyCheckAgents: 'checkAgents', ptyKill: 'kill' }],
   ]],
 
   ['tabViewFacade', [
