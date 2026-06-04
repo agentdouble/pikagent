@@ -134,6 +134,19 @@ export function findCycleTarget(tabs, activeTabId, step) {
   return null;
 }
 
+/** Find the nth keyboard-addressable tab in current tab order. */
+export function findIndexedTabTarget(tabs, index, isVisible = () => true) {
+  if (!Number.isInteger(index) || index < 1) return null;
+  let visibleIndex = 0;
+  for (const [id, tab] of tabs) {
+    if (tab.noShortcut) continue;
+    if (!isVisible(tab)) continue;
+    visibleIndex += 1;
+    if (visibleIndex === index) return id;
+  }
+  return null;
+}
+
 // ── Side-view descriptor table ──
 // Each non-"work" sidebar mode owns a view instance and a container element
 // on the TabManager.  `pauseOnDetach` means the view is kept alive (paused)

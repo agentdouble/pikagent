@@ -12,5 +12,5 @@ export { renderTabBar } from './tab-bar-renderer.js';
 export { isTabVisible } from './tab-color-filter.js';
 export { createTab, closeTab, switchTo } from './tab-lifecycle.js';
 export {
-  reorderEntries, findCycleTarget, findColorGroupTarget,
+  reorderEntries, findCycleTarget, findColorGroupTarget, findIndexedTabTarget,
 } from './tab-manager-helpers.js';

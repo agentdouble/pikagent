@@ -3,7 +3,7 @@ import {
   DRAG_THRESHOLD, PANEL_MIN_WIDTH,
   ACTIVITY_BUTTONS, COLOR_GROUPS, SIDE_VIEWS, WorkspaceTab,
   clampPanelWidth, panelArrowState, reorderEntries,
-  findCycleTarget, findColorGroupTarget,
+  findCycleTarget, findColorGroupTarget, findIndexedTabTarget,
 } from '../../src/utils/tab-manager-helpers.js';
 
 describe('tab-manager-helpers', () => {
@@ -205,6 +205,41 @@ describe('tab-manager-helpers', () => {
     it('returns null with single tab', () => {
       const tabs = makeTabs([['a', {}]]);
       expect(findCycleTarget(tabs, 'a', 1)).toBeNull();
+    });
+  });
+
+  // ── findIndexedTabTarget ──
+
+  describe('findIndexedTabTarget', () => {
+    function makeTabs(specs) {
+      const map = new Map();
+      for (const [id, opts] of specs) {
+        map.set(id, { noShortcut: false, colorGroup: null, ...opts });
+      }
+      return map;
+    }
+
+    it('finds tabs by one-based visible order', () => {
+      const tabs = makeTabs([['a', {}], ['b', {}], ['c', {}]]);
+      expect(findIndexedTabTarget(tabs, 1)).toBe('a');
+      expect(findIndexedTabTarget(tabs, 2)).toBe('b');
+      expect(findIndexedTabTarget(tabs, 3)).toBe('c');
+    });
+
+    it('skips noShortcut tabs', () => {
+      const tabs = makeTabs([['a', {}], ['b', { noShortcut: true }], ['c', {}]]);
+      expect(findIndexedTabTarget(tabs, 2)).toBe('c');
+    });
+
+    it('respects visible tab filtering', () => {
+      const tabs = makeTabs([['a', { colorGroup: 'red' }], ['b', {}], ['c', { colorGroup: 'red' }]]);
+      expect(findIndexedTabTarget(tabs, 2, (tab) => tab.colorGroup === 'red')).toBe('c');
+    });
+
+    it('returns null when index is invalid or out of range', () => {
+      const tabs = makeTabs([['a', {}]]);
+      expect(findIndexedTabTarget(tabs, 0)).toBeNull();
+      expect(findIndexedTabTarget(tabs, 2)).toBeNull();
     });
   });
 
