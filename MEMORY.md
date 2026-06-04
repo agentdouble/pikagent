@@ -8,3 +8,4 @@
 - Workspace numeric shortcuts: default direct tab shortcuts are `control+1` through `control+9` with action ids `goToTab1` through `goToTab9`. Direct lookup uses visible tab order and skips tabs marked `NoShortcut`; xterm must let these combos bubble to `ShortcutManager`.
 - Linear-inspired theme: global restyle overrides live in `src/styles/linear-theme.css`, loaded last from `src/index.html`. Keep future visual polish there when possible, and keep the default `Pikagent` terminal theme aligned with the same neutral graphite palette in `src/utils/terminal-themes.js`.
 - Theme color preference: Jeremy found the first Linear-inspired dark background too black. Prefer a softer pastel slate/lavender dark palette over near-black graphite for app backgrounds.
+- Theme border preference: Jeremy found the Linear-inspired UI too boxed in when separators were highly visible. Prefer low-alpha subtle borders and softer active terminal/tab accents instead of strong panel outlines.
