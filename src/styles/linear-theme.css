@@ -1,22 +1,22 @@
 /* Linear-inspired application theme. Loaded last to keep the restyle isolated. */
 :root {
-  --bg-primary: #08090b;
-  --bg-secondary: #0d0e12;
-  --bg-tertiary: #111318;
-  --bg-surface: #14161c;
-  --bg-hover: #1a1d25;
-  --bg-active: #202431;
-  --bg-elevated: #181b23;
-  --bg-overlay: rgba(8, 9, 11, 0.78);
+  --bg-primary: #161824;
+  --bg-secondary: #1b1e2b;
+  --bg-tertiary: #202435;
+  --bg-surface: #24283a;
+  --bg-hover: #2b3044;
+  --bg-active: #333951;
+  --bg-elevated: #2a2f43;
+  --bg-overlay: rgba(22, 24, 36, 0.78);
 
-  --border-color: #252a35;
-  --border-subtle: #191d25;
-  --border-strong: #353b4b;
+  --border-color: #363d52;
+  --border-subtle: #2a3042;
+  --border-strong: #4a5269;
 
-  --text-primary: #f3f4f7;
-  --text-secondary: #a8adb8;
-  --text-muted: #727987;
-  --text-subtle: #4d5562;
+  --text-primary: #f5f3fb;
+  --text-secondary: #c2c5d4;
+  --text-muted: #8f95aa;
+  --text-subtle: #6c7288;
 
   --accent: #5e6ad2;
   --accent-dim: #4f5abb;
@@ -36,10 +36,10 @@
   --purple: #a078e8;
   --orange: #d98d54;
 
-  --shadow-overlay: rgba(0, 0, 0, 0.7);
-  --shadow-drop: rgba(0, 0, 0, 0.42);
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.26);
-  --shadow-lift: 0 18px 60px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-overlay: rgba(10, 12, 22, 0.56);
+  --shadow-drop: rgba(10, 12, 22, 0.32);
+  --shadow-soft: 0 1px 2px rgba(10, 12, 22, 0.2);
+  --shadow-lift: 0 18px 60px rgba(10, 12, 22, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --shadow-focus: 0 0 0 3px rgba(94, 106, 210, 0.24);
   --terminal-active-border: rgba(94, 106, 210, 0.52);
 
@@ -497,9 +497,9 @@ select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #303645;
+  background: #464d62;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #454c5f;
+  background: #596174;
 }

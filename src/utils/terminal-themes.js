@@ -18,9 +18,9 @@ function _buildTheme(chrome, ansi, bright) {
 // TERMINAL_THEMES and light-theme detection are both derived from this table.
 const THEME_DEFS = [
   { name: 'Pikagent',
-    chrome: ['#08090b', '#f3f4f7', '#f3f4f7', '#08090b', '#202431'],
-    ansi:   ['#14161c', '#e16b6b', '#4cb782', '#d6a842', '#5aa7f2', '#a078e8', '#56b6c2', '#d7dbe3'],
-    bright: ['#727987', '#f08a8a', '#63d29a', '#e3bd62', '#80bcf7', '#b996f0', '#73d4df', '#ffffff'] },
+    chrome: ['#161824', '#f5f3fb', '#f5f3fb', '#161824', '#333951'],
+    ansi:   ['#24283a', '#e16b6b', '#4cb782', '#d6a842', '#5aa7f2', '#a078e8', '#56b6c2', '#d7dbe3'],
+    bright: ['#8f95aa', '#f08a8a', '#63d29a', '#e3bd62', '#80bcf7', '#b996f0', '#73d4df', '#ffffff'] },
   { name: 'Dracula',
     chrome: ['#282a36', '#f8f8f2', '#f8f8f2', '#282a36', '#44475a'],
     ansi:   ['#21222c', '#ff5555', '#50fa7b', '#f1fa8c', '#bd93f9', '#ff79c6', '#8be9fd', '#f8f8f2'],
