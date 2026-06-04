@@ -40,6 +40,7 @@ export function renderList(container, items, renderItem) {
  *           name: string, chevronText?: string, containerClass?: string,
  *           depth?: number, computeIndent?: (depth: number) => number,
  *           prefixChildren?: HTMLElement[],
+ *           afterChevronChildren?: HTMLElement[],
  *           extraChildren?: HTMLElement[] }} opts
  * @returns {{ chevron: HTMLElement|null, name: HTMLElement, row?: HTMLElement }}
  */
@@ -56,6 +57,7 @@ export function buildChevronRow(opts) {
     const parts = [
       ...(opts.prefixChildren || []),
       ...(chevron ? [chevron] : []),
+      ...(opts.afterChevronChildren || []),
       name,
       ...(opts.extraChildren || []),
     ];

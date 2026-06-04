@@ -11,6 +11,10 @@ import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS, HEADER_A
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';
 import { isAgentsMarkdownFile, shouldEditAgentsOnDoubleClick } from './agents-editor-settings.js';
+import { getFileIcon } from './file-icons.js';
+
+const FOLDER_ICON_CLOSED = '📁';
+const FOLDER_ICON_OPEN = '📂';
 
 // ── SVG icon parsing ──
 
@@ -31,7 +35,21 @@ const PARSED_ICONS = Object.fromEntries(
  * @param {number} depth
  * @returns {{ row: HTMLElement, chevron: HTMLElement, name: HTMLElement }}
  */
-function buildRow(entry, depth) {
+function createTreeIcon(icon, title) {
+  return _el('span', {
+    className: 'file-tree-icon',
+    textContent: icon,
+    title,
+    ariaHidden: true,
+  });
+}
+
+function setFolderIconState(iconEl, isExpanded) {
+  iconEl.textContent = isExpanded ? FOLDER_ICON_OPEN : FOLDER_ICON_CLOSED;
+  iconEl.title = isExpanded ? 'Open folder' : 'Folder';
+}
+
+function buildRow(entry, depth, iconEl = null) {
   return buildChevronRow({
     chevronClass: 'file-tree-chevron',
     nameClass: 'file-tree-name',
@@ -39,6 +57,7 @@ function buildRow(entry, depth) {
     containerClass: 'file-tree-item',
     depth,
     computeIndent,
+    afterChevronChildren: iconEl ? [iconEl] : [],
   });
 }
 
@@ -54,8 +73,10 @@ function buildRow(entry, depth) {
  */
 export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callbacks) {
   const { setupDropZone, expandDir, collapseDir, findRootCwd, promptRename, promptNewEntry, contextMenuApi } = callbacks;
-  const { row, chevron, name } = buildRow(entry, depth);
   const isExpanded = expandedDirs.has(entry.path);
+  const folderIcon = createTreeIcon('', 'Folder');
+  setFolderIconState(folderIcon, isExpanded);
+  const { row, chevron, name } = buildRow(entry, depth, folderIcon);
   chevron.textContent = isExpanded ? CHEVRON_EXPANDED : CHEVRON_COLLAPSED;
   chevron.classList.toggle('expanded', isExpanded);
 
@@ -74,11 +95,13 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
     } else {
       await expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
     }
+    setFolderIconState(folderIcon, expandedDirs.has(entry.path));
   });
 
   attachContextMenu(row, async () => {
     if (!expandedDirs.has(entry.path)) {
       await expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
+      setFolderIconState(folderIcon, true);
     }
     return buildDirContextItems(
       entry.path, findRootCwd(entry.path),
@@ -101,7 +124,7 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
  */
 export function renderFileEntry(entry, parentEl, depth, callbacks) {
   const { activeRowRef, findRootCwd, promptRename, contextMenuApi } = callbacks;
-  const { row, name } = buildRow(entry, depth);
+  const { row, name } = buildRow(entry, depth, createTreeIcon(getFileIcon(entry.name), 'File'));
   parentEl.appendChild(row);
 
   row.addEventListener('click', () => {

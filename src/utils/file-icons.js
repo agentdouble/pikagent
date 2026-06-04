@@ -52,19 +52,30 @@ const FILE_CONFIG = {
 };
 
 /** Full-filename overrides for files without meaningful extensions. */
-const FILENAME_LANG = {
-  dockerfile: 'dockerfile',
-  makefile: 'makefile',
+const FILENAME_CONFIG = {
+  dockerfile: { icon: '📦', lang: 'dockerfile' },
+  makefile: { icon: '⚙️', lang: 'makefile' },
 };
 
 function _getExt(filename) {
   return filename.split('.').pop().toLowerCase();
 }
 
+function _getBaseName(filePath) {
+  return String(filePath || '').split(/[\\/]/).pop();
+}
+
+function getFileConfig(filename) {
+  const lower = _getBaseName(filename).toLowerCase();
+  return FILENAME_CONFIG[lower] || FILE_CONFIG[_getExt(lower)] || null;
+}
+
 export function detectLanguage(filename) {
-  const lower = filename.toLowerCase();
-  const byName = FILENAME_LANG[lower];
-  if (byName) return byName;
-  const cfg = FILE_CONFIG[_getExt(lower)];
+  const cfg = getFileConfig(filename);
   return (cfg && cfg.lang) || 'plaintext';
+}
+
+export function getFileIcon(filename) {
+  const cfg = getFileConfig(filename);
+  return (cfg && cfg.icon) || '📄';
 }

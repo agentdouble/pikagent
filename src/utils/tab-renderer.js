@@ -160,7 +160,7 @@ export function inlineRenameTab(tab, nameEl, onCommit, onCancel) {
     className: 'tab-rename-input',
     value: tab.name,
     onCommit: (newName) => {
-      if (newName) {
+      if (newName && newName !== tab.name) {
         tab.name = newName;
         tab.userNamed = true;
       }
