@@ -73,7 +73,7 @@ const definitions = [
   ]],
 
   ['updateFacade', [
-    [updateApi, ['version', 'check', 'run', 'relaunch', 'onProgress']],
+    [updateApi, ['info', 'version', 'check', 'run', 'relaunch', 'onProgress']],
   ]],
 
   ['terminalPanelFacade', [

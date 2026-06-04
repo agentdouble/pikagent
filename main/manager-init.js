@@ -106,6 +106,7 @@ for (const name of LIFECYCLE_NAMES) {
  */
 function buildUpdateTarget(managers, getWindow) {
   return {
+    info:     () => managers.updateManager.getUpdateInfo(),
     check:    () => managers.updateManager.checkForUpdates(),
     version:  () => managers.updateManager.getVersion(),
     relaunch: () => managers.updateManager.relaunch(),

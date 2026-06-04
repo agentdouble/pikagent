@@ -100,6 +100,7 @@ const API_SCHEMA = {
     loadDefault: { type: 'fwd' },
   },
   update: {
+    info:       { type: 'fwd' },
     check:      { type: 'fwd' },
     version:    { type: 'fwd' },
     run:        { type: 'fwd' },

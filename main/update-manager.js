@@ -7,6 +7,9 @@ const { readJsonSync } = require('./fs-utils');
 const { splitLines } = require('./parse-utils');
 
 const SOURCE_CONFIG_FILE = path.join(BASE_DIR, 'source-config.json');
+const UPDATE_BRANCH = 'main';
+const UPDATE_REMOTE = 'origin';
+const INSTALL_PATH = '/Applications/Pickagent.app';
 
 // --- Config persistence (saves project root + shell PATH from dev mode) ---
 
@@ -44,25 +47,50 @@ function _run(cmd, cwd) {
   });
 }
 
+async function _runOptional(cmd, cwd, fallback = null) {
+  if (!cwd) return fallback;
+  try {
+    return await _run(cmd, cwd);
+  } catch {
+    return fallback;
+  }
+}
+
 // --- Public API ---
 
 function getVersion() {
   return app.getVersion();
 }
 
-const UPDATE_BRANCH = 'main';
+async function getUpdateInfo() {
+  const root = _getProjectRoot();
+  const remoteUrl = await _runOptional(`git remote get-url ${UPDATE_REMOTE}`, root, null);
+  const currentBranch = await _runOptional('git rev-parse --abbrev-ref HEAD', root, null);
+
+  return {
+    sourceConfigured: Boolean(root),
+    sourceRoot: root,
+    currentBranch,
+    remote: UPDATE_REMOTE,
+    remoteUrl,
+    targetBranch: UPDATE_BRANCH,
+    targetRef: `${UPDATE_REMOTE}/${UPDATE_BRANCH}`,
+    installPath: INSTALL_PATH,
+    packaged: app.isPackaged,
+  };
+}
 
 async function checkForUpdates() {
   const root = _getProjectRoot();
   if (!root) return { available: false, error: 'Source directory not configured. Run the app in dev mode first.' };
 
   try {
-    await _run('git fetch origin', root);
-    const log = await _run(`git log HEAD..origin/${UPDATE_BRANCH} --oneline`, root);
+    await _run(`git fetch ${UPDATE_REMOTE}`, root);
+    const log = await _run(`git log HEAD..${UPDATE_REMOTE}/${UPDATE_BRANCH} --oneline`, root);
     const commits = log ? splitLines(log) : [];
-    return { available: commits.length > 0, commits, count: commits.length };
+    return { available: commits.length > 0, commits, count: commits.length, info: await getUpdateInfo() };
   } catch (err) {
-    return { available: false, error: err.message };
+    return { available: false, error: err.message, info: await getUpdateInfo() };
   }
 }
 
@@ -72,7 +100,7 @@ async function performUpdate(sendProgress) {
 
   const steps = [
     { label: `Checking out ${UPDATE_BRANCH}...`, cmd: `git checkout ${UPDATE_BRANCH}` },
-    { label: 'Pulling latest changes...', cmd: `git pull origin ${UPDATE_BRANCH}` },
+    { label: `Pulling latest changes from ${UPDATE_REMOTE}/${UPDATE_BRANCH}...`, cmd: `git pull ${UPDATE_REMOTE} ${UPDATE_BRANCH}` },
     { label: 'Installing dependencies...', cmd: 'npm install' },
     { label: 'Packaging application...', cmd: 'npm run package' },
   ];
@@ -85,7 +113,7 @@ async function performUpdate(sendProgress) {
   // Copy to /Applications
   sendProgress({ step: steps.length + 1, total: steps.length + 1, label: 'Installing to Applications...' });
   const src = path.join(root, 'release', 'mac-arm64', 'Pickagent.app');
-  const dest = '/Applications/Pickagent.app';
+  const dest = INSTALL_PATH;
   await _run(`rm -rf "${dest}" && cp -R "${src}" "${dest}"`, root);
 
   return { success: true };
@@ -96,4 +124,4 @@ function relaunch() {
   setTimeout(() => app.exit(0), 300);
 }
 
-module.exports = { init, getVersion, checkForUpdates, performUpdate, relaunch };
+module.exports = { init, getVersion, getUpdateInfo, checkForUpdates, performUpdate, relaunch };

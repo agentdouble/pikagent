@@ -14,6 +14,43 @@ function _showCheckButton(area, onCheck) {
   area.appendChild(btn);
 }
 
+function _formatValue(value, fallback = 'Not configured') {
+  return value ? String(value) : fallback;
+}
+
+function _targetRows(info) {
+  return [
+    ['Tracks', _formatValue(info?.targetRef)],
+    ['Remote', _formatValue(info?.remoteUrl || info?.remote)],
+    ['Current branch', _formatValue(info?.currentBranch, 'Unknown')],
+    ['Source', _formatValue(info?.sourceRoot)],
+    ['Installs to', _formatValue(info?.installPath)],
+  ];
+}
+
+function _showUpdateTarget(container, info) {
+  const target = _el('div', 'update-target');
+  target.appendChild(_el('div', 'update-target-title', 'Update target'));
+
+  const rows = _el('div', 'update-target-rows');
+  for (const [label, value] of _targetRows(info)) {
+    rows.appendChild(
+      _el('div', 'update-target-row',
+        _el('span', 'update-target-label', label),
+        _el('span', 'update-target-value', value),
+      ),
+    );
+  }
+  target.appendChild(rows);
+
+  target.appendChild(_el(
+    'div',
+    'update-target-note',
+    'Checks git commits from the configured source checkout, then packages the app and copies it to the install path.',
+  ));
+  container.appendChild(target);
+}
+
 function _showMessage(area, type, text, onRetry) {
   area.replaceChildren();
   const msg = _el('div', `update-message update-${type}`);
@@ -40,7 +77,7 @@ function _showAvailable(area, result, onInstall) {
   }
   area.appendChild(list);
 
-  const btn = _el('button', 'update-btn update-btn-primary', 'Install & restart');
+  const btn = _el('button', 'update-btn update-btn-primary', 'Install update');
   btn.addEventListener('click', onInstall);
   area.appendChild(btn);
 }
@@ -49,11 +86,13 @@ function _showAvailable(area, result, onInstall) {
  * Build the version bar and update area, appending them to contentEl.
  * @returns {{ area: HTMLElement }}
  */
-function renderUpdateUI(contentEl, version) {
+function renderUpdateUI(contentEl, version, info) {
   const bar = _el('div', 'update-version-bar');
   bar.appendChild(_el('span', 'update-version-label', 'Version'));
   bar.appendChild(_el('span', 'update-version-value', `v${version}`));
   contentEl.appendChild(bar);
+
+  _showUpdateTarget(contentEl, info);
 
   const area = _el('div', 'update-area');
   contentEl.appendChild(area);
@@ -127,8 +166,11 @@ async function runCheck(area, btn) {
  */
 async function renderUpdate(contentEl) {
   createSettingsSection(contentEl, { heading: 'Update' });
-  const version = await updateApi.version();
-  const { area } = renderUpdateUI(contentEl, version);
+  const [version, info] = await Promise.all([
+    updateApi.version(),
+    updateApi.info(),
+  ]);
+  const { area } = renderUpdateUI(contentEl, version, info);
   _showCheckButton(area, (btn) => runCheck(area, btn));
 }
 
