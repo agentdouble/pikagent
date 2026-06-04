@@ -9,7 +9,8 @@ import {
   reorderTab as doReorderTab,
   renameTab as doRenameTab,
   nextTab as doNextTab, prevTab as doPrevTab,
-  goToColorGroup as doGoToColorGroup, focusDirection as doFocusDirection,
+  goToColorGroup as doGoToColorGroup, goToTabIndex as doGoToTabIndex,
+  focusDirection as doFocusDirection,
   setTabColorGroup as doSetTabColorGroup,
   toggleNoShortcut as doToggleNoShortcut,
 } from '../utils/tab-manager-utils.js';
@@ -140,6 +141,7 @@ export class TabManager {
   setTabColorGroup(id, cg) { doSetTabColorGroup(this.tabs, id, cg, () => this.renderTabBar(), this.configManager); }
   toggleNoShortcut(id) { doToggleNoShortcut(this.tabs, id, () => this.renderTabBar(), this.configManager); }
   goToColorGroup(cg) { doGoToColorGroup(this.tabs, this.activeTabId, cg, (id) => this.switchTo(id)); }
+  goToTabIndex(index) { doGoToTabIndex(this.tabs, index, (tab) => this._isTabVisible(tab), (id) => this.switchTo(id)); }
 
   // --- Navigation ---
 

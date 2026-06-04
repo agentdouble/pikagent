@@ -6,10 +6,10 @@
  * it can import from fewer modules (issue #130).
  */
 
-import { onTerminalCwdChanged as onTermCwdEvent, onTerminalCreated, onTerminalRemoved } from './terminal-events.js';
+import { onTerminalCwdChanged as onTermCwdEvent, onTerminalBranchCheck, onTerminalCreated, onTerminalRemoved } from './terminal-events.js';
 import { onLayoutChanged, onWorkspaceOpenFromFolder, onWorkspaceCreateWorktree, onWorkspaceOpenPr, onTabWorktreeClosed } from './workspace-events.js';
 import { extractFolderName } from './file-tree-helpers.js';
-import { findTabForTerminal, onTerminalCwdChanged } from './tab-lifecycle.js';
+import { findTabForTerminal, onTerminalCwdChanged, refreshTerminalBranch } from './tab-lifecycle.js';
 import { createWorktreeFlow, maybeRemoveWorktree } from './worktree-flow.js';
 import { openPrFlow } from './open-pr-flow.js';
 
@@ -78,6 +78,11 @@ export function setupBusListeners(deps) {
         renderTabBar: deps.renderTabBar,
       });
       deps.configManager.scheduleAutoSave();
+    }),
+    onTerminalBranchCheck(({ id, cwd }) => {
+      refreshTerminalBranch(deps.tabs, deps.getActiveTabId(), id, cwd, {
+        gitBranch: deps.api.gitBranch,
+      });
     }),
     onTerminalCreated(({ id, cwd }) => {
       const tab = findTabForTerminal(deps.tabs, id)?.tab ?? deps.tabs.get(deps.getActiveTabId());

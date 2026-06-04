@@ -15,6 +15,11 @@ import { createTypedEvent } from './event-bus.js';
 const { on: onTerminalCwdChanged, emit: emitTerminalCwdChanged } =
   createTypedEvent('terminal:cwdChanged');
 
+// ── branchCheck ────────────────────────────────────────────────────
+
+const { on: onTerminalBranchCheck, emit: emitTerminalBranchCheck } =
+  createTypedEvent('terminal:branchCheck');
+
 // ── created ─────────────────────────────────────────────────────────
 
 const { on: onTerminalCreated, emit: emitTerminalCreated } =
@@ -35,6 +40,8 @@ const { on: onTerminalExited, emit: emitTerminalExited } =
 export {
   onTerminalCwdChanged,
   emitTerminalCwdChanged,
+  onTerminalBranchCheck,
+  emitTerminalBranchCheck,
   onTerminalCreated,
   emitTerminalCreated,
   onTerminalRemoved,

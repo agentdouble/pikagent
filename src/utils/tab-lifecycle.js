@@ -195,22 +195,58 @@ function _autoRenameTab(tab, termId, cwd, renderTabBar) {
   }
 }
 
+function _isActiveTerminal(tab, activeTabId, termId) {
+  return (
+    tab.id === activeTabId &&
+    tab.terminalPanel?.activeTerminal?.terminal?.id === termId
+  );
+}
+
+function _setTabBranch(tab, branch) {
+  const normalized = branch || null;
+  const text = normalized ? ` ${normalized}` : '';
+  tab.currentBranch = normalized;
+  if (tab.branchBadgeEl && tab.branchBadgeEl.textContent !== text) {
+    tab.branchBadgeEl.textContent = text;
+  }
+}
+
+/**
+ * Refresh the branch badge for the active terminal, without requiring a cwd change.
+ * @param {Map<string, WorkspaceTab>} tabs
+ * @param {string|null} activeTabId
+ * @param {string} termId
+ * @param {string} cwd
+ * @param {{ gitBranch: (cwd: string) => Promise<string|null> }} api
+ * @returns {Promise<void>|undefined}
+ */
+export function refreshTerminalBranch(tabs, activeTabId, termId, cwd, { gitBranch }) {
+  const match = findTabForTerminal(tabs, termId);
+  if (!match) return undefined;
+
+  const { tab } = match;
+  if (!_isActiveTerminal(tab, activeTabId, termId)) return undefined;
+
+  const refreshId = Symbol('branch-refresh');
+  tab._branchRefreshId = refreshId;
+
+  return gitBranch(cwd)
+    .then((branch) => {
+      if (tab._branchRefreshId !== refreshId) return;
+      if (!_isActiveTerminal(tab, activeTabId, termId)) return;
+      _setTabBranch(tab, branch);
+    })
+    .catch((e) => console.warn('Failed to refresh git branch:', e));
+}
+
 /**
  * Update the header path text and branch badge for the active tab.
  * @param {WorkspaceTab} tab
  * @param {string} cwd
- * @param {(cwd: string) => Promise<string|null>} gitBranch
  */
-function _updateHeaderBranch(tab, cwd, gitBranch) {
+function _updateHeaderPath(tab, cwd) {
   tab.cwd = cwd;
   if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
-  if (tab.branchBadgeEl) {
-    gitBranch(cwd).then((branch) => {
-      if (tab.branchBadgeEl) {
-        tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
-      }
-    });
-  }
 }
 
 /**
@@ -237,9 +273,10 @@ export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch
 
   // Update header path/branch only for the active tab's active terminal
   if (
-    tab.id === activeTabId &&
-    tab.terminalPanel?.activeTerminal?.terminal?.id === termId
+    _isActiveTerminal(tab, activeTabId, termId)
   ) {
-    _updateHeaderBranch(tab, cwd, gitBranch);
+    _updateHeaderPath(tab, cwd);
+    return refreshTerminalBranch(tabs, activeTabId, termId, cwd, { gitBranch });
   }
+  return undefined;
 }

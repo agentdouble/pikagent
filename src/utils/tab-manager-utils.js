@@ -12,6 +12,6 @@ export {
 } from './tab-manager-sidebar.js';
 export { bindTabOps, reorderTab, renameTab } from './tab-manager-tab-ops.js';
 export {
-  nextTab, prevTab, goToColorGroup, focusDirection,
+  nextTab, prevTab, goToColorGroup, goToTabIndex, focusDirection,
   setTabColorGroup, toggleNoShortcut,
 } from './tab-navigation.js';

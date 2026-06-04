@@ -1,5 +1,5 @@
 import { generateId } from './id.js';
-import { emitTerminalExited, emitTerminalCwdChanged } from './terminal-events.js';
+import { emitTerminalExited, emitTerminalCwdChanged, emitTerminalBranchCheck } from './terminal-events.js';
 import { createTerminal, setupTerminalAddons } from './terminal-factory.js';
 import { CWD_POLL_MS } from './terminal-panel-helpers.js';
 import { createGuardedDispose } from './disposable.js';
@@ -67,9 +67,10 @@ export class TerminalInstance {
       openPath,
     });
 
-    // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
+    // Let app-level workspace navigation shortcuts bubble up to the shortcut manager.
     this.terminal.attachCustomKeyEventHandler((e) => {
       if (e.key === 'Tab' && e.ctrlKey) return false;
+      if (e.ctrlKey && !e.metaKey && !e.altKey && /^[1-9]$/.test(e.key)) return false;
       return true;
     });
 
@@ -107,6 +108,9 @@ export class TerminalInstance {
         this.cwd = cwd;
         /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
         emitTerminalCwdChanged({ id: this.id, cwd });
+      } else if (cwd) {
+        /** @fires terminal:branchCheck {{ id: string, cwd: string }} — branch may have changed */
+        emitTerminalBranchCheck({ id: this.id, cwd });
       }
     }, CWD_POLL_MS);
   }

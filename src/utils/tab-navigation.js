@@ -5,7 +5,7 @@
  * split/focus actions, and tab property mutations (colorGroup, noShortcut).
  */
 
-import { findCycleTarget, findColorGroupTarget } from './tab-manager-helpers.js';
+import { findCycleTarget, findColorGroupTarget, findIndexedTabTarget } from './tab-manager-helpers.js';
 
 /**
  * Switch to the next tab in the cycle.
@@ -38,6 +38,18 @@ export function prevTab(tabs, activeTabId, switchTo) {
  */
 export function goToColorGroup(tabs, activeTabId, colorGroupId, switchTo) {
   const target = findColorGroupTarget(tabs, activeTabId, colorGroupId);
+  if (target) switchTo(target);
+}
+
+/**
+ * Navigate directly to the nth visible workspace tab.
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
+ * @param {number} index
+ * @param {(tab: import('./tab-types.js').WorkspaceTab) => boolean} isVisible
+ * @param {(id: string) => void} switchTo
+ */
+export function goToTabIndex(tabs, index, isVisible, switchTo) {
+  const target = findIndexedTabTarget(tabs, index, isVisible);
   if (target) switchTo(target);
 }
 

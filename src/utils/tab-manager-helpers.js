@@ -81,3 +81,16 @@ export function findColorGroupTarget(tabs, activeTabId, colorGroupId) {
     return tab.colorGroup === colorGroupId && !tab.noShortcut;
   });
 }
+
+/** Find the nth keyboard-addressable tab in current tab order. */
+export function findIndexedTabTarget(tabs, index, isVisible = () => true) {
+  if (!Number.isInteger(index) || index < 1) return null;
+  let visibleIndex = 0;
+  for (const [id, tab] of tabs) {
+    if (tab.noShortcut) continue;
+    if (!isVisible(tab)) continue;
+    visibleIndex += 1;
+    if (visibleIndex === index) return id;
+  }
+  return null;
+}
