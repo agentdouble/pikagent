@@ -149,8 +149,23 @@ function isStatusLine(line) {
     && /(\s·\s|~|fast|xhigh|high|medium|low)/i.test(text);
 }
 
+function isPromptTemplateLine(line) {
+  return /^\s*Implement\s+\{feature\}\s*$/i.test(String(line || '').trim());
+}
+
+function isTransientAgentStateLine(line) {
+  const text = String(line || '')
+    .trim()
+    .replace(/^[•◦●○◌◇◆✦✧⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s*/, '');
+  return /^(working|thinking|think|messages?)(?:[\s.:…-].*)?$/i.test(text);
+}
+
 function isBoardPreviewBoundary(line) {
-  return isPromptLine(line) || isDividerLine(line) || isStatusLine(line);
+  return isPromptLine(line)
+    || isDividerLine(line)
+    || isStatusLine(line)
+    || isPromptTemplateLine(line)
+    || isTransientAgentStateLine(line);
 }
 
 function latestAgentResponseLines(lines) {
@@ -180,7 +195,9 @@ export function formatBoardPreviewLines(lines, lineLimit = PREVIEW_LINE_LIMIT) {
     .map((line) => String(line || '').trimEnd())
     .filter((line) => line.trim());
   const responseLines = latestAgentResponseLines(cleanedLines);
-  const displayLines = responseLines.length > 0 ? responseLines : cleanedLines;
+  const displayLines = responseLines.length > 0
+    ? responseLines
+    : cleanedLines.filter((line) => !isBoardPreviewBoundary(line));
   return displayLines.slice(-lineLimit).join('\n');
 }
 

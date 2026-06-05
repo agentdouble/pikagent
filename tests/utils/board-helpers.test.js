@@ -42,11 +42,11 @@ describe('board-helpers', () => {
   it('keeps partial chunks readable without duplicating them', () => {
     const state = { lines: [], remainder: '' };
 
-    appendPreviewChunk(state, 'work', 3);
-    expect(getPreviewText(state)).toBe('work');
+    appendPreviewChunk(state, 'load', 3);
+    expect(getPreviewText(state)).toBe('load');
 
     appendPreviewChunk(state, 'ing\nnext', 3);
-    expect(getPreviewText(state)).toBe('working\nnext');
+    expect(getPreviewText(state)).toBe('loading\nnext');
   });
 
   it('treats carriage returns as line rewrites in fallback previews', () => {
@@ -117,6 +117,25 @@ describe('board-helpers', () => {
     };
 
     expect(getTerminalBufferPreview(terminal)).toBe('Latest response continued');
+  });
+
+  it('suppresses transient Codex states instead of showing them as previews', () => {
+    expect(formatBoardPreviewLines(['Working...'])).toBe('');
+    expect(formatBoardPreviewLines(['Thinking'])).toBe('');
+    expect(formatBoardPreviewLines([
+      '› salut ça va ?',
+      'Working',
+      'Messages',
+      '  gpt-5.5 xhigh fast · ~',
+    ])).toBe('');
+  });
+
+  it('cuts transient thinking lines after the latest response', () => {
+    expect(formatBoardPreviewLines([
+      '• Réponse stable.',
+      'Thinking...',
+      '› Implement {feature}',
+    ])).toBe('Réponse stable.');
   });
 
   it('sends board replies as text followed by a separate terminal enter and ignores empty values', async () => {

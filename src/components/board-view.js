@@ -182,9 +182,8 @@ class BoardView extends ComponentBase {
     if (!data.previewEl) return;
     const terminal = this._getTerminalNode(termId)?.terminal?.terminal;
     const previewText = getTerminalBufferPreview(terminal) || getPreviewText(data.preview);
-    data.previewEl.textContent = previewText
-      ? previewText
-      : 'No recent output';
+    if (previewText) data.lastPreviewText = previewText;
+    data.previewEl.textContent = data.lastPreviewText || 'No recent output';
   }
 
   _queuePreviewRefresh(termId, data) {
@@ -219,6 +218,7 @@ class BoardView extends ComponentBase {
       preview: { lines: [], remainder: '' },
       previewEl,
       inputEl,
+      lastPreviewText: '',
       lastActivityAt: Date.now(),
       previewRefreshQueued: false,
       sendPending: false,
