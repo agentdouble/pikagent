@@ -10,7 +10,8 @@
     "dev": "node build.js --watch & electron . &",
     "rebuild": "npx @electron/rebuild",
     "package": "npm run build && electron-builder --mac dir",
-    "package:dmg": "npm run build && electron-builder --mac dmg",
+    "package:dmg": "npm run build && electron-builder --mac dmg zip",
+    "release:mac": "npm run build && electron-builder --mac dmg zip --publish always",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -29,6 +30,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
+    "electron-updater": "^6.8.3",
     "highlight.js": "^11.11.1",
     "markdown-it": "^14.1.1",
     "node-pty": "^1.1.0"
@@ -52,11 +54,20 @@
     "asarUnpack": [
       "node_modules/node-pty/**/*"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "agentdouble",
+        "repo": "pikagent",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "assets/icon.icns",
       "target": [
-        "dir"
+        "dmg",
+        "zip"
       ]
     }
   }

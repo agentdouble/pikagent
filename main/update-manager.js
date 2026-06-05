@@ -1,125 +1,197 @@
-const { exec } = require('child_process');
 const { app } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const { BASE_DIR } = require('./paths');
-const { readJsonSync } = require('./fs-utils');
-const { splitLines } = require('./parse-utils');
+const {
+  buildAvailableResult,
+  buildNotAvailableResult,
+  buildUpdateInfo,
+  toErrorMessage,
+} = require('./update-result-helpers');
 
-const SOURCE_CONFIG_FILE = path.join(BASE_DIR, 'source-config.json');
-const UPDATE_BRANCH = 'main';
-const UPDATE_REMOTE = 'origin';
-const INSTALL_PATH = '/Applications/Pickagent.app';
+let autoUpdater = null;
+let updaterConfigured = false;
+let progressReporter = null;
+let pendingCheck = null;
+let pendingDownload = null;
+let lastUpdateInfo = null;
+let updateDownloaded = false;
 
-// --- Config persistence (saves project root + shell PATH from dev mode) ---
-
-function init() {
-  if (!app.isPackaged) {
-    const config = { root: app.getAppPath(), shellPath: process.env.PATH };
-    fs.mkdirSync(BASE_DIR, { recursive: true });
-    fs.writeFileSync(SOURCE_CONFIG_FILE, JSON.stringify(config), 'utf8');
+function _getAutoUpdater() {
+  if (!autoUpdater) {
+    ({ autoUpdater } = require('electron-updater'));
   }
+  return autoUpdater;
 }
 
-function _getProjectRoot() {
-  if (!app.isPackaged) return app.getAppPath();
-  return readJsonSync(SOURCE_CONFIG_FILE)?.root || null;
-}
-
-function _getShellPath() {
-  if (!app.isPackaged) return process.env.PATH;
-  return readJsonSync(SOURCE_CONFIG_FILE)?.shellPath || process.env.PATH;
-}
-
-// --- Shell execution ---
-
-function _run(cmd, cwd) {
-  const shellPath = _getShellPath();
-  return new Promise((resolve, reject) => {
-    exec(cmd, {
-      cwd,
-      env: { ...process.env, PATH: shellPath },
-      maxBuffer: 10 * 1024 * 1024,
-    }, (err, stdout, stderr) => {
-      if (err) reject(new Error((stderr || err.message).slice(0, 500)));
-      else resolve(stdout.trim());
-    });
+function _sendProgress(label, percent = 0) {
+  if (typeof progressReporter !== 'function') return;
+  progressReporter({
+    step: Math.max(1, Math.min(100, Math.round(percent))),
+    total: 100,
+    label,
   });
 }
 
-async function _runOptional(cmd, cwd, fallback = null) {
-  if (!cwd) return fallback;
-  try {
-    return await _run(cmd, cwd);
-  } catch {
-    return fallback;
-  }
+function _configureUpdater() {
+  if (updaterConfigured) return _getAutoUpdater();
+
+  const updater = _getAutoUpdater();
+  updater.autoDownload = false;
+  updater.autoInstallOnAppQuit = false;
+  updater.allowPrerelease = false;
+
+  updater.on('download-progress', (progress = {}) => {
+    const percent = Number.isFinite(progress.percent) ? progress.percent : 0;
+    _sendProgress(`Downloading update (${Math.round(percent)}%)...`, percent);
+  });
+
+  updaterConfigured = true;
+  return updater;
 }
 
-// --- Public API ---
+function init() {
+  if (app.isPackaged) _configureUpdater();
+}
 
 function getVersion() {
   return app.getVersion();
 }
 
-async function getUpdateInfo() {
-  const root = _getProjectRoot();
-  const remoteUrl = await _runOptional(`git remote get-url ${UPDATE_REMOTE}`, root, null);
-  const currentBranch = await _runOptional('git rev-parse --abbrev-ref HEAD', root, null);
+function getUpdateInfo() {
+  return buildUpdateInfo(app, { updateInfo: lastUpdateInfo, updateDownloaded });
+}
 
+function _releaseUpdatesUnavailable() {
   return {
-    sourceConfigured: Boolean(root),
-    sourceRoot: root,
-    currentBranch,
-    remote: UPDATE_REMOTE,
-    remoteUrl,
-    targetBranch: UPDATE_BRANCH,
-    targetRef: `${UPDATE_REMOTE}/${UPDATE_BRANCH}`,
-    installPath: INSTALL_PATH,
-    packaged: app.isPackaged,
+    available: false,
+    error: 'Release updates are only available from the packaged app.',
+    info: getUpdateInfo(),
   };
 }
 
-async function checkForUpdates() {
-  const root = _getProjectRoot();
-  if (!root) return { available: false, error: 'Source directory not configured. Run the app in dev mode first.' };
+function _finishCheck(resolve, cleanup, result) {
+  cleanup();
+  resolve(result);
+}
 
-  try {
-    await _run(`git fetch ${UPDATE_REMOTE}`, root);
-    const log = await _run(`git log HEAD..${UPDATE_REMOTE}/${UPDATE_BRANCH} --oneline`, root);
-    const commits = log ? splitLines(log) : [];
-    return { available: commits.length > 0, commits, count: commits.length, info: await getUpdateInfo() };
-  } catch (err) {
-    return { available: false, error: err.message, info: await getUpdateInfo() };
+async function _checkForUpdates() {
+  if (!app.isPackaged) return _releaseUpdatesUnavailable();
+
+  const updater = _configureUpdater();
+  const info = getUpdateInfo();
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      _finishCheck(resolve, cleanup, result);
+    };
+    const onAvailable = (updateInfo) => {
+      lastUpdateInfo = updateInfo;
+      updateDownloaded = false;
+      finish(buildAvailableResult(updateInfo, getUpdateInfo()));
+    };
+    const onNotAvailable = () => {
+      lastUpdateInfo = null;
+      updateDownloaded = false;
+      finish(buildNotAvailableResult(getUpdateInfo()));
+    };
+    const onError = (err) => {
+      finish({ available: false, error: toErrorMessage(err), info });
+    };
+    const cleanup = () => {
+      updater.removeListener('update-available', onAvailable);
+      updater.removeListener('update-not-available', onNotAvailable);
+      updater.removeListener('error', onError);
+    };
+
+    updater.once('update-available', onAvailable);
+    updater.once('update-not-available', onNotAvailable);
+    updater.once('error', onError);
+
+    _sendProgress('Checking published releases...', 5);
+    updater.checkForUpdates().catch(onError);
+  });
+}
+
+function checkForUpdates() {
+  if (!pendingCheck) {
+    pendingCheck = _checkForUpdates().finally(() => {
+      pendingCheck = null;
+    });
   }
+  return pendingCheck;
+}
+
+function _downloadUpdate(updater) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let downloadedFiles = [];
+    const finishSuccess = (updateInfo = lastUpdateInfo) => {
+      lastUpdateInfo = updateInfo || lastUpdateInfo;
+      updateDownloaded = true;
+      _sendProgress('Update downloaded. Restart to install.', 100);
+      finish(resolve, {
+        success: true,
+        version: lastUpdateInfo?.version || null,
+        files: downloadedFiles,
+        info: getUpdateInfo(),
+      });
+    };
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn(value);
+    };
+    const onDownloaded = (updateInfo) => {
+      finishSuccess(updateInfo);
+    };
+    const onError = (err) => {
+      finish(reject, new Error(toErrorMessage(err)));
+    };
+    const cleanup = () => {
+      updater.removeListener('update-downloaded', onDownloaded);
+      updater.removeListener('error', onError);
+    };
+
+    updater.once('update-downloaded', onDownloaded);
+    updater.once('error', onError);
+
+    _sendProgress('Downloading update...', 10);
+    updater.downloadUpdate()
+      .then((files) => {
+        downloadedFiles = files || [];
+        finishSuccess();
+      })
+      .catch(onError);
+  });
 }
 
 async function performUpdate(sendProgress) {
-  const root = _getProjectRoot();
-  if (!root) throw new Error('Source directory not configured');
+  progressReporter = sendProgress;
+  if (!app.isPackaged) throw new Error(_releaseUpdatesUnavailable().error);
 
-  const steps = [
-    { label: `Checking out ${UPDATE_BRANCH}...`, cmd: `git checkout ${UPDATE_BRANCH}` },
-    { label: `Pulling latest changes from ${UPDATE_REMOTE}/${UPDATE_BRANCH}...`, cmd: `git pull ${UPDATE_REMOTE} ${UPDATE_BRANCH}` },
-    { label: 'Installing dependencies...', cmd: 'npm install' },
-    { label: 'Packaging application...', cmd: 'npm run package' },
-  ];
-
-  for (let i = 0; i < steps.length; i++) {
-    sendProgress({ step: i + 1, total: steps.length + 1, label: steps[i].label });
-    await _run(steps[i].cmd, root);
+  const updater = _configureUpdater();
+  if (!lastUpdateInfo) {
+    const check = await checkForUpdates();
+    if (check.error) throw new Error(check.error);
+    if (!check.available) throw new Error('No update available.');
   }
 
-  // Copy to /Applications
-  sendProgress({ step: steps.length + 1, total: steps.length + 1, label: 'Installing to Applications...' });
-  const src = path.join(root, 'release', 'mac-arm64', 'Pickagent.app');
-  const dest = INSTALL_PATH;
-  await _run(`rm -rf "${dest}" && cp -R "${src}" "${dest}"`, root);
-
-  return { success: true };
+  if (!pendingDownload) {
+    pendingDownload = _downloadUpdate(updater).finally(() => {
+      pendingDownload = null;
+    });
+  }
+  return pendingDownload;
 }
 
 function relaunch() {
+  if (app.isPackaged && updateDownloaded) {
+    _configureUpdater().quitAndInstall(false, true);
+    return;
+  }
+
   app.relaunch();
   setTimeout(() => app.exit(0), 300);
 }

@@ -47,9 +47,29 @@ npm run build
 # Application macOS (.app)
 npm run package
 
-# Installeur DMG
+# Installeur DMG + ZIP d'update macOS
 npm run package:dmg
 ```
+
+## Releases et mises à jour
+
+Les mises à jour de l'application packagée passent par GitHub Releases via
+`electron-updater`. Un tag `v*` déclenche le workflow `.github/workflows/release.yml`,
+qui exécute les tests puis publie les artefacts macOS requis :
+
+- `Pickagent-*.dmg`
+- `Pickagent-*.zip`
+- `latest-mac.yml`
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+Pour une distribution macOS propre, configure les secrets GitHub
+`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et
+`APPLE_TEAM_ID` afin que le workflow puisse signer et préparer la notarisation
+des artefacts.
 
 ## Structure du projet
 

@@ -20,11 +20,12 @@ function _formatValue(value, fallback = 'Not configured') {
 
 function _targetRows(info) {
   return [
-    ['Tracks', _formatValue(info?.targetRef)],
-    ['Remote', _formatValue(info?.remoteUrl || info?.remote)],
-    ['Current branch', _formatValue(info?.currentBranch, 'Unknown')],
-    ['Source', _formatValue(info?.sourceRoot)],
-    ['Installs to', _formatValue(info?.installPath)],
+    ['Provider', _formatValue(info?.providerLabel || info?.provider)],
+    ['Repository', _formatValue(info?.repository)],
+    ['Channel', _formatValue(info?.channel)],
+    ['Current version', _formatValue(info?.currentVersion, 'Unknown')],
+    ['Artifacts', _formatValue(info?.artifacts)],
+    ['Packaged app', info?.packaged ? 'Yes' : 'No'],
   ];
 }
 
@@ -46,7 +47,7 @@ function _showUpdateTarget(container, info) {
   target.appendChild(_el(
     'div',
     'update-target-note',
-    'Checks git commits from the configured source checkout, then packages the app and copies it to the install path.',
+    'Checks published release artifacts, downloads the update, then installs it on restart.',
   ));
   container.appendChild(target);
 }
@@ -65,7 +66,7 @@ function _showMessage(area, type, text, onRetry) {
 function _showAvailable(area, result, onInstall) {
   area.replaceChildren();
   area.appendChild(
-    _el('div', 'update-available-badge', `${result.count} update${result.count > 1 ? 's' : ''} available`),
+    _el('div', 'update-available-badge', result.version ? `Version ${result.version} available` : `${result.count} update${result.count > 1 ? 's' : ''} available`),
   );
 
   const list = _el('div', 'update-commits');
@@ -77,7 +78,7 @@ function _showAvailable(area, result, onInstall) {
   }
   area.appendChild(list);
 
-  const btn = _el('button', 'update-btn update-btn-primary', 'Install update');
+  const btn = _el('button', 'update-btn update-btn-primary', 'Download update');
   btn.addEventListener('click', onInstall);
   area.appendChild(btn);
 }
@@ -131,8 +132,8 @@ async function handleDownload(area, runCheck) {
     await updateApi.run();
     unsub?.();
     area.replaceChildren();
-    area.appendChild(_el('div', 'update-message update-ok', '\u2713 Update installed successfully!'));
-    const btn = _el('button', 'update-btn update-btn-primary', 'Restart now');
+    area.appendChild(_el('div', 'update-message update-ok', '\u2713 Update downloaded. Restart to install.'));
+    const btn = _el('button', 'update-btn update-btn-primary', 'Restart and install');
     btn.addEventListener('click', () => updateApi.relaunch());
     area.appendChild(btn);
   } catch (err) {
