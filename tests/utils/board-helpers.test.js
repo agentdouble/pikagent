@@ -78,21 +78,23 @@ describe('board-helpers', () => {
     expect(getTerminalBufferPreview(terminal, 2)).toBe('agent response continued\nprompt');
   });
 
-  it('sends board replies with a terminal enter sequence and ignores empty values', () => {
+  it('sends board replies as text followed by a separate terminal enter and ignores empty values', async () => {
     const write = vi.fn();
 
-    expect(sendBoardReply('term_1', ' continue ', write)).toBe(true);
-    expect(write).toHaveBeenCalledWith('term_1', 'continue\r');
+    await expect(sendBoardReply('term_1', ' continue ', write, { enterDelayMs: 0 })).resolves.toBe(true);
+    expect(write).toHaveBeenNthCalledWith(1, 'term_1', 'continue');
+    expect(write).toHaveBeenNthCalledWith(2, 'term_1', '\r');
 
-    expect(sendBoardReply('term_1', ' ', write)).toBe(false);
-    expect(write).toHaveBeenCalledTimes(1);
+    await expect(sendBoardReply('term_1', ' ', write, { enterDelayMs: 0 })).resolves.toBe(false);
+    expect(write).toHaveBeenCalledTimes(2);
   });
 
   it('waits for async board reply writes before reporting success', async () => {
     const write = vi.fn().mockResolvedValue({});
 
-    await expect(sendBoardReply('term_1', 'continue', write)).resolves.toBe(true);
-    expect(write).toHaveBeenCalledWith('term_1', 'continue\r');
+    await expect(sendBoardReply('term_1', 'continue', write, { enterDelayMs: 0 })).resolves.toBe(true);
+    expect(write).toHaveBeenNthCalledWith(1, 'term_1', 'continue');
+    expect(write).toHaveBeenNthCalledWith(2, 'term_1', '\r');
   });
 
   it('removes the echoed board reply from captured agent responses', () => {

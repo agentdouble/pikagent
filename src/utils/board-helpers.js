@@ -162,13 +162,22 @@ export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMI
   return lines.slice(-lineLimit).join('\n');
 }
 
-export function sendBoardReply(termId, value, writeFn) {
+const BOARD_REPLY_ENTER_DELAY_MS = 20;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function sendBoardReply(termId, value, writeFn, opts = {}) {
   const text = String(value || '').trim();
   if (!text) return false;
-  const result = writeFn(termId, `${text}\r`);
-  if (result && typeof result.then === 'function') {
-    return result.then(() => true);
-  }
+  const enterDelayMs = Number.isFinite(opts.enterDelayMs)
+    ? Math.max(0, opts.enterDelayMs)
+    : BOARD_REPLY_ENTER_DELAY_MS;
+
+  await writeFn(termId, text);
+  await wait(enterDelayMs);
+  await writeFn(termId, '\r');
   return true;
 }
 
