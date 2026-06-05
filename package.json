@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node build.js",
     "start": "node build.js && electron .",
-    "dev": "node build.js --watch & electron . &",
+    "dev": "node scripts/dev.js",
     "rebuild": "npx @electron/rebuild",
     "package": "npm run build && electron-builder --mac dir",
     "package:dmg": "npm run build && electron-builder --mac dmg zip",

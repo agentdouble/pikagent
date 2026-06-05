@@ -2,8 +2,9 @@ const { app } = require('electron');
 const window = require('./main/window');
 const { initManagers } = require('./main/manager-init');
 const ipcHandlers = require('./main/ipc-handlers');
+const { configureAppIdentity } = require('./main/app-identity');
 
-app.setName('Pickagent');
+configureAppIdentity(app);
 
 let managerCleanup = null;
 
@@ -25,4 +26,3 @@ app.on('window-all-closed', () => {
   if (managerCleanup) managerCleanup();
   if (process.platform !== 'darwin') app.quit();
 });
-
