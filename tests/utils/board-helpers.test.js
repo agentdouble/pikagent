@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   appendPreviewChunk,
   cleanReplyResponseText,
+  formatBoardPreviewLines,
   formatElapsed,
   formatShortPath,
   getPreviewText,
@@ -76,6 +77,46 @@ describe('board-helpers', () => {
     };
 
     expect(getTerminalBufferPreview(terminal, 2)).toBe('agent response continued\nprompt');
+  });
+
+  it('shows only the latest agent response from Codex terminal chrome', () => {
+    const lines = [
+      '• Salut Jeremy. Je suis prêt. MEMORY.md',
+      'n’existe pas à /Users/jeremy.',
+      '› salut ça va ?',
+      '• Salut, ça va. Dis-moi ce que tu veux',
+      'qu’on attaque.',
+      '────────────────────────────────',
+      '› Implement {feature}',
+      '  gpt-5.5 xhigh fast · ~',
+    ];
+
+    expect(formatBoardPreviewLines(lines)).toBe(
+      'Salut, ça va. Dis-moi ce que tu veux\nqu’on attaque.',
+    );
+  });
+
+  it('filters Codex terminal chrome when reading the xterm buffer', () => {
+    const lines = [
+      { translateToString: () => '• Old response', isWrapped: false },
+      { translateToString: () => '› salut ça va ?', isWrapped: false },
+      { translateToString: () => '• Latest response', isWrapped: false },
+      { translateToString: () => ' continued', isWrapped: true },
+      { translateToString: () => '› Implement {feature}', isWrapped: false },
+      { translateToString: () => '  gpt-5.5 xhigh fast · ~', isWrapped: false },
+    ];
+    const terminal = {
+      rows: 6,
+      buffer: {
+        active: {
+          length: lines.length,
+          baseY: 0,
+          getLine: (index) => lines[index],
+        },
+      },
+    };
+
+    expect(getTerminalBufferPreview(terminal)).toBe('Latest response continued');
   });
 
   it('sends board replies as text followed by a separate terminal enter and ignores empty values', async () => {

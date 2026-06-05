@@ -123,11 +123,65 @@ export function appendPreviewChunk(state, chunk, lineLimit = PREVIEW_LINE_LIMIT)
 export function getPreviewText(state) {
   const lines = [...state.lines];
   if (state.remainder?.trim()) lines.push(state.remainder.trimEnd());
-  return lines.slice(-PREVIEW_LINE_LIMIT).join('\n');
+  return formatBoardPreviewLines(lines);
 }
 
 function cleanBufferLine(text) {
   return stripAnsi(text).replace(/[\r\n]/g, '').trimEnd();
+}
+
+function isAgentResponseStart(line) {
+  return /^\s*•\s+/.test(line);
+}
+
+function isPromptLine(line) {
+  return /^\s*›\s+/.test(line);
+}
+
+function isDividerLine(line) {
+  const trimmed = String(line || '').trim();
+  return trimmed.length >= 5 && /^[─━═\-_=]+$/.test(trimmed);
+}
+
+function isStatusLine(line) {
+  const text = String(line || '').trim();
+  return /^(gpt|claude|codex|gemini|sonnet|opus|o\d)[\w.-]*(\s|$)/i.test(text)
+    && /(\s·\s|~|fast|xhigh|high|medium|low)/i.test(text);
+}
+
+function isBoardPreviewBoundary(line) {
+  return isPromptLine(line) || isDividerLine(line) || isStatusLine(line);
+}
+
+function latestAgentResponseLines(lines) {
+  let start = -1;
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (isAgentResponseStart(lines[i])) {
+      start = i;
+      break;
+    }
+  }
+  if (start === -1) return [];
+
+  const response = [];
+  for (let i = start; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (i > start && isBoardPreviewBoundary(line)) break;
+    response.push(i === start ? line.replace(/^\s*•\s+/, '') : line);
+  }
+
+  while (response.length > 0 && !response[0].trim()) response.shift();
+  while (response.length > 0 && !response[response.length - 1].trim()) response.pop();
+  return response;
+}
+
+export function formatBoardPreviewLines(lines, lineLimit = PREVIEW_LINE_LIMIT) {
+  const cleanedLines = lines
+    .map((line) => String(line || '').trimEnd())
+    .filter((line) => line.trim());
+  const responseLines = latestAgentResponseLines(cleanedLines);
+  const displayLines = responseLines.length > 0 ? responseLines : cleanedLines;
+  return displayLines.slice(-lineLimit).join('\n');
 }
 
 export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMIT) {
@@ -159,7 +213,7 @@ export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMI
     }
   }
 
-  return lines.slice(-lineLimit).join('\n');
+  return formatBoardPreviewLines(lines, lineLimit);
 }
 
 const BOARD_REPLY_ENTER_DELAY_MS = 20;

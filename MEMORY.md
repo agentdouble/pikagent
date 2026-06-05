@@ -4,6 +4,7 @@
 - Explorer file rows should reuse `src/utils/file-icons.js` as the single source of truth for file language detection and visible file-type icons.
 - The Board should act as an agent control table with lightweight output previews and actions; do not embed full xterm instances in each Board card.
 - Board previews should prefer the source terminal xterm buffer over raw PTY text when available, because agent TUIs redraw with carriage returns/cursor control sequences that garble lightweight raw previews.
+- Board previews should extract only the latest agent answer from Codex-style terminal chrome: keep the newest `• ...` response block and cut off later `› ...` prompts, separators, and model/status lines like `gpt-5.5 xhigh fast · ~`.
 - Branch badge sync: terminal branch refresh is wired through `src/utils/terminal-events.js` as `terminal:branchCheck`; `tab-lifecycle.js` performs the injected `gitBranch` lookup. Keep terminal code free of direct `window.api.git` calls.
 - Workspace numeric shortcuts: default direct tab shortcuts are `control+1` through `control+9` with action ids `goToTab1` through `goToTab9`. Direct lookup uses visible tab order and skips tabs marked `NoShortcut`; xterm must let these combos bubble to `ShortcutManager`.
 - Linear-inspired theme: global restyle overrides live in `src/styles/linear-theme.css`, loaded last from `src/index.html`. Keep future visual polish there when possible, and keep the default `Pikagent` terminal theme aligned with the same neutral graphite palette in `src/utils/terminal-themes.js`.
