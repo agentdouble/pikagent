@@ -88,6 +88,13 @@ describe('board-helpers', () => {
     expect(write).toHaveBeenCalledTimes(1);
   });
 
+  it('waits for async board reply writes before reporting success', async () => {
+    const write = vi.fn().mockResolvedValue({});
+
+    await expect(sendBoardReply('term_1', 'continue', write)).resolves.toBe(true);
+    expect(write).toHaveBeenCalledWith('term_1', 'continue\r');
+  });
+
   it('removes the echoed board reply from captured agent responses', () => {
     expect(cleanReplyResponseText('continue\nDone.', 'continue')).toBe('Done.');
     expect(cleanReplyResponseText('Thinking...\nDone.', 'continue')).toBe('Thinking...\nDone.');

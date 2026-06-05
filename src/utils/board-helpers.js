@@ -165,7 +165,10 @@ export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMI
 export function sendBoardReply(termId, value, writeFn) {
   const text = String(value || '').trim();
   if (!text) return false;
-  writeFn(termId, `${text}\r`);
+  const result = writeFn(termId, `${text}\r`);
+  if (result && typeof result.then === 'function') {
+    return result.then(() => true);
+  }
   return true;
 }
 

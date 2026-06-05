@@ -1,19 +1,17 @@
 import {
   onTerminalCreated, onTerminalRemoved, onTerminalExited,
 } from '../utils/terminal-events.js';
-import { _el, buildDomainButtonBar, renderList } from '../utils/dom-api.js';
+import { _el } from '../utils/dom-api.js';
 import { disposeTerminal, disposeTerminalMap } from '../utils/terminal-factory.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { RendererPollingTimer } from '../utils/polling.js';
 import { ComponentBase } from '../utils/component-base.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS,
-  REPLY_HISTORY_LIMIT, REPLY_RESPONSE_LINE_LIMIT,
   STATUS_CONFIG, ALL_CARD_CLASSES,
-  HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
-  formatCardLabel, appendPreviewChunk, getPreviewText, formatElapsed,
-  getTerminalBufferPreview, sendBoardReply, cleanReplyResponseText,
+  appendPreviewChunk, getPreviewText,
+  getTerminalBufferPreview, sendBoardReply,
 } from '../utils/board-helpers.js';
 import { boardFacade } from '../facades/board-facade.js';
 
@@ -39,15 +37,12 @@ class BoardView extends ComponentBase {
   render() {
     this.container.replaceChildren();
 
-    this.summaryEl = _el('div', { className: 'board-summary' });
-    this.hiddenBarEl = _el('div', { className: 'board-hidden-bar' });
     this.emptyEl = _el('div', { className: 'board-empty', textContent: 'No agents running. Start Claude or Codex in a workspace terminal.' });
     this.boardEl = _el('div', { className: 'board-container' }, this.emptyEl);
 
     this.container.appendChild(
-      _el('div', { className: 'board-wrapper' }, this.summaryEl, this.hiddenBarEl, this.boardEl),
+      _el('div', { className: 'board-wrapper' }, this.boardEl),
     );
-    this._updateSummary();
   }
 
   async scanAgents() {
@@ -67,9 +62,7 @@ class BoardView extends ComponentBase {
         }
       }
 
-      this._autoHideNoShortcut();
       this._updateEmptyState();
-      this._updateSummary();
     } catch (e) {
       console.warn('Board: agent scan failed', e);
     }
@@ -92,16 +85,9 @@ class BoardView extends ComponentBase {
 
     const cfg = STATUS_CONFIG[status];
     const { element } = data;
-    const badge = element.querySelector('.board-card-status');
 
     element.classList.remove(...ALL_CARD_CLASSES);
     element.classList.add(cfg.cardClass);
-
-    if (badge) {
-      badge.textContent = cfg.label;
-      badge.className = cfg.badgeClass;
-    }
-    this._updateSummary();
   }
 
   _findTabForTerminal(termId) {
@@ -112,23 +98,8 @@ class BoardView extends ComponentBase {
     return getTabNameForTerminal(this.tabManager.tabs, termId);
   }
 
-  _autoHideNoShortcut() {
-    for (const [termId, data] of this.cards) {
-      const match = this._findTabForTerminal(termId);
-      if (match?.tab.noShortcut && !this._hiddenTerms.has(termId)) {
-        data.element.classList.add('board-card-hidden');
-        this._hiddenTerms.add(termId);
-      }
-    }
-    this._updateHiddenBar();
-  }
-
   _getTerminalNode(termId) {
     return this._findTabForTerminal(termId)?.tab?.terminalPanel?.terminals?.get(termId) ?? null;
-  }
-
-  _getTerminalCwd(termId) {
-    return this._getTerminalNode(termId)?.terminal?.cwd ?? null;
   }
 
   _openTerminal(termId) {
@@ -141,93 +112,26 @@ class BoardView extends ComponentBase {
     }, 0);
   }
 
-  _buildCardHeader(termId, info, card) {
-    const statusBadge = _el('span', { className: STATUS_CONFIG.running.badgeClass, textContent: STATUS_CONFIG.running.label });
-    const activityEl = _el('span', { className: 'board-card-activity', textContent: 'now' });
-    const nameGroup = _el('div', { className: 'board-card-name-group' },
-      _el('span', { className: 'board-card-agent', textContent: info.agent }),
-      _el('span', { className: 'board-card-title-inline', textContent: info.tabName }),
-      statusBadge,
-      activityEl,
-    );
-
-    const actionHandlers = {
-      navigate: () => this._openTerminal(termId),
-      stop: () => {
-        boardFacade.ptyKill(termId);
-        this.removeCard(termId);
-        this._updateEmptyState();
-        this._updateSummary();
-      },
-      hide: () => {
-        card.classList.add('board-card-hidden');
-        this._hiddenTerms.add(termId);
-        this._updateHiddenBar();
-        this._updateSummary();
-      },
-    };
-
-    const headerBtns = buildDomainButtonBar('board-card-btn', 'board-card-btns', HEADER_BUTTONS, actionHandlers);
-
-    return {
-      header: _el('div', { className: 'board-card-header' }, nameGroup, headerBtns),
-      statusBadge,
-      activityEl,
-    };
-  }
-
-  _sendReply(termId, inputEl) {
+  async _sendReply(termId, inputEl) {
     const text = String(inputEl.value || '').trim();
-    if (!sendBoardReply(termId, text, boardFacade.ptyWrite)) return;
+    if (!text) return;
 
-    inputEl.value = '';
     const cardData = this.cards.get(termId);
-    if (cardData) this._addReplyCard(cardData, text);
-  }
+    if (cardData?.sendPending) return;
 
-  _createReplyCard(text) {
-    const responseEl = _el('pre', {
-      className: 'board-reply-card-response board-reply-card-response-empty',
-      textContent: 'Waiting...',
-    });
-    const element = _el('div', { className: 'board-reply-card board-reply-card-pending' },
-      _el('div', { className: 'board-reply-card-prompt', textContent: text }),
-      responseEl,
-    );
+    if (cardData) cardData.sendPending = true;
+    inputEl.disabled = true;
 
-    return {
-      element,
-      responseEl,
-      sentText: text,
-      response: { lines: [], remainder: '' },
-    };
-  }
-
-  _addReplyCard(cardData, text) {
-    if (!cardData.replyHistoryEl) return;
-
-    const replyCard = this._createReplyCard(text);
-    cardData.replyCards.unshift(replyCard);
-    cardData.activeReply = replyCard;
-    cardData.replyHistoryEl.prepend(replyCard.element);
-
-    while (cardData.replyCards.length > REPLY_HISTORY_LIMIT) {
-      const removed = cardData.replyCards.pop();
-      removed?.element?.remove();
+    try {
+      const sent = await sendBoardReply(termId, text, boardFacade.ptyWrite);
+      if (sent) inputEl.value = '';
+    } catch (error) {
+      console.warn('Board: reply send failed', error);
+    } finally {
+      inputEl.disabled = false;
+      if (cardData) cardData.sendPending = false;
+      inputEl.focus();
     }
-  }
-
-  _appendReplyResponse(cardData, chunk) {
-    const replyCard = cardData.activeReply;
-    if (!replyCard) return;
-
-    appendPreviewChunk(replyCard.response, chunk, REPLY_RESPONSE_LINE_LIMIT);
-    const responseText = cleanReplyResponseText(getPreviewText(replyCard.response), replyCard.sentText);
-    if (!responseText) return;
-
-    replyCard.responseEl.textContent = responseText;
-    replyCard.responseEl.classList.remove('board-reply-card-response-empty');
-    replyCard.element.classList.remove('board-reply-card-pending');
   }
 
   _buildReplyForm(termId) {
@@ -238,42 +142,37 @@ class BoardView extends ComponentBase {
     });
     const sendBtn = _el('button', {
       className: 'board-reply-send',
-      type: 'button',
+      type: 'submit',
       textContent: 'Send',
       title: 'Send reply',
-      onClick: () => this._sendReply(termId, inputEl),
     });
-    inputEl.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter') return;
-      event.preventDefault();
-      event.stopPropagation();
-      this._sendReply(termId, inputEl);
-    });
-    return { replyForm: _el('div', { className: 'board-reply-form' }, inputEl, sendBtn), inputEl };
+    const replyForm = _el('form', {
+      className: 'board-reply-form',
+      onSubmit: (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._sendReply(termId, inputEl);
+      },
+    }, inputEl, sendBtn);
+    return { replyForm, inputEl };
   }
 
   _buildReplyPanel(termId) {
     const { replyForm, inputEl } = this._buildReplyForm(termId);
-    const replyHistoryEl = _el('div', { className: 'board-reply-history' });
     return {
-      replyPanel: _el('div', { className: 'board-reply-panel' }, replyForm, replyHistoryEl),
+      replyPanel: _el('div', { className: 'board-reply-panel' }, replyForm),
       inputEl,
-      replyHistoryEl,
     };
   }
 
-  _buildCardBody(termId, info) {
+  _buildCardBody(termId) {
     const previewEl = _el('pre', { className: 'board-card-preview', textContent: 'No recent output' });
-    const { replyPanel, inputEl, replyHistoryEl } = this._buildReplyPanel(termId);
+    const { replyPanel, inputEl } = this._buildReplyPanel(termId);
     const body = _el('div', { className: 'board-card-body' },
       previewEl,
       replyPanel,
     );
-    return { body, previewEl, inputEl, replyHistoryEl };
-  }
-
-  _refreshCardMeta(termId, data) {
-    if (data.activityEl) data.activityEl.textContent = formatElapsed(Date.now() - data.lastActivityAt);
+    return { body, previewEl, inputEl };
   }
 
   _updateCardPreview(termId, data) {
@@ -300,11 +199,10 @@ class BoardView extends ComponentBase {
   addCard(termId, info) {
     const card = _el('div', { className: 'board-card board-card-running' });
     card.tabIndex = 0;
-    card.title = 'Open terminal';
+    card.title = `${info.agent} agent`;
 
-    const { header, statusBadge, activityEl } = this._buildCardHeader(termId, info, card);
-    const { body, previewEl, inputEl, replyHistoryEl } = this._buildCardBody(termId, info);
-    card.append(header, body);
+    const { body, previewEl, inputEl } = this._buildCardBody(termId);
+    card.append(body);
 
     const cardData = {
       element: card,
@@ -318,19 +216,11 @@ class BoardView extends ComponentBase {
       preview: { lines: [], remainder: '' },
       previewEl,
       inputEl,
-      replyHistoryEl,
-      replyCards: [],
-      activeReply: null,
-      statusBadge,
-      activityEl,
       lastActivityAt: Date.now(),
       previewRefreshQueued: false,
+      sendPending: false,
     };
 
-    card.addEventListener('click', (event) => {
-      if (event.target.closest('button, input, .board-reply-panel')) return;
-      this._openTerminal(termId);
-    });
     card.addEventListener('keydown', (event) => {
       if (event.target.closest('button, input, .board-reply-panel')) return;
       if (event.key === 'Enter') this._openTerminal(termId);
@@ -340,14 +230,12 @@ class BoardView extends ComponentBase {
       cardData.dataBytes += data.length;
       cardData.lastActivityAt = Date.now();
       appendPreviewChunk(cardData.preview, data);
-      this._appendReplyResponse(cardData, data);
       this._updateCardPreview(termId, cardData);
       this._queuePreviewRefresh(termId, cardData);
     });
 
     this.boardEl.insertBefore(card, this.emptyEl);
     this.cards.set(termId, cardData);
-    this._updateSummary();
   }
 
   removeCard(termId) {
@@ -357,42 +245,6 @@ class BoardView extends ComponentBase {
     data.element.remove();
     this.cards.delete(termId);
     this._hiddenTerms.delete(termId);
-    this._updateHiddenBar();
-    this._updateSummary();
-  }
-
-  _updateHiddenBar() {
-    if (!this.hiddenBarEl) return;
-    renderList(this.hiddenBarEl, [...this._hiddenTerms], (termId) => {
-      const card = this.cards.get(termId);
-      if (!card) return null;
-      return _el('button', {
-        className: 'board-hidden-chip',
-        textContent: formatCardLabel(card.info.agent, card.info.tabName),
-        title: 'Show',
-        onClick: () => {
-          card.element.classList.remove('board-card-hidden');
-          this._hiddenTerms.delete(termId);
-          this._updateHiddenBar();
-          this._updateSummary();
-        },
-      });
-    });
-  }
-
-  _updateSummary() {
-    if (!this.summaryEl) return;
-    const visibleCards = [...this.cards.entries()].filter(([id]) => !this._hiddenTerms.has(id));
-    const running = visibleCards.filter(([, card]) => card.status === 'running').length;
-    const waiting = visibleCards.filter(([, card]) => card.status === 'waiting').length;
-    this.summaryEl.replaceChildren(
-      _el('div', { className: 'board-summary-title', textContent: 'Agent Control' }),
-      _el('div', { className: 'board-summary-stats' },
-        _el('span', { className: 'board-summary-pill board-summary-running', textContent: `${running} running` }),
-        _el('span', { className: 'board-summary-pill board-summary-waiting', textContent: `${waiting} waiting` }),
-        _el('span', { className: 'board-summary-pill', textContent: `${this._hiddenTerms.size} hidden` }),
-      ),
-    );
   }
 
   _setupListeners() {
@@ -424,7 +276,6 @@ class BoardView extends ComponentBase {
           this.scanAgents();
           this._checkIdleCards();
           for (const [termId, data] of this.cards) {
-            this._refreshCardMeta(termId, data);
             this._updateCardPreview(termId, data);
           }
         }

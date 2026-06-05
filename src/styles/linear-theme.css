@@ -453,15 +453,16 @@ select {
 
 .board-card:hover {
   transform: none;
-  border-color: var(--border-strong);
 }
 
 .board-card-running {
-  border-color: rgba(214, 168, 66, 0.45);
+  border-color: rgba(214, 168, 66, 0.62);
+  background: linear-gradient(180deg, rgba(214, 168, 66, 0.08), var(--bg-surface) 34%);
 }
 
 .board-card-waiting {
-  border-color: rgba(76, 183, 130, 0.45);
+  border-color: rgba(76, 183, 130, 0.62);
+  background: linear-gradient(180deg, rgba(76, 183, 130, 0.08), var(--bg-surface) 34%);
 }
 
 .board-card-btn,
