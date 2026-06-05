@@ -142,19 +142,22 @@ class BoardView extends ComponentBase {
     });
     const sendBtn = _el('button', {
       className: 'board-reply-send',
-      type: 'submit',
+      type: 'button',
       textContent: 'Send',
       title: 'Send reply',
-    });
-    const replyForm = _el('form', {
-      className: 'board-reply-form',
-      onSubmit: (event) => {
+      onClick: (event) => {
         event.preventDefault();
         event.stopPropagation();
         this._sendReply(termId, inputEl);
       },
-    }, inputEl, sendBtn);
-    return { replyForm, inputEl };
+    });
+    inputEl.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      event.stopPropagation();
+      this._sendReply(termId, inputEl);
+    });
+    return { replyForm: _el('div', { className: 'board-reply-form' }, inputEl, sendBtn), inputEl };
   }
 
   _buildReplyPanel(termId) {

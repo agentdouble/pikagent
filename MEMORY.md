@@ -13,6 +13,7 @@
 - macOS release builds must keep `build.mac.notarize: true` and `hardenedRuntime: true`; GitHub release workflow expects signing/notarization secrets before pushing a public `v*` tag.
 - PTY agent detection uses `pgrep -P <pid>`; exit code `1` means no child process was found and should be treated as an empty result, not logged as `_checkAgent failed`.
 - Board replies should send terminal Enter as `\r`, not `\n`; keep the response in the main agent output preview instead of visible per-message reply cards so the Board card remains output + input only.
+- Board reply controls should use explicit button `onClick` plus input `keydown Enter` handlers for PTY writes; avoid relying on a form submit path in the Electron Board.
 - Dev Electron must use a checkout-scoped `Pickagent Dev/<checkout>` userData profile and `npm run dev` must stay foreground-managed; backgrounding `node build.js --watch & electron . &` leaves orphan watchers and can collide with production Chromium storage.
 - Git branch checks may run in terminal cwd values that are not repos, such as `/Users/jeremy`; `git rev-parse` non-repo errors should return `null`/`false` quietly instead of logging repeated `[git-manager]` warnings.
 - Board agent cards should stay visually minimal and square: visible content is the agent output plus the reply input, with waiting/running state communicated by card color instead of labels, summaries, or action chrome.
