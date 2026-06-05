@@ -1,7 +1,7 @@
-const { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked } = require('./git-helpers');
+const { DIFF_MAX_BUFFER, execOpts, isNotGitRepositoryError, parseNameStatus, parseUntracked } = require('./git-helpers');
 const { splitLines, matchFirst } = require('./parse-utils');
 const { createLogger, trySafe } = require('./logger');
-const { execFileAsync, runCommand } = require('./command-utils');
+const { execFileAsync } = require('./command-utils');
 
 const log = createLogger('git-manager');
 
@@ -10,9 +10,16 @@ const log = createLogger('git-manager');
 // ---------------------------------------------------------------------------
 
 /** Run a git command, return trimmed stdout or `fallback` on error. */
-async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
+async function runGit(cwd, args, { fallback = null, maxBuffer, silentNotRepo = false } = {}) {
   const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
-  return runCommand('git', args, opts, { fallback, trySafe, log, label: `git ${args[0]} in ${cwd}` });
+  try {
+    const { stdout } = await execFileAsync('git', args, opts);
+    return stdout.trim();
+  } catch (err) {
+    if (silentNotRepo && isNotGitRepositoryError(err)) return fallback;
+    log.warn(`git ${args[0]} in ${cwd} failed`, err);
+    return fallback;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -20,7 +27,7 @@ async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
 // ---------------------------------------------------------------------------
 
 async function branch(cwd) {
-  return runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
+  return runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'], { silentNotRepo: true });
 }
 
 async function localChanges(cwd) {
@@ -54,7 +61,7 @@ async function fileDiff(cwd, filePath, isStaged) {
 // ---------------------------------------------------------------------------
 
 async function isRepo(cwd) {
-  const out = await runGit(cwd, ['rev-parse', '--is-inside-work-tree']);
+  const out = await runGit(cwd, ['rev-parse', '--is-inside-work-tree'], { silentNotRepo: true });
   return out === 'true';
 }
 

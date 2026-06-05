@@ -9,6 +9,8 @@ const ELECTRON_BIN = path.join(ROOT, 'node_modules', '.bin', `electron${BIN_EXT}
 
 const children = new Set();
 let shuttingDown = false;
+let shutdownTimer = null;
+let requestedExitCode = 0;
 
 function spawnChild(label, command, args) {
   const child = spawn(command, args, {
@@ -20,7 +22,10 @@ function spawnChild(label, command, args) {
   children.add(child);
   child.on('exit', (code, signal) => {
     children.delete(child);
-    if (shuttingDown) return;
+    if (shuttingDown) {
+      maybeExitAfterShutdown();
+      return;
+    }
 
     shuttingDown = true;
     stopChildren();
@@ -46,10 +51,22 @@ function stopChildren(signal = 'SIGTERM') {
   }
 }
 
+function maybeExitAfterShutdown() {
+  if (!shuttingDown || children.size > 0) return;
+  if (shutdownTimer) clearTimeout(shutdownTimer);
+  process.exit(requestedExitCode);
+}
+
 function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
+  requestedExitCode = signal === 'SIGINT' ? 130 : 143;
   stopChildren(signal);
+  shutdownTimer = setTimeout(() => {
+    stopChildren('SIGKILL');
+    process.exit(requestedExitCode);
+  }, 1500);
+  maybeExitAfterShutdown();
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));

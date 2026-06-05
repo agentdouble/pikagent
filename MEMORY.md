@@ -14,3 +14,4 @@
 - PTY agent detection uses `pgrep -P <pid>`; exit code `1` means no child process was found and should be treated as an empty result, not logged as `_checkAgent failed`.
 - Board replies should send terminal Enter as `\r`, not `\n`, and each Board-sent message should create a compact response card that streams the following agent output without turning the Board into a full terminal.
 - Dev Electron must use a checkout-scoped `Pickagent Dev/<checkout>` userData profile and `npm run dev` must stay foreground-managed; backgrounding `node build.js --watch & electron . &` leaves orphan watchers and can collide with production Chromium storage.
+- Git branch checks may run in terminal cwd values that are not repos, such as `/Users/jeremy`; `git rev-parse` non-repo errors should return `null`/`false` quietly instead of logging repeated `[git-manager]` warnings.

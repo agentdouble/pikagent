@@ -6,6 +6,15 @@ function execOpts(cwd, extra) {
   return { cwd, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], ...extra };
 }
 
+function isNotGitRepositoryError(err) {
+  const text = [
+    err?.stderr?.toString(),
+    err?.stdout?.toString(),
+    err?.message,
+  ].filter(Boolean).join('\n');
+  return /not a git repository/i.test(text);
+}
+
 /** Parse git name-status output into { status, path, staged } entries. */
 function parseNameStatus(raw, staged) {
   return splitLines(raw, (line) => {
@@ -19,4 +28,4 @@ function parseUntracked(raw) {
   return splitLines(raw, (p) => ({ status: '?', path: p, staged: false }));
 }
 
-module.exports = { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked };
+module.exports = { DIFF_MAX_BUFFER, execOpts, isNotGitRepositoryError, parseNameStatus, parseUntracked };
