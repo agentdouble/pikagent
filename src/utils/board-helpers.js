@@ -126,6 +126,12 @@ export function getPreviewText(state) {
   return formatBoardPreviewLines(lines);
 }
 
+export function getPreviewState(state) {
+  const lines = [...state.lines];
+  if (state.remainder?.trim()) lines.push(state.remainder.trimEnd());
+  return formatBoardPreviewState(lines);
+}
+
 function cleanBufferLine(text) {
   return stripAnsi(text).replace(/[\r\n]/g, '').trimEnd();
 }
@@ -160,6 +166,13 @@ function isTransientAgentStateLine(line) {
   return /^(working|thinking|think|messages?)(?:[\s.:…-].*)?$/i.test(text);
 }
 
+function cleanTransientAgentStateLine(line) {
+  return String(line || '')
+    .trim()
+    .replace(/^[•◦●○◌◇◆✦✧⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s*/, '')
+    .trim();
+}
+
 function isBoardPreviewBoundary(line) {
   return isPromptLine(line)
     || isDividerLine(line)
@@ -168,14 +181,14 @@ function isBoardPreviewBoundary(line) {
     || isTransientAgentStateLine(line);
 }
 
-function latestAgentResponseLines(lines) {
-  let start = -1;
+function findLatestAgentResponseStart(lines) {
   for (let i = lines.length - 1; i >= 0; i -= 1) {
-    if (isAgentResponseStart(lines[i])) {
-      start = i;
-      break;
-    }
+    if (isAgentResponseStart(lines[i])) return i;
   }
+  return -1;
+}
+
+function latestAgentResponseLines(lines, start = findLatestAgentResponseStart(lines)) {
   if (start === -1) return [];
 
   const response = [];
@@ -190,23 +203,42 @@ function latestAgentResponseLines(lines) {
   return response;
 }
 
-export function formatBoardPreviewLines(lines, lineLimit = PREVIEW_LINE_LIMIT) {
+function latestTransientAgentState(lines, start = 0) {
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (i < start) break;
+    if (isTransientAgentStateLine(lines[i])) return cleanTransientAgentStateLine(lines[i]);
+  }
+  return '';
+}
+
+export function formatBoardPreviewState(lines, lineLimit = PREVIEW_LINE_LIMIT) {
   const cleanedLines = lines
     .map((line) => String(line || '').trimEnd())
     .filter((line) => line.trim());
-  const responseLines = latestAgentResponseLines(cleanedLines);
+  const responseStart = findLatestAgentResponseStart(cleanedLines);
+  const responseLines = latestAgentResponseLines(cleanedLines, responseStart);
   const displayLines = responseLines.length > 0
     ? responseLines
     : cleanedLines.filter((line) => !isBoardPreviewBoundary(line));
-  return displayLines.slice(-lineLimit).join('\n');
+  return {
+    text: displayLines.slice(-lineLimit).join('\n'),
+    transientText: latestTransientAgentState(
+      cleanedLines,
+      responseStart === -1 ? 0 : responseStart + 1,
+    ),
+  };
 }
 
-export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMIT) {
+export function formatBoardPreviewLines(lines, lineLimit = PREVIEW_LINE_LIMIT) {
+  return formatBoardPreviewState(lines, lineLimit).text;
+}
+
+function getTerminalBufferLines(terminal, lineLimit = PREVIEW_LINE_LIMIT) {
   const buffer = terminal?.buffer?.active;
-  if (!buffer || typeof buffer.getLine !== 'function') return '';
+  if (!buffer || typeof buffer.getLine !== 'function') return [];
 
   const length = Number.isFinite(buffer.length) ? buffer.length : 0;
-  if (length <= 0) return '';
+  if (length <= 0) return [];
 
   const rows = Number.isFinite(terminal.rows) && terminal.rows > 0
     ? terminal.rows
@@ -230,7 +262,15 @@ export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMI
     }
   }
 
-  return formatBoardPreviewLines(lines, lineLimit);
+  return lines;
+}
+
+export function getTerminalBufferPreviewState(terminal, lineLimit = PREVIEW_LINE_LIMIT) {
+  return formatBoardPreviewState(getTerminalBufferLines(terminal, lineLimit), lineLimit);
+}
+
+export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMIT) {
+  return getTerminalBufferPreviewState(terminal, lineLimit).text;
 }
 
 const BOARD_REPLY_ENTER_DELAY_MS = 20;

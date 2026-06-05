@@ -3,6 +3,7 @@ import {
   appendPreviewChunk,
   cleanReplyResponseText,
   formatBoardPreviewLines,
+  formatBoardPreviewState,
   formatElapsed,
   formatShortPath,
   getPreviewText,
@@ -128,6 +129,30 @@ describe('board-helpers', () => {
       'Messages',
       '  gpt-5.5 xhigh fast · ~',
     ])).toBe('');
+  });
+
+  it('returns transient Codex states separately from stable preview text', () => {
+    expect(formatBoardPreviewState(['Working...'])).toEqual({
+      text: '',
+      transientText: 'Working...',
+    });
+    expect(formatBoardPreviewState([
+      '• Réponse stable.',
+      'Working',
+    ])).toEqual({
+      text: 'Réponse stable.',
+      transientText: 'Working',
+    });
+  });
+
+  it('does not attach stale transient states before a newer answer', () => {
+    expect(formatBoardPreviewState([
+      'Working',
+      '• Nouvelle réponse.',
+    ])).toEqual({
+      text: 'Nouvelle réponse.',
+      transientText: '',
+    });
   });
 
   it('cuts transient thinking lines after the latest response', () => {

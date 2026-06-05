@@ -10,8 +10,8 @@ import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS,
   STATUS_CONFIG, ALL_CARD_CLASSES,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
-  appendPreviewChunk, getPreviewText,
-  getTerminalBufferPreview, sendBoardReply,
+  appendPreviewChunk, getPreviewState,
+  getTerminalBufferPreviewState, sendBoardReply,
 } from '../utils/board-helpers.js';
 import { boardFacade } from '../facades/board-facade.js';
 
@@ -181,9 +181,21 @@ class BoardView extends ComponentBase {
   _updateCardPreview(termId, data) {
     if (!data.previewEl) return;
     const terminal = this._getTerminalNode(termId)?.terminal?.terminal;
-    const previewText = getTerminalBufferPreview(terminal) || getPreviewText(data.preview);
-    if (previewText) data.lastPreviewText = previewText;
-    data.previewEl.textContent = data.lastPreviewText || 'No recent output';
+    const terminalState = getTerminalBufferPreviewState(terminal);
+    const fallbackState = getPreviewState(data.preview);
+    const previewState = terminalState.text || terminalState.transientText
+      ? terminalState
+      : fallbackState;
+
+    if (previewState.text) data.lastPreviewText = previewState.text;
+    data.lastTransientText = previewState.transientText || '';
+
+    const displayLines = [];
+    if (data.lastPreviewText) displayLines.push(data.lastPreviewText);
+    if (data.lastTransientText) displayLines.push(data.lastTransientText);
+    data.previewEl.textContent = displayLines.length > 0
+      ? displayLines.join('\n\n')
+      : 'No recent output';
   }
 
   _queuePreviewRefresh(termId, data) {
@@ -219,6 +231,7 @@ class BoardView extends ComponentBase {
       previewEl,
       inputEl,
       lastPreviewText: '',
+      lastTransientText: '',
       lastActivityAt: Date.now(),
       previewRefreshQueued: false,
       sendPending: false,
