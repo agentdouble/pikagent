@@ -11,3 +11,4 @@
 - Theme border preference: Jeremy found the Linear-inspired UI too boxed in when separators were highly visible. Prefer low-alpha subtle borders and softer active terminal/tab accents instead of strong panel outlines.
 - Self-update uses the configured source checkout, compares against `origin/main`, packages with `npm run package`, then installs to `/Applications/Pickagent.app`; keep Settings > Update explicit about that target.
 - Self-update is a per-machine local rebuild, not scalable release distribution: every machine needs a configured git checkout, git/npm toolchain, and write access to `/Applications/Pickagent.app`; prefer signed release artifacts plus an updater feed for multi-machine rollout.
+- PTY agent detection uses `pgrep -P <pid>`; exit code `1` means no child process was found and should be treated as an empty result, not logged as `_checkAgent failed`.

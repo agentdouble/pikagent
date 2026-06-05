@@ -116,8 +116,13 @@ class PtyManager {
   }
 
   async _getChildPids(pid) {
-    const out = await this._exec('pgrep', ['-P', String(pid)]);
-    return parseChildPids(out);
+    try {
+      const out = await this._exec('pgrep', ['-P', String(pid)]);
+      return parseChildPids(out);
+    } catch (err) {
+      if (err?.code === 1) return [];
+      throw err;
+    }
   }
 
   async _checkAgent(id, proc) {
