@@ -64,7 +64,9 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
       "icon": "assets/icon.icns",
+      "notarize": true,
       "target": [
         "dmg",
         "zip"
