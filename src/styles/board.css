@@ -242,6 +242,14 @@
   min-width: 0;
 }
 
+.board-reply-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+
 .board-reply-input {
   min-width: 0;
   flex: 1;
@@ -277,6 +285,57 @@
   background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--text-secondary);
+}
+
+.board-reply-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 126px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.board-reply-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  cursor: default;
+}
+
+.board-reply-card-pending {
+  border-color: var(--accent-softer);
+}
+
+.board-reply-card-prompt {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-reply-card-response {
+  margin: 0;
+  max-height: 78px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.board-reply-card-response-empty {
+  color: var(--text-muted);
+  font-family: var(--font-ui);
 }
 
 @media (max-width: 900px) {

@@ -13,6 +13,8 @@ export { findTabForTerminal };
 export const DATA_VOLUME_THRESHOLD = 200;
 export const POLL_INTERVAL_MS = 3000;
 export const PREVIEW_LINE_LIMIT = 8;
+export const REPLY_RESPONSE_LINE_LIMIT = 6;
+export const REPLY_HISTORY_LIMIT = 3;
 
 export const STATUS_CONFIG = {
   running: { label: 'Running', cardClass: 'board-card-running', badgeClass: 'board-card-status board-status-running' },
@@ -163,8 +165,19 @@ export function getTerminalBufferPreview(terminal, lineLimit = PREVIEW_LINE_LIMI
 export function sendBoardReply(termId, value, writeFn) {
   const text = String(value || '').trim();
   if (!text) return false;
-  writeFn(termId, `${text}\n`);
+  writeFn(termId, `${text}\r`);
   return true;
+}
+
+export function cleanReplyResponseText(text, sentText) {
+  const sent = String(sentText || '').trim();
+  const lines = String(text || '').split('\n');
+
+  while (sent && lines.length > 0 && lines[0].trim() === sent) {
+    lines.shift();
+  }
+
+  return lines.join('\n').trim();
 }
 
 /**

@@ -11,3 +11,4 @@
 - Theme border preference: Jeremy found the Linear-inspired UI too boxed in when separators were highly visible. Prefer low-alpha subtle borders and softer active terminal/tab accents instead of strong panel outlines.
 - Self-update uses `electron-updater` against GitHub Releases (`agentdouble/pikagent`) and should consume published macOS artifacts (`dmg`, `zip`, `latest-mac.yml`), not rebuild locally from a source checkout.
 - PTY agent detection uses `pgrep -P <pid>`; exit code `1` means no child process was found and should be treated as an empty result, not logged as `_checkAgent failed`.
+- Board replies should send terminal Enter as `\r`, not `\n`, and each Board-sent message should create a compact response card that streams the following agent output without turning the Board into a full terminal.

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   appendPreviewChunk,
+  cleanReplyResponseText,
   formatElapsed,
   formatShortPath,
   getPreviewText,
@@ -77,13 +78,18 @@ describe('board-helpers', () => {
     expect(getTerminalBufferPreview(terminal, 2)).toBe('agent response continued\nprompt');
   });
 
-  it('sends board replies with a newline and ignores empty values', () => {
+  it('sends board replies with a terminal enter sequence and ignores empty values', () => {
     const write = vi.fn();
 
     expect(sendBoardReply('term_1', ' continue ', write)).toBe(true);
-    expect(write).toHaveBeenCalledWith('term_1', 'continue\n');
+    expect(write).toHaveBeenCalledWith('term_1', 'continue\r');
 
     expect(sendBoardReply('term_1', ' ', write)).toBe(false);
     expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes the echoed board reply from captured agent responses', () => {
+    expect(cleanReplyResponseText('continue\nDone.', 'continue')).toBe('Done.');
+    expect(cleanReplyResponseText('Thinking...\nDone.', 'continue')).toBe('Thinking...\nDone.');
   });
 });

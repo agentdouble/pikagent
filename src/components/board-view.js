@@ -8,11 +8,12 @@ import { RendererPollingTimer } from '../utils/polling.js';
 import { ComponentBase } from '../utils/component-base.js';
 import {
   DATA_VOLUME_THRESHOLD, POLL_INTERVAL_MS,
+  REPLY_HISTORY_LIMIT, REPLY_RESPONSE_LINE_LIMIT,
   STATUS_CONFIG, ALL_CARD_CLASSES,
   HEADER_BUTTONS,
   resolveCardStatus, findTabForTerminal, getTabNameForTerminal, computeFocusIndex,
   formatCardLabel, appendPreviewChunk, getPreviewText, formatElapsed,
-  getTerminalBufferPreview, sendBoardReply,
+  getTerminalBufferPreview, sendBoardReply, cleanReplyResponseText,
 } from '../utils/board-helpers.js';
 import { boardFacade } from '../facades/board-facade.js';
 
@@ -176,7 +177,57 @@ class BoardView extends ComponentBase {
   }
 
   _sendReply(termId, inputEl) {
-    if (sendBoardReply(termId, inputEl.value, boardFacade.ptyWrite)) inputEl.value = '';
+    const text = String(inputEl.value || '').trim();
+    if (!sendBoardReply(termId, text, boardFacade.ptyWrite)) return;
+
+    inputEl.value = '';
+    const cardData = this.cards.get(termId);
+    if (cardData) this._addReplyCard(cardData, text);
+  }
+
+  _createReplyCard(text) {
+    const responseEl = _el('pre', {
+      className: 'board-reply-card-response board-reply-card-response-empty',
+      textContent: 'Waiting...',
+    });
+    const element = _el('div', { className: 'board-reply-card board-reply-card-pending' },
+      _el('div', { className: 'board-reply-card-prompt', textContent: text }),
+      responseEl,
+    );
+
+    return {
+      element,
+      responseEl,
+      sentText: text,
+      response: { lines: [], remainder: '' },
+    };
+  }
+
+  _addReplyCard(cardData, text) {
+    if (!cardData.replyHistoryEl) return;
+
+    const replyCard = this._createReplyCard(text);
+    cardData.replyCards.unshift(replyCard);
+    cardData.activeReply = replyCard;
+    cardData.replyHistoryEl.prepend(replyCard.element);
+
+    while (cardData.replyCards.length > REPLY_HISTORY_LIMIT) {
+      const removed = cardData.replyCards.pop();
+      removed?.element?.remove();
+    }
+  }
+
+  _appendReplyResponse(cardData, chunk) {
+    const replyCard = cardData.activeReply;
+    if (!replyCard) return;
+
+    appendPreviewChunk(replyCard.response, chunk, REPLY_RESPONSE_LINE_LIMIT);
+    const responseText = cleanReplyResponseText(getPreviewText(replyCard.response), replyCard.sentText);
+    if (!responseText) return;
+
+    replyCard.responseEl.textContent = responseText;
+    replyCard.responseEl.classList.remove('board-reply-card-response-empty');
+    replyCard.element.classList.remove('board-reply-card-pending');
   }
 
   _buildReplyForm(termId) {
@@ -195,19 +246,30 @@ class BoardView extends ComponentBase {
     inputEl.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
+      event.stopPropagation();
       this._sendReply(termId, inputEl);
     });
     return { replyForm: _el('div', { className: 'board-reply-form' }, inputEl, sendBtn), inputEl };
   }
 
+  _buildReplyPanel(termId) {
+    const { replyForm, inputEl } = this._buildReplyForm(termId);
+    const replyHistoryEl = _el('div', { className: 'board-reply-history' });
+    return {
+      replyPanel: _el('div', { className: 'board-reply-panel' }, replyForm, replyHistoryEl),
+      inputEl,
+      replyHistoryEl,
+    };
+  }
+
   _buildCardBody(termId, info) {
     const previewEl = _el('pre', { className: 'board-card-preview', textContent: 'No recent output' });
-    const { replyForm, inputEl } = this._buildReplyForm(termId);
+    const { replyPanel, inputEl, replyHistoryEl } = this._buildReplyPanel(termId);
     const body = _el('div', { className: 'board-card-body' },
       previewEl,
-      replyForm,
+      replyPanel,
     );
-    return { body, previewEl, inputEl };
+    return { body, previewEl, inputEl, replyHistoryEl };
   }
 
   _refreshCardMeta(termId, data) {
@@ -241,7 +303,7 @@ class BoardView extends ComponentBase {
     card.title = 'Open terminal';
 
     const { header, statusBadge, activityEl } = this._buildCardHeader(termId, info, card);
-    const { body, previewEl, inputEl } = this._buildCardBody(termId, info);
+    const { body, previewEl, inputEl, replyHistoryEl } = this._buildCardBody(termId, info);
     card.append(header, body);
 
     const cardData = {
@@ -256,6 +318,9 @@ class BoardView extends ComponentBase {
       preview: { lines: [], remainder: '' },
       previewEl,
       inputEl,
+      replyHistoryEl,
+      replyCards: [],
+      activeReply: null,
       statusBadge,
       activityEl,
       lastActivityAt: Date.now(),
@@ -263,11 +328,11 @@ class BoardView extends ComponentBase {
     };
 
     card.addEventListener('click', (event) => {
-      if (event.target.closest('button, input')) return;
+      if (event.target.closest('button, input, .board-reply-panel')) return;
       this._openTerminal(termId);
     });
     card.addEventListener('keydown', (event) => {
-      if (event.target.closest('button, input')) return;
+      if (event.target.closest('button, input, .board-reply-panel')) return;
       if (event.key === 'Enter') this._openTerminal(termId);
     });
 
@@ -275,6 +340,7 @@ class BoardView extends ComponentBase {
       cardData.dataBytes += data.length;
       cardData.lastActivityAt = Date.now();
       appendPreviewChunk(cardData.preview, data);
+      this._appendReplyResponse(cardData, data);
       this._updateCardPreview(termId, cardData);
       this._queuePreviewRefresh(termId, cardData);
     });
