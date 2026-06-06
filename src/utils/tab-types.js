@@ -20,6 +20,7 @@ export class WorkspaceTab {
     this.pathTextEl = null;
     this.branchBadgeEl = null;
     this.currentBranch = null;
+    this.agentStatuses = new Map();
     this._branchRefreshId = null;
     this._panelWidths = null;
     /**

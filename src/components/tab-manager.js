@@ -23,6 +23,7 @@ import {
   ensureVisibleTabActive as doEnsureVisibleTabActive,
 } from '../utils/tab-color-filter.js';
 import { switchTo as doSwitchTo } from '../utils/tab-lifecycle.js';
+import { AgentTabStatusTracker } from '../utils/agent-tab-status.js';
 import { buildPrApi, buildWorktreeApi, buildViewStore } from '../facades/tab-manager-api.js';
 import { tabViewFacade } from '../facades/tab-facade.js';
 
@@ -43,6 +44,7 @@ export class TabManager {
     this.flowView = this._flowContainerEl = null;
     this.usageView = this._usageContainerEl = null;
     this.skillsView = this._skillsContainerEl = null;
+    this._agentStatusTracker = null;
     this.sidebarMode = 'work';
     this.activeColorFilter = null;
     this.excludedColors = new Set();
@@ -95,6 +97,13 @@ export class TabManager {
       renderTabBar: () => this.renderTabBar(),
       api: { gitBranch: tabViewFacade.gitBranch, worktree: this._worktreeApi(), pr: this._prApi() },
     });
+    this._agentStatusTracker = new AgentTabStatusTracker({
+      tabs: this.tabs,
+      ptyCheckAgents: tabViewFacade.ptyCheckAgents,
+      ptyOnData: tabViewFacade.ptyOnData,
+      renderTabBar: () => this.renderTabBar(),
+    });
+    this._agentStatusTracker.start();
   }
 
   // --- Sidebar & Workspace (delegated) ---
@@ -158,6 +167,8 @@ export class TabManager {
   _disposeAllTabs() { disposeAllTabs(this._deps); }
 
   dispose() {
+    this._agentStatusTracker?.dispose();
+    this._agentStatusTracker = null;
     for (const unsub of this._busListeners) unsub();
     this._busListeners = [];
     disposeAllSideViews(this._deps);

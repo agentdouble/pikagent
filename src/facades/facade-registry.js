@@ -42,6 +42,7 @@ const definitions = [
     [gitApi, { gitBranch: 'branch', gitLocalChanges: 'localChanges', gitFileDiff: 'fileDiff' }],
     [fsApi, ['homedir', 'readfile', 'writefile']],
     [configApi, ['getDefault', 'loadDefault']],
+    [ptyApi, { ptyOnData: 'onData', ptyCheckAgents: 'checkAgents' }],
   ]],
 
   ['fileTreeViewFacade', [

@@ -20,3 +20,4 @@
 - Git branch checks may run in terminal cwd values that are not repos, such as `/Users/jeremy`; `git rev-parse` non-repo errors should return `null`/`false` quietly instead of logging repeated `[git-manager]` warnings.
 - Board agent cards should stay visually minimal and square: visible content is the agent output plus the reply input, with waiting/running state communicated by card color instead of labels, summaries, or action chrome.
 - Skills root configuration should offer two choices at click time: browse to a folder with the native folder picker, or manually enter/paste a filesystem path.
+- Agent availability indicators in top workspace tabs are live state, not workspace config: `AgentTabStatusTracker` polls `ptyCheckAgents`, reuses Board's data-volume threshold, stores per-terminal status in `tab.agentStatuses`, and renders the green dot only when an agent is waiting for input.

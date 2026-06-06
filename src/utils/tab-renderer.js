@@ -14,6 +14,7 @@ import { COLOR_GROUPS } from './tab-constants.js';
 import { setupTabDrag } from './tab-drag.js';
 import { attachContextMenu } from './context-menu.js';
 import { onClickStopped } from './event-helpers.js';
+import { summarizeTabAgentStatus } from './agent-tab-status.js';
 
 /**
  * Generic tab element factory.
@@ -79,6 +80,13 @@ export function buildTabElement(deps, id, tab) {
 
   // Build optional prefix elements
   const prefixEls = [];
+  const agentStatus = summarizeTabAgentStatus(tab);
+  if (agentStatus) {
+    const statusDot = _el('span', agentStatus.className);
+    statusDot.title = agentStatus.title;
+    prefixEls.push(statusDot);
+  }
+
   let accentColor = '';
   if (tab.colorGroup) {
     const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
