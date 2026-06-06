@@ -5,7 +5,14 @@
  * parameters, keeping the component class thin.
  */
 
-import { showPromptDialog, showConfirmDialog } from './dom-dialogs.js';
+import {
+  _el,
+  buildDialogButtons,
+  createDialogBase,
+  showPromptDialog,
+  showConfirmDialog,
+} from './dom-api.js';
+import { onKeyAction } from './event-helpers.js';
 import { updateDirtyBadge } from './skills-view-renderer.js';
 
 /**
@@ -19,18 +26,64 @@ export async function openRoot(rootPath, shellApi) {
 /**
  * Configure the skills root path.
  * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance (state is mutated)
- * @param {{ dialogApi: { openFolder: () => Promise<string|null> }, skillsApi: { setRoot: (path: string) => Promise<{ success: boolean, root: string }> } }} deps
+ * @param {{ dialogApi: { openFolder: () => Promise<string|null> }, skillsApi: { setRoot: (path: string) => Promise<{ success: boolean, root: string }> }, chooseRootPathMode?: () => Promise<'browse'|'manual'|null>, promptPath?: (currentPath: string) => Promise<string|null> }} deps
  */
 export async function configurePath(sv, deps) {
-  const picked = await deps.dialogApi.openFolder();
-  if (!picked) return;
-  const res = await deps.skillsApi.setRoot(picked);
+  const mode = await (deps.chooseRootPathMode || chooseRootPathMode)();
+  let nextRoot = null;
+
+  if (mode === 'browse') {
+    nextRoot = await deps.dialogApi.openFolder();
+  } else if (mode === 'manual') {
+    nextRoot = await (deps.promptPath || promptRootPath)(sv.rootPath || '');
+  } else {
+    return;
+  }
+
+  if (!nextRoot) return;
+  const res = await deps.skillsApi.setRoot(nextRoot);
   if (res && res.success) {
     sv.rootPath = res.root;
     sv.selectedId = null;
     sv.editorDirty = false;
     await sv.refresh();
   }
+}
+
+function chooseRootPathMode() {
+  return createDialogBase({
+    overlayClass: 'confirm-overlay',
+    modalClass: 'confirm-box',
+    cancelValue: null,
+    builder({ overlay, modal, cleanup, cancel }) {
+      modal.appendChild(_el('p', null, 'Configurer le dossier des skills.'));
+      modal.appendChild(buildDialogButtons({
+        containerClass: 'confirm-buttons',
+        confirmLabel: 'Naviguer',
+        cancelLabel: 'Entrer un path',
+        confirmClass: 'confirm-ok',
+        cancelClass: 'confirm-cancel',
+        onConfirm: () => cleanup('browse'),
+        onCancel: () => cleanup('manual'),
+      }));
+
+      onKeyAction(overlay, {
+        onEscape: cancel,
+      });
+      overlay.setAttribute('tabindex', '-1');
+      return () => modal.querySelector('.confirm-cancel')?.focus();
+    },
+  });
+}
+
+function promptRootPath(currentPath) {
+  return showPromptDialog({
+    title: 'Path des skills',
+    placeholder: '/Users/jeremy/.claude/skills',
+    defaultValue: currentPath,
+    confirmLabel: 'Utiliser ce path',
+    cancelLabel: 'Annuler',
+  });
 }
 
 /**
