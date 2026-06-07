@@ -12,7 +12,9 @@ app.whenReady().then(() => {
   window.create();
   const getWindow = () => window.get();
 
-  const { targets, cleanup, ptyManager, sessionManager } = initManagers(getWindow);
+  const { targets, cleanup, ptyManager, sessionManager } = initManagers(getWindow, {
+    installBundledSkills: app.isPackaged,
+  });
   managerCleanup = cleanup;
 
   ipcHandlers.register(getWindow, { targets, ptyManager, sessionManager });

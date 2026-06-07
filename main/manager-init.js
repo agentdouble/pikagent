@@ -150,12 +150,16 @@ function buildClipboardTarget() {
  * Wire inter-manager dependencies and start runtime services.
  *
  * @param {() => import('electron').BrowserWindow} getWindow
+ * @param {{ installBundledSkills?: boolean }} [options]
  * @returns {{ targets: Record<string, object>, cleanup: () => void }}
  */
-function initManagers(getWindow) {
+function initManagers(getWindow, options = {}) {
   // -- Lifecycle: start managers that need runtime context --
   // Access order matters: updateManager first, then flow, session, usage.
   managers.updateManager.init();
+  if (options.installBundledSkills) {
+    managers.skillsManager.installPickagentSkill();
+  }
   managers.flowManager.start(getWindow, managers.ptyManager);
   managers.sessionManager.start(managers.ptyManager);
   managers.usageManager.init(managers.sessionManager);

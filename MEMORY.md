@@ -21,3 +21,4 @@
 - Board agent cards should stay visually minimal and square: visible content is the agent output plus the reply input, with waiting/running state communicated by card color instead of labels, summaries, or action chrome.
 - Skills root configuration should offer two choices at click time: browse to a folder with the native folder picker, or manually enter/paste a filesystem path.
 - Agent availability indicators in top workspace tabs are live state, not workspace config: `AgentTabStatusTracker` polls `ptyCheckAgents`, reuses Board's data-volume threshold, stores per-terminal status in `tab.agentStatuses`, and renders the green dot only when an agent is waiting for input.
+- Packaged app startup installs a bundled `pickagent` skill placeholder into both `~/.codex/skills/pickagent/SKILL.md` and `~/.claude/skills/pickagent/SKILL.md` without overwriting an existing file; the current placeholder body is a single `*`.
