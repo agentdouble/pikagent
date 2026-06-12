@@ -13,6 +13,7 @@
 - Theme border preference: Jeremy found the Linear-inspired UI too boxed in when separators were highly visible. Prefer low-alpha subtle borders and softer active terminal/tab accents instead of strong panel outlines.
 - Self-update uses `electron-updater` against GitHub Releases (`agentdouble/pikagent`) and should consume published macOS artifacts (`dmg`, `zip`, `latest-mac.yml`), not rebuild locally from a source checkout.
 - macOS release builds must keep `build.mac.notarize: true` and `hardenedRuntime: true`; GitHub release workflow expects signing/notarization secrets before pushing a public `v*` tag.
+- As of 2026-06-12, local `npm run package:dmg -- --publish never` produces only arm64 artifacts and falls back to ad-hoc signing, so public "all Mac" deployment still needs Developer ID signing/notarization plus either universal or separate x64/arm64 release artifacts.
 - PTY agent detection uses `pgrep -P <pid>`; exit code `1` means no child process was found and should be treated as an empty result, not logged as `_checkAgent failed`.
 - Board replies should write the message text and terminal Enter as two separate PTY writes (`text`, then `\r` after a short tick), not one combined `text\r` payload; combined writes can fill the agent prompt without submitting it.
 - Board reply controls should use explicit button `onClick` plus input `keydown Enter` handlers for PTY writes; avoid relying on a form submit path in the Electron Board.
