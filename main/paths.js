@@ -5,8 +5,9 @@ const BASE_DIR = path.join(os.homedir(), '.config', '.pickagent');
 const CONFIG_DIR = path.join(BASE_DIR, 'configs');
 const FLOWS_DIR = path.join(BASE_DIR, 'flows');
 const LOGS_DIR = path.join(FLOWS_DIR, 'logs');
+const HOOK_STATE_FILE = path.join(BASE_DIR, 'hook-state.json');
 const SESSIONS_FILE = path.join(BASE_DIR, 'sessions.json');
 const META_FILE = path.join(BASE_DIR, 'meta.json');
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 
-module.exports = { BASE_DIR, CONFIG_DIR, FLOWS_DIR, LOGS_DIR, SESSIONS_FILE, META_FILE, CLAUDE_PROJECTS_DIR };
+module.exports = { BASE_DIR, CONFIG_DIR, FLOWS_DIR, LOGS_DIR, HOOK_STATE_FILE, SESSIONS_FILE, META_FILE, CLAUDE_PROJECTS_DIR };

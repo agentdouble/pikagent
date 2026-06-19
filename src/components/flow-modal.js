@@ -5,6 +5,10 @@ import {
   DEFAULT_TIME, buildScheduleData,
 } from '../utils/flow-schedule-helpers.js';
 import {
+  TRIGGER_TYPE_LABELS, HOOK_PROVIDER_OPTIONS, DEFAULT_HOOK_EVENT,
+  DEFAULT_HOOK_DEBOUNCE_SECONDS, buildHookTrigger, joinPathPatterns,
+} from '../utils/flow-trigger-helpers.js';
+import {
   AGENT_OPTIONS, DEFAULT_CWD_LABEL, SKIP_PERM_CONFIG,
   _vis, _createSelect, _createChip, _updateScheduleVis,
 } from '../utils/flow-modal-helpers.js';
@@ -25,6 +29,10 @@ function _buildHeader(existing, state) {
       state.selectedCwd = '';
       state.cwdLabel.textContent = DEFAULT_CWD_LABEL;
       state.cwdChip.title = DEFAULT_CWD_LABEL;
+      if (state.hookEventInput) state.hookEventInput.value = DEFAULT_HOOK_EVENT;
+      if (state.hookProviderSelect) state.hookProviderSelect.value = 'any';
+      if (state.hookPathsInput) state.hookPathsInput.value = '';
+      if (state.hookDebounceInput) state.hookDebounceInput.value = String(DEFAULT_HOOK_DEBOUNCE_SECONDS);
     },
   });
   return _el('div', { className: 'flow-modal-header' }, title, clearBtn);
@@ -141,33 +149,120 @@ function _buildDaysChip(existing) {
   return { daysChip, selectedDays };
 }
 
+function _buildTriggerChip(existing) {
+  const triggerType = existing?.triggerType || (existing?.hookTrigger ? 'hook' : 'schedule');
+  const triggerSelect = _createSelect(TRIGGER_TYPE_LABELS, triggerType);
+  return { triggerChip: _createChip('Trigger', triggerSelect), triggerSelect };
+}
+
+function _buildHookChips(existing, state) {
+  const hook = existing?.hookTrigger || {};
+
+  const hookEventInput = _el('input', {
+    className: 'flow-modal-chip-input',
+    value: hook.event || DEFAULT_HOOK_EVENT,
+    placeholder: DEFAULT_HOOK_EVENT,
+  });
+  const hookProviderSelect = _createSelect(
+    Object.fromEntries(HOOK_PROVIDER_OPTIONS.map(provider => [provider, provider])),
+    hook.provider || 'any',
+  );
+  const hookPathsInput = _el('input', {
+    className: 'flow-modal-chip-input flow-modal-chip-input-wide',
+    value: joinPathPatterns(hook.paths),
+    placeholder: 'src/**/*.js, src/**/*.css',
+  });
+  const hookDebounceInput = _el('input', {
+    type: 'number',
+    min: 0,
+    className: 'flow-modal-number',
+    value: String(hook.debounceSeconds ?? DEFAULT_HOOK_DEBOUNCE_SECONDS),
+  });
+
+  state.hookEventInput = hookEventInput;
+  state.hookProviderSelect = hookProviderSelect;
+  state.hookPathsInput = hookPathsInput;
+  state.hookDebounceInput = hookDebounceInput;
+
+  return {
+    hookEventChip: _createChip('Event', hookEventInput),
+    hookProviderChip: _createChip('Source', hookProviderSelect),
+    hookPathsChip: _createChip('Paths', hookPathsInput, { className: 'flow-modal-chip flow-modal-chip-wide' }),
+    hookDebounceChip: _el('div', { className: 'flow-modal-chip' },
+      _el('span', { textContent: 'Debounce' }),
+      hookDebounceInput,
+      _el('span', { textContent: 's' }),
+    ),
+    hookEventInput,
+    hookProviderSelect,
+    hookPathsInput,
+    hookDebounceInput,
+  };
+}
+
+function _updateTriggerVis(triggerType, schedSelect, scheduleTypeChip, schedChips, hookChips) {
+  const isSchedule = triggerType === 'schedule';
+  _vis(scheduleTypeChip, isSchedule);
+  if (isSchedule) {
+    _updateScheduleVis(schedSelect.value, schedChips);
+  } else {
+    _vis(schedChips.timeChip, false);
+    _vis(schedChips.intervalChip, false);
+    _vis(schedChips.daysChip, false);
+  }
+  hookChips.forEach((chip) => _vis(chip, !isSchedule));
+}
+
 function _buildBottomBar(existing, state) {
   const schedType = existing?.schedule?.type || 'weekdays';
   const cwdChip = _buildCwdPicker(state);
 
   const agentSelect = _createSelect(AGENT_OPTIONS, existing?.agent || 'claude');
+  const { triggerChip, triggerSelect } = _buildTriggerChip(existing);
   const schedSelect = _createSelect(SCHEDULE_LABELS, schedType);
+  const scheduleTypeChip = _createChip('\u{1F550}', schedSelect);
   const skipPerm = _buildSkipPermToggle(existing, agentSelect);
 
   const { timeChip, timeInput } = _buildTimeChip(existing);
   const { intervalChip, intervalInput } = _buildIntervalChip(existing);
   const { daysChip, selectedDays } = _buildDaysChip(existing);
+  const hook = _buildHookChips(existing, state);
 
   const schedChips = { timeChip, intervalChip, daysChip };
-  _updateScheduleVis(schedType, schedChips);
-  schedSelect.addEventListener('change', () => _updateScheduleVis(schedSelect.value, schedChips));
+  const hookChipList = [hook.hookEventChip, hook.hookProviderChip, hook.hookPathsChip, hook.hookDebounceChip];
+  _updateTriggerVis(triggerSelect.value, schedSelect, scheduleTypeChip, schedChips, hookChipList);
+  schedSelect.addEventListener('change', () => _updateTriggerVis(triggerSelect.value, schedSelect, scheduleTypeChip, schedChips, hookChipList));
+  triggerSelect.addEventListener('change', () => _updateTriggerVis(triggerSelect.value, schedSelect, scheduleTypeChip, schedChips, hookChipList));
 
   const bar = _el('div', { className: 'flow-modal-bottom' },
     cwdChip,
     _createChip('\u{1F916}', agentSelect),
     skipPerm.chip,
-    _createChip('\u{1F550}', schedSelect),
+    triggerChip,
+    scheduleTypeChip,
     timeChip,
     intervalChip,
     daysChip,
+    hook.hookEventChip,
+    hook.hookProviderChip,
+    hook.hookPathsChip,
+    hook.hookDebounceChip,
   );
 
-  return { bar, agentSelect, skipPermCheckbox: skipPerm.checkbox, schedSelect, timeInput, intervalInput, selectedDays };
+  return {
+    bar,
+    agentSelect,
+    skipPermCheckbox: skipPerm.checkbox,
+    triggerSelect,
+    schedSelect,
+    timeInput,
+    intervalInput,
+    selectedDays,
+    hookEventInput: hook.hookEventInput,
+    hookProviderSelect: hook.hookProviderSelect,
+    hookPathsInput: hook.hookPathsInput,
+    hookDebounceInput: hook.hookDebounceInput,
+  };
 }
 
 
@@ -214,10 +309,21 @@ function _collectResult(existing, fields, bottom, catPicker, state) {
     agent: bottom.agentSelect.value,
     cwd: state.selectedCwd || undefined,
     schedule: buildScheduleData(bottom.schedSelect.value, bottom.timeInput.value, bottom.intervalInput.value, bottom.selectedDays),
+    triggerType: bottom.triggerSelect.value,
     dangerouslySkipPermissions: !!SKIP_PERM_CONFIG[bottom.agentSelect.value] && bottom.skipPermCheckbox.checked,
     enabled: existing?.enabled ?? true,
     runs: existing?.runs || [],
   };
+  if (bottom.triggerSelect.value === 'hook') {
+    result.hookTrigger = buildHookTrigger(
+      bottom.hookEventInput.value,
+      bottom.hookProviderSelect.value,
+      bottom.hookPathsInput.value,
+      bottom.hookDebounceInput.value,
+    );
+  } else {
+    result.hookTrigger = undefined;
+  }
   if (catPicker) result._category = catPicker.select.value || '';
   return result;
 }

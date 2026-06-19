@@ -20,6 +20,15 @@ describe('flow-helpers', () => {
       expect(shouldRun({}, new Date())).toBe(false);
     });
 
+    it('returns false for hook flows even when a schedule remains stored', () => {
+      const flow = {
+        triggerType: 'hook',
+        hookTrigger: { type: 'hook', event: 'file.changed' },
+        schedule: { type: 'interval', intervalHours: 1 },
+      };
+      expect(shouldRun(flow, new Date())).toBe(false);
+    });
+
     describe('interval schedule', () => {
       it('returns true when no previous run', () => {
         const flow = { schedule: { type: 'interval', intervalHours: 1 } };
@@ -96,17 +105,19 @@ describe('flow-helpers', () => {
       expect(cmd).toContain('; exit\n');
     });
 
-    it('builds codex command with auto-edit by default', () => {
+    it('builds codex command with workspace-write by default', () => {
       const flow = { prompt: 'test', agent: 'codex' };
       const cmd = buildFlowCommand(flow);
       expect(cmd).toContain('codex');
-      expect(cmd).toContain('--approval-mode auto-edit');
+      expect(cmd).toContain('--sandbox workspace-write');
+      expect(cmd).toContain('--ask-for-approval never');
+      expect(cmd).toContain('exec --skip-git-repo-check');
     });
 
-    it('builds codex command with full-auto when dangerouslySkipPermissions', () => {
+    it('builds codex command with danger-full-access when dangerouslySkipPermissions', () => {
       const flow = { prompt: 'test', agent: 'codex', dangerouslySkipPermissions: true };
       const cmd = buildFlowCommand(flow);
-      expect(cmd).toContain('--approval-mode full-auto');
+      expect(cmd).toContain('--sandbox danger-full-access');
     });
 
     it('escapes single quotes in prompt', () => {

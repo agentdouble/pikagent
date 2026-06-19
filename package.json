@@ -8,6 +8,7 @@
     "build": "node build.js",
     "start": "node build.js && electron .",
     "dev": "node scripts/dev.js",
+    "hook": "node bin/pickagent-hook.cjs",
     "rebuild": "npx @electron/rebuild",
     "package": "npm run build && electron-builder --mac dir",
     "package:dmg": "npm run build && electron-builder --mac dmg zip",
@@ -19,6 +20,9 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "bin": {
+    "pickagent-hook": "bin/pickagent-hook.cjs"
+  },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "electron": "^41.0.3",
@@ -47,6 +51,7 @@
       "api-schema.js",
       "main/**/*",
       "shared/**/*",
+      "bin/**/*",
       "src/**/*",
       "dist/**/*",
       "package.json"

@@ -4,7 +4,7 @@
  */
 import { _el } from './dom-api.js';
 import { createActionButton, buildDomainButtonBar } from './dom-buttons.js';
-import { formatSchedule } from './flow-schedule-helpers.js';
+import { formatFlowTrigger } from './flow-trigger-helpers.js';
 import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flow-view-helpers.js';
 
 /**
@@ -60,7 +60,7 @@ export function createCardHeader(flow, isRunning, isExpanded, opts) {
     }));
   }
   info.appendChild(nameRow);
-  info.appendChild(_el('div', 'flow-card-schedule', formatSchedule(flow.schedule)));
+  info.appendChild(_el('div', 'flow-card-schedule', formatFlowTrigger(flow)));
   headerRow.appendChild(info);
 
   const right = _el('div', 'flow-card-right');

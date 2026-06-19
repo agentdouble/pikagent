@@ -9,7 +9,7 @@ Application desktop de gestion d'espaces de travail terminaux, conçue pour supe
 - **Board d'agents** — Monitoring temps réel des agents IA : statut, durée, détection d'inactivité
 - **Explorateur de fichiers** — Arborescence avec lazy loading, création/renommage/suppression, watch du système de fichiers
 - **Visionneuse de code** — Coloration syntaxique (highlight.js), diff Git staged/unstaged
-- **Flows d'automatisation** — Séquences de commandes planifiables (once, daily, weekly, monthly, intervalle)
+- **Flows d'automatisation** — Prompts agent planifiables ou déclenchés par hooks/events
 - **Métriques** — Suivi des sessions agents, tokens consommés et exécutions de flows
 - **Raccourcis clavier** — Navigation rapide entre onglets et actions courantes
 
@@ -40,6 +40,17 @@ npm start
 # Build seul
 npm run build
 ```
+
+## Hooks de flows
+
+Les flows en mode `Hook` peuvent être déclenchés depuis un watcher, un hook Codex/Claude ou un script local :
+
+```bash
+npm run hook -- emit file.changed --provider watcher --cwd "$PWD" --path src/renderer.js --dry-run
+pickagent-hook run flow_abc123
+```
+
+La commande lit les flows dans `~/.config/.pickagent/flows/`, matche `event`, `provider`, `cwd` et `paths`, applique le debounce du flow, puis écrit les runs/logs dans la même UI Flow.
 
 ## Packaging
 
@@ -96,4 +107,5 @@ des artefacts.
 Les données sont stockées dans `~/.config/.pickagent/` :
 - `workspaces.json` — Configurations des espaces de travail
 - `flows/` — Définitions et logs des flows
+- `hook-state.json` — État de debounce des triggers hook
 - `sessions.json` — Métriques des sessions

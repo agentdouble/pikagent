@@ -20,6 +20,11 @@ class FlowView extends ComponentBase {
 
   _afterInit() {
     this._initRunning();
+    const refreshTimer = window.setInterval(() => this.refresh(), 2000);
+    this._track(() => window.clearInterval(refreshTimer));
+    const onFocus = () => this.refresh();
+    window.addEventListener('focus', onFocus);
+    this._track(() => window.removeEventListener('focus', onFocus));
   }
 
   _initState() {

@@ -9,7 +9,7 @@ export const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
 
 export const SKIP_PERM_CONFIG = {
   claude: { label: 'Skip permissions', title: 'Lance Claude avec --dangerously-skip-permissions' },
-  codex: { label: 'Full auto', title: 'Lance Codex avec --approval-mode full-auto au lieu de auto-edit' },
+  codex: { label: 'Full auto', title: 'Lance Codex avec sandbox danger-full-access, approval never et exec' },
 };
 
 // --- Pure helpers ---

@@ -178,6 +178,11 @@
   background: var(--red);
 }
 
+.flow-dot-running {
+  background: var(--green);
+  animation: flow-pulse 1.5s ease-in-out infinite;
+}
+
 /* ===== Card Terminal (live output) ===== */
 .flow-card-terminal {
   height: 300px;

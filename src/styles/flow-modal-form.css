@@ -114,6 +114,30 @@
   outline: none;
 }
 
+.flow-modal-chip-input,
+.flow-modal-number {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  outline: none;
+  min-width: 92px;
+}
+
+.flow-modal-number {
+  width: 48px;
+}
+
+.flow-modal-chip-wide {
+  flex: 1 1 260px;
+}
+
+.flow-modal-chip-input-wide {
+  width: 100%;
+  min-width: 190px;
+}
+
 .flow-modal-time::-webkit-calendar-picker-indicator {
   filter: invert(0.7);
 }
@@ -148,4 +172,3 @@
   border-color: var(--border-strong);
   color: var(--text-primary);
 }
-

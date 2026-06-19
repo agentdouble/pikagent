@@ -64,6 +64,15 @@
   text-transform: uppercase;
 }
 
+.flow-log-status-running {
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  animation: flow-pulse 1.5s ease-in-out infinite;
+}
+
 .flow-log-status-error {
   background: var(--red-soft);
   color: var(--red);

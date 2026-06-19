@@ -12,7 +12,7 @@ export const FLOW_FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 5000;
 export const LIVE_SCROLLBACK = 3000;
 
-export const STATUS_LABELS = { success: 'Succès', error: 'Erreur' };
+export const STATUS_LABELS = { running: 'En cours', success: 'Succès', error: 'Erreur' };
 export const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';
 export const NO_LOG_MODAL_MESSAGE = '\r\n  Log non disponible.\r\n';
 export const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos tâches.';

@@ -2,6 +2,7 @@ const path = require('path');
 const { LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
 const { getLastRun } = require('../shared/flow-utils');
+const { isHookFlow } = require('./flow-triggers');
 const AGENT_IDS = ['claude', 'codex', 'opencode'];
 const { toDateString } = require('../shared/date-utils');
 
@@ -25,8 +26,10 @@ const _AGENT_CMD_OVERRIDES = {
     promptPrefix: '-p',
   },
   codex: {
-    permModes: ['--approval-mode auto-edit', '--approval-mode full-auto'],
-    flags: '--quiet',
+    permModes: [
+      '--sandbox workspace-write --ask-for-approval never exec --skip-git-repo-check',
+      '--sandbox danger-full-access --ask-for-approval never exec --skip-git-repo-check',
+    ],
   },
   opencode: {
     promptPrefix: '-p',
@@ -66,6 +69,8 @@ function _notRunToday(lastRun, now) {
 }
 
 function shouldRun(flow, now) {
+  if (isHookFlow(flow)) return false;
+
   const { schedule } = flow;
   if (!schedule) return false;
 

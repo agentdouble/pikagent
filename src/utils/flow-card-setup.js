@@ -49,12 +49,12 @@ function setupCardDrag(card, flowId, catId, dragState) {
  * @param {boolean} isRunning
  * @param {boolean} isExpanded
  * @param {{ createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: FlowRun, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }} termManager - FlowCardTerminalManager instance
- * @param {Record<string, string>} runningMap - { [flowId]: ptyId }
+ * @param {string|undefined} livePtyId
  * @returns {HTMLElement|null}
  */
-function buildCardBody(flow, isRunning, isExpanded, termManager, runningMap) {
-  if (isRunning) {
-    const container = termManager.createLiveTerminal(flow.id, runningMap[flow.id]);
+function buildCardBody(flow, isRunning, isExpanded, termManager, livePtyId) {
+  if (isRunning && livePtyId) {
+    const container = termManager.createLiveTerminal(flow.id, livePtyId);
     container.style.display = isExpanded ? '' : 'none';
     return container;
   }
@@ -107,7 +107,10 @@ function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRen
  * @returns {HTMLElement}
  */
 export function createFlowCard(deps, flow, catId) {
-  const isRunning = !!deps.runningMap[flow.id];
+  const livePtyId = deps.runningMap[flow.id];
+  const lastRun = getLastRun(flow);
+  const isHeadlessRunning = !livePtyId && lastRun?.status === 'running';
+  const isRunning = !!livePtyId || isHeadlessRunning;
   const isExpanded = deps.expandedCards.has(flow.id);
 
   const card = _el('div', 'flow-card');
@@ -135,7 +138,7 @@ export function createFlowCard(deps, flow, catId) {
   });
   card.appendChild(headerRow);
 
-  const body = buildCardBody(flow, isRunning, isExpanded, deps.termManager, deps.runningMap);
+  const body = buildCardBody(flow, isRunning, isExpanded, deps.termManager, livePtyId);
   if (body) card.appendChild(body);
 
   setupCardHeaderClick(headerRow, flow, isRunning, {
