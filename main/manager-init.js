@@ -51,6 +51,7 @@ const MANAGER_DEFS = {
   sessionManager: { module: './session-manager' },
   usageManager:   { module: './usage-manager' },
   flowManager:    { module: './flow-manager' },
+  loopManager:    { module: './loop-manager' },
   skillsManager:  { module: './skills-manager' },
   gitManager:     { module: './git-manager' },
   configManager:  { module: './config-manager' },
@@ -83,6 +84,7 @@ const LIFECYCLE_NAMES = [
   'ptyManager',
   'fsManager',
   'flowManager',
+  'loopManager',
   'usageManager',
 ];
 
@@ -171,6 +173,7 @@ function initManagers(getWindow, options = {}) {
     git:       managers.gitManager,
     config:    managers.configManager,
     flow:      managers.flowManager,
+    loop:      managers.loopManager,
     usage:     managers.usageManager,
     skills:    managers.skillsManager,
     update:    buildUpdateTarget(managers, getWindow),

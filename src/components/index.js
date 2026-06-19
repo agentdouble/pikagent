@@ -14,6 +14,7 @@ import './board-view.js';
 import './flow-card-terminal.js';
 import './flow-modal.js';
 import './flow-view.js';
+import './loop-view.js';
 import './usage-view.js';
 import './skills-view.js';
 import './settings-appearance.js';

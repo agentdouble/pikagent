@@ -39,6 +39,11 @@ export const ACTIVITY_BUTTONS = [
     icon: '<path d="M4 17 L9 12 L13 15 L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="12" r="1.5"/><circle cx="13" cy="15" r="1.5"/>',
   },
   {
+    label: 'BOUCLES',
+    mode: 'loop',
+    icon: '<path d="M7 7h7a4 4 0 0 1 0 8H8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 4 7 7l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 20l3-3-3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  {
     label: 'SKILLS',
     mode: 'skills',
     icon: '<path d="M12 2 L3 6 L3 12 C3 16.5 7 20.5 12 22 C17 20.5 21 16.5 21 12 L21 6 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 12 L11 15 L16 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -75,6 +80,7 @@ export const TAB_DISPOSABLES = ['terminalPanel', 'fileViewer', 'fileTree'];
 export const SIDE_VIEWS = {
   board:  { viewKey: 'boardView',  containerKey: '_boardContainerEl', componentName: 'BoardView',  ctorArgsKey: 'boardCtorArgs', pauseOnDetach: true },
   flow:   { viewKey: 'flowView',   containerKey: '_flowContainerEl',  componentName: 'FlowView',   ctorArgsKey: 'flowCtorArgs' },
+  loop:   { viewKey: 'loopView',   containerKey: '_loopContainerEl',  componentName: 'LoopView' },
   skills: { viewKey: 'skillsView', containerKey: '_skillsContainerEl', componentName: 'SkillsView' },
   usage:  { viewKey: 'usageView',  containerKey: '_usageContainerEl', componentName: 'UsageView' },
 };

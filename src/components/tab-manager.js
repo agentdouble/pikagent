@@ -42,6 +42,7 @@ export class TabManager {
     this.configManager = new (getComponent('ConfigSettingsPanel'))(this);
     this.boardView = this._boardContainerEl = null;
     this.flowView = this._flowContainerEl = null;
+    this.loopView = this._loopContainerEl = null;
     this.usageView = this._usageContainerEl = null;
     this.skillsView = this._skillsContainerEl = null;
     this._agentStatusTracker = null;

@@ -20,6 +20,7 @@ import dialogApi   from '../services/dialog-api.js';
 import flowApi     from '../services/flow-api.js';
 import fsApi       from '../services/fs-api.js';
 import gitApi      from '../services/git-api.js';
+import loopApi     from '../services/loop-api.js';
 import ptyApi      from '../services/terminal-api.js';
 import shellApi    from '../services/shell-api.js';
 import skillsApi   from '../services/skills-api.js';
@@ -53,6 +54,10 @@ const definitions = [
 
   ['flowFacade', [
     [flowApi, ['onRunStarted', 'onRunComplete', 'getRunning', 'list', 'getCategories', 'saveCategories', 'runNow', 'toggle', 'save', 'deleteFlow']],
+  ]],
+
+  ['loopFacade', [
+    [loopApi, ['get', 'save', 'runNode', 'stopNode', 'snapshot', 'getNodeLog']],
   ]],
 
   ['skillsViewFacade', [
@@ -104,6 +109,7 @@ export const {
   tabViewFacade,
   fileTreeViewFacade,
   flowFacade,
+  loopFacade,
   skillsViewFacade,
   configFacade,
   dialogFacade,
