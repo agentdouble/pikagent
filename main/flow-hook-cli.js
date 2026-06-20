@@ -3,7 +3,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const { FLOWS_DIR, LOGS_DIR, HOOK_STATE_FILE } = require('./paths');
+const {
+  FLOWS_DIR,
+  LOGS_DIR,
+  HOOK_STATE_FILE,
+  LOOPS_DIR,
+  loopNodeLogPath,
+} = require('./paths');
 const { MAX_FLOW_RUNTIME_MS, MAX_RUN_HISTORY, buildFlowCommand } = require('./flow-helpers');
 const { flowMatchesHookEvent, debounceKey } = require('./flow-triggers');
 const { nowISO, toLogFilename, extractDateString } = require('../shared/date-utils');
@@ -15,7 +21,7 @@ function printHelp() {
   pickagent-hook emit <event> [--provider codex] [--cwd /repo] [--path src/file.js]
   pickagent-hook <event> [--provider watcher] [--cwd /repo] [--paths src/a.js,src/b.js]
   pickagent-hook --event-json -
-  pickagent-hook run <flow-id-or-name> [--cwd /repo]
+  pickagent-hook run <flow-or-loop-target> [--cwd /repo]
 
 Options:
   --provider, --source <name>   Event source: codex, claude, opencode, watcher, manual, ...
@@ -24,9 +30,9 @@ Options:
   --paths <a,b>                 Comma-separated changed paths
   --tool <name>                 Tool that produced the event, if known
   --payload-json <json>         Extra payload stored on the event
-  --flow <id-or-name>           Restrict emit matching to one flow
+  --flow <id-or-name>           Restrict emit matching to one flow or loop agent
   --event-json <path|->         Read the full hook event as JSON
-  --dry-run                     Print matching flows without executing
+  --dry-run                     Print matching targets without executing
   --json                        Print machine-readable summary
   --help                        Show this help
 `);
@@ -171,13 +177,13 @@ function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
 }
 
-async function listFlows() {
+async function listFlows(flowsDir = FLOWS_DIR) {
   try {
-    const files = await fsp.readdir(FLOWS_DIR);
+    const files = await fsp.readdir(flowsDir);
     const flows = [];
     for (const file of files) {
       if (file === 'categories.json' || !file.endsWith('.json')) continue;
-      const data = await readJson(path.join(FLOWS_DIR, file));
+      const data = await readJson(path.join(flowsDir, file));
       if (data?.id && data?.prompt) flows.push(data);
     }
     return flows;
@@ -186,8 +192,70 @@ async function listFlows() {
   }
 }
 
+function loopTargetId(boardId, nodeId) {
+  return `loop:${boardId}:${nodeId}`;
+}
+
+function loopNodeToHookTarget(board, node) {
+  const boardId = board.id || 'main';
+  return {
+    id: loopTargetId(boardId, node.id),
+    name: `${board.name || 'Boucles'} / ${node.title || 'Agent'}`,
+    prompt: node.prompt || '',
+    agent: node.agent || 'codex',
+    cwd: node.cwd || '',
+    enabled: node.enabled !== false,
+    triggerType: node.hookTrigger ? 'hook' : node.triggerType || 'schedule',
+    hookTrigger: node.hookTrigger,
+    dangerouslySkipPermissions: Boolean(node.dangerouslySkipPermissions),
+    source: 'loop',
+    boardId,
+    boardName: board.name || 'Boucles',
+    nodeId: node.id,
+    nodeTitle: node.title || 'Agent',
+  };
+}
+
+async function listLoopAgentTargets(loopsDir = LOOPS_DIR) {
+  try {
+    const files = (await fsp.readdir(loopsDir)).filter((file) => file.endsWith('.json'));
+    const targets = [];
+    for (const file of files) {
+      const board = await readJson(path.join(loopsDir, file));
+      if (!board || !Array.isArray(board.nodes)) continue;
+      const boardWithId = {
+        ...board,
+        id: board.id || path.basename(file, '.json'),
+      };
+      for (const node of board.nodes) {
+        if (node?.type !== 'agent' || !node.id || !node.hookTrigger) continue;
+        targets.push(loopNodeToHookTarget(boardWithId, node));
+      }
+    }
+    return targets;
+  } catch {
+    return [];
+  }
+}
+
+async function listHookTargets({ flowsDir = FLOWS_DIR, loopsDir = LOOPS_DIR } = {}) {
+  const [flows, loopTargets] = await Promise.all([listFlows(flowsDir), listLoopAgentTargets(loopsDir)]);
+  return [
+    ...flows.map((flow) => ({ ...flow, source: 'flow' })),
+    ...loopTargets,
+  ];
+}
+
+function targetMatches(flow, target) {
+  return flow.id === target ||
+    flow.name === target ||
+    flow.nodeTitle === target ||
+    `${flow.boardName}/${flow.nodeTitle}` === target ||
+    `${flow.boardName} / ${flow.nodeTitle}` === target;
+}
+
 function findFlow(flows, target) {
-  return flows.find((flow) => flow.id === target || flow.name === target) || null;
+  return flows.find((flow) => targetMatches(flow, target)) || null;
 }
 
 async function readState() {
@@ -268,20 +336,58 @@ async function finishRun(flowId, status, runTimestamp) {
   await writeJson(flowPath(flowId), flow);
 }
 
+function isLoopTarget(flow) {
+  return flow.source === 'loop';
+}
+
+function loopTargetLogPath(flow) {
+  return loopNodeLogPath(flow.boardId || 'main', flow.nodeId);
+}
+
+function writeInitialTargetLog(flow, runTimestamp, output) {
+  if (!isLoopTarget(flow)) {
+    writeInitialLog(flow.id, runTimestamp, output);
+    return;
+  }
+  const file = loopTargetLogPath(flow);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.appendFileSync(file, `\n[pickagent-hook] ${runTimestamp}\n${output}`, 'utf-8');
+}
+
+function appendTargetLog(flow, runTimestamp, data) {
+  if (!isLoopTarget(flow)) {
+    appendLog(flow.id, runTimestamp, data);
+    return;
+  }
+  try {
+    fs.appendFileSync(loopTargetLogPath(flow), data, 'utf-8');
+  } catch (err) {
+    process.stderr.write(`[pickagent-hook] failed to append loop log: ${err.message}\n`);
+  }
+}
+
+async function beginTargetRun(flow, runTimestamp) {
+  if (!isLoopTarget(flow)) await beginRun(flow.id, runTimestamp);
+}
+
+async function finishTargetRun(flow, status, runTimestamp) {
+  if (!isLoopTarget(flow)) await finishRun(flow.id, status, runTimestamp);
+}
+
 async function runCommand(flow, event) {
   const cwd = safeCwd(event.cwd || flow.cwd);
   const runTimestamp = toLogFilename();
   const command = buildFlowCommand(flow).trim();
   const initialOutput = [
     'Pickagent headless run',
-    `flow: ${flow.name} (${flow.id})`,
+    `target: ${flow.name} (${flow.id})`,
     `cwd: ${cwd}`,
     `event: ${JSON.stringify(event)}`,
     '',
   ].join('\n');
 
-  writeInitialLog(flow.id, runTimestamp, initialOutput);
-  await beginRun(flow.id, runTimestamp);
+  writeInitialTargetLog(flow, runTimestamp, initialOutput);
+  await beginTargetRun(flow, runTimestamp);
 
   return new Promise((resolve) => {
     const child = spawn(command, {
@@ -301,27 +407,27 @@ async function runCommand(flow, event) {
 
     child.stdout.on('data', (data) => {
       process.stdout.write(data);
-      appendLog(flow.id, runTimestamp, data.toString());
+      appendTargetLog(flow, runTimestamp, data.toString());
     });
     child.stderr.on('data', (data) => {
       process.stderr.write(data);
-      appendLog(flow.id, runTimestamp, data.toString());
+      appendTargetLog(flow, runTimestamp, data.toString());
     });
     child.on('error', (err) => {
       const msg = `\n[pickagent-hook] failed to start: ${err.message}\n`;
-      appendLog(flow.id, runTimestamp, msg);
+      appendTargetLog(flow, runTimestamp, msg);
       process.stderr.write(msg);
     });
     child.on('close', async (code) => {
       clearTimeout(timeout);
       const status = code === 0 ? 'success' : 'error';
-      appendLog(flow.id, runTimestamp, `\n[pickagent-hook] exit code: ${code ?? 'unknown'}\n`);
+      appendTargetLog(flow, runTimestamp, `\n[pickagent-hook] exit code: ${code ?? 'unknown'}\n`);
       try {
-        await finishRun(flow.id, status, runTimestamp);
+        await finishTargetRun(flow, status, runTimestamp);
       } catch (err) {
         process.stderr.write(`[pickagent-hook] failed to record run: ${err.message}\n`);
       }
-      resolve({ flowId: flow.id, flowName: flow.name, exitCode: code ?? 1, status });
+      resolve({ flowId: flow.id, flowName: flow.name, source: flow.source || 'flow', exitCode: code ?? 1, status });
     });
   });
 }
@@ -344,7 +450,7 @@ async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  const flows = await listFlows();
+  const flows = await listHookTargets();
   const event = toEvent(options);
   let matched = [];
   const skipped = [];
@@ -356,7 +462,7 @@ async function main(argv = process.argv.slice(2)) {
   } else {
     matched = flows.filter((flow) => flowMatchesHookEvent(flow, event));
     if (options.targetFlow) {
-      matched = matched.filter((flow) => flow.id === options.targetFlow || flow.name === options.targetFlow);
+      matched = matched.filter((flow) => targetMatches(flow, options.targetFlow));
     }
 
     const state = await readState();
@@ -376,12 +482,12 @@ async function main(argv = process.argv.slice(2)) {
   if (options.dryRun) {
     const summary = {
       event,
-      matched: matched.map((flow) => ({ id: flow.id, name: flow.name })),
+      matched: matched.map((flow) => ({ id: flow.id, name: flow.name, source: flow.source || 'flow' })),
       skipped,
     };
     if (options.json) console.log(JSON.stringify(summary, null, 2));
     else {
-      console.log(`Matched ${summary.matched.length} flow(s).`);
+      console.log(`Matched ${summary.matched.length} target(s).`);
       for (const flow of summary.matched) console.log(`- ${flow.name} (${flow.id})`);
       for (const item of skipped) console.log(`- skipped ${item.flowName} (${item.reason})`);
     }
@@ -390,7 +496,7 @@ async function main(argv = process.argv.slice(2)) {
 
   if (!matched.length) {
     if (options.json) console.log(JSON.stringify({ event, matched: [], skipped }, null, 2));
-    else console.log('No matching Pickagent flows.');
+    else console.log('No matching Pickagent hook targets.');
     return 0;
   }
 
@@ -409,6 +515,10 @@ module.exports = {
   parseArgs,
   flowPath,
   listFlows,
+  listHookTargets,
+  listLoopAgentTargets,
+  loopNodeToHookTarget,
+  targetMatches,
   shouldDebounce,
   runCommand,
 };
