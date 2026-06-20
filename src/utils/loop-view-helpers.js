@@ -51,6 +51,12 @@ export const CODEX_REASONING_EFFORT_OPTIONS = {
   xhigh: 'XHigh',
 };
 
+export const CODEX_SERVICE_TIER_OPTIONS = {
+  '': 'Config par defaut',
+  fast: 'Fast',
+  standard: 'Standard',
+};
+
 export const NODE_COLOR_OPTIONS = [
   { value: 'default', label: 'Neutre' },
   { value: 'blue', label: 'Bleu' },
@@ -88,6 +94,7 @@ function createAgentNode(index) {
     agent: 'codex',
     model: '',
     reasoningEffort: '',
+    serviceTier: '',
     prompt: '',
     schedule: defaultAgentSchedule(),
     triggerType: 'schedule',

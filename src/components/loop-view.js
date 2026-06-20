@@ -25,6 +25,7 @@ import {
   AGENT_OPTIONS,
   CODEX_MODEL_SUGGESTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
+  CODEX_SERVICE_TIER_OPTIONS,
   EDGE_PORTS,
   NODE_COLOR_OPTIONS,
   NODE_SIZE,
@@ -741,6 +742,11 @@ class LoopView extends ComponentBase {
         node.reasoningEffort || '',
         (value) => this._updateNode(node.id, { reasoningEffort: value }, false),
       )),
+      this._label('Mode fast Codex', this._select(
+        CODEX_SERVICE_TIER_OPTIONS,
+        node.serviceTier || '',
+        (value) => this._updateNode(node.id, { serviceTier: value }, false),
+      )),
     ];
   }
 
@@ -1087,6 +1093,7 @@ class LoopView extends ComponentBase {
         node.agent,
         String(node.model || '').trim(),
         String(node.reasoningEffort || '').trim(),
+        String(node.serviceTier || '').trim(),
       ].filter(Boolean).join(' / ');
     }
     if (node.type === 'executable') return node.persistent ? 'watcher' : 'exec';

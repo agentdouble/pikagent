@@ -564,6 +564,7 @@ function normalizeNode(node, now) {
     agent: normalizeAgent(node.agent),
     model: stringValue(node.model).trim(),
     reasoningEffort: normalizeCodexReasoningEffort(node.reasoningEffort),
+    serviceTier: normalizeCodexServiceTier(node.serviceTier),
     prompt: stringValue(node.prompt),
     schedule: normalizeSchedule(node.schedule),
     triggerType,
@@ -588,6 +589,7 @@ function buildNodeCommand(node) {
     agent: node.agent,
     model: node.model,
     reasoningEffort: node.reasoningEffort,
+    serviceTier: node.serviceTier,
     cwd: node.cwd,
     schedule: node.schedule,
     triggerType: node.triggerType,
@@ -638,6 +640,11 @@ function normalizeAgent(value) {
 function normalizeCodexReasoningEffort(value) {
   const normalized = String(value || '').trim().toLowerCase();
   return ['low', 'medium', 'high', 'xhigh'].includes(normalized) ? normalized : '';
+}
+
+function normalizeCodexServiceTier(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return ['fast', 'standard'].includes(normalized) ? normalized : '';
 }
 
 function normalizeNodeColor(value) {

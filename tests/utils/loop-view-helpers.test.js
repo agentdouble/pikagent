@@ -61,6 +61,7 @@ describe('loop-view-helpers', () => {
     expect(node.agent).toBe('codex');
     expect(node.model).toBe('');
     expect(node.reasoningEffort).toBe('');
+    expect(node.serviceTier).toBe('');
   });
 
   it('splits headless agents by active loop board', () => {

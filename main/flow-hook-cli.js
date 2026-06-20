@@ -211,6 +211,7 @@ function loopNodeToHookTarget(board, node) {
     agent: node.agent || 'codex',
     model: node.model || '',
     reasoningEffort: node.reasoningEffort || '',
+    serviceTier: node.serviceTier || '',
     cwd: node.cwd || '',
     enabled: node.enabled !== false,
     persistent: Boolean(node.persistent || node.watcher),

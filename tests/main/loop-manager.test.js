@@ -58,6 +58,7 @@ describe('loop-manager', () => {
       agent: 'codex',
       model: 'gpt-5.5',
       reasoningEffort: 'xhigh',
+      serviceTier: 'fast',
       prompt: 'fix it',
       dangerouslySkipPermissions: true,
       schedule: { type: 'weekdays', time: '09:00' },
@@ -67,6 +68,7 @@ describe('loop-manager', () => {
     expect(command).toContain('codex');
     expect(command).toContain("--model 'gpt-5.5'");
     expect(command).toContain("-c 'model_reasoning_effort=\"xhigh\"'");
+    expect(command).toContain("-c 'service_tier=\"fast\"'");
     expect(command).toContain('--sandbox danger-full-access');
     expect(command).toContain('fix it');
   });
@@ -79,10 +81,12 @@ describe('loop-manager', () => {
       agent: 'codex',
       model: ' gpt-5.4 ',
       reasoningEffort: 'HIGH',
+      serviceTier: 'STANDARD',
     }, new Date().toISOString());
 
     expect(node.model).toBe('gpt-5.4');
     expect(node.reasoningEffort).toBe('high');
+    expect(node.serviceTier).toBe('standard');
   });
 
   it('keeps node process identities scoped by board', () => {

@@ -13,6 +13,7 @@ const MAX_RUN_HISTORY = 7;
 const DEFAULT_PTY_COLS = 120;
 const DEFAULT_PTY_ROWS = 30;
 const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
+const CODEX_SERVICE_TIERS = new Set(['fast', 'standard']);
 
 function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
@@ -33,6 +34,7 @@ const _AGENT_CMD_OVERRIDES = {
     ],
     modelFlag: '--model',
     reasoningEffortConfigKey: 'model_reasoning_effort',
+    serviceTierConfigKey: 'service_tier',
   },
   opencode: {
     promptPrefix: '-p',
@@ -49,9 +51,13 @@ function _buildAgentCmd(agent, prompt, opts = {}) {
   const parts = [agent];
   const model = stringValue(opts.model).trim();
   const reasoningEffort = normalizeCodexReasoningEffort(opts.reasoningEffort);
+  const serviceTier = normalizeCodexServiceTier(opts.serviceTier);
   if (cfg.modelFlag && model) parts.push(cfg.modelFlag, shellQuote(model));
   if (cfg.reasoningEffortConfigKey && reasoningEffort) {
     parts.push('-c', shellQuote(`${cfg.reasoningEffortConfigKey}="${reasoningEffort}"`));
+  }
+  if (cfg.serviceTierConfigKey && serviceTier) {
+    parts.push('-c', shellQuote(`${cfg.serviceTierConfigKey}="${serviceTier}"`));
   }
   if (cfg.permModes) parts.push(cfg.permModes[opts.dangerouslySkipPermissions ? 1 : 0]);
   if (cfg.flags) parts.push(cfg.flags);
@@ -71,6 +77,11 @@ function stringValue(value) {
 function normalizeCodexReasoningEffort(value) {
   const normalized = String(value || '').trim().toLowerCase();
   return CODEX_REASONING_EFFORTS.has(normalized) ? normalized : '';
+}
+
+function normalizeCodexServiceTier(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return CODEX_SERVICE_TIERS.has(normalized) ? normalized : '';
 }
 
 /* ── Schedule day filters (single source of truth) ─────────────── */
@@ -114,6 +125,7 @@ function buildFlowCommand(flow) {
     dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions,
     model: flow.model,
     reasoningEffort: flow.reasoningEffort,
+    serviceTier: flow.serviceTier,
   })}; exit\n`;
 }
 

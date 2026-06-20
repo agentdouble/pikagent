@@ -126,12 +126,25 @@ describe('flow-helpers', () => {
         agent: 'codex',
         model: 'gpt-5.5',
         reasoningEffort: 'high',
+        serviceTier: 'fast',
       };
       const cmd = buildFlowCommand(flow);
 
       expect(cmd).toContain("--model 'gpt-5.5'");
       expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
+      expect(cmd).toContain("-c 'service_tier=\"fast\"'");
       expect(cmd).toContain('exec --skip-git-repo-check');
+    });
+
+    it('builds codex command with standard service tier when fast is disabled', () => {
+      const flow = {
+        prompt: 'test',
+        agent: 'codex',
+        serviceTier: 'standard',
+      };
+      const cmd = buildFlowCommand(flow);
+
+      expect(cmd).toContain("-c 'service_tier=\"standard\"'");
     });
 
     it('escapes single quotes in prompt', () => {
