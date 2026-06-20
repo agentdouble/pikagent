@@ -12,6 +12,7 @@
 - Theme color preference: Jeremy found the first Linear-inspired dark background too black. Prefer a softer pastel slate/lavender dark palette over near-black graphite for app backgrounds.
 - Theme border preference: Jeremy found the Linear-inspired UI too boxed in when separators were highly visible. Prefer low-alpha subtle borders and softer active terminal/tab accents instead of strong panel outlines.
 - Self-update uses `electron-updater` against GitHub Releases (`agentdouble/pikagent`) and should consume published macOS artifacts (`dmg`, `zip`, `latest-mac.yml`), not rebuild locally from a source checkout.
+- Manual local machine update from this source checkout: validate with `npm test`, run `npm run package`, quit `/Applications/Pickagent.app`, replace it with `release/mac-arm64/Pickagent.app`, run `codesign --verify --deep --strict /Applications/Pickagent.app`, remove quarantine if present, then relaunch.
 - macOS release builds must keep `build.mac.notarize: true` and `hardenedRuntime: true`; GitHub release workflow expects signing/notarization secrets before pushing a public `v*` tag.
 - As of 2026-06-12, local `npm run package:dmg -- --publish never` produces only arm64 artifacts and falls back to ad-hoc signing, so public "all Mac" deployment still needs Developer ID signing/notarization plus either universal or separate x64/arm64 release artifacts.
 - PTY agent detection uses `pgrep -P <pid>`; exit code `1` means no child process was found and should be treated as an empty result, not logged as `_checkAgent failed`.
