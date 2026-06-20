@@ -206,11 +206,15 @@ class LoopView extends ComponentBase {
   }
 
   _renderHeader() {
+    const runningNodes = runningCount(this.snapshot);
     const actions = _el('div', 'loop-builder-actions',
       _el('span', { textContent: `${this.loop.nodes.length} nodes` }),
-      _el('span', { textContent: `${runningCount(this.snapshot)} running` }),
+      _el('span', { textContent: `${runningNodes} running` }),
       this._button('Run pipeline', 'loop-primary-btn', () => void this._runPipeline(), {
         disabled: this.saving,
+      }),
+      this._button('Stop pipeline', 'loop-danger-btn', () => void this._stopPipeline(), {
+        disabled: this.saving || runningNodes === 0,
       }),
       this._button('+ Agent', 'loop-secondary-btn', () => this._addNode('agent')),
       this._button('+ Executable', 'loop-secondary-btn', () => this._addNode('executable')),
@@ -1081,6 +1085,17 @@ class LoopView extends ComponentBase {
     if (!saved) return;
     try {
       await loopApi.runPipeline({ boardId: this.loop.id || this.activeBoardId || 'main' });
+      await this._refreshSnapshot(false);
+      await this._refreshNodeLog(false);
+      this._render();
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
+  async _stopPipeline() {
+    try {
+      await loopApi.stopPipeline({ boardId: this.loop.id || this.activeBoardId || 'main' });
       await this._refreshSnapshot(false);
       await this._refreshNodeLog(false);
       this._render();

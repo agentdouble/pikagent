@@ -32,3 +32,4 @@
 - Boucles agent trigger modes include `schedule`, `hook`, and `link`; `link` agents are launched only from incoming visual edges after the upstream runnable node exits cleanly, and chain execution must guard against cycles with a visited set.
 - Boucles `Run pipeline` launches eligible root nodes while skipping any node already running; link-triggered agents are not started directly because upstream success launches them through directed edges.
 - Boucles links are directed edges (`from -> to`) with a UI reverse action; `Run pipeline` starts directed graph roots, then follows links to executable targets and agents in `triggerType: "link"` without relaunching already-running nodes.
+- Boucles `Stop pipeline` stops every currently running agent/executable node on the active board, including disabled-after-launch nodes and hook-launched external loop runs.

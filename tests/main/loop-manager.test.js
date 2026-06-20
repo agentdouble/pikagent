@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-const { _internals } = require('../../main/loop-manager');
+const { LoopManager, _internals } = require('../../main/loop-manager');
 const {
   isLinkTriggeredNode,
   linkedAgentNodes,
@@ -119,6 +119,41 @@ describe('loop-manager', () => {
       'agent-schedule',
       'agent-hook',
     ]);
+  });
+
+  it('treats disabled runnable nodes as stoppable when they are already running', () => {
+    expect(_internals.isRunnableNode({ type: 'executable', enabled: false })).toBe(false);
+    expect(_internals.isStoppableNode({ type: 'executable', enabled: false })).toBe(true);
+    expect(_internals.isStoppableNode({ type: 'agent', enabled: false })).toBe(true);
+    expect(_internals.isStoppableNode({ type: 'display' })).toBe(false);
+  });
+
+  it('stops every running pipeline job on a board', async () => {
+    const manager = new LoopManager();
+    manager.get = async () => ({
+      nodes: [
+        { id: 'exec-running', type: 'executable', enabled: true },
+        { id: 'agent-running', type: 'agent', enabled: false },
+        { id: 'exec-idle', type: 'executable', enabled: true },
+        { id: 'file', type: 'display' },
+      ],
+    });
+    manager._isNodeRunning = async (_boardId, nodeId) =>
+      nodeId === 'exec-running' || nodeId === 'agent-running';
+    const stoppedArgs = [];
+    manager.stopNode = async (arg) => {
+      stoppedArgs.push(arg);
+      return { nodeId: arg.nodeId, status: 'stopped' };
+    };
+
+    const result = await manager.stopPipeline({ boardId: 'board-1' });
+
+    expect(stoppedArgs).toEqual([
+      { boardId: 'board-1', nodeId: 'exec-running' },
+      { boardId: 'board-1', nodeId: 'agent-running' },
+    ]);
+    expect(result.stopped.map((item) => item.nodeId)).toEqual(['exec-running', 'agent-running']);
+    expect(result.skipped).toEqual([{ nodeId: 'exec-idle', reason: 'not-running' }]);
   });
 
   it('uses directed links to keep downstream executables out of pipeline starters', () => {

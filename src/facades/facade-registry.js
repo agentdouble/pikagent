@@ -57,7 +57,7 @@ const definitions = [
   ]],
 
   ['loopFacade', [
-    [loopApi, ['list', 'get', 'save', 'create', 'delete', 'runNode', 'runPipeline', 'stopNode', 'snapshot', 'getNodeLog']],
+    [loopApi, ['list', 'get', 'save', 'create', 'delete', 'runNode', 'runPipeline', 'stopNode', 'stopPipeline', 'snapshot', 'getNodeLog']],
     [shellApi, ['openPath']],
   ]],
 

@@ -181,6 +181,28 @@ class LoopManager {
     return { boardId, started, skipped };
   }
 
+  async stopPipeline(arg = 'main') {
+    const boardId = normalizeBoardIdArg(arg);
+    const loop = await this.get(boardId);
+    const stopped = [];
+    const skipped = [];
+
+    for (const node of loop.nodes) {
+      if (!isStoppableNode(node)) continue;
+      if (!(await this._isNodeRunning(boardId, node.id))) {
+        skipped.push({ nodeId: node.id, reason: 'not-running' });
+        continue;
+      }
+      try {
+        stopped.push(await this.stopNode({ boardId, nodeId: node.id }));
+      } catch (err) {
+        skipped.push({ nodeId: node.id, reason: 'error', error: err.message });
+      }
+    }
+
+    return { boardId, stopped, skipped };
+  }
+
   async stopNode(arg) {
     const { boardId, nodeId } = normalizeNodeArg(arg);
     const key = runningKey(boardId, nodeId);
@@ -397,6 +419,10 @@ function normalizeVisited(value, nodeId) {
 function isRunnableNode(node) {
   return node?.enabled !== false
     && (node?.type === 'executable' || node?.type === 'agent');
+}
+
+function isStoppableNode(node) {
+  return node?.type === 'executable' || node?.type === 'agent';
 }
 
 function isPipelineStarterNode(node, incomingLinkTargetIds = new Set()) {
@@ -633,6 +659,7 @@ module.exports._internals = {
   incomingLinkTargetIds,
   isPipelineStarterNode,
   isRunnableNode,
+  isStoppableNode,
   normalizeNodeArg,
   normalizeBoardIdArg,
   normalizeLoop,
