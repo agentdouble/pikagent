@@ -44,6 +44,7 @@ import {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const POINTER_CLICK_THRESHOLD = 4;
 const ACTIVE_BOARD_STORAGE_KEY = 'pickagent.loop.activeBoardId';
+const LINK_ARROW_MARKER_ID = 'loop-board-link-arrow';
 const LOOP_TRIGGER_TYPE_LABELS = {
   ...TRIGGER_TYPE_LABELS,
   link: 'Lien',
@@ -208,6 +209,9 @@ class LoopView extends ComponentBase {
     const actions = _el('div', 'loop-builder-actions',
       _el('span', { textContent: `${this.loop.nodes.length} nodes` }),
       _el('span', { textContent: `${runningCount(this.snapshot)} running` }),
+      this._button('Run pipeline', 'loop-primary-btn', () => void this._runPipeline(), {
+        disabled: this.saving,
+      }),
       this._button('+ Agent', 'loop-secondary-btn', () => this._addNode('agent')),
       this._button('+ Executable', 'loop-secondary-btn', () => this._addNode('executable')),
       this._button('+ Fichier', 'loop-secondary-btn', () => this._addNode('display')),
@@ -329,6 +333,7 @@ class LoopView extends ComponentBase {
   _renderLinks() {
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.classList.add('loop-board-links');
+    svg.appendChild(this._renderLinkDefs());
     for (const edge of this.loop.edges) {
       const from = this.loop.nodes.find((node) => node.id === edge.from);
       const to = this.loop.nodes.find((node) => node.id === edge.to);
@@ -338,17 +343,44 @@ class LoopView extends ComponentBase {
     return svg;
   }
 
+  _renderLinkDefs() {
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const marker = document.createElementNS(SVG_NS, 'marker');
+    marker.setAttribute('id', LINK_ARROW_MARKER_ID);
+    marker.setAttribute('markerHeight', '8');
+    marker.setAttribute('markerUnits', 'strokeWidth');
+    marker.setAttribute('markerWidth', '8');
+    marker.setAttribute('orient', 'auto');
+    marker.setAttribute('refX', '7');
+    marker.setAttribute('refY', '4');
+    marker.setAttribute('viewBox', '0 0 8 8');
+    const arrow = document.createElementNS(SVG_NS, 'path');
+    arrow.setAttribute('class', 'loop-board-link-arrow');
+    arrow.setAttribute('d', 'M 0 0 L 8 4 L 0 8 z');
+    marker.appendChild(arrow);
+    defs.appendChild(marker);
+    return defs;
+  }
+
   _renderEdgePath(edge, from, to) {
-    const startX = from.x + NODE_SIZE;
+    const targetIsRight = to.x >= from.x;
+    const direction = targetIsRight ? 1 : -1;
+    const startX = targetIsRight ? from.x + NODE_SIZE + 8 : from.x - 8;
     const startY = from.y + NODE_SIZE / 2;
-    const endX = to.x;
+    const endX = targetIsRight ? to.x - 8 : to.x + NODE_SIZE + 8;
     const endY = to.y + NODE_SIZE / 2;
     const curve = Math.max(80, Math.abs(endX - startX) / 2);
-    const d = `M ${startX} ${startY} C ${startX + curve} ${startY}, ${endX - curve} ${endY}, ${endX} ${endY}`;
+    const d = [
+      `M ${startX} ${startY}`,
+      `C ${startX + direction * curve} ${startY},`,
+      `${endX - direction * curve} ${endY},`,
+      `${endX} ${endY}`,
+    ].join(' ');
     const group = document.createElementNS(SVG_NS, 'g');
     const path = document.createElementNS(SVG_NS, 'path');
     path.setAttribute('class', 'loop-board-link');
     path.setAttribute('d', d);
+    path.setAttribute('marker-end', `url(#${LINK_ARROW_MARKER_ID})`);
     group.appendChild(path);
     if (edge.label) {
       const text = document.createElementNS(SVG_NS, 'text');
@@ -362,13 +394,13 @@ class LoopView extends ComponentBase {
   }
 
   _renderNodeCard(node, process) {
-    const agentRunning = node.type === 'agent' && process?.status === 'running';
+    const nodeRunning = node.type !== 'display' && process?.status === 'running';
     const article = _el('article', {
       className: [
         'loop-board-node',
         `loop-board-node-${node.type}`,
         node.id === this.selectedNodeId ? 'is-selected' : '',
-        agentRunning ? 'is-running' : '',
+        nodeRunning ? 'is-running' : '',
         this.linkSourceId === node.id ? 'is-link-source' : '',
         `is-color-${getNodeColor(node)}`,
       ].filter(Boolean).join(' '),
@@ -426,16 +458,16 @@ class LoopView extends ComponentBase {
       }));
     }
     body.appendChild(_el('p', { textContent: getNodePreview(node) }));
-    if (node.type === 'agent') {
+    if (node.type === 'agent' || node.type === 'executable') {
       body.appendChild(_el('button', {
-        className: `loop-node-run-btn${agentRunning ? ' is-stop' : ''}`,
-        disabled: this.saving && !agentRunning,
+        className: `loop-node-run-btn${nodeRunning ? ' is-stop' : ''}`,
+        disabled: this.saving && !nodeRunning,
         type: 'button',
-        textContent: agentRunning ? 'Stop' : 'Run',
+        textContent: nodeRunning ? 'Stop' : 'Run',
         onClick: (event) => {
           event.stopPropagation();
-          if (agentRunning) void this._stopAgentCard(node.id);
-          else void this._runAgentCard(node.id);
+          if (nodeRunning) void this._stopNodeCard(node.id);
+          else void this._runNodeCard(node.id);
         },
       }));
     } else if (node.type === 'display') {
@@ -766,7 +798,7 @@ class LoopView extends ComponentBase {
   _renderEdgesPanel(selectedNodeId) {
     const edges = selectedEdges(this.loop, selectedNodeId);
     return _el('div', 'loop-edge-panel',
-      _el('h3', { textContent: 'Liens visuels' }),
+      _el('h3', { textContent: 'Liens orientes' }),
       edges.length === 0
         ? _el('div', { textContent: 'Aucun lien pour ce node.' })
         : _el('div', null, ...edges.map((edge) => {
@@ -774,13 +806,21 @@ class LoopView extends ComponentBase {
           const to = this.loop.nodes.find((node) => node.id === edge.to);
           return _el('div', 'loop-edge-row',
             _el('span', {
-              textContent: `${from ? getNodeTitle(from) : edge.from} vers ${to ? getNodeTitle(to) : edge.to}`,
+              className: 'loop-edge-direction',
+              textContent: `${from ? getNodeTitle(from) : edge.from} -> ${to ? getNodeTitle(to) : edge.to}`,
             }),
-            _el('button', {
-              type: 'button',
-              textContent: 'Supprimer',
-              onClick: () => this._deleteEdge(edge.id),
-            }),
+            _el('div', 'loop-edge-row-actions',
+              _el('button', {
+                type: 'button',
+                textContent: 'Inverser',
+                onClick: () => this._reverseEdge(edge.id),
+              }),
+              _el('button', {
+                type: 'button',
+                textContent: 'Supprimer',
+                onClick: () => this._deleteEdge(edge.id),
+              }),
+            ),
           );
         })),
     );
@@ -878,6 +918,15 @@ class LoopView extends ComponentBase {
     }));
   }
 
+  _reverseEdge(edgeId) {
+    this._updateLoop((current) => ({
+      ...current,
+      edges: current.edges.map((edge) =>
+        edge.id === edgeId ? { ...edge, from: edge.to, to: edge.from } : edge
+      ),
+    }));
+  }
+
   _selectNode(nodeId) {
     if (this.linkSourceId && this.linkSourceId !== nodeId) {
       const edge = {
@@ -885,7 +934,10 @@ class LoopView extends ComponentBase {
         from: this.linkSourceId,
         to: nodeId,
       };
-      this._updateLoop((current) => ({ ...current, edges: [...current.edges, edge] }), false);
+      this._updateLoop((current) => {
+        const exists = current.edges.some((item) => item.from === edge.from && item.to === edge.to);
+        return exists ? current : { ...current, edges: [...current.edges, edge] };
+      }, false);
       this.linkSourceId = null;
     }
     this.selectedNodeId = nodeId;
@@ -1009,9 +1061,9 @@ class LoopView extends ComponentBase {
     }
   }
 
-  async _runAgentCard(nodeId) {
+  async _runNodeCard(nodeId) {
     const node = this.loop.nodes.find((item) => item.id === nodeId);
-    if (!node || node.type !== 'agent') return;
+    if (!node || node.type === 'display') return;
     const saved = await this._saveLoop();
     if (!saved) return;
     try {
@@ -1024,15 +1076,28 @@ class LoopView extends ComponentBase {
     }
   }
 
+  async _runPipeline() {
+    const saved = await this._saveLoop();
+    if (!saved) return;
+    try {
+      await loopApi.runPipeline({ boardId: this.loop.id || this.activeBoardId || 'main' });
+      await this._refreshSnapshot(false);
+      await this._refreshNodeLog(false);
+      this._render();
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
   async _stopSelected() {
     const node = this.selectedNode;
     if (!node) return;
     await this._stopNode(node.id);
   }
 
-  async _stopAgentCard(nodeId) {
+  async _stopNodeCard(nodeId) {
     const node = this.loop.nodes.find((item) => item.id === nodeId);
-    if (!node || node.type !== 'agent') return;
+    if (!node || node.type === 'display') return;
     await this._stopNode(nodeId);
   }
 

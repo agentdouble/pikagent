@@ -232,6 +232,10 @@
   stroke-width: 2;
 }
 
+.loop-board-link-arrow {
+  fill: var(--accent);
+}
+
 .loop-board-link-label {
   fill: var(--text-secondary);
   font-family: var(--font-mono);
@@ -756,12 +760,18 @@
   justify-content: space-between;
 }
 
-.loop-edge-row span {
+.loop-edge-direction {
   color: var(--text-secondary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.loop-edge-row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
 }
 
 .loop-edge-row button {

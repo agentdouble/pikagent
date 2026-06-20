@@ -6,7 +6,11 @@ const { spawn } = require('child_process');
 const { LOOP_FILE, LOOPS_DIR, loopBoardPath, loopNodeLogPath } = require('./paths');
 const { ensureDirOnce, readJson, writeJson } = require('./fs-utils');
 const { buildFlowCommand } = require('./flow-helpers');
-const { linkedAgentNodes, shouldTriggerLinkedTargets } = require('./loop-link-helpers');
+const {
+  isLinkTriggeredNode,
+  linkedRunnableNodes,
+  shouldTriggerLinkedTargets,
+} = require('./loop-link-helpers');
 const {
   finishLoopNodeRun,
   readActiveLoopNodeRun,
@@ -100,6 +104,8 @@ class LoopManager {
     const key = runningKey(boardId, nodeId);
     const existing = this.running.get(key);
     if (existing) return this._toProcess(boardId, nodeId, existing);
+    const externalRun = await readActiveLoopNodeRun(boardId, nodeId);
+    if (externalRun) return this._toExternalProcess(boardId, nodeId, externalRun);
 
     const loop = await this.get(boardId);
     const node = loop.nodes.find((item) => item.id === nodeId);
@@ -148,6 +154,31 @@ class LoopManager {
     });
 
     return this._toProcess(boardId, node.id, running);
+  }
+
+  async runPipeline(arg = 'main') {
+    const boardId = normalizeBoardIdArg(arg);
+    const loop = await this.get(boardId);
+    const starters = pipelineStarterNodes(loop);
+    const started = [];
+    const skipped = [];
+
+    for (const node of starters) {
+      if (await this._isNodeRunning(boardId, node.id)) {
+        skipped.push({ nodeId: node.id, reason: 'running' });
+        continue;
+      }
+      try {
+        started.push(await this.runNode(
+          { boardId, nodeId: node.id },
+          { trigger: 'pipeline' },
+        ));
+      } catch (err) {
+        skipped.push({ nodeId: node.id, reason: 'error', error: err.message });
+      }
+    }
+
+    return { boardId, started, skipped };
   }
 
   async stopNode(arg) {
@@ -216,10 +247,15 @@ class LoopManager {
     }));
   }
 
+  async _isNodeRunning(boardId, nodeId) {
+    return this.running.has(runningKey(boardId, nodeId))
+      || Boolean(await readActiveLoopNodeRun(boardId, nodeId));
+  }
+
   async _triggerLinkedTargets(boardId, fromNodeId, visited) {
     const loop = await this.get(boardId);
     const baseVisited = normalizeVisited(visited, fromNodeId);
-    const targets = linkedAgentNodes(loop, fromNodeId, baseVisited);
+    const targets = linkedRunnableNodes(loop, fromNodeId, baseVisited);
     if (!targets.length) return [];
 
     const results = [];
@@ -338,6 +374,11 @@ function normalizeNodeArg(arg) {
   };
 }
 
+function normalizeBoardIdArg(arg) {
+  if (typeof arg === 'string') return sanitizeLoopId(arg) || 'main';
+  return sanitizeLoopId(arg?.boardId) || 'main';
+}
+
 function runningKey(boardId, nodeId) {
   return `${boardId}::${nodeId}`;
 }
@@ -351,6 +392,35 @@ function normalizeVisited(value, nodeId) {
   const visited = value instanceof Set ? new Set(value) : new Set(Array.isArray(value) ? value : []);
   if (nodeId) visited.add(nodeId);
   return visited;
+}
+
+function isRunnableNode(node) {
+  return node?.enabled !== false
+    && (node?.type === 'executable' || node?.type === 'agent');
+}
+
+function isPipelineStarterNode(node, incomingLinkTargetIds = new Set()) {
+  return isRunnableNode(node)
+    && !(node?.type === 'agent' && node.triggerType === 'link')
+    && !incomingLinkTargetIds.has(node.id);
+}
+
+function incomingLinkTargetIds(loop) {
+  if (!loop || !Array.isArray(loop.nodes) || !Array.isArray(loop.edges)) return new Set();
+  const nodesById = new Map(loop.nodes.map((node) => [node.id, node]));
+  const targetIds = new Set();
+  for (const edge of loop.edges) {
+    const source = nodesById.get(edge?.from);
+    const target = nodesById.get(edge?.to);
+    if (isRunnableNode(source) && isLinkTriggeredNode(target)) targetIds.add(target.id);
+  }
+  return targetIds;
+}
+
+function pipelineStarterNodes(loop) {
+  if (!loop || !Array.isArray(loop.nodes)) return [];
+  const incomingTargets = incomingLinkTargetIds(loop);
+  return loop.nodes.filter((node) => isPipelineStarterNode(node, incomingTargets));
 }
 
 function stopExternalRun(run) {
@@ -560,10 +630,15 @@ module.exports = loopManager;
 module.exports.LoopManager = LoopManager;
 module.exports._internals = {
   buildNodeCommand,
+  incomingLinkTargetIds,
+  isPipelineStarterNode,
+  isRunnableNode,
   normalizeNodeArg,
+  normalizeBoardIdArg,
   normalizeLoop,
   normalizeNode,
   normalizeVisited,
+  pipelineStarterNodes,
   runningKey,
   sanitizeLoopId,
   safeCwd,

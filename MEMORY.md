@@ -30,3 +30,5 @@
 - Hook-launched Boucles agents are external to the Electron `LoopManager` process; `pickagent-hook` must persist their run state under `~/.config/.pickagent/loops/runs/<boardId>/<nodeId>.json` so the Boucles snapshot can show the node as running and allow Stop.
 - Boucles `Fichier` nodes open their configured `filePath` through `loopFacade.openPath`; keep the button disabled when the path is empty and surface Electron `openPath` error text in the LoopView error banner.
 - Boucles agent trigger modes include `schedule`, `hook`, and `link`; `link` agents are launched only from incoming visual edges after the upstream runnable node exits cleanly, and chain execution must guard against cycles with a visited set.
+- Boucles `Run pipeline` launches eligible root nodes while skipping any node already running; link-triggered agents are not started directly because upstream success launches them through directed edges.
+- Boucles links are directed edges (`from -> to`) with a UI reverse action; `Run pipeline` starts directed graph roots, then follows links to executable targets and agents in `triggerType: "link"` without relaunching already-running nodes.

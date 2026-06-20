@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 const { _internals } = require('../../main/loop-manager');
-const { linkedAgentNodes, shouldTriggerLinkedTargets } = require('../../main/loop-link-helpers');
+const {
+  isLinkTriggeredNode,
+  linkedAgentNodes,
+  linkedRunnableNodes,
+  shouldTriggerLinkedTargets,
+} = require('../../main/loop-link-helpers');
 const { activeLoopNodeRun } = require('../../main/loop-run-state');
 
 describe('loop-manager', () => {
@@ -78,6 +83,12 @@ describe('loop-manager', () => {
     });
   });
 
+  it('normalizes board ids for board-level actions', () => {
+    expect(_internals.normalizeBoardIdArg('board-1')).toBe('board-1');
+    expect(_internals.normalizeBoardIdArg({ boardId: 'board-2' })).toBe('board-2');
+    expect(_internals.normalizeBoardIdArg('../bad')).toBe('main');
+  });
+
   it('keeps link-triggered agents out of schedule and hook config', () => {
     const node = _internals.normalizeNode({
       id: 'agent-link',
@@ -91,11 +102,53 @@ describe('loop-manager', () => {
     expect(node.hookTrigger).toBeUndefined();
   });
 
-  it('selects downstream link-triggered agent nodes only once', () => {
+  it('selects pipeline starters without link-triggered agents or visual nodes', () => {
+    const loop = {
+      nodes: [
+        { id: 'exec', type: 'executable', enabled: true },
+        { id: 'agent-schedule', type: 'agent', triggerType: 'schedule', enabled: true },
+        { id: 'agent-hook', type: 'agent', triggerType: 'hook', enabled: true },
+        { id: 'agent-link', type: 'agent', triggerType: 'link', enabled: true },
+        { id: 'disabled', type: 'executable', enabled: false },
+        { id: 'display', type: 'display', enabled: true },
+      ],
+    };
+
+    expect(_internals.pipelineStarterNodes(loop).map((node) => node.id)).toEqual([
+      'exec',
+      'agent-schedule',
+      'agent-hook',
+    ]);
+  });
+
+  it('uses directed links to keep downstream executables out of pipeline starters', () => {
+    const loop = {
+      nodes: [
+        { id: 'source', type: 'executable', enabled: true },
+        { id: 'exec-target', type: 'executable', enabled: true },
+        { id: 'agent-target', type: 'agent', triggerType: 'link', enabled: true },
+        { id: 'scheduled-agent', type: 'agent', triggerType: 'schedule', enabled: true },
+      ],
+      edges: [
+        { id: 'edge-1', from: 'source', to: 'exec-target' },
+        { id: 'edge-2', from: 'source', to: 'agent-target' },
+        { id: 'edge-3', from: 'source', to: 'scheduled-agent' },
+      ],
+    };
+
+    expect(_internals.incomingLinkTargetIds(loop)).toEqual(new Set(['exec-target', 'agent-target']));
+    expect(_internals.pipelineStarterNodes(loop).map((node) => node.id)).toEqual([
+      'source',
+      'scheduled-agent',
+    ]);
+  });
+
+  it('selects downstream link-triggered runnable nodes only once', () => {
     const loop = {
       nodes: [
         { id: 'source', type: 'executable', enabled: true },
         { id: 'linked', type: 'agent', triggerType: 'link', enabled: true },
+        { id: 'exec', type: 'executable', enabled: true },
         { id: 'scheduled', type: 'agent', triggerType: 'schedule', enabled: true },
         { id: 'disabled', type: 'agent', triggerType: 'link', enabled: false },
         { id: 'file', type: 'display' },
@@ -103,12 +156,18 @@ describe('loop-manager', () => {
       edges: [
         { id: 'e1', from: 'source', to: 'linked' },
         { id: 'e2', from: 'source', to: 'linked' },
-        { id: 'e3', from: 'source', to: 'scheduled' },
-        { id: 'e4', from: 'source', to: 'disabled' },
-        { id: 'e5', from: 'source', to: 'file' },
+        { id: 'e3', from: 'source', to: 'exec' },
+        { id: 'e4', from: 'source', to: 'scheduled' },
+        { id: 'e5', from: 'source', to: 'disabled' },
+        { id: 'e6', from: 'source', to: 'file' },
       ],
     };
 
+    expect(isLinkTriggeredNode(loop.nodes[1])).toBe(true);
+    expect(isLinkTriggeredNode(loop.nodes[2])).toBe(true);
+    expect(isLinkTriggeredNode(loop.nodes[3])).toBe(false);
+    expect(linkedRunnableNodes(loop, 'source').map((node) => node.id)).toEqual(['linked', 'exec']);
+    expect(linkedRunnableNodes(loop, 'source', new Set(['linked', 'exec']))).toEqual([]);
     expect(linkedAgentNodes(loop, 'source').map((node) => node.id)).toEqual(['linked']);
     expect(linkedAgentNodes(loop, 'source', new Set(['linked']))).toEqual([]);
   });

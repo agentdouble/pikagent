@@ -13,8 +13,8 @@ const {
 } = require('./paths');
 const { MAX_FLOW_RUNTIME_MS, MAX_RUN_HISTORY, buildFlowCommand } = require('./flow-helpers');
 const { flowMatchesHookEvent, debounceKey } = require('./flow-triggers');
-const { linkedAgentNodes, shouldTriggerLinkedTargets } = require('./loop-link-helpers');
-const { beginLoopNodeRun, finishLoopNodeRun } = require('./loop-run-state');
+const { linkedRunnableNodes, shouldTriggerLinkedTargets } = require('./loop-link-helpers');
+const { beginLoopNodeRun, finishLoopNodeRun, readActiveLoopNodeRun } = require('./loop-run-state');
 const { nowISO, toLogFilename, extractDateString } = require('../shared/date-utils');
 
 const DEFAULT_PROVIDER = 'manual';
@@ -201,13 +201,17 @@ function loopTargetId(boardId, nodeId) {
 
 function loopNodeToHookTarget(board, node) {
   const boardId = board.id || 'main';
+  const nodeType = node.type || 'agent';
   return {
     id: loopTargetId(boardId, node.id),
-    name: `${board.name || 'Boucles'} / ${node.title || 'Agent'}`,
+    name: `${board.name || 'Boucles'} / ${node.title || (nodeType === 'executable' ? 'Executable' : 'Agent')}`,
+    nodeType,
     prompt: node.prompt || '',
+    command: node.command || '',
     agent: node.agent || 'codex',
     cwd: node.cwd || '',
     enabled: node.enabled !== false,
+    persistent: Boolean(node.persistent || node.watcher),
     triggerType: node.triggerType || (node.hookTrigger ? 'hook' : 'schedule'),
     hookTrigger: node.triggerType === 'hook' || (!node.triggerType && node.hookTrigger) ? node.hookTrigger : undefined,
     dangerouslySkipPermissions: Boolean(node.dangerouslySkipPermissions),
@@ -215,7 +219,7 @@ function loopNodeToHookTarget(board, node) {
     boardId,
     boardName: board.name || 'Boucles',
     nodeId: node.id,
-    nodeTitle: node.title || 'Agent',
+    nodeTitle: node.title || (nodeType === 'executable' ? 'Executable' : 'Agent'),
   };
 }
 
@@ -411,12 +415,24 @@ async function runLinkedLoopTargets(flow, event, context = {}) {
   if (!board) return [];
   const boardWithId = { ...board, id: board.id || boardId };
   const visited = normalizeVisited(context.visited, flow.nodeId);
-  const targets = linkedAgentNodes(boardWithId, flow.nodeId, visited);
+  const targets = linkedRunnableNodes(boardWithId, flow.nodeId, visited);
   const results = [];
 
   for (const node of targets) {
-    appendTargetLog(flow, '', `[pickagent-hook] linked trigger ${node.title || 'Agent'}\n`);
     const target = loopNodeToHookTarget(boardWithId, node);
+    if (await readActiveLoopNodeRun(boardId, node.id)) {
+      appendTargetLog(flow, '', `[pickagent-hook] skip linked trigger ${target.nodeTitle}: already running\n`);
+      results.push({
+        flowId: target.id,
+        flowName: target.name,
+        source: target.source,
+        exitCode: 0,
+        status: 'skipped',
+        skipped: true,
+      });
+      continue;
+    }
+    appendTargetLog(flow, '', `[pickagent-hook] linked trigger ${target.nodeTitle}\n`);
     const nextVisited = normalizeVisited(visited, node.id);
     results.push(await runCommand(
       target,
@@ -442,7 +458,7 @@ function normalizeVisited(value, nodeId) {
 async function runCommand(flow, event, context = {}) {
   const cwd = safeCwd(event.cwd || flow.cwd);
   const runTimestamp = toLogFilename();
-  const command = buildFlowCommand(flow).trim();
+  const command = buildHookTargetCommand(flow).trim();
   const initialOutput = [
     'Pickagent headless run',
     `target: ${flow.name} (${flow.id})`,
@@ -511,6 +527,15 @@ async function runCommand(flow, event, context = {}) {
     process.stderr.write(`[pickagent-hook] failed to record run start: ${err.message}\n`);
   }
   return result;
+}
+
+function buildHookTargetCommand(flow) {
+  if (flow.source === 'loop' && flow.nodeType === 'executable') {
+    const command = String(flow.command || '').trim();
+    if (!command) throw new Error(`Executable node command is empty: ${flow.nodeTitle || flow.name}`);
+    return command;
+  }
+  return buildFlowCommand(flow);
 }
 
 function toEvent(options) {
@@ -602,5 +627,6 @@ module.exports = {
   runLinkedLoopTargets,
   targetMatches,
   shouldDebounce,
+  buildHookTargetCommand,
   runCommand,
 };

@@ -3,6 +3,7 @@ const fsp = require('fs/promises');
 const os = require('os');
 const path = require('path');
 const {
+  buildHookTargetCommand,
   listHookTargets,
   listLoopAgentTargets,
   loopNodeToHookTarget,
@@ -137,5 +138,26 @@ describe('flow-hook-cli', () => {
 
     expect(target.triggerType).toBe('link');
     expect(target.hookTrigger).toBeUndefined();
+  });
+
+  it('builds executable loop target commands directly for linked pipeline targets', () => {
+    const target = loopNodeToHookTarget(
+      { id: 'main', name: 'Boucles' },
+      {
+        id: 'exec-1',
+        type: 'executable',
+        title: 'Watcher',
+        command: 'npm test',
+        cwd: '/repo',
+        enabled: true,
+      },
+    );
+
+    expect(target).toMatchObject({
+      id: 'loop:main:exec-1',
+      nodeType: 'executable',
+      command: 'npm test',
+    });
+    expect(buildHookTargetCommand(target)).toBe('npm test');
   });
 });

@@ -83,6 +83,7 @@ const API_SCHEMA = {
     create:     { type: 'fwd' },
     delete:     { type: 'fwd' },
     runNode:    { type: 'fwd' },
+    runPipeline: { type: 'fwd' },
     stopNode:   { type: 'fwd' },
     snapshot:   { type: 'fwd' },
     getNodeLog: { type: 'fwd' },
