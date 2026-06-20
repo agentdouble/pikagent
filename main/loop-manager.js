@@ -3,9 +3,10 @@ const fsp = require('fs/promises');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const { LOOP_FILE, LOOPS_DIR, loopNodeLogPath } = require('./paths');
+const { LOOP_FILE, LOOPS_DIR, loopBoardPath, loopNodeLogPath } = require('./paths');
 const { ensureDirOnce, readJson, writeJson } = require('./fs-utils');
 const { buildFlowCommand } = require('./flow-helpers');
+const { generateId } = require('../shared/id-utils');
 
 const LAST_LOG_LINES = 80;
 const DEFAULT_SCHEDULE = { type: 'weekdays', time: '09:00' };
@@ -30,32 +31,72 @@ class LoopManager {
     this.running = new Map();
   }
 
-  async get() {
+  async list() {
     await ensureLoopsDir();
-    const loop = await readJson(LOOP_FILE);
-    return normalizeLoop(loop || DEFAULT_LOOP);
+    const loops = await this._readAllLoops();
+    return loops.map(toLoopSummary);
+  }
+
+  async get(boardId = 'main') {
+    await ensureLoopsDir();
+    const resolvedId = sanitizeLoopId(boardId) || 'main';
+    const loop = await readJson(loopBoardPath(resolvedId));
+    return normalizeLoop(loop || (resolvedId === 'main' ? DEFAULT_LOOP : { ...DEFAULT_LOOP, id: resolvedId }));
   }
 
   async save(loop) {
-    const existing = await this.get();
+    const loopId = sanitizeLoopId(loop?.id) || 'main';
+    const existing = await this.get(loopId);
     const now = new Date().toISOString();
     const data = normalizeLoop({
       ...loop,
-      id: loop?.id || 'main',
+      id: loopId,
       name: String(loop?.name || '').trim() || 'Boucles',
       createdAt: existing.createdAt || now,
       updatedAt: now,
     });
     await ensureLoopsDir();
-    await writeJson(LOOP_FILE, data);
+    await writeJson(loopBoardPath(data.id), data);
     return data;
   }
 
-  async runNode(nodeId) {
-    const existing = this.running.get(nodeId);
-    if (existing) return this._toProcess(nodeId, existing);
+  async create(name = '') {
+    const now = new Date().toISOString();
+    const loop = normalizeLoop({
+      ...DEFAULT_LOOP,
+      id: generateId('board'),
+      name: String(name || '').trim() || 'Nouveau board',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ensureLoopsDir();
+    await writeJson(loopBoardPath(loop.id), loop);
+    return loop;
+  }
 
-    const loop = await this.get();
+  async delete(boardId) {
+    const resolvedId = sanitizeLoopId(boardId);
+    if (!resolvedId) throw new Error('Loop board id is required');
+
+    const loops = await this._readAllLoops();
+    if (loops.length <= 1) throw new Error('Cannot delete the last loop board');
+
+    const loop = loops.find((item) => item.id === resolvedId);
+    if (!loop) throw new Error(`Loop board not found: ${resolvedId}`);
+
+    await Promise.all(loop.nodes.map((node) => this.stopNode({ boardId: resolvedId, nodeId: node.id })));
+    await fsp.unlink(loopBoardPath(resolvedId));
+    const remaining = (await this._readAllLoops()).filter((item) => item.id !== resolvedId);
+    return remaining[0] || DEFAULT_LOOP;
+  }
+
+  async runNode(arg) {
+    const { boardId, nodeId } = normalizeNodeArg(arg);
+    const key = runningKey(boardId, nodeId);
+    const existing = this.running.get(key);
+    if (existing) return this._toProcess(boardId, nodeId, existing);
+
+    const loop = await this.get(boardId);
     const node = loop.nodes.find((item) => item.id === nodeId);
     if (!node) throw new Error(`Loop node not found: ${nodeId}`);
     if (node.type === 'display') throw new Error(`Display node is visual only: ${node.title}`);
@@ -63,7 +104,7 @@ class LoopManager {
 
     const command = buildNodeCommand(node);
     const cwd = safeCwd(node.cwd);
-    const logFile = loopNodeLogPath(node.id);
+    const logFile = loopNodeLogPath(boardId, node.id);
     await appendLog(logFile, `\n[pickagent-loop] run ${node.title}\n`);
     await appendLog(logFile, buildRunHeader(node, cwd, command));
 
@@ -84,7 +125,7 @@ class LoopManager {
       logFile,
       error: null,
     };
-    this.running.set(node.id, running);
+    this.running.set(key, running);
 
     child.stdout?.on('data', (data) => appendLog(logFile, data.toString()));
     child.stderr?.on('data', (data) => appendLog(logFile, data.toString()));
@@ -97,15 +138,17 @@ class LoopManager {
         logFile,
         `[pickagent-loop] stopped code=${code ?? 'null'} signal=${signal ?? 'null'}\n`,
       );
-      this.running.delete(node.id);
+      this.running.delete(key);
     });
 
-    return this._toProcess(node.id, running);
+    return this._toProcess(boardId, node.id, running);
   }
 
-  async stopNode(nodeId) {
-    const running = this.running.get(nodeId);
-    if (!running) return this._stoppedProcess(nodeId);
+  async stopNode(arg) {
+    const { boardId, nodeId } = normalizeNodeArg(arg);
+    const key = runningKey(boardId, nodeId);
+    const running = this.running.get(key);
+    if (!running) return this._stoppedProcess(boardId, nodeId);
 
     try {
       if (process.platform !== 'win32' && running.child.pid) {
@@ -116,16 +159,17 @@ class LoopManager {
     } catch (err) {
       running.error = err.message;
     }
-    this.running.delete(nodeId);
+    this.running.delete(key);
     await appendLog(running.logFile, '[pickagent-loop] stop requested\n');
-    return this._stoppedProcess(nodeId, running.error);
+    return this._stoppedProcess(boardId, nodeId, running.error);
   }
 
-  async snapshot() {
-    const loop = await this.get();
+  async snapshot(boardId = 'main') {
+    const resolvedId = sanitizeLoopId(boardId) || 'main';
+    const loop = await this.get(resolvedId);
     const processes = await Promise.all(loop.nodes.map(async (node) => {
-      const running = this.running.get(node.id);
-      return running ? this._toProcess(node.id, running) : this._stoppedProcess(node.id);
+      const running = this.running.get(runningKey(resolvedId, node.id));
+      return running ? this._toProcess(resolvedId, node.id, running) : this._stoppedProcess(resolvedId, node.id);
     }));
     return {
       generatedAt: new Date().toISOString(),
@@ -134,19 +178,39 @@ class LoopManager {
     };
   }
 
-  async getNodeLog(nodeId) {
+  async getNodeLog(arg) {
+    const { boardId, nodeId } = normalizeNodeArg(arg);
     try {
-      return await fsp.readFile(loopNodeLogPath(nodeId), 'utf-8');
+      return await fsp.readFile(loopNodeLogPath(boardId, nodeId), 'utf-8');
     } catch {
       return null;
     }
   }
 
   async cleanup() {
-    await Promise.all([...this.running.keys()].map((id) => this.stopNode(id)));
+    await Promise.all([...this.running.keys()].map((key) => {
+      const { boardId, nodeId } = parseRunningKey(key);
+      return this.stopNode({ boardId, nodeId });
+    }));
   }
 
-  async _toProcess(nodeId, running) {
+  async _readAllLoops() {
+    await ensureLoopsDir();
+    let files = [];
+    try {
+      files = (await fsp.readdir(LOOPS_DIR)).filter((file) => file.endsWith('.json'));
+    } catch {
+      return [normalizeLoop(DEFAULT_LOOP)];
+    }
+
+    const loops = (await Promise.all(files.map((file) => readJson(path.join(LOOPS_DIR, file)))))
+      .filter(Boolean)
+      .map((loop) => normalizeLoop(loop));
+    if (!loops.length) return [normalizeLoop(DEFAULT_LOOP)];
+    return loops.sort(compareLoops);
+  }
+
+  async _toProcess(boardId, nodeId, running) {
     return {
       nodeId,
       status: 'running',
@@ -158,16 +222,32 @@ class LoopManager {
     };
   }
 
-  async _stoppedProcess(nodeId, error) {
+  async _stoppedProcess(boardId, nodeId, error) {
     return {
       nodeId,
       status: 'stopped',
       stoppedAt: new Date().toISOString(),
-      logFile: loopNodeLogPath(nodeId),
-      lastLogLines: await readLastLines(loopNodeLogPath(nodeId)),
+      logFile: loopNodeLogPath(boardId, nodeId),
+      lastLogLines: await readLastLines(loopNodeLogPath(boardId, nodeId)),
       error,
     };
   }
+}
+
+function toLoopSummary(loop) {
+  return {
+    id: loop.id,
+    name: loop.name,
+    nodeCount: loop.nodes.length,
+    createdAt: loop.createdAt,
+    updatedAt: loop.updatedAt,
+  };
+}
+
+function compareLoops(a, b) {
+  if (a.id === 'main') return -1;
+  if (b.id === 'main') return 1;
+  return String(a.name || '').localeCompare(String(b.name || ''), 'fr');
 }
 
 function normalizeLoop(loop) {
@@ -187,6 +267,29 @@ function normalizeLoop(loop) {
     nodes,
     edges,
   };
+}
+
+function sanitizeLoopId(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  return /^[a-zA-Z0-9_-]+$/.test(trimmed) ? trimmed : '';
+}
+
+function normalizeNodeArg(arg) {
+  if (typeof arg === 'string') return { boardId: 'main', nodeId: arg };
+  return {
+    boardId: sanitizeLoopId(arg?.boardId) || 'main',
+    nodeId: stringValue(arg?.nodeId),
+  };
+}
+
+function runningKey(boardId, nodeId) {
+  return `${boardId}::${nodeId}`;
+}
+
+function parseRunningKey(key) {
+  const [boardId, ...rest] = String(key).split('::');
+  return { boardId: boardId || 'main', nodeId: rest.join('::') };
 }
 
 function normalizeNode(node, now) {
@@ -383,7 +486,10 @@ module.exports = loopManager;
 module.exports.LoopManager = LoopManager;
 module.exports._internals = {
   buildNodeCommand,
+  normalizeNodeArg,
   normalizeLoop,
   normalizeNode,
+  runningKey,
+  sanitizeLoopId,
   safeCwd,
 };

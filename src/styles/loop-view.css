@@ -20,6 +20,31 @@
   margin-top: 6px;
 }
 
+.loop-builder-title-block {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+}
+
+.loop-board-controls {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(160px, 240px) minmax(200px, 360px);
+}
+
+.loop-board-select,
+.loop-board-name-input {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: inherit;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
 .loop-builder-actions,
 .loop-inspector-actions {
   align-items: center;
@@ -779,6 +804,10 @@
 
   .loop-builder-actions {
     justify-content: flex-start;
+  }
+
+  .loop-board-controls {
+    grid-template-columns: 1fr;
   }
 
   .loop-folder-row {

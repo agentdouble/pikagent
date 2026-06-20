@@ -59,4 +59,20 @@ describe('loop-manager', () => {
     expect(command).toContain('--sandbox danger-full-access');
     expect(command).toContain('fix it');
   });
+
+  it('keeps node process identities scoped by board', () => {
+    expect(_internals.runningKey('main', 'node-1')).toBe('main::node-1');
+    expect(_internals.runningKey('board-2', 'node-1')).toBe('board-2::node-1');
+  });
+
+  it('normalizes legacy node args to the main board', () => {
+    expect(_internals.normalizeNodeArg('node-1')).toEqual({
+      boardId: 'main',
+      nodeId: 'node-1',
+    });
+    expect(_internals.normalizeNodeArg({ boardId: 'board-2', nodeId: 'node-1' })).toEqual({
+      boardId: 'board-2',
+      nodeId: 'node-1',
+    });
+  });
 });

@@ -77,8 +77,11 @@ const API_SCHEMA = {
     onRunComplete:  { type: 'on', channel: 'flow:runComplete' },
   },
   loop: {
+    list:       { type: 'fwd' },
     get:        { type: 'fwd' },
     save:       { type: 'fwd' },
+    create:     { type: 'fwd' },
+    delete:     { type: 'fwd' },
     runNode:    { type: 'fwd' },
     stopNode:   { type: 'fwd' },
     snapshot:   { type: 'fwd' },

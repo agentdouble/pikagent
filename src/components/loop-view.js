@@ -41,6 +41,7 @@ import {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const POINTER_CLICK_THRESHOLD = 4;
+const ACTIVE_BOARD_STORAGE_KEY = 'pickagent.loop.activeBoardId';
 
 class LoopView extends ComponentBase {
   constructor(container) {
@@ -48,6 +49,8 @@ class LoopView extends ComponentBase {
   }
 
   _initState() {
+    this.boards = [];
+    this.activeBoardId = readStoredActiveBoardId();
     this.loop = createDefaultLoop();
     this.snapshot = null;
     this.selectedNodeId = null;
@@ -60,6 +63,7 @@ class LoopView extends ComponentBase {
     this.nodeLog = '';
     this.error = '';
     this.saving = false;
+    this._autoSaveTimer = null;
     this.el = _el('div', 'loop-builder');
     this.container.appendChild(this.el);
   }
@@ -77,6 +81,7 @@ class LoopView extends ComponentBase {
 
   async refresh() {
     if (this.disposed) return;
+    await this._loadBoards();
     await this._loadLoop();
     await this._refreshSnapshot(false);
     await this._refreshNodeLog(false);
@@ -89,6 +94,7 @@ class LoopView extends ComponentBase {
 
   dispose() {
     super.dispose();
+    this._clearAutoSave();
     this.el.remove();
   }
 
@@ -96,10 +102,25 @@ class LoopView extends ComponentBase {
     return this.loop.nodes.find((node) => node.id === this.selectedNodeId) || null;
   }
 
+  async _loadBoards() {
+    try {
+      this.boards = await loopApi.list();
+      if (!this.boards.length) this.boards = [{ id: 'main', name: 'Boucles', nodeCount: 0 }];
+      if (!this.boards.some((board) => board.id === this.activeBoardId)) {
+        this.activeBoardId = this.boards[0].id;
+        writeStoredActiveBoardId(this.activeBoardId);
+      }
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
   async _loadLoop() {
     try {
-      const next = await loopApi.get();
+      const next = await loopApi.get(this.activeBoardId);
       this.loop = next || createDefaultLoop();
+      this.activeBoardId = this.loop.id || 'main';
+      writeStoredActiveBoardId(this.activeBoardId);
       if (this.selectedNodeId && !this.loop.nodes.some((node) => node.id === this.selectedNodeId)) {
         this.selectedNodeId = null;
       }
@@ -111,7 +132,7 @@ class LoopView extends ComponentBase {
   async _refreshSnapshot(shouldRender = true) {
     if (this.disposed) return;
     try {
-      this.snapshot = await loopApi.snapshot();
+      this.snapshot = await loopApi.snapshot(this.loop.id || this.activeBoardId || 'main');
       if (shouldRender) this._renderUnlessEditing();
     } catch (err) {
       this._setError(err);
@@ -128,7 +149,10 @@ class LoopView extends ComponentBase {
       return;
     }
     try {
-      const nextLog = (await loopApi.getNodeLog(this.selectedNodeId)) || '';
+      const nextLog = (await loopApi.getNodeLog({
+        boardId: this.loop.id || this.activeBoardId || 'main',
+        nodeId: this.selectedNodeId,
+      })) || '';
       if (nextLog !== this.nodeLog) {
         this.nodeLog = nextLog;
         if (shouldRender) this._renderUnlessEditing();
@@ -145,6 +169,8 @@ class LoopView extends ComponentBase {
 
   _render() {
     if (!this.el || this.disposed) return;
+    const inspectorScrollTop = this.el.querySelector('.loop-inspector')?.scrollTop ?? 0;
+    const previousSelectedNodeId = this.selectedNodeId;
     const selectedNode = this.selectedNode;
     const inspectorVisible = Boolean(selectedNode && !this.inspectorCollapsed);
     this.el.replaceChildren(
@@ -152,6 +178,10 @@ class LoopView extends ComponentBase {
       this.error ? _el('div', { className: 'loop-builder-error', textContent: this.error }) : null,
       this._renderBoardLayout(inspectorVisible, selectedNode),
     );
+    if (previousSelectedNodeId && previousSelectedNodeId === this.selectedNodeId) {
+      const inspector = this.el.querySelector('.loop-inspector');
+      if (inspector) inspector.scrollTop = inspectorScrollTop;
+    }
   }
 
   _renderUnlessEditing() {
@@ -173,21 +203,46 @@ class LoopView extends ComponentBase {
       this._button('+ Agent', 'loop-secondary-btn', () => this._addNode('agent')),
       this._button('+ Executable', 'loop-secondary-btn', () => this._addNode('executable')),
       this._button('+ Fichier', 'loop-secondary-btn', () => this._addNode('display')),
+      this._button('+ Board', 'loop-secondary-btn', () => void this._createBoard()),
+      this._button('Supprimer board', 'loop-danger-btn', () => void this._deleteBoard(), {
+        disabled: this.boards.length <= 1,
+      }),
       this._button(this.saving ? 'Save...' : 'Save board', 'flow-add-btn', () => void this._saveLoop(), {
         disabled: this.saving,
       }),
     );
 
     return _el('div', 'loop-builder-header',
-      _el('div', null,
+      _el('div', 'loop-builder-title-block',
         _el('h2', { className: 'flow-title', textContent: 'Boucles' }),
-        _el('p', {
-          className: 'loop-builder-subtitle',
-          textContent: 'Board visuel: agents, executables, liens.',
-        }),
+        this._renderBoardControls(),
       ),
       actions,
     );
+  }
+
+  _renderBoardControls() {
+    const boardSelect = buildSelect(
+      this.boards.map((board) => ({
+        value: board.id,
+        label: `${board.name || 'Sans nom'} (${board.nodeCount || 0})`,
+      })),
+      { className: 'loop-board-select', selected: this.loop.id || this.activeBoardId || 'main' },
+    );
+    boardSelect.addEventListener('change', (event) => void this._switchBoard(event.target.value));
+
+    const nameInput = _el('input', {
+      className: 'loop-board-name-input',
+      value: this.loop.name || '',
+      placeholder: 'Nom du board',
+      onInput: (event) => {
+        this.loop = { ...this.loop, name: event.target.value };
+        this._scheduleAutoSave();
+      },
+      onBlur: () => void this._saveLoop(),
+    });
+
+    return _el('div', 'loop-board-controls', boardSelect, nameInput);
   }
 
   _renderBoardLayout(inspectorVisible, selectedNode) {
@@ -470,8 +525,12 @@ class LoopView extends ComponentBase {
       onInput: (event) => this._updateNode(node.id, { cwd: event.target.value }, false),
     });
     const choose = this._button('Choisir', 'loop-secondary-btn', async () => {
+      await this._saveLoop(this.loop, { render: false, reloadBoards: false });
       const folder = await dialogApi.openFolder();
-      if (folder) this._updateNode(node.id, { cwd: folder });
+      if (folder) {
+        this._updateNode(node.id, { cwd: folder });
+        await this._saveLoop(this.loop, { render: false });
+      }
     });
     return this._label('Path', _el('div', 'loop-folder-row', input, choose));
   }
@@ -742,6 +801,7 @@ class LoopView extends ComponentBase {
 
   _updateLoop(updater, shouldRender = true) {
     this.loop = typeof updater === 'function' ? updater(this.loop) : updater;
+    this._scheduleAutoSave();
     if (shouldRender) this._render();
   }
 
@@ -765,6 +825,7 @@ class LoopView extends ComponentBase {
     this.inspectorCollapsed = false;
     this.linkSourceId = null;
     this._render();
+    this._scheduleAutoSave(0);
   }
 
   _deleteNode(nodeId) {
@@ -805,12 +866,73 @@ class LoopView extends ComponentBase {
     this._render();
   }
 
-  async _saveLoop(nextLoop = this.loop) {
+  _resetBoardInteraction() {
+    this.selectedNodeId = null;
+    this.linkSourceId = null;
+    this.inspectorCollapsed = true;
+    this.drag = null;
+    this.pan = null;
+    this.nodeLog = '';
+    this.snapshot = null;
+    this.panOffset = { x: 0, y: 0 };
+  }
+
+  async _switchBoard(boardId) {
+    if (!boardId || boardId === this.activeBoardId) return;
+    this._clearAutoSave();
+    const saved = await this._saveLoop(this.loop, { render: false, reloadBoards: false });
+    if (!saved) return;
+    this.activeBoardId = boardId;
+    writeStoredActiveBoardId(boardId);
+    this._resetBoardInteraction();
+    await this.refresh();
+  }
+
+  async _createBoard() {
+    const defaultName = `Board ${this.boards.length + 1}`;
+    const name = window.prompt('Nom du board', defaultName);
+    if (name === null) return;
+    this._clearAutoSave();
+    const saved = await this._saveLoop(this.loop, { render: false, reloadBoards: false });
+    if (!saved) return;
+    try {
+      const board = await loopApi.create(name);
+      this.activeBoardId = board.id;
+      writeStoredActiveBoardId(board.id);
+      this._resetBoardInteraction();
+      await this.refresh();
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
+  async _deleteBoard() {
+    if (this.boards.length <= 1) return;
+    const boardName = this.loop.name || 'ce board';
+    if (!window.confirm(`Supprimer "${boardName}" ?`)) return;
+    this._clearAutoSave();
+    try {
+      const nextBoard = await loopApi.delete(this.loop.id || this.activeBoardId || 'main');
+      this.activeBoardId = nextBoard.id || 'main';
+      writeStoredActiveBoardId(this.activeBoardId);
+      this._resetBoardInteraction();
+      await this.refresh();
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
+  async _saveLoop(nextLoop = this.loop, options = {}) {
+    const { render = true, reloadBoards = true } = options;
+    this._clearAutoSave();
     this.saving = true;
     this.error = '';
-    this._render();
+    if (render) this._render();
     try {
       this.loop = await loopApi.save(nextLoop);
+      this.activeBoardId = this.loop.id || 'main';
+      writeStoredActiveBoardId(this.activeBoardId);
+      if (reloadBoards) await this._loadBoards();
       if (this.selectedNodeId && !this.loop.nodes.some((node) => node.id === this.selectedNodeId)) {
         this.selectedNodeId = null;
       }
@@ -820,8 +942,23 @@ class LoopView extends ComponentBase {
       return null;
     } finally {
       this.saving = false;
-      this._render();
+      if (render) this._render();
     }
+  }
+
+  _scheduleAutoSave(delay = 600) {
+    if (this.disposed) return;
+    this._clearAutoSave();
+    this._autoSaveTimer = window.setTimeout(() => {
+      this._autoSaveTimer = null;
+      void this._saveLoop(this.loop, { render: false });
+    }, delay);
+  }
+
+  _clearAutoSave() {
+    if (!this._autoSaveTimer) return;
+    window.clearTimeout(this._autoSaveTimer);
+    this._autoSaveTimer = null;
   }
 
   async _runSelected() {
@@ -835,7 +972,7 @@ class LoopView extends ComponentBase {
     const saved = await this._saveLoop();
     if (!saved) return;
     try {
-      await loopApi.runNode(node.id);
+      await loopApi.runNode({ boardId: this.loop.id, nodeId: node.id });
       await this._refreshSnapshot(false);
       await this._refreshNodeLog(false);
       this._render();
@@ -850,7 +987,7 @@ class LoopView extends ComponentBase {
     const saved = await this._saveLoop();
     if (!saved) return;
     try {
-      await loopApi.runNode(nodeId);
+      await loopApi.runNode({ boardId: this.loop.id, nodeId });
       await this._refreshSnapshot(false);
       if (this.selectedNodeId === nodeId) await this._refreshNodeLog(false);
       this._render();
@@ -873,7 +1010,7 @@ class LoopView extends ComponentBase {
 
   async _stopNode(nodeId) {
     try {
-      await loopApi.stopNode(nodeId);
+      await loopApi.stopNode({ boardId: this.loop.id, nodeId });
       await this._refreshSnapshot(false);
       if (this.selectedNodeId === nodeId) await this._refreshNodeLog(false);
       this._render();
@@ -959,6 +1096,20 @@ class LoopView extends ComponentBase {
     this.zoom = Math.min(1.4, Math.max(0.45, Number((this.zoom + delta).toFixed(2))));
     this._render();
   }
+}
+
+function readStoredActiveBoardId() {
+  try {
+    return window.localStorage.getItem(ACTIVE_BOARD_STORAGE_KEY) || 'main';
+  } catch {
+    return 'main';
+  }
+}
+
+function writeStoredActiveBoardId(boardId) {
+  try {
+    window.localStorage.setItem(ACTIVE_BOARD_STORAGE_KEY, boardId || 'main');
+  } catch {}
 }
 
 registerComponent('LoopView', LoopView);

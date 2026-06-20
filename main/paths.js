@@ -13,8 +13,15 @@ const SESSIONS_FILE = path.join(BASE_DIR, 'sessions.json');
 const META_FILE = path.join(BASE_DIR, 'meta.json');
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 
-function loopNodeLogPath(nodeId) {
-  return path.join(LOOP_LOGS_DIR, `${nodeId}.log`);
+function loopNodeLogPath(boardIdOrNodeId, nodeId) {
+  if (nodeId !== undefined) {
+    return path.join(LOOP_LOGS_DIR, boardIdOrNodeId, `${nodeId}.log`);
+  }
+  return path.join(LOOP_LOGS_DIR, `${boardIdOrNodeId}.log`);
+}
+
+function loopBoardPath(boardId) {
+  return boardId === 'main' ? LOOP_FILE : path.join(LOOPS_DIR, `${boardId}.json`);
 }
 
 module.exports = {
@@ -29,5 +36,6 @@ module.exports = {
   SESSIONS_FILE,
   META_FILE,
   CLAUDE_PROJECTS_DIR,
+  loopBoardPath,
   loopNodeLogPath,
 };

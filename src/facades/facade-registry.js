@@ -57,7 +57,7 @@ const definitions = [
   ]],
 
   ['loopFacade', [
-    [loopApi, ['get', 'save', 'runNode', 'stopNode', 'snapshot', 'getNodeLog']],
+    [loopApi, ['list', 'get', 'save', 'create', 'delete', 'runNode', 'stopNode', 'snapshot', 'getNodeLog']],
   ]],
 
   ['skillsViewFacade', [
