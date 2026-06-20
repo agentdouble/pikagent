@@ -112,7 +112,7 @@ class LoopView extends ComponentBase {
     if (this.disposed) return;
     try {
       this.snapshot = await loopApi.snapshot();
-      if (shouldRender) this._render();
+      if (shouldRender) this._renderUnlessEditing();
     } catch (err) {
       this._setError(err);
     }
@@ -123,7 +123,7 @@ class LoopView extends ComponentBase {
     if (!this.selectedNodeId) {
       if (this.nodeLog) {
         this.nodeLog = '';
-        if (shouldRender) this._render();
+        if (shouldRender) this._renderUnlessEditing();
       }
       return;
     }
@@ -131,7 +131,7 @@ class LoopView extends ComponentBase {
       const nextLog = (await loopApi.getNodeLog(this.selectedNodeId)) || '';
       if (nextLog !== this.nodeLog) {
         this.nodeLog = nextLog;
-        if (shouldRender) this._render();
+        if (shouldRender) this._renderUnlessEditing();
       }
     } catch (err) {
       this._setError(err);
@@ -152,6 +152,18 @@ class LoopView extends ComponentBase {
       this.error ? _el('div', { className: 'loop-builder-error', textContent: this.error }) : null,
       this._renderBoardLayout(inspectorVisible, selectedNode),
     );
+  }
+
+  _renderUnlessEditing() {
+    if (this._hasFocusedEditorControl()) return;
+    this._render();
+  }
+
+  _hasFocusedEditorControl() {
+    const active = document.activeElement;
+    return active instanceof HTMLElement
+      && this.el?.contains(active)
+      && Boolean(active.closest('input, textarea, select'));
   }
 
   _renderHeader() {
