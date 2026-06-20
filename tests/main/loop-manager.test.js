@@ -121,6 +121,56 @@ describe('loop-manager', () => {
     ]);
   });
 
+  it('selects only enabled executable nodes for executable-only runs', () => {
+    const loop = {
+      nodes: [
+        { id: 'exec-root', type: 'executable', enabled: true },
+        { id: 'exec-linked', type: 'executable', enabled: true },
+        { id: 'agent', type: 'agent', triggerType: 'schedule', enabled: true },
+        { id: 'disabled-exec', type: 'executable', enabled: false },
+        { id: 'file', type: 'display', enabled: true },
+      ],
+      edges: [
+        { id: 'edge-1', from: 'exec-root', to: 'exec-linked' },
+      ],
+    };
+
+    expect(_internals.executableNodes(loop).map((node) => node.id)).toEqual([
+      'exec-root',
+      'exec-linked',
+    ]);
+  });
+
+  it('runs only executable nodes without following links', async () => {
+    const manager = new LoopManager();
+    manager.get = async () => ({
+      nodes: [
+        { id: 'exec-idle', type: 'executable', enabled: true },
+        { id: 'exec-running', type: 'executable', enabled: true },
+        { id: 'agent', type: 'agent', triggerType: 'schedule', enabled: true },
+        { id: 'disabled-exec', type: 'executable', enabled: false },
+        { id: 'file', type: 'display' },
+      ],
+    });
+    manager._isNodeRunning = async (_boardId, nodeId) => nodeId === 'exec-running';
+    const runCalls = [];
+    manager.runNode = async (arg, context) => {
+      runCalls.push({ arg, context });
+      return { nodeId: arg.nodeId, status: 'running' };
+    };
+
+    const result = await manager.runExecutables({ boardId: 'board-1' });
+
+    expect(runCalls).toEqual([
+      {
+        arg: { boardId: 'board-1', nodeId: 'exec-idle' },
+        context: { trigger: 'executables', followLinks: false },
+      },
+    ]);
+    expect(result.started.map((item) => item.nodeId)).toEqual(['exec-idle']);
+    expect(result.skipped).toEqual([{ nodeId: 'exec-running', reason: 'running' }]);
+  });
+
   it('treats disabled runnable nodes as stoppable when they are already running', () => {
     expect(_internals.isRunnableNode({ type: 'executable', enabled: false })).toBe(false);
     expect(_internals.isStoppableNode({ type: 'executable', enabled: false })).toBe(true);

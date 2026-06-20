@@ -137,6 +137,7 @@ class LoopManager {
       logFile,
       error: null,
       chainVisited: normalizeVisited(context.visited, node.id),
+      followLinks: context.followLinks !== false,
     };
     this.running.set(key, running);
     const runStateReady = beginLoopNodeRun({
@@ -171,7 +172,7 @@ class LoopManager {
       }).catch((err) => {
         void appendLog(logFile, `[pickagent-loop] failed to record run stop: ${err.message}\n`);
       });
-      if (shouldTriggerLinkedTargets(code, signal)) {
+      if (running.followLinks && shouldTriggerLinkedTargets(code, signal)) {
         void this._triggerLinkedTargets(boardId, node.id, running.chainVisited);
       }
     });
@@ -195,6 +196,31 @@ class LoopManager {
         started.push(await this.runNode(
           { boardId, nodeId: node.id },
           { trigger: 'pipeline' },
+        ));
+      } catch (err) {
+        skipped.push({ nodeId: node.id, reason: 'error', error: err.message });
+      }
+    }
+
+    return { boardId, started, skipped };
+  }
+
+  async runExecutables(arg = 'main') {
+    const boardId = normalizeBoardIdArg(arg);
+    const loop = await this.get(boardId);
+    const starters = executableNodes(loop);
+    const started = [];
+    const skipped = [];
+
+    for (const node of starters) {
+      if (await this._isNodeRunning(boardId, node.id)) {
+        skipped.push({ nodeId: node.id, reason: 'running' });
+        continue;
+      }
+      try {
+        started.push(await this.runNode(
+          { boardId, nodeId: node.id },
+          { trigger: 'executables', followLinks: false },
         ));
       } catch (err) {
         skipped.push({ nodeId: node.id, reason: 'error', error: err.message });
@@ -472,6 +498,11 @@ function pipelineStarterNodes(loop) {
   return loop.nodes.filter((node) => isPipelineStarterNode(node, incomingTargets));
 }
 
+function executableNodes(loop) {
+  if (!loop || !Array.isArray(loop.nodes)) return [];
+  return loop.nodes.filter((node) => node?.type === 'executable' && node.enabled !== false);
+}
+
 function stopExternalRun(run) {
   try {
     if (process.platform !== 'win32' && run.pid) {
@@ -684,6 +715,7 @@ module.exports = loopManager;
 module.exports.LoopManager = LoopManager;
 module.exports._internals = {
   buildNodeCommand,
+  executableNodes,
   incomingLinkTargetIds,
   isPipelineStarterNode,
   isRunnableNode,

@@ -264,6 +264,10 @@ class LoopView extends ComponentBase {
       this._button('Run pipeline', 'loop-primary-btn', () => void this._runPipeline(), {
         disabled: this.saving,
       }),
+      this._button('Run executables', 'loop-secondary-btn', () => void this._runExecutables(), {
+        disabled: this.saving,
+        title: 'Lancer uniquement les cartes Executable / Watcher',
+      }),
       this._button('Stop pipeline', 'loop-danger-btn', () => void this._stopPipeline(), {
         disabled: this.saving || runningNodes === 0,
       }),
@@ -1371,6 +1375,19 @@ class LoopView extends ComponentBase {
     if (!saved) return;
     try {
       await loopApi.runPipeline({ boardId: this.loop.id || this.activeBoardId || 'main' });
+      await this._refreshSnapshot(false);
+      await this._refreshNodeLog(false);
+      this._render();
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
+  async _runExecutables() {
+    const saved = await this._saveLoop();
+    if (!saved) return;
+    try {
+      await loopApi.runExecutables({ boardId: this.loop.id || this.activeBoardId || 'main' });
       await this._refreshSnapshot(false);
       await this._refreshNodeLog(false);
       this._render();
