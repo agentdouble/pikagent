@@ -14,6 +14,7 @@
 import { composeFacade } from './compose-facade.js';
 
 // ── services ────────────────────────────────────────────────────────────────
+import agentsApi   from '../services/agents-api.js';
 import clipboardApi from '../services/clipboard-api.js';
 import configApi   from '../services/config-api.js';
 import dialogApi   from '../services/dialog-api.js';
@@ -34,6 +35,7 @@ import usageApi    from '../services/usage-api.js';
 /** @type {Array<[string, Array<[object, string[] | Record<string, string>]>]>} */
 const definitions = [
   ['boardFacade', [
+    [agentsApi, { headlessList: 'list', headlessKill: 'kill' }],
     [shellApi, ['openExternal', 'openPath']],
     [fsApi, ['homedir']],
     [ptyApi, { ptyWrite: 'write', ptyOnData: 'onData', ptyCheckAgents: 'checkAgents', ptyKill: 'kill' }],

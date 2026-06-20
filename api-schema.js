@@ -23,6 +23,10 @@ const API_SCHEMA = {
     checkAgents: { type: 'fwd' },
     // onData + onExit are custom (targeted channels), injected at build time
   },
+  agents: {
+    list: { type: 'fwd' },
+    kill: { type: 'fwd' },
+  },
   fs: {
     readdir:   { type: 'fwd' },
     readfile:  { type: 'fwd' },

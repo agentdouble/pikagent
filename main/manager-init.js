@@ -46,6 +46,7 @@ function lazyProp(obj, name, factory) {
  * be called with `new`.
  */
 const MANAGER_DEFS = {
+  agentMonitorManager: { module: './agent-monitor-manager' },
   ptyManager:     { module: './pty-manager',     instantiate: true },
   fsManager:      { module: './fs-manager' },
   sessionManager: { module: './session-manager' },
@@ -168,6 +169,7 @@ function initManagers(getWindow, options = {}) {
 
   // -- Build target map consumed by IPC dispatching --
   const targets = {
+    agents:    managers.agentMonitorManager,
     pty:       managers.ptyManager,
     fs:        managers.fsManager,
     git:       managers.gitManager,
