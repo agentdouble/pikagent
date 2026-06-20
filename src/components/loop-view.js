@@ -364,6 +364,7 @@ class LoopView extends ComponentBase {
         'loop-board-node',
         `loop-board-node-${node.type}`,
         node.id === this.selectedNodeId ? 'is-selected' : '',
+        agentRunning ? 'is-running' : '',
         this.linkSourceId === node.id ? 'is-link-source' : '',
         `is-color-${getNodeColor(node)}`,
       ].filter(Boolean).join(' '),

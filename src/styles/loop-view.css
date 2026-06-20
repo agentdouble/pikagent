@@ -242,6 +242,10 @@
   --node-accent: var(--border-strong);
   --node-border: var(--border-color);
   --node-soft: rgba(255, 255, 255, 0.025);
+  --node-running-border: rgba(76, 183, 130, 0.86);
+  --node-running-glow: rgba(76, 183, 130, 0.24);
+  --node-selected-border: var(--accent-bright);
+  --node-selected-glow: rgba(124, 134, 238, 0.28);
   background: var(--bg-surface);
   background-image: linear-gradient(180deg, var(--node-soft), var(--bg-surface) 58%);
   border: 1px solid var(--node-border);
@@ -296,8 +300,22 @@
 }
 
 .loop-board-node.is-selected {
-  border-color: var(--node-accent);
-  box-shadow: 0 0 0 1px var(--node-accent), var(--shadow-lift);
+  border-color: var(--node-selected-border);
+  box-shadow: 0 0 0 2px var(--node-selected-glow), var(--shadow-lift);
+}
+
+.loop-board-node.is-running {
+  border-color: var(--node-running-border);
+  box-shadow: 0 0 0 1px var(--node-running-border), 0 0 0 5px var(--node-running-glow), var(--shadow-lift);
+}
+
+.loop-board-node.is-running.is-selected {
+  border-color: var(--node-running-border);
+  box-shadow:
+    0 0 0 1px var(--node-running-border),
+    0 0 0 5px var(--node-running-glow),
+    0 0 0 8px var(--node-selected-glow),
+    var(--shadow-lift);
 }
 
 .loop-board-node.is-link-source {
