@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 const { _internals } = require('../../main/loop-manager');
+const { activeLoopNodeRun } = require('../../main/loop-run-state');
 
 describe('loop-manager', () => {
   it('normalizes unsupported nodes away and drops edges pointing to them', () => {
@@ -74,5 +75,13 @@ describe('loop-manager', () => {
       boardId: 'board-2',
       nodeId: 'node-1',
     });
+  });
+
+  it('treats persisted hook loop runs as active only while the pid is alive', () => {
+    const run = { status: 'running', pid: 1234 };
+
+    expect(activeLoopNodeRun(run, { isAlive: () => true })).toBe(run);
+    expect(activeLoopNodeRun(run, { isAlive: () => false })).toBe(null);
+    expect(activeLoopNodeRun({ status: 'success', pid: 1234 }, { isAlive: () => true })).toBe(null);
   });
 });

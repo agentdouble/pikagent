@@ -8,6 +8,7 @@ const LOGS_DIR = path.join(FLOWS_DIR, 'logs');
 const LOOPS_DIR = path.join(BASE_DIR, 'loops');
 const LOOP_FILE = path.join(LOOPS_DIR, 'main.json');
 const LOOP_LOGS_DIR = path.join(LOOPS_DIR, 'logs');
+const LOOP_RUNS_DIR = path.join(LOOPS_DIR, 'runs');
 const HOOK_STATE_FILE = path.join(BASE_DIR, 'hook-state.json');
 const SESSIONS_FILE = path.join(BASE_DIR, 'sessions.json');
 const META_FILE = path.join(BASE_DIR, 'meta.json');
@@ -24,6 +25,10 @@ function loopBoardPath(boardId) {
   return boardId === 'main' ? LOOP_FILE : path.join(LOOPS_DIR, `${boardId}.json`);
 }
 
+function loopNodeRunPath(boardId, nodeId) {
+  return path.join(LOOP_RUNS_DIR, boardId || 'main', `${nodeId}.json`);
+}
+
 module.exports = {
   BASE_DIR,
   CONFIG_DIR,
@@ -32,10 +37,12 @@ module.exports = {
   LOOPS_DIR,
   LOOP_FILE,
   LOOP_LOGS_DIR,
+  LOOP_RUNS_DIR,
   HOOK_STATE_FILE,
   SESSIONS_FILE,
   META_FILE,
   CLAUDE_PROJECTS_DIR,
   loopBoardPath,
   loopNodeLogPath,
+  loopNodeRunPath,
 };

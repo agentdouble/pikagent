@@ -12,6 +12,7 @@ const {
 } = require('./paths');
 const { MAX_FLOW_RUNTIME_MS, MAX_RUN_HISTORY, buildFlowCommand } = require('./flow-helpers');
 const { flowMatchesHookEvent, debounceKey } = require('./flow-triggers');
+const { beginLoopNodeRun, finishLoopNodeRun } = require('./loop-run-state');
 const { nowISO, toLogFilename, extractDateString } = require('../shared/date-utils');
 
 const DEFAULT_PROVIDER = 'manual';
@@ -366,12 +367,31 @@ function appendTargetLog(flow, runTimestamp, data) {
   }
 }
 
-async function beginTargetRun(flow, runTimestamp) {
-  if (!isLoopTarget(flow)) await beginRun(flow.id, runTimestamp);
+async function beginTargetRun(flow, runTimestamp, child) {
+  if (!isLoopTarget(flow)) {
+    await beginRun(flow.id, runTimestamp);
+    return;
+  }
+  await beginLoopNodeRun({
+    boardId: flow.boardId || 'main',
+    nodeId: flow.nodeId,
+    pid: child?.pid,
+    runTimestamp,
+    logFile: loopTargetLogPath(flow),
+    source: 'hook',
+  });
 }
 
 async function finishTargetRun(flow, status, runTimestamp) {
-  if (!isLoopTarget(flow)) await finishRun(flow.id, status, runTimestamp);
+  if (!isLoopTarget(flow)) {
+    await finishRun(flow.id, status, runTimestamp);
+    return;
+  }
+  await finishLoopNodeRun({
+    boardId: flow.boardId || 'main',
+    nodeId: flow.nodeId,
+    status,
+  });
 }
 
 async function runCommand(flow, event) {
@@ -387,17 +407,15 @@ async function runCommand(flow, event) {
   ].join('\n');
 
   writeInitialTargetLog(flow, runTimestamp, initialOutput);
-  await beginTargetRun(flow, runTimestamp);
+  const child = spawn(command, {
+    cwd,
+    shell: true,
+    env: { ...process.env },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32',
+  });
 
-  return new Promise((resolve) => {
-    const child = spawn(command, {
-      cwd,
-      shell: true,
-      env: { ...process.env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: process.platform !== 'win32',
-    });
-
+  const result = new Promise((resolve) => {
     const timeout = setTimeout(() => {
       try {
         if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, 'SIGTERM');
@@ -430,6 +448,12 @@ async function runCommand(flow, event) {
       resolve({ flowId: flow.id, flowName: flow.name, source: flow.source || 'flow', exitCode: code ?? 1, status });
     });
   });
+  try {
+    await beginTargetRun(flow, runTimestamp, child);
+  } catch (err) {
+    process.stderr.write(`[pickagent-hook] failed to record run start: ${err.message}\n`);
+  }
+  return result;
 }
 
 function toEvent(options) {

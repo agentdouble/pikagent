@@ -6,6 +6,10 @@ const { spawn } = require('child_process');
 const { LOOP_FILE, LOOPS_DIR, loopBoardPath, loopNodeLogPath } = require('./paths');
 const { ensureDirOnce, readJson, writeJson } = require('./fs-utils');
 const { buildFlowCommand } = require('./flow-helpers');
+const {
+  finishLoopNodeRun,
+  readActiveLoopNodeRun,
+} = require('./loop-run-state');
 const { generateId } = require('../shared/id-utils');
 
 const LAST_LOG_LINES = 80;
@@ -148,7 +152,19 @@ class LoopManager {
     const { boardId, nodeId } = normalizeNodeArg(arg);
     const key = runningKey(boardId, nodeId);
     const running = this.running.get(key);
-    if (!running) return this._stoppedProcess(boardId, nodeId);
+    if (!running) {
+      const externalRun = await readActiveLoopNodeRun(boardId, nodeId);
+      if (!externalRun) return this._stoppedProcess(boardId, nodeId);
+      const error = stopExternalRun(externalRun);
+      await finishLoopNodeRun({
+        boardId,
+        nodeId,
+        status: error ? 'error' : 'stopped',
+        error,
+      });
+      await appendLog(externalRun.logFile || loopNodeLogPath(boardId, nodeId), '[pickagent-loop] stop requested\n');
+      return this._stoppedProcess(boardId, nodeId, error);
+    }
 
     try {
       if (process.platform !== 'win32' && running.child.pid) {
@@ -169,7 +185,11 @@ class LoopManager {
     const loop = await this.get(resolvedId);
     const processes = await Promise.all(loop.nodes.map(async (node) => {
       const running = this.running.get(runningKey(resolvedId, node.id));
-      return running ? this._toProcess(resolvedId, node.id, running) : this._stoppedProcess(resolvedId, node.id);
+      if (running) return this._toProcess(resolvedId, node.id, running);
+      const externalRun = await readActiveLoopNodeRun(resolvedId, node.id);
+      return externalRun
+        ? this._toExternalProcess(resolvedId, node.id, externalRun)
+        : this._stoppedProcess(resolvedId, node.id);
     }));
     return {
       generatedAt: new Date().toISOString(),
@@ -219,6 +239,21 @@ class LoopManager {
       logFile: running.logFile,
       lastLogLines: await readLastLines(running.logFile),
       error: running.error || undefined,
+    };
+  }
+
+  async _toExternalProcess(boardId, nodeId, run) {
+    const logFile = run.logFile || loopNodeLogPath(boardId, nodeId);
+    return {
+      nodeId,
+      status: 'running',
+      pid: run.pid,
+      startedAt: run.startedAt,
+      logFile,
+      lastLogLines: await readLastLines(logFile),
+      source: run.source || 'hook',
+      external: true,
+      error: run.error || undefined,
     };
   }
 
@@ -290,6 +325,19 @@ function runningKey(boardId, nodeId) {
 function parseRunningKey(key) {
   const [boardId, ...rest] = String(key).split('::');
   return { boardId: boardId || 'main', nodeId: rest.join('::') };
+}
+
+function stopExternalRun(run) {
+  try {
+    if (process.platform !== 'win32' && run.pid) {
+      process.kill(-run.pid, 'SIGTERM');
+    } else if (run.pid) {
+      process.kill(run.pid, 'SIGTERM');
+    }
+    return null;
+  } catch (err) {
+    return err.message;
+  }
 }
 
 function normalizeNode(node, now) {
@@ -492,4 +540,5 @@ module.exports._internals = {
   runningKey,
   sanitizeLoopId,
   safeCwd,
+  stopExternalRun,
 };
