@@ -88,4 +88,12 @@ describe('loop-view-helpers', () => {
     expect(elbow.d.split(' L ')).toHaveLength(4);
     expect(elbow.hasHandle).toBe(true);
   });
+
+  it('uses the requested routing mode when the edge has no explicit path type', () => {
+    const from = { x: 0, y: 0 };
+    const to = { x: 300, y: 0 };
+
+    expect(edgeGeometry({}, from, to, 'elbow').pathType).toBe('elbow');
+    expect(edgeGeometry({}, from, to, 'curve').pathType).toBe('curve');
+  });
 });

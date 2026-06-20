@@ -429,10 +429,27 @@
 
 .loop-board-link {
   fill: none;
-  pointer-events: stroke;
   stroke: var(--accent);
   stroke-linecap: round;
   stroke-width: 2;
+}
+
+.loop-board-link-hit {
+  fill: none;
+  pointer-events: stroke;
+  stroke: transparent;
+  stroke-linecap: round;
+  stroke-width: 18;
+}
+
+.loop-board-link-group {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.loop-board-link-group.is-selected .loop-board-link {
+  stroke: var(--accent-bright);
+  stroke-width: 3;
 }
 
 .loop-board-link-arrow {
@@ -450,6 +467,10 @@
 }
 
 .loop-board-link-group:hover .loop-board-link-handle {
+  opacity: 1;
+}
+
+.loop-board-link-group.is-selected .loop-board-link-handle {
   opacity: 1;
 }
 
@@ -1030,10 +1051,16 @@
 
 .loop-edge-direction {
   color: var(--text-secondary);
+  cursor: pointer;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.loop-edge-direction.is-selected {
+  color: var(--accent-bright);
+  font-weight: 800;
 }
 
 .loop-edge-row-actions {

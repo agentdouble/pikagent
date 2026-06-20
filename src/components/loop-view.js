@@ -51,6 +51,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const POINTER_CLICK_THRESHOLD = 4;
 const ACTIVE_BOARD_STORAGE_KEY = 'pickagent.loop.activeBoardId';
 const HEADLESS_PANEL_STORAGE_KEY = 'pickagent.loop.headlessPanelCollapsed';
+const EDGE_ROUTING_STORAGE_KEY = 'pickagent.loop.edgeRoutingMode';
 const LINK_ARROW_MARKER_ID = 'loop-board-link-arrow';
 const LOOP_TRIGGER_TYPE_LABELS = {
   ...TRIGGER_TYPE_LABELS,
@@ -71,8 +72,10 @@ class LoopView extends ComponentBase {
     this.killingHeadlessAgentIds = new Set();
     this.headlessPanelCollapsed = readStoredBoolean(HEADLESS_PANEL_STORAGE_KEY, false);
     this.selectedNodeId = null;
+    this.selectedEdgeId = null;
     this.linkSourceId = null;
     this.linkSourcePort = 'right';
+    this.edgeRoutingMode = readStoredEdgeRoutingMode();
     this.inspectorCollapsed = true;
     this.drag = null;
     this.edgeDrag = null;
@@ -246,6 +249,12 @@ class LoopView extends ComponentBase {
       _el('span', { textContent: `${runningNodes} running` }),
       _el('span', { textContent: `${headlessCount} headless` }),
       this._button(
+        this.edgeRoutingMode === 'elbow' ? 'Liens angles' : 'Liens courbes',
+        'loop-secondary-btn',
+        () => this._toggleEdgeRoutingMode(),
+        { title: 'Changer le rendu des liens' },
+      ),
+      this._button(
         this.headlessPanelCollapsed ? 'Afficher headless' : 'Masquer headless',
         'loop-secondary-btn',
         () => this._setHeadlessPanelCollapsed(!this.headlessPanelCollapsed),
@@ -414,10 +423,19 @@ class LoopView extends ComponentBase {
   }
 
   _renderEdgePath(edge, from, to) {
-    const geometry = edgeGeometry(edge, from, to);
+    const geometry = edgeGeometry({ ...edge, pathType: this.edgeRoutingMode }, from, to);
+    const selected = this.selectedEdgeId === edge.id;
     const group = document.createElementNS(SVG_NS, 'g');
-    group.setAttribute('class', 'loop-board-link-group');
+    group.setAttribute('class', `loop-board-link-group${selected ? ' is-selected' : ''}`);
     group.dataset.edgeId = edge.id;
+    group.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this._selectEdge(edge.id);
+    });
+    const hitPath = document.createElementNS(SVG_NS, 'path');
+    hitPath.setAttribute('class', 'loop-board-link-hit');
+    hitPath.setAttribute('d', geometry.d);
+    group.appendChild(hitPath);
     const path = document.createElementNS(SVG_NS, 'path');
     path.setAttribute('class', 'loop-board-link');
     path.setAttribute('d', geometry.d);
@@ -872,8 +890,9 @@ class LoopView extends ComponentBase {
           return _el('div', 'loop-edge-row',
             _el('div', 'loop-edge-row-main',
               _el('span', {
-                className: 'loop-edge-direction',
+                className: `loop-edge-direction${this.selectedEdgeId === edge.id ? ' is-selected' : ''}`,
                 textContent: `${from ? getNodeTitle(from) : edge.from} -> ${to ? getNodeTitle(to) : edge.to}`,
+                onClick: () => this._selectEdge(edge.id),
               }),
               _el('div', 'loop-edge-row-actions',
                 _el('button', {
@@ -1064,6 +1083,9 @@ class LoopView extends ComponentBase {
       edges: current.edges.filter((edge) => edge.from !== nodeId && edge.to !== nodeId),
     }), false);
     if (this.selectedNodeId === nodeId) this.selectedNodeId = null;
+    if (this.selectedEdgeId && !this.loop.edges.some((edge) => edge.id === this.selectedEdgeId)) {
+      this.selectedEdgeId = null;
+    }
     if (this.linkSourceId === nodeId) {
       this.linkSourceId = null;
       this.linkSourcePort = 'right';
@@ -1080,6 +1102,7 @@ class LoopView extends ComponentBase {
       ...current,
       edges: current.edges.filter((edge) => edge.id !== edgeId),
     }));
+    if (this.selectedEdgeId === edgeId) this.selectedEdgeId = null;
   }
 
   _reverseEdge(edgeId) {
@@ -1110,6 +1133,23 @@ class LoopView extends ComponentBase {
     }), shouldRender);
   }
 
+  _selectEdge(edgeId) {
+    const edge = this.loop.edges.find((item) => item.id === edgeId);
+    if (!edge) return;
+    this.selectedEdgeId = edge.id;
+    this.selectedNodeId = edge.from;
+    this.inspectorCollapsed = false;
+    this.linkSourceId = null;
+    this.linkSourcePort = 'right';
+    this._render();
+  }
+
+  _toggleEdgeRoutingMode() {
+    this.edgeRoutingMode = this.edgeRoutingMode === 'elbow' ? 'curve' : 'elbow';
+    writeStoredString(EDGE_ROUTING_STORAGE_KEY, this.edgeRoutingMode);
+    this._render();
+  }
+
   _handleNodePortClick(nodeId, port) {
     if (!this.linkSourceId || this.linkSourceId === nodeId) {
       this.linkSourceId = nodeId;
@@ -1118,7 +1158,7 @@ class LoopView extends ComponentBase {
       return;
     }
 
-    this._createEdge({
+    const created = this._createEdge({
       from: this.linkSourceId,
       to: nodeId,
       fromPort: this.linkSourcePort,
@@ -1126,6 +1166,7 @@ class LoopView extends ComponentBase {
     });
     this.linkSourceId = null;
     this.linkSourcePort = 'right';
+    this.selectedEdgeId = created?.id || null;
     this.selectedNodeId = nodeId;
     this.inspectorCollapsed = false;
     this._render();
@@ -1145,15 +1186,18 @@ class LoopView extends ComponentBase {
       bendX: 0,
       bendY: 0,
     };
+    let selectedEdge = edge;
     this._updateLoop((current) => {
-      const exists = current.edges.some((item) =>
+      const exists = current.edges.find((item) =>
         item.from === edge.from
         && item.to === edge.to
         && item.fromPort === edge.fromPort
         && item.toPort === edge.toPort
       );
+      if (exists) selectedEdge = exists;
       return exists ? current : { ...current, edges: [...current.edges, edge] };
     }, false);
+    return selectedEdge;
   }
 
   _selectNode(nodeId) {
@@ -1161,7 +1205,7 @@ class LoopView extends ComponentBase {
       const from = this.loop.nodes.find((node) => node.id === this.linkSourceId);
       const to = this.loop.nodes.find((node) => node.id === nodeId);
       const defaults = from && to ? defaultEdgePorts(from, to) : {};
-      this._createEdge({
+      const created = this._createEdge({
         from: this.linkSourceId,
         to: nodeId,
         fromPort: this.linkSourcePort || defaults.fromPort,
@@ -1169,6 +1213,9 @@ class LoopView extends ComponentBase {
       });
       this.linkSourceId = null;
       this.linkSourcePort = 'right';
+      this.selectedEdgeId = created?.id || null;
+    } else {
+      this.selectedEdgeId = null;
     }
     this.selectedNodeId = nodeId;
     this.inspectorCollapsed = false;
@@ -1178,6 +1225,7 @@ class LoopView extends ComponentBase {
 
   _resetBoardInteraction() {
     this.selectedNodeId = null;
+    this.selectedEdgeId = null;
     this.linkSourceId = null;
     this.linkSourcePort = 'right';
     this.inspectorCollapsed = true;
@@ -1395,6 +1443,7 @@ class LoopView extends ComponentBase {
     const target = event.target;
     if (
       target.closest('.loop-board-node') ||
+      target.closest('.loop-board-link-group') ||
       target.closest('.loop-zoom-controls') ||
       target.closest('.loop-inspector-reopen') ||
       target.closest('.loop-board-link-handle')
@@ -1466,6 +1515,7 @@ class LoopView extends ComponentBase {
       const movement = Math.hypot(event.clientX - this.pan.x, event.clientY - this.pan.y);
       if (movement < POINTER_CLICK_THRESHOLD) {
         this.selectedNodeId = null;
+        this.selectedEdgeId = null;
         this.linkSourceId = null;
       }
     }
@@ -1513,6 +1563,21 @@ function readStoredBoolean(key, fallback = false) {
 function writeStoredBoolean(key, value) {
   try {
     window.localStorage.setItem(key, value ? '1' : '0');
+  } catch {}
+}
+
+function readStoredEdgeRoutingMode() {
+  try {
+    const value = window.localStorage.getItem(EDGE_ROUTING_STORAGE_KEY);
+    return value === 'elbow' ? 'elbow' : 'curve';
+  } catch {
+    return 'curve';
+  }
+}
+
+function writeStoredString(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
   } catch {}
 }
 

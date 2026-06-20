@@ -184,7 +184,7 @@ export function nodePortPoint(node, port, offset = 8) {
   return { x: node.x + NODE_SIZE + offset, y: center.y };
 }
 
-export function edgeGeometry(edge, from, to) {
+export function edgeGeometry(edge, from, to, pathTypeFallback = 'curve') {
   const defaults = defaultEdgePorts(from, to);
   const fromPort = normalizeEdgePort(edge?.fromPort, defaults.fromPort);
   const toPort = normalizeEdgePort(edge?.toPort, defaults.toPort);
@@ -196,7 +196,7 @@ export function edgeGeometry(edge, from, to) {
     x: (start.x + end.x) / 2 + bendX,
     y: (start.y + end.y) / 2 + bendY,
   };
-  const pathType = normalizeEdgePathType(edge?.pathType);
+  const pathType = normalizeEdgePathType(edge?.pathType || pathTypeFallback);
   const d = buildEdgePathD(pathType, start, handle, end);
 
   return {
