@@ -14,6 +14,7 @@ import {
 
 export const REFRESH_MS = 2000;
 export const NODE_SIZE = 220;
+export const LOG_SCROLL_BOTTOM_THRESHOLD = 8;
 
 export const AGENT_OPTIONS = {
   claude: 'Claude',
@@ -145,4 +146,18 @@ export function processMap(snapshot) {
 
 export function runningCount(snapshot) {
   return (snapshot?.processes || []).filter((process) => process.status === 'running').length;
+}
+
+export function captureLogScrollState(el, threshold = LOG_SCROLL_BOTTOM_THRESHOLD) {
+  if (!el) return null;
+  const maxScrollTop = Math.max(0, el.scrollHeight - el.clientHeight);
+  return {
+    scrollTop: el.scrollTop,
+    wasAtBottom: maxScrollTop - el.scrollTop <= threshold,
+  };
+}
+
+export function restoreLogScrollState(el, state) {
+  if (!el || !state) return;
+  el.scrollTop = state.wasAtBottom ? el.scrollHeight : state.scrollTop;
 }

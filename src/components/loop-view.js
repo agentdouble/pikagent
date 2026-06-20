@@ -26,6 +26,7 @@ import {
   NODE_COLOR_OPTIONS,
   NODE_SIZE,
   REFRESH_MS,
+  captureLogScrollState,
   createDefaultLoop,
   createNode,
   defaultAgentHookTrigger,
@@ -35,6 +36,7 @@ import {
   getNodePreview,
   getNodeTitle,
   processMap,
+  restoreLogScrollState,
   runningCount,
   selectedEdges,
 } from '../utils/loop-view-helpers.js';
@@ -170,6 +172,7 @@ class LoopView extends ComponentBase {
   _render() {
     if (!this.el || this.disposed) return;
     const inspectorScrollTop = this.el.querySelector('.loop-inspector')?.scrollTop ?? 0;
+    const logScrollState = captureLogScrollState(this.el.querySelector('.loop-log-output'));
     const previousSelectedNodeId = this.selectedNodeId;
     const selectedNode = this.selectedNode;
     const inspectorVisible = Boolean(selectedNode && !this.inspectorCollapsed);
@@ -181,6 +184,7 @@ class LoopView extends ComponentBase {
     if (previousSelectedNodeId && previousSelectedNodeId === this.selectedNodeId) {
       const inspector = this.el.querySelector('.loop-inspector');
       if (inspector) inspector.scrollTop = inspectorScrollTop;
+      restoreLogScrollState(this.el.querySelector('.loop-log-output'), logScrollState);
     }
   }
 
@@ -765,8 +769,8 @@ class LoopView extends ComponentBase {
         process?.pid ? _el('span', { textContent: `PID ${process.pid}` }) : null,
       ),
       this.nodeLog
-        ? _el('pre', { textContent: this.nodeLog })
-        : _el('div', { textContent: 'Aucun log pour ce node.' }),
+        ? _el('pre', { className: 'loop-log-output', textContent: this.nodeLog })
+        : _el('div', { className: 'loop-log-output', textContent: 'Aucun log pour ce node.' }),
     );
   }
 

@@ -769,8 +769,7 @@
   font-size: 10px;
 }
 
-.loop-log-block pre,
-.loop-log-block div {
+.loop-log-output {
   background: var(--bg-primary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
