@@ -120,6 +120,20 @@ describe('flow-helpers', () => {
       expect(cmd).toContain('--sandbox danger-full-access');
     });
 
+    it('builds codex command with model and reasoning effort overrides', () => {
+      const flow = {
+        prompt: 'test',
+        agent: 'codex',
+        model: 'gpt-5.5',
+        reasoningEffort: 'high',
+      };
+      const cmd = buildFlowCommand(flow);
+
+      expect(cmd).toContain("--model 'gpt-5.5'");
+      expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
+      expect(cmd).toContain('exec --skip-git-repo-check');
+    });
+
     it('escapes single quotes in prompt', () => {
       const flow = { prompt: "it's a test", agent: 'claude' };
       const cmd = buildFlowCommand(flow);

@@ -562,6 +562,8 @@ function normalizeNode(node, now) {
     ...runnable,
     flowId: stringValue(node.flowId) || undefined,
     agent: normalizeAgent(node.agent),
+    model: stringValue(node.model).trim(),
+    reasoningEffort: normalizeCodexReasoningEffort(node.reasoningEffort),
     prompt: stringValue(node.prompt),
     schedule: normalizeSchedule(node.schedule),
     triggerType,
@@ -584,6 +586,8 @@ function buildNodeCommand(node) {
     name: node.title,
     prompt: node.prompt || '',
     agent: node.agent,
+    model: node.model,
+    reasoningEffort: node.reasoningEffort,
     cwd: node.cwd,
     schedule: node.schedule,
     triggerType: node.triggerType,
@@ -629,6 +633,11 @@ function stringValue(value, fallback = '') {
 
 function normalizeAgent(value) {
   return value === 'claude' || value === 'opencode' || value === 'codex' ? value : 'codex';
+}
+
+function normalizeCodexReasoningEffort(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return ['low', 'medium', 'high', 'xhigh'].includes(normalized) ? normalized : '';
 }
 
 function normalizeNodeColor(value) {

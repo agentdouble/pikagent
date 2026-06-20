@@ -56,6 +56,8 @@ describe('loop-manager', () => {
       type: 'agent',
       title: 'Coder',
       agent: 'codex',
+      model: 'gpt-5.5',
+      reasoningEffort: 'xhigh',
       prompt: 'fix it',
       dangerouslySkipPermissions: true,
       schedule: { type: 'weekdays', time: '09:00' },
@@ -63,8 +65,24 @@ describe('loop-manager', () => {
     });
 
     expect(command).toContain('codex');
+    expect(command).toContain("--model 'gpt-5.5'");
+    expect(command).toContain("-c 'model_reasoning_effort=\"xhigh\"'");
     expect(command).toContain('--sandbox danger-full-access');
     expect(command).toContain('fix it');
+  });
+
+  it('normalizes agent model settings on loop nodes', () => {
+    const node = _internals.normalizeNode({
+      id: 'agent-model',
+      type: 'agent',
+      title: 'Model Agent',
+      agent: 'codex',
+      model: ' gpt-5.4 ',
+      reasoningEffort: 'HIGH',
+    }, new Date().toISOString());
+
+    expect(node.model).toBe('gpt-5.4');
+    expect(node.reasoningEffort).toBe('high');
   });
 
   it('keeps node process identities scoped by board', () => {

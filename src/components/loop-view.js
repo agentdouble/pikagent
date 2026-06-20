@@ -23,6 +23,8 @@ import {
 } from '../utils/flow-trigger-helpers.js';
 import {
   AGENT_OPTIONS,
+  CODEX_MODEL_SUGGESTIONS,
+  CODEX_REASONING_EFFORT_OPTIONS,
   EDGE_PORTS,
   NODE_COLOR_OPTIONS,
   NODE_SIZE,
@@ -687,8 +689,9 @@ class LoopView extends ComponentBase {
     const triggerType = node.triggerType || (node.hookTrigger ? 'hook' : 'schedule');
     return [
       this._label('Agent', this._select(AGENT_OPTIONS, node.agent, (value) =>
-        this._updateNode(node.id, { agent: value }, false)
+        this._updateNode(node.id, { agent: value })
       )),
+      ...this._renderAgentRuntimeFields(node),
       this._label('Prompt', _el('textarea', {
         className: 'loop-inspector-textarea',
         value: node.prompt || '',
@@ -715,6 +718,29 @@ class LoopView extends ComponentBase {
         : triggerType === 'hook'
           ? this._renderHookFields(node)
           : null,
+    ];
+  }
+
+  _renderAgentRuntimeFields(node) {
+    if ((node.agent || 'codex') !== 'codex') return [];
+    const modelListId = `loop-codex-models-${node.id}`;
+    return [
+      this._label('Modele Codex', _el('div', 'loop-model-input-row',
+        _el('input', {
+          list: modelListId,
+          value: node.model || '',
+          placeholder: 'Config par defaut',
+          onInput: (event) => this._updateNode(node.id, { model: event.target.value }, false),
+        }),
+        _el('datalist', { id: modelListId },
+          ...CODEX_MODEL_SUGGESTIONS.map((model) => _el('option', { value: model })),
+        ),
+      )),
+      this._label('Effort Codex', this._select(
+        CODEX_REASONING_EFFORT_OPTIONS,
+        node.reasoningEffort || '',
+        (value) => this._updateNode(node.id, { reasoningEffort: value }, false),
+      )),
     ];
   }
 
@@ -1055,7 +1081,14 @@ class LoopView extends ComponentBase {
   }
 
   _nodeKindLabel(node) {
-    if (node.type === 'agent') return node.agent;
+    if (node.type === 'agent') {
+      if (node.agent !== 'codex') return node.agent;
+      return [
+        node.agent,
+        String(node.model || '').trim(),
+        String(node.reasoningEffort || '').trim(),
+      ].filter(Boolean).join(' / ');
+    }
     if (node.type === 'executable') return node.persistent ? 'watcher' : 'exec';
     return 'fichier';
   }

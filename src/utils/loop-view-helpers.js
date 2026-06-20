@@ -35,6 +35,22 @@ export const AGENT_OPTIONS = {
   opencode: 'OpenCode',
 };
 
+export const CODEX_MODEL_SUGGESTIONS = [
+  'gpt-5.5',
+  'gpt-5.4',
+  'gpt-5.4-mini',
+  'gpt-5.3-codex-spark',
+  'codex-auto-review',
+];
+
+export const CODEX_REASONING_EFFORT_OPTIONS = {
+  '': 'Config par defaut',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  xhigh: 'XHigh',
+};
+
 export const NODE_COLOR_OPTIONS = [
   { value: 'default', label: 'Neutre' },
   { value: 'blue', label: 'Bleu' },
@@ -70,6 +86,8 @@ function createAgentNode(index) {
     color: 'blue',
     cwd: '',
     agent: 'codex',
+    model: '',
+    reasoningEffort: '',
     prompt: '',
     schedule: defaultAgentSchedule(),
     triggerType: 'schedule',

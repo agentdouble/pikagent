@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   captureLogScrollState,
   clampZoom,
+  createNode,
   defaultEdgePorts,
   edgeGeometry,
   formatHeadlessAgentLabel,
@@ -52,6 +53,14 @@ describe('loop-view-helpers', () => {
       zoom: 1.2,
       panOffset: { x: -30, y: 0 },
     });
+  });
+
+  it('creates codex agent nodes without model overrides by default', () => {
+    const node = createNode('agent', 0);
+
+    expect(node.agent).toBe('codex');
+    expect(node.model).toBe('');
+    expect(node.reasoningEffort).toBe('');
   });
 
   it('splits headless agents by active loop board', () => {

@@ -12,6 +12,7 @@ const SHELL_INIT_DELAY_MS = 500;
 const MAX_RUN_HISTORY = 7;
 const DEFAULT_PTY_COLS = 120;
 const DEFAULT_PTY_ROWS = 30;
+const CODEX_REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
 
 function logPath(flowId, timestamp) {
   return path.join(LOGS_DIR, `${flowId}_${timestamp}.log`);
@@ -30,6 +31,8 @@ const _AGENT_CMD_OVERRIDES = {
       '--sandbox workspace-write --ask-for-approval never exec --skip-git-repo-check',
       '--sandbox danger-full-access --ask-for-approval never exec --skip-git-repo-check',
     ],
+    modelFlag: '--model',
+    reasoningEffortConfigKey: 'model_reasoning_effort',
   },
   opencode: {
     promptPrefix: '-p',
@@ -44,11 +47,30 @@ const AGENT_CONFIG = Object.fromEntries(
 function _buildAgentCmd(agent, prompt, opts = {}) {
   const cfg = AGENT_CONFIG[agent] || AGENT_CONFIG.claude;
   const parts = [agent];
+  const model = stringValue(opts.model).trim();
+  const reasoningEffort = normalizeCodexReasoningEffort(opts.reasoningEffort);
+  if (cfg.modelFlag && model) parts.push(cfg.modelFlag, shellQuote(model));
+  if (cfg.reasoningEffortConfigKey && reasoningEffort) {
+    parts.push('-c', shellQuote(`${cfg.reasoningEffortConfigKey}="${reasoningEffort}"`));
+  }
   if (cfg.permModes) parts.push(cfg.permModes[opts.dangerouslySkipPermissions ? 1 : 0]);
   if (cfg.flags) parts.push(cfg.flags);
   if (cfg.promptPrefix) parts.push(cfg.promptPrefix);
-  parts.push(`'${prompt}'`);
+  parts.push(shellQuote(prompt));
   return parts.join(' ');
+}
+
+function shellQuote(value) {
+  return `'${String(value || '').replace(/'/g, "'\\''")}'`;
+}
+
+function stringValue(value) {
+  return typeof value === 'string' ? value : '';
+}
+
+function normalizeCodexReasoningEffort(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return CODEX_REASONING_EFFORTS.has(normalized) ? normalized : '';
 }
 
 /* ── Schedule day filters (single source of truth) ─────────────── */
@@ -87,9 +109,12 @@ function shouldRun(flow, now) {
 }
 
 function buildFlowCommand(flow) {
-  const escapedPrompt = flow.prompt.replace(/'/g, "'\\''");
   const agent = flow.agent || 'claude';
-  return `${_buildAgentCmd(agent, escapedPrompt, { dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions })}; exit\n`;
+  return `${_buildAgentCmd(agent, flow.prompt || '', {
+    dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions,
+    model: flow.model,
+    reasoningEffort: flow.reasoningEffort,
+  })}; exit\n`;
 }
 
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB cap per flow

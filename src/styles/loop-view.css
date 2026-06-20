@@ -874,6 +874,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.loop-model-input-row input {
+  width: 100%;
+}
+
 .loop-color-field {
   display: flex;
   flex-direction: column;

@@ -34,6 +34,8 @@ describe('flow-hook-cli', () => {
           type: 'agent',
           title: 'Review Agent',
           agent: 'codex',
+          model: 'gpt-5.5',
+          reasoningEffort: 'high',
           cwd: '/repo',
           prompt: 'review the change',
           enabled: true,
@@ -78,6 +80,8 @@ describe('flow-hook-cli', () => {
       nodeId: 'agent-1',
       triggerType: 'hook',
       prompt: 'review the change',
+      model: 'gpt-5.5',
+      reasoningEffort: 'high',
     });
     expect(flowMatchesHookEvent(targets[0], {
       type: 'file.changed',
