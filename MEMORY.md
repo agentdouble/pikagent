@@ -29,3 +29,4 @@
 - Boucles board visual state: running agent nodes get the `is-running` class and a green card outline; selected nodes use a separate accent-colored ring so selection is not confused with runtime activity.
 - Hook-launched Boucles agents are external to the Electron `LoopManager` process; `pickagent-hook` must persist their run state under `~/.config/.pickagent/loops/runs/<boardId>/<nodeId>.json` so the Boucles snapshot can show the node as running and allow Stop.
 - Boucles `Fichier` nodes open their configured `filePath` through `loopFacade.openPath`; keep the button disabled when the path is empty and surface Electron `openPath` error text in the LoopView error banner.
+- Boucles agent trigger modes include `schedule`, `hook`, and `link`; `link` agents are launched only from incoming visual edges after the upstream runnable node exits cleanly, and chain execution must guard against cycles with a visited set.

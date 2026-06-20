@@ -44,6 +44,10 @@ import {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const POINTER_CLICK_THRESHOLD = 4;
 const ACTIVE_BOARD_STORAGE_KEY = 'pickagent.loop.activeBoardId';
+const LOOP_TRIGGER_TYPE_LABELS = {
+  ...TRIGGER_TYPE_LABELS,
+  link: 'Lien',
+};
 
 class LoopView extends ComponentBase {
   constructor(container) {
@@ -572,13 +576,17 @@ class LoopView extends ComponentBase {
         }),
         _el('span', { textContent: 'Full auto / skip permissions' }),
       ),
-      this._label('Trigger', this._select(TRIGGER_TYPE_LABELS, triggerType, (value) =>
+      this._label('Trigger', this._select(LOOP_TRIGGER_TYPE_LABELS, triggerType, (value) =>
         this._updateNode(node.id, {
           triggerType: value,
           hookTrigger: value === 'hook' ? node.hookTrigger || defaultAgentHookTrigger() : undefined,
         })
       )),
-      triggerType === 'schedule' ? this._renderScheduleFields(node) : this._renderHookFields(node),
+      triggerType === 'schedule'
+        ? this._renderScheduleFields(node)
+        : triggerType === 'hook'
+          ? this._renderHookFields(node)
+          : null,
     ];
   }
 

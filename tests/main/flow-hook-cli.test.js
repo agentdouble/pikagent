@@ -5,6 +5,7 @@ const path = require('path');
 const {
   listHookTargets,
   listLoopAgentTargets,
+  loopNodeToHookTarget,
   targetMatches,
 } = require('../../main/flow-hook-cli');
 const { flowMatchesHookEvent } = require('../../main/flow-triggers');
@@ -48,6 +49,13 @@ describe('flow-hook-cli', () => {
           type: 'agent',
           title: 'Scheduled Agent',
           triggerType: 'schedule',
+        },
+        {
+          id: 'agent-3',
+          type: 'agent',
+          title: 'Linked Agent',
+          triggerType: 'link',
+          hookTrigger: { type: 'hook', event: 'file.changed' },
         },
         {
           id: 'exec-1',
@@ -113,5 +121,21 @@ describe('flow-hook-cli', () => {
       ['flow-1', 'flow'],
       ['loop:main:agent-1', 'loop'],
     ]);
+  });
+
+  it('keeps stale hook data inactive on link-triggered loop targets', () => {
+    const target = loopNodeToHookTarget(
+      { id: 'main', name: 'Boucles' },
+      {
+        id: 'agent-link',
+        type: 'agent',
+        title: 'Linked',
+        triggerType: 'link',
+        hookTrigger: { type: 'hook', event: 'task.ready' },
+      },
+    );
+
+    expect(target.triggerType).toBe('link');
+    expect(target.hookTrigger).toBeUndefined();
   });
 });

@@ -130,6 +130,7 @@ export function getNodePreview(node) {
 }
 
 export function formatAgentTrigger(node) {
+  if (node.triggerType === 'link') return 'Lien';
   if (node.triggerType === 'hook' || node.hookTrigger) {
     return formatHookTrigger(node.hookTrigger || defaultAgentHookTrigger());
   }

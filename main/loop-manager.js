@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const { LOOP_FILE, LOOPS_DIR, loopBoardPath, loopNodeLogPath } = require('./paths');
 const { ensureDirOnce, readJson, writeJson } = require('./fs-utils');
 const { buildFlowCommand } = require('./flow-helpers');
+const { linkedAgentNodes, shouldTriggerLinkedTargets } = require('./loop-link-helpers');
 const {
   finishLoopNodeRun,
   readActiveLoopNodeRun,
@@ -94,7 +95,7 @@ class LoopManager {
     return remaining[0] || DEFAULT_LOOP;
   }
 
-  async runNode(arg) {
+  async runNode(arg, context = {}) {
     const { boardId, nodeId } = normalizeNodeArg(arg);
     const key = runningKey(boardId, nodeId);
     const existing = this.running.get(key);
@@ -128,6 +129,7 @@ class LoopManager {
       startedAt: new Date().toISOString(),
       logFile,
       error: null,
+      chainVisited: normalizeVisited(context.visited, node.id),
     };
     this.running.set(key, running);
 
@@ -138,11 +140,11 @@ class LoopManager {
       appendLog(logFile, `[pickagent-loop] failed: ${err.message}\n`);
     });
     child.on('close', (code, signal) => {
-      appendLog(
-        logFile,
-        `[pickagent-loop] stopped code=${code ?? 'null'} signal=${signal ?? 'null'}\n`,
-      );
+      appendLog(logFile, `[pickagent-loop] stopped code=${code ?? 'null'} signal=${signal ?? 'null'}\n`);
       this.running.delete(key);
+      if (shouldTriggerLinkedTargets(code, signal)) {
+        void this._triggerLinkedTargets(boardId, node.id, running.chainVisited);
+      }
     });
 
     return this._toProcess(boardId, node.id, running);
@@ -212,6 +214,24 @@ class LoopManager {
       const { boardId, nodeId } = parseRunningKey(key);
       return this.stopNode({ boardId, nodeId });
     }));
+  }
+
+  async _triggerLinkedTargets(boardId, fromNodeId, visited) {
+    const loop = await this.get(boardId);
+    const baseVisited = normalizeVisited(visited, fromNodeId);
+    const targets = linkedAgentNodes(loop, fromNodeId, baseVisited);
+    if (!targets.length) return [];
+
+    const results = [];
+    for (const target of targets) {
+      await appendLog(loopNodeLogPath(boardId, fromNodeId), `[pickagent-loop] linked trigger ${target.title}\n`);
+      const nextVisited = normalizeVisited(baseVisited, target.id);
+      results.push(await this.runNode(
+        { boardId, nodeId: target.id },
+        { trigger: 'link', fromNodeId, visited: nextVisited },
+      ));
+    }
+    return results;
   }
 
   async _readAllLoops() {
@@ -325,6 +345,12 @@ function runningKey(boardId, nodeId) {
 function parseRunningKey(key) {
   const [boardId, ...rest] = String(key).split('::');
   return { boardId: boardId || 'main', nodeId: rest.join('::') };
+}
+
+function normalizeVisited(value, nodeId) {
+  const visited = value instanceof Set ? new Set(value) : new Set(Array.isArray(value) ? value : []);
+  if (nodeId) visited.add(nodeId);
+  return visited;
 }
 
 function stopExternalRun(run) {
@@ -475,7 +501,7 @@ function normalizeSchedule(value) {
 }
 
 function normalizeTriggerType(value, hookTrigger) {
-  if (value === 'hook' || value === 'schedule') return value;
+  if (value === 'hook' || value === 'schedule' || value === 'link') return value;
   return hookTrigger ? 'hook' : 'schedule';
 }
 
@@ -537,6 +563,7 @@ module.exports._internals = {
   normalizeNodeArg,
   normalizeLoop,
   normalizeNode,
+  normalizeVisited,
   runningKey,
   sanitizeLoopId,
   safeCwd,

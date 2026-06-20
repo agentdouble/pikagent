@@ -8,10 +8,12 @@ const {
   LOGS_DIR,
   HOOK_STATE_FILE,
   LOOPS_DIR,
+  loopBoardPath,
   loopNodeLogPath,
 } = require('./paths');
 const { MAX_FLOW_RUNTIME_MS, MAX_RUN_HISTORY, buildFlowCommand } = require('./flow-helpers');
 const { flowMatchesHookEvent, debounceKey } = require('./flow-triggers');
+const { linkedAgentNodes, shouldTriggerLinkedTargets } = require('./loop-link-helpers');
 const { beginLoopNodeRun, finishLoopNodeRun } = require('./loop-run-state');
 const { nowISO, toLogFilename, extractDateString } = require('../shared/date-utils');
 
@@ -206,8 +208,8 @@ function loopNodeToHookTarget(board, node) {
     agent: node.agent || 'codex',
     cwd: node.cwd || '',
     enabled: node.enabled !== false,
-    triggerType: node.hookTrigger ? 'hook' : node.triggerType || 'schedule',
-    hookTrigger: node.hookTrigger,
+    triggerType: node.triggerType || (node.hookTrigger ? 'hook' : 'schedule'),
+    hookTrigger: node.triggerType === 'hook' || (!node.triggerType && node.hookTrigger) ? node.hookTrigger : undefined,
     dangerouslySkipPermissions: Boolean(node.dangerouslySkipPermissions),
     source: 'loop',
     boardId,
@@ -229,7 +231,7 @@ async function listLoopAgentTargets(loopsDir = LOOPS_DIR) {
         id: board.id || path.basename(file, '.json'),
       };
       for (const node of board.nodes) {
-        if (node?.type !== 'agent' || !node.id || !node.hookTrigger) continue;
+        if (!isHookTriggeredLoopAgent(node)) continue;
         targets.push(loopNodeToHookTarget(boardWithId, node));
       }
     }
@@ -237,6 +239,14 @@ async function listLoopAgentTargets(loopsDir = LOOPS_DIR) {
   } catch {
     return [];
   }
+}
+
+function isHookTriggeredLoopAgent(node) {
+  return node?.type === 'agent'
+    && Boolean(node.id)
+    && node.enabled !== false
+    && Boolean(node.hookTrigger)
+    && (node.triggerType === 'hook' || !node.triggerType);
 }
 
 async function listHookTargets({ flowsDir = FLOWS_DIR, loopsDir = LOOPS_DIR } = {}) {
@@ -394,7 +404,42 @@ async function finishTargetRun(flow, status, runTimestamp) {
   });
 }
 
-async function runCommand(flow, event) {
+async function runLinkedLoopTargets(flow, event, context = {}) {
+  if (!isLoopTarget(flow)) return [];
+  const boardId = flow.boardId || 'main';
+  const board = await readJson(loopBoardPath(boardId));
+  if (!board) return [];
+  const boardWithId = { ...board, id: board.id || boardId };
+  const visited = normalizeVisited(context.visited, flow.nodeId);
+  const targets = linkedAgentNodes(boardWithId, flow.nodeId, visited);
+  const results = [];
+
+  for (const node of targets) {
+    appendTargetLog(flow, '', `[pickagent-hook] linked trigger ${node.title || 'Agent'}\n`);
+    const target = loopNodeToHookTarget(boardWithId, node);
+    const nextVisited = normalizeVisited(visited, node.id);
+    results.push(await runCommand(
+      target,
+      {
+        ...event,
+        trigger: 'link',
+        upstreamNodeId: flow.nodeId,
+        upstreamNodeTitle: flow.nodeTitle,
+      },
+      { visited: nextVisited },
+    ));
+  }
+
+  return results;
+}
+
+function normalizeVisited(value, nodeId) {
+  const visited = value instanceof Set ? new Set(value) : new Set(Array.isArray(value) ? value : []);
+  if (nodeId) visited.add(nodeId);
+  return visited;
+}
+
+async function runCommand(flow, event, context = {}) {
   const cwd = safeCwd(event.cwd || flow.cwd);
   const runTimestamp = toLogFilename();
   const command = buildFlowCommand(flow).trim();
@@ -436,16 +481,28 @@ async function runCommand(flow, event) {
       appendTargetLog(flow, runTimestamp, msg);
       process.stderr.write(msg);
     });
-    child.on('close', async (code) => {
+    child.on('close', async (code, signal) => {
       clearTimeout(timeout);
       const status = code === 0 ? 'success' : 'error';
       appendTargetLog(flow, runTimestamp, `\n[pickagent-hook] exit code: ${code ?? 'unknown'}\n`);
+      let linkedResults = [];
       try {
         await finishTargetRun(flow, status, runTimestamp);
+        if (shouldTriggerLinkedTargets(code, signal)) {
+          linkedResults = await runLinkedLoopTargets(flow, event, context);
+        }
       } catch (err) {
         process.stderr.write(`[pickagent-hook] failed to record run: ${err.message}\n`);
       }
-      resolve({ flowId: flow.id, flowName: flow.name, source: flow.source || 'flow', exitCode: code ?? 1, status });
+      const linkedFailed = linkedResults.some((result) => result.exitCode !== 0);
+      resolve({
+        flowId: flow.id,
+        flowName: flow.name,
+        source: flow.source || 'flow',
+        exitCode: (code ?? 1) || (linkedFailed ? 1 : 0),
+        status: linkedFailed ? 'error' : status,
+        linkedResults,
+      });
     });
   });
   try {
@@ -542,6 +599,7 @@ module.exports = {
   listHookTargets,
   listLoopAgentTargets,
   loopNodeToHookTarget,
+  runLinkedLoopTargets,
   targetMatches,
   shouldDebounce,
   runCommand,

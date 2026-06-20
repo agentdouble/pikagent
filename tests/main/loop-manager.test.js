@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 const { _internals } = require('../../main/loop-manager');
+const { linkedAgentNodes, shouldTriggerLinkedTargets } = require('../../main/loop-link-helpers');
 const { activeLoopNodeRun } = require('../../main/loop-run-state');
 
 describe('loop-manager', () => {
@@ -75,6 +76,47 @@ describe('loop-manager', () => {
       boardId: 'board-2',
       nodeId: 'node-1',
     });
+  });
+
+  it('keeps link-triggered agents out of schedule and hook config', () => {
+    const node = _internals.normalizeNode({
+      id: 'agent-link',
+      type: 'agent',
+      title: 'Linked',
+      triggerType: 'link',
+      hookTrigger: { event: 'task.ready' },
+    }, new Date().toISOString());
+
+    expect(node.triggerType).toBe('link');
+    expect(node.hookTrigger).toBeUndefined();
+  });
+
+  it('selects downstream link-triggered agent nodes only once', () => {
+    const loop = {
+      nodes: [
+        { id: 'source', type: 'executable', enabled: true },
+        { id: 'linked', type: 'agent', triggerType: 'link', enabled: true },
+        { id: 'scheduled', type: 'agent', triggerType: 'schedule', enabled: true },
+        { id: 'disabled', type: 'agent', triggerType: 'link', enabled: false },
+        { id: 'file', type: 'display' },
+      ],
+      edges: [
+        { id: 'e1', from: 'source', to: 'linked' },
+        { id: 'e2', from: 'source', to: 'linked' },
+        { id: 'e3', from: 'source', to: 'scheduled' },
+        { id: 'e4', from: 'source', to: 'disabled' },
+        { id: 'e5', from: 'source', to: 'file' },
+      ],
+    };
+
+    expect(linkedAgentNodes(loop, 'source').map((node) => node.id)).toEqual(['linked']);
+    expect(linkedAgentNodes(loop, 'source', new Set(['linked']))).toEqual([]);
+  });
+
+  it('only triggers linked targets after a clean exit', () => {
+    expect(shouldTriggerLinkedTargets(0, null)).toBe(true);
+    expect(shouldTriggerLinkedTargets(1, null)).toBe(false);
+    expect(shouldTriggerLinkedTargets(0, 'SIGTERM')).toBe(false);
   });
 
   it('treats persisted hook loop runs as active only while the pid is alive', () => {
