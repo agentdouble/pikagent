@@ -59,7 +59,6 @@ function _initTabComponents(tab, layout, sides, termContainer, getActiveTabId, c
     if (firstTermId) tab.fileTree.setTerminalRoot(firstTermId, tab.cwd);
   }
 }
-
 /**
  * Render the full workspace layout for a tab.
  * @param {RenderWorkspaceDeps} deps

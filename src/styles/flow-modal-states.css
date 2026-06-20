@@ -48,6 +48,18 @@
   background: var(--accent-bright);
 }
 
+.flow-modal-error {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 3px var(--red-soft) !important;
+  animation: flow-modal-shake 0.3s var(--ease-out);
+}
+
+@keyframes flow-modal-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
 /* ===== Log Status Badges ===== */
 .flow-log-status {
   font-size: 11px;

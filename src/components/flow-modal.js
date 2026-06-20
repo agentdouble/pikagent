@@ -297,10 +297,23 @@ function _buildModalDom(existing, categories, state) {
   return { fields, bottom, catPicker, modalChildren };
 }
 
+function _markInvalid(el) {
+  el.classList.add('flow-modal-error');
+  el.addEventListener('input', () => el.classList.remove('flow-modal-error'), { once: true });
+  el.focus();
+}
+
 function _collectResult(existing, fields, bottom, catPicker, state) {
   const name = fields.nameInput.value.trim();
   const prompt = fields.promptArea.value.trim();
-  if (!name || !prompt) return null;
+  if (!name) {
+    _markInvalid(fields.nameInput);
+    return null;
+  }
+  if (!prompt) {
+    _markInvalid(fields.promptArea);
+    return null;
+  }
 
   const result = {
     id: existing?.id || generateId(),
@@ -329,6 +342,17 @@ function _collectResult(existing, fields, bottom, catPicker, state) {
 }
 
 function _buildActionBar(existing, fields, bottom, catPicker, state, cleanup, cancel) {
+  const onCreate = () => {
+    try {
+      const result = _collectResult(existing, fields, bottom, catPicker, state);
+      if (!result) return;
+      cleanup(result);
+    } catch (err) {
+      console.error('[flow-modal] failed to build flow', err);
+      alert(`Erreur lors de la création du flow : ${err?.message || err}`);
+    }
+  };
+
   return _el('div', { className: 'flow-modal-actions' },
     createActionButton({
       text: 'Annuler',
@@ -338,11 +362,7 @@ function _buildActionBar(existing, fields, bottom, catPicker, state, cleanup, ca
     createActionButton({
       text: existing ? 'Enregistrer' : 'Créer',
       cls: 'flow-modal-btn flow-modal-btn-create',
-      onClick: () => {
-        const result = _collectResult(existing, fields, bottom, catPicker, state);
-        if (!result) return;
-        cleanup(result);
-      },
+      onClick: onCreate,
     }),
   );
 }

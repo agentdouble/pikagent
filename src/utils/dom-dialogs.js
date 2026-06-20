@@ -26,7 +26,6 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) onClose(); });
   return { overlay, modal };
 }
-
 /**
  * Build a dialog button row containing a cancel button followed by a confirm
  * button.  Extracts the cancel/confirm pair previously duplicated across
@@ -166,4 +165,3 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
     },
   });
 }
-

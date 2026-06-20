@@ -24,7 +24,7 @@ function logPath(flowId, timestamp) {
 const _AGENT_CMD_OVERRIDES = {
   claude: {
     permModes: ['--permission-mode auto', '--dangerously-skip-permissions'],
-    flags: '--output-format stream-json',
+    flags: '--verbose --output-format stream-json',
     promptPrefix: '-p',
   },
   codex: {
