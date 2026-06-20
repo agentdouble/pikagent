@@ -40,6 +40,7 @@ import {
 } from '../utils/loop-view-helpers.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const POINTER_CLICK_THRESHOLD = 4;
 
 class LoopView extends ComponentBase {
   constructor(container) {
@@ -307,6 +308,10 @@ class LoopView extends ComponentBase {
         const rect = event.currentTarget.getBoundingClientRect();
         this.drag = {
           id: node.id,
+          startX: event.clientX,
+          startY: event.clientY,
+          originNodeX: node.x,
+          originNodeY: node.y,
           dx: (event.clientX - rect.left) / this.zoom,
           dy: (event.clientY - rect.top) / this.zoom,
         };
@@ -907,9 +912,23 @@ class LoopView extends ComponentBase {
   }
 
   _handleCanvasUp(event) {
+    if (this.drag) {
+      const drag = this.drag;
+      const movement = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+      this.drag = null;
+      this.pan = null;
+      if (movement < POINTER_CLICK_THRESHOLD) {
+        this._updateNode(drag.id, { x: drag.originNodeX, y: drag.originNodeY }, false);
+        this._selectNode(drag.id);
+        return;
+      }
+      this._render();
+      return;
+    }
+
     if (this.pan) {
       const movement = Math.hypot(event.clientX - this.pan.x, event.clientY - this.pan.y);
-      if (movement < 4) {
+      if (movement < POINTER_CLICK_THRESHOLD) {
         this.selectedNodeId = null;
         this.linkSourceId = null;
       }
