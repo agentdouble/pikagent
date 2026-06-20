@@ -434,6 +434,17 @@ class LoopView extends ComponentBase {
           else void this._runAgentCard(node.id);
         },
       }));
+    } else if (node.type === 'display') {
+      body.appendChild(_el('button', {
+        className: 'loop-node-open-btn',
+        disabled: !String(node.filePath || '').trim(),
+        type: 'button',
+        textContent: 'Ouvrir',
+        onClick: (event) => {
+          event.stopPropagation();
+          void this._openDisplayFile(node);
+        },
+      }));
     }
 
     article.append(
@@ -736,6 +747,10 @@ class LoopView extends ComponentBase {
           () => void this._runSelected(),
         ));
       }
+    } else {
+      actions.push(this._button('Ouvrir', 'loop-primary-btn', () => void this._openDisplayFile(node), {
+        disabled: !String(node.filePath || '').trim(),
+      }));
     }
     return _el('div', 'loop-inspector-actions', ...actions);
   }
@@ -1019,6 +1034,23 @@ class LoopView extends ComponentBase {
       await this._refreshSnapshot(false);
       if (this.selectedNodeId === nodeId) await this._refreshNodeLog(false);
       this._render();
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
+  async _openDisplayFile(node) {
+    if (!node || node.type !== 'display') return;
+    const filePath = String(node.filePath || '').trim();
+    if (!filePath) {
+      this._setError('Path du fichier manquant.');
+      return;
+    }
+    try {
+      const result = await loopApi.openPath(filePath);
+      if (typeof result === 'string' && result.trim()) {
+        this._setError(result);
+      }
     } catch (err) {
       this._setError(err);
     }

@@ -411,7 +411,8 @@
   white-space: nowrap;
 }
 
-.loop-node-run-btn {
+.loop-node-run-btn,
+.loop-node-open-btn {
   background: var(--accent);
   border: 1px solid var(--accent-bright);
   border-radius: var(--radius-sm);
@@ -425,13 +426,20 @@
   width: 100%;
 }
 
+.loop-node-open-btn {
+  background: var(--bg-tertiary);
+  border-color: var(--node-border);
+  color: var(--text-primary);
+}
+
 .loop-node-run-btn.is-stop {
   background: var(--red-soft);
   border-color: var(--red);
   color: var(--text-primary);
 }
 
-.loop-node-run-btn:disabled {
+.loop-node-run-btn:disabled,
+.loop-node-open-btn:disabled {
   cursor: default;
   opacity: 0.58;
 }
