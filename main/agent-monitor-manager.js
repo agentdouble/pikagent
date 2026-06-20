@@ -2,6 +2,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const { setTimeout: delay } = require('timers/promises');
 const { execFileAsync } = require('./command-utils');
+const { readActiveLoopNodeRuns } = require('./loop-run-state');
 
 const LOG_READ_BYTES = 256 * 1024;
 const LOG_TAIL_LINES = 90;
@@ -18,6 +19,7 @@ async function list() {
   }
 
   const drafts = groupAgentProcesses(rows);
+  attachLoopRunsToDrafts(drafts, await listActiveLoopRuns(errors));
   const agents = await Promise.all(drafts.map((draft) => hydrateAgent(draft, errors)));
 
   return {
@@ -25,6 +27,15 @@ async function list() {
     agents: agents.sort(compareAgents),
     errors,
   };
+}
+
+async function listActiveLoopRuns(errors) {
+  try {
+    return await readActiveLoopNodeRuns();
+  } catch (err) {
+    errors.push(`loop run scan failed: ${String(err)}`);
+    return [];
+  }
 }
 
 async function kill(agentId) {
@@ -133,6 +144,31 @@ function groupAgentProcesses(rows) {
   return [...groups.values()];
 }
 
+function attachLoopRunsToDrafts(drafts, runs) {
+  const runsByPid = new Map();
+  for (const run of runs || []) {
+    const pid = Number(run?.pid);
+    if (Number.isInteger(pid) && pid > 0) runsByPid.set(pid, run);
+  }
+  for (const draft of drafts || []) attachLoopRunToDraft(draft, runsByPid);
+  return drafts;
+}
+
+function attachLoopRunToDraft(draft, runsByPid) {
+  const run = uniqueNumbers(draft?.pids || [])
+    .map((pid) => runsByPid.get(pid))
+    .find(Boolean);
+  if (!run) return draft;
+
+  draft.logFile ||= run.logFile;
+  draft.loopRun = {
+    boardId: run.boardId,
+    nodeId: run.nodeId,
+    source: run.source,
+  };
+  return draft;
+}
+
 function findHeadlessRootPid(row, headlessByPid) {
   let current = row;
   const seen = new Set();
@@ -208,6 +244,9 @@ async function hydrateAgent(draft, errors) {
     startedAt: draft.startedAt,
     logUpdatedAt: log?.updatedAt,
     lastLogLines: log?.lines || [],
+    loopBoardId: draft.loopRun?.boardId,
+    loopNodeId: draft.loopRun?.nodeId,
+    loopSource: draft.loopRun?.source,
     source: 'headless',
   };
 }
@@ -345,6 +384,8 @@ module.exports = {
 };
 
 module.exports._internals = {
+  attachLoopRunToDraft,
+  attachLoopRunsToDrafts,
   collectDescendantPids,
   deriveLogFile,
   detectAgent,

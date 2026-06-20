@@ -12,6 +12,7 @@ const {
   shouldTriggerLinkedTargets,
 } = require('./loop-link-helpers');
 const {
+  beginLoopNodeRun,
   finishLoopNodeRun,
   readActiveLoopNodeRun,
 } = require('./loop-run-state');
@@ -138,6 +139,17 @@ class LoopManager {
       chainVisited: normalizeVisited(context.visited, node.id),
     };
     this.running.set(key, running);
+    const runStateReady = beginLoopNodeRun({
+      boardId,
+      nodeId: node.id,
+      pid: child.pid,
+      logFile,
+      source: stringValue(context.trigger, 'loop'),
+    }).catch((err) => {
+      running.error = err.message;
+      void appendLog(logFile, `[pickagent-loop] failed to record run start: ${err.message}\n`);
+      return null;
+    });
 
     child.stdout?.on('data', (data) => appendLog(logFile, data.toString()));
     child.stderr?.on('data', (data) => appendLog(logFile, data.toString()));
@@ -148,6 +160,17 @@ class LoopManager {
     child.on('close', (code, signal) => {
       appendLog(logFile, `[pickagent-loop] stopped code=${code ?? 'null'} signal=${signal ?? 'null'}\n`);
       this.running.delete(key);
+      void runStateReady.then((run) => {
+        if (!run) return null;
+        return finishLoopNodeRun({
+          boardId,
+          nodeId: node.id,
+          status: loopRunStatusFromClose(code, signal),
+          error: running.error || undefined,
+        });
+      }).catch((err) => {
+        void appendLog(logFile, `[pickagent-loop] failed to record run stop: ${err.message}\n`);
+      });
       if (shouldTriggerLinkedTargets(code, signal)) {
         void this._triggerLinkedTargets(boardId, node.id, running.chainVisited);
       }
@@ -462,6 +485,11 @@ function stopExternalRun(run) {
   }
 }
 
+function loopRunStatusFromClose(code, signal) {
+  if (signal) return 'stopped';
+  return code === 0 ? 'success' : 'error';
+}
+
 function normalizeNode(node, now) {
   const type = node?.type;
   if (type !== 'agent' && type !== 'executable' && type !== 'display') return null;
@@ -670,4 +698,5 @@ module.exports._internals = {
   sanitizeLoopId,
   safeCwd,
   stopExternalRun,
+  loopRunStatusFromClose,
 };

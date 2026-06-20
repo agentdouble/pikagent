@@ -213,6 +213,12 @@ describe('loop-manager', () => {
     expect(shouldTriggerLinkedTargets(0, 'SIGTERM')).toBe(false);
   });
 
+  it('records loop run close statuses consistently', () => {
+    expect(_internals.loopRunStatusFromClose(0, null)).toBe('success');
+    expect(_internals.loopRunStatusFromClose(1, null)).toBe('error');
+    expect(_internals.loopRunStatusFromClose(null, 'SIGTERM')).toBe('stopped');
+  });
+
   it('treats persisted hook loop runs as active only while the pid is alive', () => {
     const run = { status: 'running', pid: 1234 };
 

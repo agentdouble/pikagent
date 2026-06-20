@@ -87,6 +87,32 @@ describe('agent-monitor-manager', () => {
     expect(_internals.findHeadlessRootPid(rows[2], new Map(rows.map((row) => [row.pid, row])))).toBe(15309);
   });
 
+  it('attaches active loop run logs to grouped headless agents by pid', () => {
+    const drafts = [{
+      key: 'codex:15309',
+      agent: 'codex',
+      pids: [15309, 15310, 15311],
+      parentPids: [82468, 15309, 15310],
+      command: 'codex exec task',
+    }];
+
+    _internals.attachLoopRunsToDrafts(drafts, [{
+      boardId: 'main',
+      nodeId: 'node-1',
+      pid: 15309,
+      source: 'loop',
+      logFile: '/tmp/pickagent/loops/logs/main/node-1.log',
+    }]);
+
+    expect(drafts[0].key).toBe('codex:15309');
+    expect(drafts[0].logFile).toBe('/tmp/pickagent/loops/logs/main/node-1.log');
+    expect(drafts[0].loopRun).toEqual({
+      boardId: 'main',
+      nodeId: 'node-1',
+      source: 'loop',
+    });
+  });
+
   it('collects process descendants before killing a group', () => {
     const rows = [
       { pid: 1, ppid: 0, command: 'root' },
