@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   captureLogScrollState,
+  clampZoom,
   defaultEdgePorts,
   edgeGeometry,
   formatHeadlessAgentLabel,
@@ -8,6 +9,7 @@ import {
   nodePortPoint,
   restoreLogScrollState,
   splitHeadlessAgentsForBoard,
+  zoomAtPoint,
 } from '../../src/utils/loop-view-helpers.js';
 
 describe('loop-view-helpers', () => {
@@ -29,6 +31,27 @@ describe('loop-view-helpers', () => {
     restoreLogScrollState(after, state);
 
     expect(after.scrollTop).toBe(620);
+  });
+
+  it('clamps board zoom to the supported range', () => {
+    expect(clampZoom(0.1)).toBe(0.45);
+    expect(clampZoom(2)).toBe(1.4);
+    expect(clampZoom(0.85)).toBe(0.85);
+    expect(clampZoom('bad')).toBe(1);
+  });
+
+  it('keeps the cursor anchor stable when zooming around a board point', () => {
+    const result = zoomAtPoint({
+      zoom: 1,
+      panOffset: { x: 10, y: 20 },
+      point: { x: 210, y: 120 },
+      nextZoom: 1.2,
+    });
+
+    expect(result).toEqual({
+      zoom: 1.2,
+      panOffset: { x: -30, y: 0 },
+    });
   });
 
   it('splits headless agents by active loop board', () => {

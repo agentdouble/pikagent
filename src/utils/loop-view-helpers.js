@@ -15,6 +15,8 @@ import {
 export const REFRESH_MS = 2000;
 export const NODE_SIZE = 220;
 export const LOG_SCROLL_BOTTOM_THRESHOLD = 8;
+export const MIN_ZOOM = 0.45;
+export const MAX_ZOOM = 1.4;
 export const EDGE_PORTS = {
   top: 'Haut',
   right: 'Droite',
@@ -234,6 +236,36 @@ export function processMap(snapshot) {
 
 export function runningCount(snapshot) {
   return (snapshot?.processes || []).filter((process) => process.status === 'running').length;
+}
+
+export function clampZoom(value) {
+  const parsed = Number(value);
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number.isFinite(parsed) ? parsed : 1));
+}
+
+export function zoomAtPoint({ zoom, panOffset, point, nextZoom }) {
+  const currentZoom = clampZoom(zoom);
+  const targetZoom = clampZoom(nextZoom);
+  const currentPan = {
+    x: numberValue(panOffset?.x, 0),
+    y: numberValue(panOffset?.y, 0),
+  };
+  const anchor = {
+    x: numberValue(point?.x, 0),
+    y: numberValue(point?.y, 0),
+  };
+  const world = {
+    x: (anchor.x - currentPan.x) / currentZoom,
+    y: (anchor.y - currentPan.y) / currentZoom,
+  };
+
+  return {
+    zoom: targetZoom,
+    panOffset: {
+      x: anchor.x - world.x * targetZoom,
+      y: anchor.y - world.y * targetZoom,
+    },
+  };
 }
 
 export function splitHeadlessAgentsForBoard(agents, boardId = 'main') {

@@ -28,6 +28,7 @@ import {
   NODE_SIZE,
   REFRESH_MS,
   captureLogScrollState,
+  clampZoom,
   createDefaultLoop,
   createNode,
   defaultAgentHookTrigger,
@@ -45,6 +46,7 @@ import {
   runningCount,
   selectedEdges,
   splitHeadlessAgentsForBoard,
+  zoomAtPoint,
 } from '../utils/loop-view-helpers.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -333,6 +335,7 @@ class LoopView extends ComponentBase {
       onMouseMove: (event) => this._handleCanvasMove(event),
       onMouseUp: (event) => this._handleCanvasUp(event),
       onMouseLeave: () => this._endPointerWork(),
+      onWheel: (event) => this._handleCanvasWheel(event),
     });
     this.canvasEl = canvas;
 
@@ -376,6 +379,13 @@ class LoopView extends ComponentBase {
     return {
       transform: `translate(${this.panOffset.x}px, ${this.panOffset.y}px) scale(${this.zoom})`,
     };
+  }
+
+  _applyBoardViewport() {
+    if (this.canvasEl) Object.assign(this.canvasEl.style, this._canvasStyle());
+    if (this.surfaceEl) Object.assign(this.surfaceEl.style, this._surfaceStyle());
+    const zoomLabel = this.canvasEl?.querySelector('.loop-zoom-controls span');
+    if (zoomLabel) zoomLabel.textContent = `${Math.round(this.zoom * 100)}%`;
   }
 
   _renderZoomControls() {
@@ -1485,8 +1495,30 @@ class LoopView extends ComponentBase {
       x: this.pan.originX + event.clientX - this.pan.x,
       y: this.pan.originY + event.clientY - this.pan.y,
     };
-    if (this.canvasEl) Object.assign(this.canvasEl.style, this._canvasStyle());
-    if (this.surfaceEl) Object.assign(this.surfaceEl.style, this._surfaceStyle());
+    this._applyBoardViewport();
+  }
+
+  _handleCanvasWheel(event) {
+    if (!(event.currentTarget instanceof Element)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const point = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+    const factor = Math.min(1.22, Math.max(0.82, Math.exp(-event.deltaY * 0.001)));
+    const nextZoom = clampZoom(Number((this.zoom * factor).toFixed(3)));
+    if (nextZoom === this.zoom) return;
+    const next = zoomAtPoint({
+      zoom: this.zoom,
+      panOffset: this.panOffset,
+      point,
+      nextZoom,
+    });
+    this.zoom = next.zoom;
+    this.panOffset = next.panOffset;
+    this._applyBoardViewport();
   }
 
   _handleCanvasUp(event) {
@@ -1531,7 +1563,7 @@ class LoopView extends ComponentBase {
   }
 
   _adjustZoom(delta) {
-    this.zoom = Math.min(1.4, Math.max(0.45, Number((this.zoom + delta).toFixed(2))));
+    this.zoom = clampZoom(Number((this.zoom + delta).toFixed(2)));
     this._render();
   }
 }

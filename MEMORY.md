@@ -38,4 +38,5 @@
 - Boucles `Run pipeline` launches eligible root nodes while skipping any node already running; link-triggered agents are not started directly because upstream success launches them through directed edges.
 - Boucles links are directed edges (`from -> to`) with a UI reverse action; `Run pipeline` starts directed graph roots, then follows links to executable targets and agents in `triggerType: "link"` without relaunching already-running nodes.
 - Boucles visual edges should feel like simple Excalidraw-style connectors: node cards expose four port buttons on hover/selection, links are created by choosing a source port then a target port, a global header button toggles `curve` vs `elbow` routing, and links themselves are clickable/selectable.
+- Boucles canvas zoom supports mouse wheel zoom anchored under the cursor; keep zoom bounds and pan adjustment centralized in `clampZoom` and `zoomAtPoint` from `src/utils/loop-view-helpers.js`.
 - Boucles `Stop pipeline` stops every currently running agent/executable node on the active board, including disabled-after-launch nodes and hook-launched external loop runs.
