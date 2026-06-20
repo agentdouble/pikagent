@@ -3,11 +3,18 @@
  * Extracted from file-tree.js to reduce component size.
  */
 
-import { bus, EVENTS } from './events.js';
-import { _el, buildChevronRow } from './dom.js';
-import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS } from './file-tree-helpers.js';
+import { emitFileOpen } from './workspace-events.js';
+import { _el } from './dom-api.js';
+import { createActionButton } from './dom-buttons.js';
+import { buildChevronRow } from './dom-lists.js';
+import { computeIndent, CHEVRON_EXPANDED, CHEVRON_COLLAPSED, SVG_ICONS, HEADER_ACTIONS } from './file-tree-helpers.js';
 import { buildFileContextItems, buildDirContextItems } from './file-tree-context-menu.js';
 import { attachContextMenu } from './context-menu.js';
+import { isAgentsMarkdownFile, shouldEditAgentsOnDoubleClick } from './agents-editor-settings.js';
+import { getFileIcon } from './file-icons.js';
+
+const FOLDER_ICON_CLOSED = '📁';
+const FOLDER_ICON_OPEN = '📂';
 
 // ── SVG icon parsing ──
 
@@ -17,7 +24,7 @@ function _parseSvg(svgStr) {
 }
 
 /** Parse all SVG icons once at module load from the declarative SVG_ICONS map. */
-export const PARSED_ICONS = Object.fromEntries(
+const PARSED_ICONS = Object.fromEntries(
   Object.entries(SVG_ICONS).map(([k, v]) => [k, _parseSvg(v)])
 );
 
@@ -28,17 +35,30 @@ export const PARSED_ICONS = Object.fromEntries(
  * @param {number} depth
  * @returns {{ row: HTMLElement, chevron: HTMLElement, name: HTMLElement }}
  */
-export function buildRow(entry, depth) {
-  const { chevron, name } = buildChevronRow({
+function createTreeIcon(icon, title) {
+  return _el('span', {
+    className: 'file-tree-icon',
+    textContent: icon,
+    title,
+    ariaHidden: true,
+  });
+}
+
+function setFolderIconState(iconEl, isExpanded) {
+  iconEl.textContent = isExpanded ? FOLDER_ICON_OPEN : FOLDER_ICON_CLOSED;
+  iconEl.title = isExpanded ? 'Open folder' : 'Folder';
+}
+
+function buildRow(entry, depth, iconEl = null) {
+  return buildChevronRow({
     chevronClass: 'file-tree-chevron',
     nameClass: 'file-tree-name',
     name: entry.name,
+    containerClass: 'file-tree-item',
+    depth,
+    computeIndent,
+    afterChevronChildren: iconEl ? [iconEl] : [],
   });
-  const row = _el('div', {
-    className: 'file-tree-item',
-    style: { paddingLeft: `${computeIndent(depth)}px` },
-  }, chevron, name);
-  return { row, chevron, name };
 }
 
 /**
@@ -53,8 +73,10 @@ export function buildRow(entry, depth) {
  */
 export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callbacks) {
   const { setupDropZone, expandDir, collapseDir, findRootCwd, promptRename, promptNewEntry, contextMenuApi } = callbacks;
-  const { row, chevron, name } = buildRow(entry, depth);
   const isExpanded = expandedDirs.has(entry.path);
+  const folderIcon = createTreeIcon('', 'Folder');
+  setFolderIconState(folderIcon, isExpanded);
+  const { row, chevron, name } = buildRow(entry, depth, folderIcon);
   chevron.textContent = isExpanded ? CHEVRON_EXPANDED : CHEVRON_COLLAPSED;
   chevron.classList.toggle('expanded', isExpanded);
 
@@ -73,11 +95,13 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
     } else {
       await expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
     }
+    setFolderIconState(folderIcon, expandedDirs.has(entry.path));
   });
 
   attachContextMenu(row, async () => {
     if (!expandedDirs.has(entry.path)) {
       await expandDir(entry.path, childContainer, chevron, depth, expandedDirs);
+      setFolderIconState(folderIcon, true);
     }
     return buildDirContextItems(
       entry.path, findRootCwd(entry.path),
@@ -100,7 +124,7 @@ export async function renderDirEntry(entry, parentEl, depth, expandedDirs, callb
  */
 export function renderFileEntry(entry, parentEl, depth, callbacks) {
   const { activeRowRef, findRootCwd, promptRename, contextMenuApi } = callbacks;
-  const { row, name } = buildRow(entry, depth);
+  const { row, name } = buildRow(entry, depth, createTreeIcon(getFileIcon(entry.name), 'File'));
   parentEl.appendChild(row);
 
   row.addEventListener('click', () => {
@@ -108,7 +132,13 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
     row.classList.add('active');
     activeRowRef.current = row;
     /** @fires file:open {{ path: string, name: string }} */
-    bus.emit(EVENTS.FILE_OPEN, { path: entry.path, name: entry.name });
+    emitFileOpen({ path: entry.path, name: entry.name });
+  });
+
+  row.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    if (!shouldEditAgentsOnDoubleClick() || !isAgentsMarkdownFile(entry)) return;
+    emitFileOpen({ path: entry.path, name: entry.name, viewMode: 'edit' });
   });
 
   attachContextMenu(row, () => buildFileContextItems(
@@ -116,4 +146,23 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
     (path, nameEl) => promptRename(path, nameEl),
     contextMenuApi,
   ));
+}
+
+/**
+ * Build the action buttons container for a section header.
+ *
+ * @param {Record<string, () => void>} actionDispatcher - action name -> handler
+ * @returns {HTMLElement} container with action buttons
+ */
+export function buildSectionActions(actionDispatcher) {
+  const actionBtns = HEADER_ACTIONS.map(({ key, title, action }) =>
+    createActionButton({
+      title,
+      cls: 'file-tree-action-btn',
+      childNode: PARSED_ICONS[key].cloneNode(true),
+      stopPropagation: true,
+      onClick: actionDispatcher[action],
+    }),
+  );
+  return _el('div', { className: 'file-tree-section-actions' }, ...actionBtns);
 }

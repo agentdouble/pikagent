@@ -1,5 +1,5 @@
 /* Pure helpers and constants for terminal-panel. */
-import { _el } from './dom.js';
+import { _el } from './dom-api.js';
 import { computeResizeRatio } from './split-primitives.js';
 import { getPanels } from './split-layout.js';
 
@@ -48,7 +48,7 @@ export function createSplitContainer(direction, flex = '1') {
 }
 
 /** Find the adjacent non-handle panels around a split handle. */
-export function adjacentPanels(handle, splitEl) {
+function adjacentPanels(handle, splitEl) {
   const children = Array.from(splitEl.children);
   const idx = children.indexOf(handle);
   let before = null, after = null;

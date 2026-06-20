@@ -23,6 +23,10 @@ const API_SCHEMA = {
     checkAgents: { type: 'fwd' },
     // onData + onExit are custom (targeted channels), injected at build time
   },
+  agents: {
+    list: { type: 'fwd' },
+    kill: { type: 'fwd' },
+  },
   fs: {
     readdir:   { type: 'fwd' },
     readfile:  { type: 'fwd' },
@@ -76,6 +80,20 @@ const API_SCHEMA = {
     onRunStarted:   { type: 'on', channel: 'flow:runStarted' },
     onRunComplete:  { type: 'on', channel: 'flow:runComplete' },
   },
+  loop: {
+    list:       { type: 'fwd' },
+    get:        { type: 'fwd' },
+    save:       { type: 'fwd' },
+    create:     { type: 'fwd' },
+    delete:     { type: 'fwd' },
+    runNode:    { type: 'fwd' },
+    runPipeline: { type: 'fwd' },
+    runExecutables: { type: 'fwd' },
+    stopNode:   { type: 'fwd' },
+    stopPipeline: { type: 'fwd' },
+    snapshot:   { type: 'fwd' },
+    getNodeLog: { type: 'fwd' },
+  },
   usage: {
     getMetrics: { type: 'fwd' },
   },
@@ -100,6 +118,7 @@ const API_SCHEMA = {
     loadDefault: { type: 'fwd' },
   },
   update: {
+    info:       { type: 'fwd' },
     check:      { type: 'fwd' },
     version:    { type: 'fwd' },
     run:        { type: 'fwd' },

@@ -1,6 +1,6 @@
-import { _el } from '../utils/dom.js';
-import { setupKeyboardShortcuts } from '../utils/keyboard-helpers.js';
-import { trackMouse } from '../utils/drag-helpers.js';
+import { _el } from '../utils/dom-api.js';
+import { onKeyAction } from '../utils/event-helpers.js';
+import { setupResizeHandler } from '../utils/drag-helpers.js';
 import {
   MAX_LOGS,
   WEBVIEW_NAV_ACTIONS,
@@ -14,8 +14,9 @@ import {
   shortLevelLabel,
 } from '../utils/webview-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { boardFacade } from '../facades/board-facade.js';
 
-export class WebviewInstance {
+class WebviewInstance {
   constructor(container, url) {
     this.container = container;
     this.url = url;
@@ -35,35 +36,43 @@ export class WebviewInstance {
 
   _buildNavBar() {
     const nav = _el('div', 'webview-nav');
+    this._appendNavActions(nav);
+    this._buildUrlInput();
+    this._buildExtraButtons();
+    nav.append(this.urlInput, this._mobileBtn, this._openExtBtn, this.consoleToggle);
+    return nav;
+  }
 
+  _appendNavActions(nav) {
     for (const { text, title, method } of WEBVIEW_NAV_ACTIONS) {
       const btn = _el('button', 'webview-nav-btn', { textContent: text, title });
       btn.addEventListener('click', () => { try { this.webview[method](); } catch {} });
       nav.appendChild(btn);
     }
+  }
 
+  _buildUrlInput() {
     this.urlInput = _el('input', 'webview-url-input');
     this.urlInput.type = 'text';
     this.urlInput.value = this.url;
     this.urlInput.spellcheck = false;
-    setupKeyboardShortcuts(this.urlInput, {
+    onKeyAction(this.urlInput, {
       onEnter: (e) => {
         e.preventDefault();
         this.navigate(this.urlInput.value.trim());
       },
     });
+  }
 
+  _buildExtraButtons() {
     this._mobileBtn = _el('button', 'webview-nav-btn', { textContent: '\u{1F4F1}', title: 'Mobile view' });
     this._mobileBtn.addEventListener('click', () => this.toggleMobile());
 
-    const openExtBtn = _el('button', 'webview-nav-btn', { textContent: '\u2197', title: 'Open in browser' });
-    openExtBtn.addEventListener('click', () => window.api.shell.openExternal(this.url));
+    this._openExtBtn = _el('button', 'webview-nav-btn', { textContent: '\u2197', title: 'Open in browser' });
+    this._openExtBtn.addEventListener('click', () => boardFacade.openExternal(this.url));
 
     this.consoleToggle = _el('button', 'webview-nav-btn', { textContent: CONSOLE_ICONS.closed, title: 'Toggle console' });
     this.consoleToggle.addEventListener('click', () => this.toggleConsole());
-
-    nav.append(this.urlInput, this._mobileBtn, openExtBtn, this.consoleToggle);
-    return nav;
   }
 
   _buildWebview() {
@@ -71,26 +80,25 @@ export class WebviewInstance {
     this.webview.className = 'webview-frame';
     this.webview.src = this.url;
     this.webview.setAttribute('allowpopups', '');
+    this._setupWebviewListeners();
 
-    this.webview.addEventListener('did-navigate', (e) => {
-      this.url = e.url;
-      this.urlInput.value = e.url;
-    });
+    const wrapper = _el('div', 'webview-wrapper');
+    wrapper.appendChild(this.webview);
+    return wrapper;
+  }
+
+  _setupWebviewListeners() {
+    const syncUrl = (url) => { this.url = url; this.urlInput.value = url; };
+
+    this.webview.addEventListener('did-navigate', (e) => syncUrl(e.url));
 
     this.webview.addEventListener('did-navigate-in-page', (e) => {
-      if (e.isMainFrame) {
-        this.url = e.url;
-        this.urlInput.value = e.url;
-      }
+      if (e.isMainFrame) syncUrl(e.url);
     });
 
     this.webview.addEventListener('console-message', (e) => {
       this._addLog(e.level, e.message, e.sourceId, e.line);
     });
-
-    const wrapper = _el('div', 'webview-wrapper');
-    wrapper.appendChild(this.webview);
-    return wrapper;
   }
 
   _buildConsolePanel() {
@@ -178,17 +186,10 @@ export class WebviewInstance {
   }
 
   _setupConsoleResize() {
-    let startY = 0;
-    let startHeight = 0;
-
-    this._consoleHandle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      startY = e.clientY;
-      startHeight = this._consolePanel.getBoundingClientRect().height;
-      trackMouse('row-resize',
-        (ev) => { this._consolePanel.style.height = `${clampConsoleHeight(startHeight, startY - ev.clientY)}px`; },
-        () => {},
-      );
+    setupResizeHandler(this._consoleHandle, {
+      cursor: 'row-resize',
+      onStart: (e) => ({ startY: e.clientY, startHeight: this._consolePanel.getBoundingClientRect().height }),
+      onMove: (ev, ctx) => { this._consolePanel.style.height = `${clampConsoleHeight(ctx.startHeight, ctx.startY - ev.clientY)}px`; },
     });
   }
 

@@ -1,0 +1,526 @@
+/* Linear-inspired application theme. Loaded last to keep the restyle isolated. */
+:root {
+  --bg-primary: #161824;
+  --bg-secondary: #1b1e2b;
+  --bg-tertiary: #202435;
+  --bg-surface: #24283a;
+  --bg-hover: #2b3044;
+  --bg-active: #333951;
+  --bg-elevated: #2a2f43;
+  --bg-overlay: rgba(22, 24, 36, 0.78);
+
+  --border-color: rgba(245, 243, 251, 0.085);
+  --border-subtle: rgba(245, 243, 251, 0.045);
+  --border-strong: rgba(245, 243, 251, 0.14);
+
+  --text-primary: #f5f3fb;
+  --text-secondary: #c2c5d4;
+  --text-muted: #8f95aa;
+  --text-subtle: #6c7288;
+
+  --accent: #5e6ad2;
+  --accent-dim: #4f5abb;
+  --accent-bright: #7c86ee;
+  --accent-soft: rgba(94, 106, 210, 0.16);
+  --accent-softer: rgba(94, 106, 210, 0.08);
+  --text-on-accent: #ffffff;
+
+  --green: #4cb782;
+  --green-soft: rgba(76, 183, 130, 0.13);
+  --yellow: #d6a842;
+  --yellow-soft: rgba(214, 168, 66, 0.14);
+  --blue: #5aa7f2;
+  --blue-soft: rgba(90, 167, 242, 0.14);
+  --red: #e16b6b;
+  --red-soft: rgba(225, 107, 107, 0.14);
+  --purple: #a078e8;
+  --orange: #d98d54;
+
+  --shadow-overlay: rgba(10, 12, 22, 0.56);
+  --shadow-drop: rgba(10, 12, 22, 0.32);
+  --shadow-soft: 0 1px 2px rgba(10, 12, 22, 0.2);
+  --shadow-lift: 0 18px 60px rgba(10, 12, 22, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.035);
+  --shadow-focus: 0 0 0 3px rgba(94, 106, 210, 0.24);
+  --terminal-active-border: rgba(124, 134, 238, 0.26);
+
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --tab-height: 40px;
+  --header-height: 30px;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f7f8fb;
+  --bg-secondary: #eef1f6;
+  --bg-tertiary: #e7ebf2;
+  --bg-surface: #ffffff;
+  --bg-hover: #e8ecf4;
+  --bg-active: #dde3ef;
+  --bg-elevated: #ffffff;
+  --bg-overlay: rgba(247, 248, 251, 0.78);
+
+  --border-color: rgba(16, 18, 24, 0.11);
+  --border-subtle: rgba(16, 18, 24, 0.065);
+  --border-strong: rgba(16, 18, 24, 0.18);
+
+  --text-primary: #101218;
+  --text-secondary: #4f5664;
+  --text-muted: #7a8290;
+  --text-subtle: #a6adba;
+
+  --accent: #5e6ad2;
+  --accent-dim: #4f5abb;
+  --accent-bright: #737de8;
+  --accent-soft: rgba(94, 106, 210, 0.12);
+  --accent-softer: rgba(94, 106, 210, 0.06);
+
+  --shadow-overlay: rgba(10, 12, 18, 0.22);
+  --shadow-drop: rgba(15, 18, 27, 0.12);
+  --shadow-soft: 0 1px 2px rgba(16, 18, 24, 0.06);
+  --shadow-lift: 0 18px 52px rgba(27, 32, 44, 0.14), 0 0 0 1px rgba(27, 32, 44, 0.06);
+  --terminal-active-border: rgba(94, 106, 210, 0.28);
+}
+
+body,
+body * {
+  letter-spacing: 0;
+}
+
+html,
+body,
+#app {
+  background: var(--bg-primary);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.tab-bar {
+  gap: 2px;
+  padding-left: 82px;
+  padding-right: 10px;
+  background: var(--bg-primary);
+  border-bottom-color: var(--border-subtle);
+}
+
+.tab {
+  min-width: 104px;
+  height: 30px;
+  margin: 5px 0;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tab::after {
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.tab:hover::after {
+  background: transparent;
+}
+
+.tab.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.tab.active::after {
+  background: var(--tab-accent, var(--accent));
+  opacity: 0.82;
+}
+
+.tab-add {
+  width: 30px;
+  height: 28px;
+  margin-top: 6px;
+  color: var(--text-muted);
+}
+
+.tab-ghost,
+.tab-rename-input,
+.context-menu,
+.settings-modal,
+.prompt-dialog-box,
+.flow-modal,
+.flow-log-modal,
+.board-card {
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-lift);
+}
+
+.main-content,
+.workspace,
+.panel-center,
+.editor-wrapper {
+  background: var(--bg-primary);
+}
+
+.activity-bar {
+  width: 56px;
+  background: var(--bg-primary);
+  border-right-color: var(--border-subtle);
+}
+
+.activity-bar-top {
+  padding: 8px 6px 0;
+  gap: 4px;
+}
+
+.activity-bar-bottom {
+  padding: 0 6px 8px;
+}
+
+.activity-btn {
+  min-height: 42px;
+  padding: 7px 4px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+
+.activity-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.activity-btn.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.activity-btn.active::before {
+  left: -6px;
+  width: 2px;
+  height: 24px;
+  background: var(--accent);
+}
+
+.activity-btn-label {
+  font-size: 8.5px;
+  font-weight: 600;
+}
+
+.panel-left,
+.panel-right,
+.panel-header,
+.file-tree-section-header,
+.file-viewer-mode-bar,
+.file-viewer-tabs,
+.editor-line-numbers,
+.editor-status-bar,
+.webview-nav,
+.webview-console-toolbar,
+.board-card-header {
+  background: var(--bg-secondary);
+}
+
+.panel-left {
+  border-right-color: var(--border-subtle);
+}
+
+.panel-right {
+  border-left-color: var(--border-subtle);
+}
+
+.tab-bar,
+.path-info,
+.file-viewer-mode-bar,
+.file-viewer-tabs,
+.file-viewer-breadcrumb,
+.editor-status-bar,
+.webview-nav,
+.webview-console-toolbar,
+.board-card-header,
+.settings-header,
+.settings-nav {
+  border-color: var(--border-subtle);
+}
+
+.panel-title,
+.file-tree-section-header,
+.webview-console-title,
+.board-card-status,
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.path-info {
+  min-height: 36px;
+  padding: 7px 12px;
+  background: var(--bg-primary);
+  border-bottom-color: var(--border-subtle);
+}
+
+.path-arrow,
+.webview-nav-btn,
+.terminal-close-btn,
+.terminal-drag-handle,
+.settings-close-btn,
+.file-tree-action-btn {
+  border-radius: var(--radius-md);
+}
+
+.path-arrow:hover,
+.webview-nav-btn:hover,
+.terminal-drag-handle:hover,
+.settings-close-btn:hover,
+.file-tree-action-btn:hover {
+  background: var(--bg-hover);
+}
+
+.path-text,
+.file-viewer-breadcrumb,
+.mode-bar-url-input,
+.webview-url-input,
+.editor-textarea,
+.editor-highlight-layer,
+.editor-line-numbers,
+.keybinding-badge {
+  font-family: var(--font-mono);
+}
+
+.branch-badge {
+  border: 1px solid rgba(76, 183, 130, 0.26);
+  background: rgba(76, 183, 130, 0.11);
+  color: #63d29a;
+  border-radius: var(--radius-md);
+}
+
+.file-tree {
+  padding-top: 6px;
+}
+
+.file-tree-item,
+.skills-item,
+.settings-nav-item,
+.keybinding-row {
+  border-radius: var(--radius-md);
+}
+
+.file-tree-item {
+  margin: 1px 7px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  color: var(--text-secondary);
+}
+
+.file-tree-item:hover,
+.skills-item:hover,
+.keybinding-row:hover,
+.board-hidden-chip:hover {
+  background: var(--bg-hover);
+}
+
+.file-tree-item.active,
+.skills-item-active,
+.settings-nav-item.active {
+  background: var(--accent-softer);
+  color: var(--text-primary);
+}
+
+.file-tree-item.active::before {
+  background: var(--accent);
+}
+
+.mode-btn {
+  padding: 9px 12px;
+  color: var(--text-muted);
+}
+
+.mode-btn:hover,
+.mode-btn.active {
+  color: var(--text-primary);
+}
+
+.mode-btn.active {
+  border-bottom-color: rgba(124, 134, 238, 0.68);
+}
+
+.file-tab {
+  height: 32px;
+  padding: 0 12px;
+  color: var(--text-muted);
+}
+
+.file-tab:hover,
+.file-tab.active {
+  color: var(--text-primary);
+}
+
+.file-tab.active::after {
+  background: rgba(124, 134, 238, 0.72);
+}
+
+.file-viewer-breadcrumb {
+  background: var(--bg-primary);
+}
+
+.terminal-area,
+.terminal-panel,
+.terminal-wrapper,
+.terminal-container {
+  background: var(--bg-primary);
+}
+
+.terminal-wrapper {
+  border-radius: var(--radius-md);
+}
+
+.terminal-wrapper.active {
+  background: var(--bg-secondary);
+  border-color: var(--terminal-active-border);
+  box-shadow: inset 0 0 0 1px rgba(245, 243, 251, 0.018);
+}
+
+.terminal-container {
+  padding: 6px;
+}
+
+.terminal-close-btn:hover {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.split-handle:hover,
+.panel-resize-handle:hover,
+.webview-console-handle:hover {
+  background: var(--accent);
+}
+
+.editor-line-numbers,
+.editor-status-bar {
+  color: var(--text-muted);
+}
+
+.editor-line-numbers {
+  border-right-color: var(--border-subtle);
+}
+
+.editor-textarea,
+.editor-highlight-layer {
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.editor-status-bar {
+  min-height: 30px;
+}
+
+.status-modified,
+.status-error,
+.file-tab-modified,
+.mode-btn-close:hover,
+.file-tab-close:hover,
+.webview-nav-btn.active {
+  color: var(--accent);
+}
+
+.board-container {
+  gap: 10px;
+  padding: 10px;
+}
+
+.board-card,
+.skills-list,
+.usage-chart-card,
+.usage-summary-card,
+.settings-config-card,
+.settings-theme-card {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+}
+
+.board-card:hover {
+  transform: none;
+}
+
+.board-card-running {
+  border-color: rgba(214, 168, 66, 0.62);
+  background: linear-gradient(180deg, rgba(214, 168, 66, 0.08), var(--bg-surface) 34%);
+}
+
+.board-card-waiting {
+  border-color: rgba(76, 183, 130, 0.62);
+  background: linear-gradient(180deg, rgba(76, 183, 130, 0.08), var(--bg-surface) 34%);
+}
+
+.board-card-btn,
+.skills-btn-secondary,
+.settings-reset-btn,
+.prompt-dialog-cancel,
+.prompt-dialog-confirm,
+.keybinding-badge,
+.keybinding-add-btn,
+.webview-url-input,
+.prompt-dialog-input {
+  border-color: var(--border-color);
+}
+
+.skills-btn-primary,
+.prompt-dialog-confirm,
+.count-pill.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.settings-overlay,
+.prompt-dialog-overlay,
+.flow-modal-overlay {
+  background: var(--bg-overlay);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.settings-modal,
+.prompt-dialog-box,
+.flow-modal,
+.flow-log-modal {
+  border-radius: var(--radius-xl);
+  background: var(--bg-elevated);
+}
+
+.settings-header,
+.settings-nav,
+.settings-content {
+  background: var(--bg-elevated);
+}
+
+.settings-nav {
+  background: var(--bg-secondary);
+}
+
+.keybinding-badge,
+.count-pill,
+.skills-item-source {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #464d62;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #596174;
+}

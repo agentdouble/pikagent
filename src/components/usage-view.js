@@ -1,46 +1,47 @@
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/dom-api.js';
+import { buildTabBar } from '../utils/dom-tabs.js';
+import { buildViewHeader } from '../utils/view-header.js';
 import { TABS, getTabConfig, createSection } from '../utils/usage-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
+import { ComponentBase } from '../utils/component-base.js';
+import { usageFacade as usageApi } from '../facades/usage-facade.js';
 
 // --- Component ---
 
-export class UsageView {
+class UsageView extends ComponentBase {
   constructor(container) {
-    this.container = container;
+    super(container);
+  }
+
+  _initState() {
     this.el = _el('div', { className: 'usage-container' });
-    container.appendChild(this.el);
+    this.container.appendChild(this.el);
     this.activeTab = 'agents';
     this.metrics = null;
-    this.render();
   }
 
   async render() {
     this.el.replaceChildren();
 
-    this.el.appendChild(_el('div', { className: 'usage-header' },
-      _el('div', { className: 'usage-header-left' },
-        _el('h2', { className: 'usage-title', textContent: 'Usage' }),
-      ),
-      _el('button', { className: 'usage-refresh-btn', textContent: 'Refresh', onClick: () => this.render() }),
-    ));
+    this.el.appendChild(buildViewHeader({
+      baseClass: 'usage',
+      title: 'Usage',
+      wrapLeft: true,
+      actions: _el('button', { className: 'usage-refresh-btn', textContent: 'Refresh', onClick: () => this.render() }),
+    }));
 
-    const tabBar = _el('div', { className: 'usage-tabs' });
-    const tabBtns = [];
-    for (const tab of TABS) {
-      const btn = _el('button', {
-        className: `usage-tab ${this.activeTab === tab.id ? 'usage-tab-active' : ''}`,
-        textContent: tab.label,
-        onClick: () => {
-          this.activeTab = tab.id;
-          this._renderBody();
-          for (const b of tabBtns) b.classList.remove('usage-tab-active');
-          btn.classList.add('usage-tab-active');
-        },
-      });
-      tabBtns.push(btn);
-      tabBar.appendChild(btn);
-    }
-    this.el.appendChild(tabBar);
+    const { bar, setActive } = buildTabBar(TABS, {
+      activeId: this.activeTab,
+      barClass: 'usage-tabs',
+      itemClass: 'usage-tab',
+      activeClass: 'usage-tab-active',
+      onSelect: (id) => {
+        this.activeTab = id;
+        this._renderBody();
+        setActive(id);
+      },
+    });
+    this.el.appendChild(bar);
 
     this.bodyEl = _el('div', { className: 'usage-body' });
     this.el.appendChild(this.bodyEl);
@@ -48,7 +49,7 @@ export class UsageView {
     this._renderEmpty('Chargement des métriques...');
 
     try {
-      this.metrics = await window.api.usage.getMetrics();
+      this.metrics = await usageApi.getMetrics();
     } catch {
       this._renderEmpty('Erreur lors du chargement');
       return;
@@ -79,6 +80,7 @@ export class UsageView {
   }
 
   dispose() {
+    super.dispose();
     this.el.remove();
   }
 

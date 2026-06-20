@@ -7,10 +7,12 @@
   "scripts": {
     "build": "node build.js",
     "start": "node build.js && electron .",
-    "dev": "node build.js --watch & electron . &",
+    "dev": "node scripts/dev.js",
+    "hook": "node bin/pickagent-hook.cjs",
     "rebuild": "npx @electron/rebuild",
     "package": "npm run build && electron-builder --mac dir",
-    "package:dmg": "npm run build && electron-builder --mac dmg",
+    "package:dmg": "npm run build && electron-builder --mac dmg zip",
+    "release:mac": "npm run build && electron-builder --mac dmg zip --publish always",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -18,18 +20,21 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "bin": {
+    "pickagent-hook": "bin/pickagent-hook.cjs"
+  },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "electron": "^41.0.3",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.27.4",
-    "happy-dom": "^20.9.0",
     "vitest": "^4.1.2"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
+    "electron-updater": "^6.8.3",
     "highlight.js": "^11.11.1",
     "markdown-it": "^14.1.1",
     "node-pty": "^1.1.0"
@@ -46,6 +51,7 @@
       "api-schema.js",
       "main/**/*",
       "shared/**/*",
+      "bin/**/*",
       "src/**/*",
       "dist/**/*",
       "package.json"
@@ -53,11 +59,22 @@
     "asarUnpack": [
       "node_modules/node-pty/**/*"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "agentdouble",
+        "repo": "pikagent",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
       "icon": "assets/icon.icns",
+      "notarize": true,
       "target": [
-        "dir"
+        "dmg",
+        "zip"
       ]
     }
   }

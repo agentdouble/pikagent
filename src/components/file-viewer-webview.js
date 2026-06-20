@@ -3,14 +3,14 @@
  * Extracted from file-viewer.js to reduce component size.
  */
 import { onClickStopped } from '../utils/event-helpers.js';
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/dom-api.js';
 import { setupInlineInput } from '../utils/form-helpers.js';
 import { generateId } from '../utils/id.js';
-import { bus, EVENTS } from '../utils/events.js';
+import { emitLayoutChanged } from '../utils/workspace-events.js';
 import { parseWebviewUrl } from '../utils/editor-helpers.js';
 import { registerComponent, getComponent } from '../utils/component-registry.js';
 
-export class WebviewManager {
+class WebviewManager {
   /**
    * @param {HTMLElement} container - the file-viewer container element
    * @param {HTMLElement} statusBar - the status bar element (webview containers insert before it)
@@ -32,7 +32,7 @@ export class WebviewManager {
     this._createWebviewContainer(wt);
     this._switchMode(wt.id);
     /** @fires layout:changed {undefined} — webview added */
-    bus.emit(EVENTS.LAYOUT_CHANGED);
+    emitLayoutChanged();
   }
 
   removeWebview(webviewId) {
@@ -48,6 +48,21 @@ export class WebviewManager {
     }
 
     return webviewId; // Return so caller knows which was removed
+  }
+
+  /**
+   * Remove a webview then synchronize the viewer: switch to 'files' when the
+   * removed webview was the current mode, otherwise re-render the mode bar.
+   * Emits layout:changed once done. Single entry point shared by callers.
+   * @param {string} webviewId - id of the webview to remove
+   * @param {string} currentMode - the viewer mode active before removal
+   */
+  removeWebviewAndSync(webviewId, currentMode) {
+    const removedId = this.removeWebview(webviewId);
+    if (currentMode === removedId) this._switchMode('files');
+    else this._renderModeBar();
+    /** @fires layout:changed {undefined} — webview removed */
+    emitLayoutChanged();
   }
 
   _createWebviewContainer(wt) {
@@ -86,13 +101,7 @@ export class WebviewManager {
     const btn = _el('button', `mode-btn mode-btn-webview${currentMode === wt.id ? ' active' : ''}`);
     btn.appendChild(_el('span', null, wt.label));
     const closeBtn = _el('span', 'mode-btn-close', { textContent: '\u00d7' });
-    onClickStopped(closeBtn, () => {
-      const removedId = this.removeWebview(wt.id);
-      if (currentMode === removedId) this._switchMode('files');
-      else this._renderModeBar();
-      /** @fires layout:changed {undefined} — webview removed */
-      bus.emit(EVENTS.LAYOUT_CHANGED);
-    });
+    onClickStopped(closeBtn, () => this.removeWebviewAndSync(wt.id, currentMode));
     btn.appendChild(closeBtn);
     btn.addEventListener('click', () => this._switchMode(wt.id));
     return btn;

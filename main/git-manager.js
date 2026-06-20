@@ -1,37 +1,36 @@
-const { execFile } = require('child_process');
-const { promisify } = require('util');
-const { DIFF_MAX_BUFFER, execOpts, parseNameStatus, parseUntracked } = require('./git-helpers');
+const { DIFF_MAX_BUFFER, execOpts, isNotGitRepositoryError, parseNameStatus, parseUntracked } = require('./git-helpers');
+const { splitLines, matchFirst } = require('./parse-utils');
 const { createLogger, trySafe } = require('./logger');
+const { execFileAsync } = require('./command-utils');
 
 const log = createLogger('git-manager');
-const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /** Run a git command, return trimmed stdout or `fallback` on error. */
-async function runGit(cwd, args, { fallback = null, maxBuffer } = {}) {
-  return trySafe(
-    async () => {
-      const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
-      const { stdout } = await execFileAsync('git', args, opts);
-      return stdout.trim();
-    },
-    fallback,
-    { log, label: `git ${args[0]} in ${cwd}` },
-  );
+async function runGit(cwd, args, { fallback = null, maxBuffer, silentNotRepo = false } = {}) {
+  const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
+  try {
+    const { stdout } = await execFileAsync('git', args, opts);
+    return stdout.trim();
+  } catch (err) {
+    if (silentNotRepo && isNotGitRepositoryError(err)) return fallback;
+    log.warn(`git ${args[0]} in ${cwd} failed`, err);
+    return fallback;
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-async function getBranch(cwd) {
-  return runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
+async function branch(cwd) {
+  return runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'], { silentNotRepo: true });
 }
 
-async function getLocalChanges(cwd) {
+async function localChanges(cwd) {
   return trySafe(
     async () => {
       const [stagedRaw, unstagedRaw, untrackedRaw] = await Promise.all([
@@ -47,11 +46,11 @@ async function getLocalChanges(cwd) {
       };
     },
     { staged: [], unstaged: [], untracked: [] },
-    { log, label: 'getLocalChanges' },
+    { log, label: 'localChanges' },
   );
 }
 
-async function getFileDiff(cwd, filePath, isStaged) {
+async function fileDiff(cwd, filePath, isStaged) {
   const args = isStaged ? ['diff', '--cached', '--', filePath] : ['diff', '--', filePath];
   const result = await runGit(cwd, args, { fallback: '', maxBuffer: DIFF_MAX_BUFFER });
   return result;
@@ -61,15 +60,14 @@ async function getFileDiff(cwd, filePath, isStaged) {
 // Worktree / branch API
 // ---------------------------------------------------------------------------
 
-async function isGitRepo(cwd) {
-  const out = await runGit(cwd, ['rev-parse', '--is-inside-work-tree']);
+async function isRepo(cwd) {
+  const out = await runGit(cwd, ['rev-parse', '--is-inside-work-tree'], { silentNotRepo: true });
   return out === 'true';
 }
 
 async function listBranches(cwd) {
   const raw = await runGit(cwd, ['for-each-ref', '--format=%(refname:short)', 'refs/heads'], { fallback: '' });
-  if (!raw) return [];
-  return raw.split('\n').filter(Boolean);
+  return splitLines(raw);
 }
 
 /**
@@ -103,22 +101,36 @@ function _errorMessage(err) {
 }
 
 /**
+ * Execute a git command and return { ok: true } on success or
+ * { ok: false, error } on failure. Centralises the try/catch + log.warn
+ * pattern shared by worktreeAdd, worktreeRemove and pushBranch.
+ *
+ * @param {string} cwd  - working directory
+ * @param {string[]} args - arguments passed to `git`
+ * @param {string} label - human-readable label for the log message
+ * @returns {Promise<{ok: boolean, error?: string}>}
+ */
+async function executeGitCommand(cwd, args, label) {
+  try {
+    await execFileAsync('git', args, execOpts(cwd));
+    return { ok: true };
+  } catch (err) {
+    log.warn(`${label} failed`, err);
+    return { ok: false, error: _errorMessage(err) };
+  }
+}
+
+/**
  * Add a worktree. When `createBranch` is true, creates a new branch named
  * `branch` (optionally starting from `baseBranch`, defaulting to HEAD) at
  * `targetPath`. Otherwise checks out the existing `branch`.
  * Returns { ok: boolean, error?: string }.
  */
 async function worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch) {
-  try {
-    const args = createBranch
-      ? ['worktree', 'add', '-b', branch, targetPath, ...(baseBranch ? [baseBranch] : [])]
-      : ['worktree', 'add', targetPath, branch];
-    await execFileAsync('git', args, execOpts(cwd));
-    return { ok: true };
-  } catch (err) {
-    log.warn(`worktree add ${branch} → ${targetPath} failed`, err);
-    return { ok: false, error: _errorMessage(err) };
-  }
+  const args = createBranch
+    ? ['worktree', 'add', '-b', branch, targetPath, ...(baseBranch ? [baseBranch] : [])]
+    : ['worktree', 'add', targetPath, branch];
+  return executeGitCommand(cwd, args, `worktree add ${branch} → ${targetPath}`);
 }
 
 /**
@@ -127,30 +139,18 @@ async function worktreeAdd(cwd, branch, targetPath, createBranch, baseBranch) {
  * Returns { ok: boolean, error?: string }.
  */
 async function worktreeRemove(cwd, worktreePath, force) {
-  try {
-    const args = ['worktree', 'remove'];
-    if (force) args.push('--force');
-    args.push(worktreePath);
-    await execFileAsync('git', args, execOpts(cwd));
-    return { ok: true };
-  } catch (err) {
-    log.warn(`worktree remove ${worktreePath} failed`, err);
-    return { ok: false, error: _errorMessage(err) };
-  }
+  const args = ['worktree', 'remove'];
+  if (force) args.push('--force');
+  args.push(worktreePath);
+  return executeGitCommand(cwd, args, `worktree remove ${worktreePath}`);
 }
 
-async function getRemoteUrl(cwd) {
+async function remoteUrl(cwd) {
   return runGit(cwd, ['config', '--get', 'remote.origin.url']);
 }
 
 async function pushBranch(cwd, branch) {
-  try {
-    await execFileAsync('git', ['push', '-u', 'origin', branch], execOpts(cwd));
-    return { ok: true };
-  } catch (err) {
-    log.warn(`push ${branch} failed`, err);
-    return { ok: false, error: _errorMessage(err) };
-  }
+  return executeGitCommand(cwd, ['push', '-u', 'origin', branch], `push ${branch}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -173,9 +173,7 @@ async function ghAvailable() {
  * the existing PR URL when one already exists).
  */
 function _firstUrl(text) {
-  if (!text) return null;
-  const m = text.match(/https:\/\/\S+/);
-  return m ? m[0] : null;
+  return matchFirst(text, /https:\/\/\S+/);
 }
 
 /**
@@ -212,17 +210,7 @@ async function ghPrCreate(cwd, baseBranch) {
 }
 
 module.exports = {
-  // Method aliases matching channel suffixes (git:branch → branch, etc.)
-  branch: getBranch,
-  localChanges: getLocalChanges,
-  fileDiff: getFileDiff,
-  isRepo: isGitRepo,
-  listBranches,
-  worktreeList,
-  worktreeAdd,
-  worktreeRemove,
-  remoteUrl: getRemoteUrl,
-  pushBranch,
-  ghAvailable,
-  ghPrCreate,
+  branch, localChanges, fileDiff, isRepo,
+  listBranches, worktreeList, worktreeAdd, worktreeRemove,
+  remoteUrl, pushBranch, ghAvailable, ghPrCreate,
 };

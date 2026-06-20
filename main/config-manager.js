@@ -1,59 +1,46 @@
-const fsp = require('fs/promises');
-const path = require('path');
 const { CONFIG_DIR, META_FILE } = require('./paths');
-const { readJson, writeJson, ensureDirOnce, readDirJson } = require('./fs-utils');
-const { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList } = require('./config-helpers');
-const { Cache } = require('./cache');
-const { createLogger, trySafe } = require('./logger');
+const { DEFAULT_META, buildConfigRecord, formatConfigList } = require('./config-helpers');
+// sanitizeName: config-oriented sanitization — keeps spaces, replaces
+// special chars with underscores, truncates at 64 chars.  This differs from
+// sanitizeSegment (git-ref-safe, hyphen-based) by design; see string-utils.js.
+const { sanitizeName } = require('../shared/string-utils');
+const { createManagerSafe } = require('./logger');
+const { JsonStore } = require('./json-store');
+const { CachedJsonFile } = require('./cached-json-file');
 
-const log = createLogger('config-manager');
-const ensureDir = ensureDirOnce(CONFIG_DIR);
-const _metaCache = new Cache();
+const store = new JsonStore(CONFIG_DIR, 'config-manager', {
+  idToFile: (name) => `${sanitizeName(name)}.json`,
+});
+const _meta = new CachedJsonFile(META_FILE, () => store.ensureDir(), DEFAULT_META);
+const _safe = createManagerSafe(store.log, 'config-manager');
 
-function configPath(name) {
-  return path.join(CONFIG_DIR, `${sanitizeName(name)}.json`);
-}
-
-async function readMeta() {
-  const cached = _metaCache.get();
-  if (cached) return cached;
-  const meta = (await readJson(META_FILE)) || { ...DEFAULT_META };
-  _metaCache.set(meta);
-  return meta;
-}
-
-async function writeMeta(meta) {
-  await ensureDir();
-  _metaCache.set(meta);
-  await writeJson(META_FILE, meta);
-}
+const readMeta = () => _meta.read();
+const writeMeta = (meta) => _meta.write(meta);
 
 async function save(name, data) {
-  await ensureDir();
-  const existing = await readJson(configPath(name));
+  await store.ensureDir();
+  const existing = await store.get(name);
   const config = buildConfigRecord(name, data, existing);
-  await writeJson(configPath(name), config);
+  await store.save(name, config);
   return config;
 }
 
 async function load(name) {
-  return readJson(configPath(name));
+  return store.get(name);
 }
 
 async function list() {
-  await ensureDir();
   const meta = await readMeta();
-  return trySafe(
-    async () => formatConfigList(await readDirJson(CONFIG_DIR), meta.defaultConfig),
+  return _safe(
+    async () => formatConfigList(await store.list(), meta.defaultConfig),
     [],
-    { log, label: 'list' },
   );
 }
 
 async function remove(name) {
-  return trySafe(
+  return _safe(
     async () => {
-      await fsp.unlink(configPath(name));
+      await store.removeOrThrow(name);
       const meta = await readMeta();
       if (meta.defaultConfig === name) {
         meta.defaultConfig = null;
@@ -62,7 +49,6 @@ async function remove(name) {
       return true;
     },
     false,
-    { log, label: 'remove' },
   );
 }
 

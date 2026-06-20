@@ -1,8 +1,6 @@
-import { WebLinksAddon } from '@xterm/addon-web-links';
 import { generateId } from './id.js';
-import { bus, EVENTS } from './events.js';
-import { FilePathLinkProvider } from './file-link-provider.js';
-import { createTerminal } from './terminal-factory.js';
+import { emitTerminalExited, emitTerminalCwdChanged, emitTerminalBranchCheck } from './terminal-events.js';
+import { createTerminal, setupTerminalAddons } from './terminal-factory.js';
 import { CWD_POLL_MS } from './terminal-panel-helpers.js';
 import { createGuardedDispose } from './disposable.js';
 
@@ -62,15 +60,17 @@ export class TerminalInstance {
     this.terminal = term;
     this.fitAddon = fitAddon;
 
-    this.terminal.loadAddon(new WebLinksAddon((e, url) => {
-      e.preventDefault();
-      openExternal(url);
-    }));
-    this.terminal.registerLinkProvider(new FilePathLinkProvider(this.terminal, () => this.cwd, { homedir, openPath }));
+    setupTerminalAddons(this.terminal, {
+      openExternal,
+      getCwd: () => this.cwd,
+      homedir,
+      openPath,
+    });
 
-    // Let Ctrl+Tab / Shift+Ctrl+Tab bubble up to the shortcut manager
+    // Let app-level workspace navigation shortcuts bubble up to the shortcut manager.
     this.terminal.attachCustomKeyEventHandler((e) => {
       if (e.key === 'Tab' && e.ctrlKey) return false;
+      if (e.ctrlKey && !e.metaKey && !e.altKey && /^[1-9]$/.test(e.key)) return false;
       return true;
     });
 
@@ -91,7 +91,7 @@ export class TerminalInstance {
 
     this.unsubExit = this._api.ptyOnExit(this.id, () => {
       /** @fires terminal:exited {{ id: string }} — PTY process exited */
-      bus.emit(EVENTS.TERMINAL_EXITED, { id: this.id });
+      emitTerminalExited({ id: this.id });
     });
   }
 
@@ -107,7 +107,10 @@ export class TerminalInstance {
       if (cwd && cwd !== this.cwd) {
         this.cwd = cwd;
         /** @fires terminal:cwdChanged {{ id: string, cwd: string }} — cwd changed */
-        bus.emit(EVENTS.TERMINAL_CWD_CHANGED, { id: this.id, cwd });
+        emitTerminalCwdChanged({ id: this.id, cwd });
+      } else if (cwd) {
+        /** @fires terminal:branchCheck {{ id: string, cwd: string }} — branch may have changed */
+        emitTerminalBranchCheck({ id: this.id, cwd });
       }
     }, CWD_POLL_MS);
   }

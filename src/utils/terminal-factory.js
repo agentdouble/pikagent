@@ -1,11 +1,13 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
 import { getTerminalTheme } from './terminal-themes.js';
+import { FilePathLinkProvider } from './file-link-provider.js';
 import { disposeResources } from './disposable.js';
 
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
-  try { fitAddon.fit(); } catch {}
+  try { fitAddon.fit(); } catch (e) { console.warn('fitAddon.fit() failed (detached terminal?)', e); }
 }
 
 const BASE_FONT_FAMILY =
@@ -54,7 +56,7 @@ export function disposeTerminal(data) {
  * Create a readonly terminal (disableStdin, no cursor blink, auto-resize).
  * Merges caller overrides on top of shared readonly defaults.
  */
-export function createReadonlyTerminal(container, opts = {}) {
+function createReadonlyTerminal(container, opts = {}) {
   return createTerminal(container, {
     fontSize: 12,
     lineHeight: 1.3,
@@ -72,4 +74,55 @@ export function createReadonlyTerminal(container, opts = {}) {
 export function disposeTerminalMap(map) {
   for (const [, data] of map) disposeTerminal(data);
   map.clear();
+}
+
+/**
+ * Load the WebLinksAddon and register the FilePathLinkProvider on a terminal.
+ * Centralises the addon wiring shared by BoardView and TerminalInstance.
+ *
+ * @param {Terminal} term
+ * @param {{ openExternal: (url: string) => void, getCwd: () => string|null, homedir: () => Promise<string>, openPath: (path: string) => void }} opts
+ */
+export function setupTerminalAddons(term, { openExternal, getCwd, homedir, openPath }) {
+  term.loadAddon(new WebLinksAddon((e, url) => {
+    e.preventDefault();
+    openExternal(url);
+  }));
+  term.registerLinkProvider(new FilePathLinkProvider(term, getCwd, { homedir, openPath }));
+}
+
+/**
+ * Create a terminal bound to a PTY data stream.
+ *
+ * Encapsulates the repeated pattern shared by BoardView cards and
+ * FlowCardTerminalManager live terminals:
+ *   1. Create a terminal (readonly by default) with auto-resize.
+ *   2. Subscribe to a PTY data feed so output is written to the terminal.
+ *   3. Return all handles needed for cleanup.
+ *
+ * @param {HTMLElement} container - DOM element the terminal opens into.
+ * @param {{ onPtyData?: (cb: (data: string) => void) => (() => void), termOpts?: import('@xterm/xterm').ITerminalOptions, readonly?: boolean, fitDelay?: number }} options
+ * @param {(cb: (data: string) => void) => (() => void)} options.onPtyData
+ *   Subscribe to PTY output — receives a callback that writes to the
+ *   terminal; must return an unsubscribe function.
+ * @param {import('@xterm/xterm').ITerminalOptions}  [options.termOpts]  Extra terminal options forwarded to
+ *   createReadonlyTerminal / createTerminal.
+ * @param {boolean} [options.readonly=true]  When true (default) the terminal
+ *   is created via createReadonlyTerminal; otherwise via createTerminal with
+ *   autoResize enabled.
+ * @param {number}  [options.fitDelay=0]  Delay (ms) before the first fit()
+ *   call — forwarded to the underlying createTerminal / createReadonlyTerminal.
+ * @returns {{ term: Terminal, fitAddon: FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null }}
+ */
+export function createPtyBoundTerminal(container, { onPtyData, termOpts = {}, readonly = true, fitDelay = 0 } = {}) {
+  const create = readonly ? createReadonlyTerminal : createTerminal;
+  const { term, fitAddon, resizeObs } = create(container, {
+    autoResize: true,
+    fitDelay,
+    ...termOpts,
+  });
+
+  const unsubData = onPtyData ? onPtyData((data) => term.write(data)) : null;
+
+  return { term, fitAddon, resizeObs, unsubData };
 }

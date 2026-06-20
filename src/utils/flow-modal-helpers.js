@@ -1,48 +1,31 @@
-import { _el } from './dom.js';
+import { _el, _vis as _visGeneric } from './dom-api.js';
+import { buildSelect } from './form-helpers.js';
 import { SCHEDULE_TYPE_CONFIG } from './flow-schedule-helpers.js';
-
-/**
- * Create a <select> element from an options map.
- * @param {{ options: Record<string, string>, value?: string, className?: string, onChange?: (e: Event) => void }} opts
- * @returns {HTMLSelectElement}
- */
-function createSelect({ options, value, className, onChange } = {}) {
-  const select = _el('select', { className: className || '' });
-  for (const [val, label] of Object.entries(options)) {
-    select.appendChild(_el('option', { value: val, textContent: label }));
-  }
-  if (value !== undefined) select.value = value;
-  if (onChange) select.addEventListener('change', onChange);
-  return select;
-}
-
 // --- Constants ---
 
-export const AGENT_OPTIONS = {
-  claude: 'Claude',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-};
+export const AGENT_OPTIONS = { claude: 'Claude', codex: 'Codex', opencode: 'OpenCode' };
 
 export const DEFAULT_CWD_LABEL = 'Sélectionner un dossier';
 
 export const SKIP_PERM_CONFIG = {
   claude: { label: 'Skip permissions', title: 'Lance Claude avec --dangerously-skip-permissions' },
-  codex: { label: 'Full auto', title: 'Lance Codex avec --approval-mode full-auto au lieu de auto-edit' },
+  codex: { label: 'Full auto', title: 'Lance Codex avec sandbox danger-full-access, approval never et exec' },
 };
 
 // --- Pure helpers ---
 
+/** Flow-specific visibility toggle (uses 'flex' display). */
 export function _vis(el, show) {
-  el.style.display = show ? 'flex' : 'none';
+  _visGeneric(el, show, 'flex');
 }
 
 /**
  * Create a <select> for flow modals.
- * Thin wrapper around the centralized `createSelect` factory.
+ * Thin wrapper around the centralized `buildSelect` factory from form-helpers.
  */
 export function _createSelect(options, value) {
-  return createSelect({ options, value, className: 'flow-modal-select' });
+  const items = Object.entries(options).map(([v, label]) => ({ value: v, label }));
+  return buildSelect(items, { className: 'flow-modal-select', selected: String(value) });
 }
 
 export function _createChip(icon, content, extra = {}) {

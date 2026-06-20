@@ -2,6 +2,8 @@
  * Utility for building immutable record objects with automatic timestamp.
  */
 
+const { nowISO } = require('../shared/date-utils');
+
 /**
  * Merges base and overrides into a new record, automatically setting updatedAt
  * to the current ISO timestamp.
@@ -10,7 +12,21 @@
  * @returns {Record<string, unknown> & { updatedAt: string }} merged record with updatedAt set to now
  */
 function buildRecord(base, overrides) {
-  return { ...base, updatedAt: new Date().toISOString(), ...overrides };
+  return { ...base, updatedAt: nowISO(), ...overrides };
 }
 
-module.exports = { buildRecord };
+/**
+ * Builds a record preserving `createdAt` from an existing record and setting
+ * `updatedAt` to `now`.  Extracts the repeated createdAt/updatedAt pattern
+ * shared by config-helpers and flow-manager.
+ *
+ * @param {Record<string, unknown>} base - The base object to spread
+ * @param {Record<string, unknown> | null | undefined} existing - Existing record (may have createdAt)
+ * @param {string} [now=nowISO()] - ISO timestamp; injectable for tests
+ * @returns {Record<string, unknown> & { createdAt: string, updatedAt: string }}
+ */
+function buildTimestampedRecord(base, existing, now = nowISO()) {
+  return buildRecord(base, { createdAt: existing?.createdAt || now, updatedAt: now });
+}
+
+module.exports = { buildRecord, buildTimestampedRecord };

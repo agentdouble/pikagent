@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-const { getLastRun, shouldRun, buildFlowCommand } = require('../../main/flow-helpers');
+const { shouldRun, buildFlowCommand } = require('../../main/flow-helpers');
+const { getLastRun } = require('../../shared/flow-utils');
 
 describe('flow-helpers', () => {
-  describe('getLastRun', () => {
+  describe('getLastRun (from shared/flow-utils)', () => {
     it('returns last run from array', () => {
       const flow = { runs: [{ id: 1 }, { id: 2 }] };
       expect(getLastRun(flow)).toEqual({ id: 2 });
@@ -17,6 +18,15 @@ describe('flow-helpers', () => {
   describe('shouldRun', () => {
     it('returns false without schedule', () => {
       expect(shouldRun({}, new Date())).toBe(false);
+    });
+
+    it('returns false for hook flows even when a schedule remains stored', () => {
+      const flow = {
+        triggerType: 'hook',
+        hookTrigger: { type: 'hook', event: 'file.changed' },
+        schedule: { type: 'interval', intervalHours: 1 },
+      };
+      expect(shouldRun(flow, new Date())).toBe(false);
     });
 
     describe('interval schedule', () => {
@@ -95,17 +105,46 @@ describe('flow-helpers', () => {
       expect(cmd).toContain('; exit\n');
     });
 
-    it('builds codex command with auto-edit by default', () => {
+    it('builds codex command with workspace-write by default', () => {
       const flow = { prompt: 'test', agent: 'codex' };
       const cmd = buildFlowCommand(flow);
       expect(cmd).toContain('codex');
-      expect(cmd).toContain('--approval-mode auto-edit');
+      expect(cmd).toContain('--sandbox workspace-write');
+      expect(cmd).toContain('--ask-for-approval never');
+      expect(cmd).toContain('exec --skip-git-repo-check');
     });
 
-    it('builds codex command with full-auto when dangerouslySkipPermissions', () => {
+    it('builds codex command with danger-full-access when dangerouslySkipPermissions', () => {
       const flow = { prompt: 'test', agent: 'codex', dangerouslySkipPermissions: true };
       const cmd = buildFlowCommand(flow);
-      expect(cmd).toContain('--approval-mode full-auto');
+      expect(cmd).toContain('--sandbox danger-full-access');
+    });
+
+    it('builds codex command with model and reasoning effort overrides', () => {
+      const flow = {
+        prompt: 'test',
+        agent: 'codex',
+        model: 'gpt-5.5',
+        reasoningEffort: 'high',
+        serviceTier: 'fast',
+      };
+      const cmd = buildFlowCommand(flow);
+
+      expect(cmd).toContain("--model 'gpt-5.5'");
+      expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
+      expect(cmd).toContain("-c 'service_tier=\"fast\"'");
+      expect(cmd).toContain('exec --skip-git-repo-check');
+    });
+
+    it('builds codex command with standard service tier when fast is disabled', () => {
+      const flow = {
+        prompt: 'test',
+        agent: 'codex',
+        serviceTier: 'standard',
+      };
+      const cmd = buildFlowCommand(flow);
+
+      expect(cmd).toContain("-c 'service_tier=\"standard\"'");
     });
 
     it('escapes single quotes in prompt', () => {

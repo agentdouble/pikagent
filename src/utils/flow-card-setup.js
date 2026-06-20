@@ -8,11 +8,13 @@
  * @typedef {{ id: string, runs?: Array<FlowRun>, enabled?: boolean }} FlowDescriptor
  */
 
-import { _el } from './dom.js';
-import { getLastRun, toggleInSet } from './flow-view-helpers.js';
-import { cleanupAllDragState } from './flow-category-renderer.js';
+import { _el } from './dom-api.js';
+import { toggleCollapsible } from './dom-lists.js';
+import { getLastRun } from './flow-view-helpers.js';
+import { cleanupAllDragState } from './flow-drag-cleanup.js';
 import { createCardHeader } from './flow-card-renderer.js';
 import { onDragEvents } from './event-helpers.js';
+import { setupSimpleDragState } from './drag-helpers.js';
 
 /**
  * Attach dragstart / dragend handlers to a flow card element.
@@ -22,22 +24,21 @@ import { onDragEvents } from './event-helpers.js';
  * @param {string} catId
  * @param {{ flowId: string|null, catId: string|null }} dragState - mutable drag state object
  */
-export function setupCardDrag(card, flowId, catId, dragState) {
-  onDragEvents(card, {
-    onDragStart: (e) => {
-      dragState.flowId = flowId;
-      dragState.catId = catId;
-      card.classList.add('flow-dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', flowId);
+function setupCardDrag(card, flowId, catId, dragState) {
+  const { onDragStart: startFlow, onDragEnd: endFlow } = setupSimpleDragState(
+    card, 'flow-dragging', dragState, 'flowId', flowId, {
+      onStart: (e) => {
+        dragState.catId = catId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', flowId);
+      },
+      onEnd: () => {
+        dragState.catId = null;
+        cleanupAllDragState();
+      },
     },
-    onDragEnd: () => {
-      card.classList.remove('flow-dragging');
-      dragState.flowId = null;
-      dragState.catId = null;
-      cleanupAllDragState();
-    },
-  });
+  );
+  onDragEvents(card, { onDragStart: startFlow, onDragEnd: endFlow });
 }
 
 /**
@@ -48,12 +49,12 @@ export function setupCardDrag(card, flowId, catId, dragState) {
  * @param {boolean} isRunning
  * @param {boolean} isExpanded
  * @param {{ createLiveTerminal: (flowId: string, ptyId: string) => HTMLElement, loadLogIntoContainer: (flowId: string, run: FlowRun, container: HTMLElement) => void, disposeLogTerminal: (flowId: string) => void }} termManager - FlowCardTerminalManager instance
- * @param {Record<string, string>} runningMap - { [flowId]: ptyId }
+ * @param {string|undefined} livePtyId
  * @returns {HTMLElement|null}
  */
-export function buildCardBody(flow, isRunning, isExpanded, termManager, runningMap) {
-  if (isRunning) {
-    const container = termManager.createLiveTerminal(flow.id, runningMap[flow.id]);
+function buildCardBody(flow, isRunning, isExpanded, termManager, livePtyId) {
+  if (isRunning && livePtyId) {
+    const container = termManager.createLiveTerminal(flow.id, livePtyId);
     container.style.display = isExpanded ? '' : 'none';
     return container;
   }
@@ -77,10 +78,10 @@ export function buildCardBody(flow, isRunning, isExpanded, termManager, runningM
  * @param {boolean} isRunning
  * @param {{ expandedCards: Set<string>, onRenderList: () => void, onOpenModal: (flow: FlowDescriptor) => void, termManager: { disposeLogTerminal: (flowId: string) => void } }} callbacks
  */
-export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
+function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards, onRenderList, onOpenModal, termManager }) {
   headerRow.addEventListener('click', () => {
     if (isRunning) {
-      toggleInSet(expandedCards, flow.id);
+      toggleCollapsible(expandedCards, flow.id);
       onRenderList();
       return;
     }
@@ -88,7 +89,7 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
       onOpenModal(flow);
       return;
     }
-    if (!toggleInSet(expandedCards, flow.id)) {
+    if (!toggleCollapsible(expandedCards, flow.id)) {
       termManager.disposeLogTerminal(flow.id);
     }
     onRenderList();
@@ -106,7 +107,10 @@ export function setupCardHeaderClick(headerRow, flow, isRunning, { expandedCards
  * @returns {HTMLElement}
  */
 export function createFlowCard(deps, flow, catId) {
-  const isRunning = !!deps.runningMap[flow.id];
+  const livePtyId = deps.runningMap[flow.id];
+  const lastRun = getLastRun(flow);
+  const isHeadlessRunning = !livePtyId && lastRun?.status === 'running';
+  const isRunning = !!livePtyId || isHeadlessRunning;
   const isExpanded = deps.expandedCards.has(flow.id);
 
   const card = _el('div', 'flow-card');
@@ -121,7 +125,7 @@ export function createFlowCard(deps, flow, catId) {
 
   const headerRow = createCardHeader(flow, isRunning, isExpanded, {
     onToggleOutput: (flowId) => {
-      toggleInSet(deps.expandedCards, flowId);
+      toggleCollapsible(deps.expandedCards, flowId);
       deps.onRenderList();
     },
     onShowLog: (f, run) => deps.onShowLog(f, run),
@@ -134,7 +138,7 @@ export function createFlowCard(deps, flow, catId) {
   });
   card.appendChild(headerRow);
 
-  const body = buildCardBody(flow, isRunning, isExpanded, deps.termManager, deps.runningMap);
+  const body = buildCardBody(flow, isRunning, isExpanded, deps.termManager, livePtyId);
   if (body) card.appendChild(body);
 
   setupCardHeaderClick(headerRow, flow, isRunning, {

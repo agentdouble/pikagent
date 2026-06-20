@@ -3,16 +3,13 @@
  * No I/O — deterministic functions that can be tested in isolation.
  */
 
-const { buildRecord } = require('./record-helpers');
+const { buildTimestampedRecord } = require('./record-helpers');
+const { nowISO } = require('../shared/date-utils');
 
 const DEFAULT_META = { defaultConfig: null };
 
-function sanitizeName(name) {
-  return name.replace(/[^a-zA-Z0-9_\- ]/g, '_').substring(0, 64);
-}
-
-function buildConfigRecord(name, data, existing, now = new Date().toISOString()) {
-  return buildRecord({ ...data, name }, { createdAt: existing?.createdAt || now, updatedAt: now });
+function buildConfigRecord(name, data, existing, now = nowISO()) {
+  return buildTimestampedRecord({ ...data, name }, existing, now);
 }
 
 function formatConfigList(configs, defaultConfigName) {
@@ -26,4 +23,4 @@ function formatConfigList(configs, defaultConfigName) {
     }));
 }
 
-module.exports = { DEFAULT_META, sanitizeName, buildConfigRecord, formatConfigList };
+module.exports = { DEFAULT_META, buildConfigRecord, formatConfigList };

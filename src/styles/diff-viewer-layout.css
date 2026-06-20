@@ -1,0 +1,141 @@
+/* ===== Diff Viewer — Layout ===== */
+.diff-viewer {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+/* Toolbar */
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  min-height: 30px;
+}
+
+/* Content area */
+.diff-viewer-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.diff-viewer-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.diff-viewer-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diff-viewer-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+/* Scrollbar for content */
+.diff-table {
+  overflow: visible;
+}
+
+/* ===== Split View — Layout ===== */
+.diff-table.diff-split {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+}
+
+.diff-split .diff-row {
+  display: flex;
+  min-height: 20px;
+}
+
+.diff-split .diff-cell {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 20px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.diff-separator {
+  width: 1px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
+.diff-line-no {
+  min-width: 42px;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.diff-code {
+  flex: 1;
+  padding: 0 8px;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hunk separator rows */
+.diff-row-hunk {
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ===== Unified View — Layout ===== */
+.diff-table.diff-unified {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+}
+
+.diff-unified .diff-row {
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 20px;
+  min-height: 20px;
+}
+
+.diff-unified .diff-line-no {
+  min-width: 38px;
+  padding: 0 6px;
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.diff-unified .diff-prefix {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  user-select: none;
+  font-weight: 600;
+}
+
+.diff-unified .diff-code {
+  flex: 1;
+  padding: 0 8px;
+  white-space: pre;
+}

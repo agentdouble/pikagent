@@ -2,8 +2,9 @@
  * Pure rendering helpers for flow cards.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el, createActionButton, renderButtonBar } from './dom.js';
-import { formatSchedule } from './flow-schedule-helpers.js';
+import { _el } from './dom-api.js';
+import { createActionButton, buildDomainButtonBar } from './dom-buttons.js';
+import { formatFlowTrigger } from './flow-trigger-helpers.js';
 import { MAX_VISIBLE_RUNS, buildDotTooltip, buildCardActionEntries } from './flow-view-helpers.js';
 
 /**
@@ -32,14 +33,7 @@ function createRunDots(flow, onShowLog) {
  * @param {{ run: () => void, toggle: () => void, edit: () => void, delete: () => void }} handlers
  */
 function createCardActions(flow, isRunning, handlers) {
-  const configs = buildCardActionEntries(flow, isRunning).map(({ text, title, action, cls }) => ({
-    text,
-    title,
-    cls: cls ? `flow-card-btn ${cls}` : 'flow-card-btn',
-    action,
-    stopPropagation: true,
-  }));
-  return renderButtonBar({ containerClass: 'flow-card-actions', configs, handlers });
+  return buildDomainButtonBar('flow-card-btn', 'flow-card-actions', buildCardActionEntries(flow, isRunning), handlers);
 }
 
 /**
@@ -66,7 +60,7 @@ export function createCardHeader(flow, isRunning, isExpanded, opts) {
     }));
   }
   info.appendChild(nameRow);
-  info.appendChild(_el('div', 'flow-card-schedule', formatSchedule(flow.schedule)));
+  info.appendChild(_el('div', 'flow-card-schedule', formatFlowTrigger(flow)));
   headerRow.appendChild(info);
 
   const right = _el('div', 'flow-card-right');

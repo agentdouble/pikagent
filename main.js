@@ -2,16 +2,19 @@ const { app } = require('electron');
 const window = require('./main/window');
 const { initManagers } = require('./main/manager-init');
 const ipcHandlers = require('./main/ipc-handlers');
+const { configureAppIdentity } = require('./main/app-identity');
 
-app.setName('Pickagent');
+configureAppIdentity(app);
 
 let managerCleanup = null;
 
 app.whenReady().then(() => {
-  const win = window.create();
+  window.create();
   const getWindow = () => window.get();
 
-  const { targets, cleanup, ptyManager, sessionManager } = initManagers(getWindow);
+  const { targets, cleanup, ptyManager, sessionManager } = initManagers(getWindow, {
+    installBundledSkills: app.isPackaged,
+  });
   managerCleanup = cleanup;
 
   ipcHandlers.register(getWindow, { targets, ptyManager, sessionManager });
@@ -24,8 +27,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (managerCleanup) managerCleanup();
   if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('before-quit', () => {
-  ipcHandlers.cleanup();
 });

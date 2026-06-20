@@ -11,7 +11,7 @@
  */
 
 import { generateId } from './id.js';
-import { WorkspaceTab } from './tab-manager-helpers.js';
+import { WorkspaceTab } from './tab-types.js';
 import { disposeAllSideViews } from './sidebar-manager.js';
 import { capturePanelWidths } from './workspace-resize.js';
 import { disposeAllTabs } from './workspace-cleanup.js';
@@ -84,6 +84,38 @@ export function serialize({ tabs, activeTabId }) {
 // ── Restore ──
 
 /**
+ * Create a single WorkspaceTab from a serialized tab config entry.
+ * Handles legacy `userNamed` inference and cwd resolution.
+ *
+ * @param {Partial<SerializedTab> & { name: string }} tabData
+ * @param {string} defaultCwd
+ * @returns {WorkspaceTab}
+ */
+function _restoreTab(tabData, defaultCwd) {
+  const id = generateId('tab');
+  const firstCwd = firstTerminalCwd(tabData.splitTree);
+  const resolvedCwd = firstCwd || tabData.cwd || defaultCwd || '/';
+  const derived = extractFolderName(resolvedCwd);
+  const folderName = derived && derived !== '/' ? derived : null;
+  // Legacy configs predate `userNamed`. Infer it: a literal `Workspace N`
+  // name is the old default and is considered auto; anything else is
+  // treated as a name the user explicitly chose and must be preserved.
+  const userNamed = typeof tabData.userNamed === 'boolean'
+    ? tabData.userNamed
+    : !/^Workspace \d+$/.test(tabData.name || '');
+  const name = userNamed
+    ? tabData.name
+    : folderName || tabData.name;
+  const tab = new WorkspaceTab(id, name, resolvedCwd);
+  tab.userNamed = userNamed;
+  tab.noShortcut = tabData.noShortcut || false;
+  tab.colorGroup = tabData.colorGroup || null;
+  tab.worktree = tabData.worktree || null;
+  tab._restoreData = tabData;
+  return tab;
+}
+
+/**
  * Restore workspace from a saved config.
  * @param {RestoreConfigDeps} deps
  * @param {{ tabs: Array<Partial<SerializedTab> & { name: string }>, activeTabIndex?: number }} config
@@ -99,27 +131,8 @@ export async function restoreConfig({ tabs, setActiveTabId, defaultCwd, renderTa
 
   // Create tabs from config
   for (const tabData of config.tabs) {
-    const id = generateId('tab');
-    const firstCwd = firstTerminalCwd(tabData.splitTree);
-    const resolvedCwd = firstCwd || tabData.cwd || defaultCwd || '/';
-    const derived = extractFolderName(resolvedCwd);
-    const folderName = derived && derived !== '/' ? derived : null;
-    // Legacy configs predate `userNamed`. Infer it: a literal `Workspace N`
-    // name is the old default and is considered auto; anything else is
-    // treated as a name the user explicitly chose and must be preserved.
-    const userNamed = typeof tabData.userNamed === 'boolean'
-      ? tabData.userNamed
-      : !/^Workspace \d+$/.test(tabData.name || '');
-    const name = userNamed
-      ? tabData.name
-      : folderName || tabData.name;
-    const tab = new WorkspaceTab(id, name, resolvedCwd);
-    tab.userNamed = userNamed;
-    tab.noShortcut = tabData.noShortcut || false;
-    tab.colorGroup = tabData.colorGroup || null;
-    tab.worktree = tabData.worktree || null;
-    tab._restoreData = tabData;
-    tabs.set(id, tab);
+    const tab = _restoreTab(tabData, defaultCwd);
+    tabs.set(tab.id, tab);
   }
 
   renderTabBar();

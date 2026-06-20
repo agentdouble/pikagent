@@ -13,12 +13,12 @@
  *
  * @typedef {{ workspaceContainer: HTMLElement, viewStore: SideViewStore }} SideViewDeps
  *
- * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, viewStore: SideViewStore }} DetachDeps
+ * @typedef {{ getActiveTab: () => import('./tab-types.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-types.js').WorkspaceTab) => void, viewStore: SideViewStore }} DetachDeps
  */
 
-import { getComponent } from './component-registry.js';
-import { _el } from './dom.js';
-import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-manager-helpers.js';
+import { _el } from './dom-api.js';
+import { renderList } from './dom-lists.js';
+import { ACTIVITY_BUTTONS, SETTINGS_ICON, SIDE_VIEWS } from './tab-constants.js';
 import { createAsyncHandler } from './event-helpers.js';
 
 function buildActivityButton(label, iconSvg, extraClass = '') {
@@ -30,48 +30,21 @@ function buildActivityButton(label, iconSvg, extraClass = '') {
 }
 
 /**
- * Declarative map for sidebar view rendering — single source of truth for
- * component name (resolved via registry), constructor args, and post-reattach behavior.
+ * Per-mode reattach overrides.  Default reattach behavior is `view.refresh()`
+ * (see `defaultReattach` below); only modes needing custom logic appear here.
  */
-const SIDE_VIEW_RENDERERS = {
-  board: {
-    componentName: 'BoardView',
-    ctorArgs: (extraArgs) => extraArgs.boardCtorArgs || [],
-    onReattach: (viewStore) => {
-      const boardView = viewStore.getView('boardView');
-      if (boardView) {
-        for (const [, card] of boardView.cards) {
-          try { card.fitAddon.fit(); } catch {}
-        }
-        boardView.resume();
-      }
-    },
-  },
-  flow: {
-    componentName: 'FlowView',
-    ctorArgs: (extraArgs) => extraArgs.flowCtorArgs || [],
-    onReattach: (viewStore) => {
-      const flowView = viewStore.getView('flowView');
-      if (flowView) flowView.refresh();
-    },
-  },
-  usage: {
-    componentName: 'UsageView',
-    ctorArgs: () => [],
-    onReattach: (viewStore) => {
-      const usageView = viewStore.getView('usageView');
-      if (usageView) usageView.refresh();
-    },
-  },
-  skills: {
-    componentName: 'SkillsView',
-    ctorArgs: () => [],
-    onReattach: (viewStore) => {
-      const skillsView = viewStore.getView('skillsView');
-      if (skillsView) skillsView.refresh();
-    },
+const SIDE_VIEW_REATTACH_OVERRIDES = {
+  board: (viewStore) => {
+    const boardView = viewStore.getView('boardView');
+    if (!boardView) return;
+    boardView.resume();
   },
 };
+
+function defaultReattach(viewStore, viewKey) {
+  const view = viewStore.getView(viewKey);
+  if (view) view.refresh();
+}
 
 // ── Activity Bar ──
 
@@ -85,14 +58,13 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
   activityBar.replaceChildren();
 
   const topSection = _el('div', 'activity-bar-top');
-
-  for (const { label, mode, icon } of ACTIVITY_BUTTONS) {
+  renderList(topSection, ACTIVITY_BUTTONS, ({ label, mode, icon }) => {
     const btn = buildActivityButton(label, icon);
     btn.dataset.mode = mode;
     if (sidebarMode === mode) btn.classList.add('active');
     btn.addEventListener('click', () => setSidebarMode(mode));
-    topSection.appendChild(btn);
-  }
+    return btn;
+  });
 
   activityBar.appendChild(topSection);
 
@@ -119,7 +91,7 @@ export function renderActivityBar({ sidebarMode, setSidebarMode, onOpenSettings 
  * @param {...unknown} ctorArgs  - Arguments for the ViewClass constructor
  * @returns {boolean}
  */
-export function renderSideView({ workspaceContainer, viewStore }, viewKey, containerKey, ViewClass, ...ctorArgs) {
+function renderSideView({ workspaceContainer, viewStore }, viewKey, containerKey, ViewClass, ...ctorArgs) {
   workspaceContainer.replaceChildren();
 
   if (viewStore.getView(viewKey) && viewStore.getContainer(containerKey)) {
@@ -136,21 +108,23 @@ export function renderSideView({ workspaceContainer, viewStore }, viewKey, conta
 }
 
 /**
- * Activate a side view by mode using SIDE_VIEW_RENDERERS config.
- * @param {SideViewDeps} deps
+ * Activate a side view by mode using the SIDE_VIEWS descriptor.
+ * @param {SideViewDeps & { resolveComponent: (name: string) => Function }} deps
  * @param {string} mode         - Side view mode (board, flow, usage)
  * @param {{ boardCtorArgs?: unknown[], flowCtorArgs?: unknown[] }} extraArgs - Additional constructor args per mode
  */
-export function activateSideView(deps, mode, extraArgs = {}) {
-  const sideView = SIDE_VIEWS[mode];
-  const renderer = SIDE_VIEW_RENDERERS[mode];
-  if (!sideView || !renderer) return;
-  const ViewClass = getComponent(renderer.componentName);
+function activateSideView(deps, mode, extraArgs = {}) {
+  const cfg = SIDE_VIEWS[mode];
+  if (!cfg || !cfg.componentName) return;
+  const ViewClass = deps.resolveComponent(cfg.componentName);
+  const ctorArgs = cfg.ctorArgsKey ? (extraArgs[cfg.ctorArgsKey] || []) : [];
   const reattached = renderSideView(
-    deps, sideView.viewKey, sideView.containerKey,
-    ViewClass, ...renderer.ctorArgs(extraArgs),
+    deps, cfg.viewKey, cfg.containerKey, ViewClass, ...ctorArgs,
   );
-  if (reattached) renderer.onReattach(deps.viewStore);
+  if (!reattached) return;
+  const override = SIDE_VIEW_REATTACH_OVERRIDES[mode];
+  if (override) override(deps.viewStore);
+  else defaultReattach(deps.viewStore, cfg.viewKey);
 }
 
 // ── Sidebar mode switching ──
@@ -158,7 +132,7 @@ export function activateSideView(deps, mode, extraArgs = {}) {
 /**
  * Switch sidebar mode: detach current view, activate new view (or re-attach work layout).
  *
- * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, viewStore: SideViewStore, workspaceContainer: HTMLElement, reattachLayout: (deps: { workspaceContainer: HTMLElement }, tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, renderWorkspace: (tab: import('./tab-manager-helpers.js').WorkspaceTab) => void, tabManager: unknown }} ChangeSidebarModeDeps
+ * @typedef {{ getActiveTab: () => import('./tab-types.js').WorkspaceTab|null, capturePanelWidths: (tab: import('./tab-types.js').WorkspaceTab) => void, viewStore: SideViewStore, workspaceContainer: HTMLElement, reattachLayout: (deps: { workspaceContainer: HTMLElement }, tab: import('./tab-types.js').WorkspaceTab) => void, renderWorkspace: (tab: import('./tab-types.js').WorkspaceTab) => void, tabManager: unknown, resolveComponent: (name: string) => Function }} ChangeSidebarModeDeps
  */
 
 /**
@@ -177,6 +151,7 @@ export function changeSidebarMode(deps, currentMode, newMode) {
     activateSideView({
       workspaceContainer: deps.workspaceContainer,
       viewStore: deps.viewStore,
+      resolveComponent: deps.resolveComponent,
     }, newMode, {
       boardCtorArgs: [deps.tabManager],
       flowCtorArgs: [deps.tabManager],

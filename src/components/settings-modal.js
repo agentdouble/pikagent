@@ -1,5 +1,7 @@
 import { formatCombo, eventToCombo } from '../utils/shortcut-helpers.js';
-import { _el, createActionButton } from '../utils/dom.js';
+import { _el } from '../utils/dom-api.js';
+import { createActionButton } from '../utils/dom-buttons.js';
+import { buildTabBar } from '../utils/dom-tabs.js';
 import { createModalOverlay } from '../utils/dom-dialogs.js';
 import { MODAL_CLOSE_TRANSITION_MS, MODIFIER_KEYS, NAV_SECTIONS } from '../utils/settings-helpers.js';
 import { getComponent } from '../utils/component-registry.js';
@@ -14,6 +16,7 @@ export class SettingsModal {
     this._updateUnsub = null;
     this.sectionRenderers = {
       keybindings: () => this._renderKeybindings(),
+      editor: () => this._renderEditor(),
       appearance: () => this._renderAppearance(),
       configs: () => this._renderConfigs(),
       update: () => this._renderUpdate(),
@@ -50,19 +53,22 @@ export class SettingsModal {
 
   _buildBody() {
     const body = _el('div', 'settings-body');
-    const nav = _el('div', 'settings-nav');
 
-    this.navItems = {};
-    for (const { key, label } of NAV_SECTIONS) {
-      const item = _el('div', 'settings-nav-item', label);
-      if (key === this.activeSection) item.classList.add('active');
-      item.addEventListener('click', () => this.showSection(key));
-      nav.appendChild(item);
-      this.navItems[key] = item;
-    }
+    const { bar, setActive } = buildTabBar(
+      NAV_SECTIONS.map(({ key, label }) => ({ id: key, label })),
+      {
+        activeId: this.activeSection,
+        barClass: 'settings-nav',
+        tag: 'div',
+        itemClass: 'settings-nav-item',
+        activeClass: 'active',
+        onSelect: (key) => this.showSection(key),
+      },
+    );
+    this._setActiveNav = setActive;
 
     this.content = _el('div', 'settings-content');
-    body.appendChild(nav);
+    body.appendChild(bar);
     body.appendChild(this.content);
     return body;
   }
@@ -70,9 +76,7 @@ export class SettingsModal {
   showSection(section) {
     if (this._updateUnsub) { this._updateUnsub(); this._updateUnsub = null; }
     this.activeSection = section;
-    for (const [key, el] of Object.entries(this.navItems)) {
-      el.classList.toggle('active', key === section);
-    }
+    this._setActiveNav(section);
     this.sectionRenderers[section]?.();
   }
 
@@ -108,6 +112,13 @@ export class SettingsModal {
       this.shortcutManager,
       (actionId, index, badgeEl) => this.startRecording(actionId, index, badgeEl),
       () => this._renderKeybindings(),
+    );
+  }
+
+  _renderEditor() {
+    getComponent('renderEditorSettings')(
+      this.content,
+      () => this._renderEditor(),
     );
   }
 

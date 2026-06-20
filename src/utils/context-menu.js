@@ -2,9 +2,10 @@
  * @typedef {{ label?: string, action?: () => void, separator?: boolean, shortcut?: string, colorDot?: string, children?: Array<ContextMenuItem> }} ContextMenuItem
  */
 
-import { _el } from './dom.js';
-import { onClickStopped } from './event-helpers.js';
-import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { _el } from './dom-api.js';
+import { renderList, createListItem } from './dom-lists.js';
+import { onKeyAction } from './event-helpers.js';
+import { addListener } from './drag-helpers.js';
 
 /**
  * Clamp (x, y) so a box of (width, height) stays within the viewport.
@@ -22,15 +23,12 @@ function positionInViewport(x, y, width, height, padding = 8) {
   };
 }
 
-export class ContextMenu {
+class ContextMenu {
   constructor() {
     this.el = _el('div', { className: 'context-menu' });
     document.body.appendChild(this.el);
 
-    /** Named handlers so they can be added/removed with the menu lifecycle. */
-    this._onMouseDown = (e) => {
-      if (!this.el.contains(e.target)) this.close();
-    };
+    this._cleanupMouseDown = null;
     this._cleanupKeyboard = null;
   }
 
@@ -53,24 +51,27 @@ export class ContextMenu {
       return wrapper;
     }
 
-    const children = [];
+    const itemChildren = [];
     if (item.colorDot) {
       const dot = _el('span', { className: 'context-menu-color-dot' });
       dot.style.background = item.colorDot;
-      children.push(dot);
+      itemChildren.push(dot);
     }
-    children.push(_el('span', { textContent: item.label }));
+    itemChildren.push(_el('span', { textContent: item.label }));
     if (item.shortcut) {
-      children.push(_el('span', { className: 'context-menu-shortcut', textContent: item.shortcut }));
+      itemChildren.push(_el('span', { className: 'context-menu-shortcut', textContent: item.shortcut }));
     }
 
-    const itemEl = _el('div', { className: 'context-menu-item' }, ...children);
-    onClickStopped(itemEl, () => { this.close(); item.action(); });
-    return itemEl;
+    return createListItem({
+      cls: 'context-menu-item',
+      children: itemChildren,
+      onClick: () => { this.close(); item.action(); },
+      stopPropagation: true,
+    });
   }
 
   show(x, y, items) {
-    this.el.replaceChildren(...items.map((item) => this._buildItem(item)));
+    renderList(this.el, items, (item) => this._buildItem(item));
 
     this.el.style.display = 'block';
     const { width, height } = this.el.getBoundingClientRect();
@@ -78,18 +79,20 @@ export class ContextMenu {
     this.el.style.left = `${left}px`;
     this.el.style.top = `${top}px`;
 
-    // Register dismiss listeners only while visible (idempotent remove-then-add)
-    document.removeEventListener('mousedown', this._onMouseDown);
+    // Register dismiss listeners only while visible (idempotent cleanup-then-add)
+    if (this._cleanupMouseDown) this._cleanupMouseDown();
     if (this._cleanupKeyboard) this._cleanupKeyboard();
-    document.addEventListener('mousedown', this._onMouseDown);
-    this._cleanupKeyboard = setupKeyboardShortcuts(document, {
+    this._cleanupMouseDown = addListener(document, 'mousedown', (e) => {
+      if (!this.el.contains(e.target)) this.close();
+    });
+    this._cleanupKeyboard = onKeyAction(document, {
       onEscape: () => this.close(),
     });
   }
 
   close() {
     this.el.style.display = 'none';
-    document.removeEventListener('mousedown', this._onMouseDown);
+    if (this._cleanupMouseDown) { this._cleanupMouseDown(); this._cleanupMouseDown = null; }
     if (this._cleanupKeyboard) { this._cleanupKeyboard(); this._cleanupKeyboard = null; }
   }
 }

@@ -1,8 +1,7 @@
 const os = require('os');
 const fs = require('fs');
 const pty = require('node-pty');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
+const { execFileAsync } = require('./command-utils');
 const { createLogger } = require('./logger');
 
 const log = createLogger('pty-manager');
@@ -29,8 +28,6 @@ const {
   parseChildPids,
   parseCwdFromLsof,
 } = require('./pty-helpers');
-
-const execFileAsync = promisify(execFile);
 
 class PtyManager {
   constructor() {
@@ -119,8 +116,13 @@ class PtyManager {
   }
 
   async _getChildPids(pid) {
-    const out = await this._exec('pgrep', ['-P', String(pid)]);
-    return parseChildPids(out);
+    try {
+      const out = await this._exec('pgrep', ['-P', String(pid)]);
+      return parseChildPids(out);
+    } catch (err) {
+      if (err?.code === 1) return [];
+      throw err;
+    }
   }
 
   async _checkAgent(id, proc) {
@@ -130,7 +132,7 @@ class PtyManager {
 
       const psOut = await this._exec('ps', ['-o', 'args=', '-p', childPids.join(',')]);
       return matchAgent(psOut);
-    } catch {}
+    } catch (err) { log.warn('_checkAgent failed', err); }
     return null;
   }
 

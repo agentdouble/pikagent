@@ -9,7 +9,7 @@ Application desktop de gestion d'espaces de travail terminaux, conçue pour supe
 - **Board d'agents** — Monitoring temps réel des agents IA : statut, durée, détection d'inactivité
 - **Explorateur de fichiers** — Arborescence avec lazy loading, création/renommage/suppression, watch du système de fichiers
 - **Visionneuse de code** — Coloration syntaxique (highlight.js), diff Git staged/unstaged
-- **Flows d'automatisation** — Séquences de commandes planifiables (once, daily, weekly, monthly, intervalle)
+- **Flows d'automatisation** — Prompts agent planifiables ou déclenchés par hooks/events
 - **Métriques** — Suivi des sessions agents, tokens consommés et exécutions de flows
 - **Raccourcis clavier** — Navigation rapide entre onglets et actions courantes
 
@@ -41,15 +41,46 @@ npm start
 npm run build
 ```
 
+## Hooks de flows
+
+Les flows en mode `Hook` peuvent être déclenchés depuis un watcher, un hook Codex/Claude ou un script local :
+
+```bash
+npm run hook -- emit file.changed --provider watcher --cwd "$PWD" --path src/renderer.js --dry-run
+pickagent-hook run flow_abc123
+```
+
+La commande lit les flows dans `~/.config/.pickagent/flows/`, matche `event`, `provider`, `cwd` et `paths`, applique le debounce du flow, puis écrit les runs/logs dans la même UI Flow.
+
 ## Packaging
 
 ```bash
 # Application macOS (.app)
 npm run package
 
-# Installeur DMG
+# Installeur DMG + ZIP d'update macOS
 npm run package:dmg
 ```
+
+## Releases et mises à jour
+
+Les mises à jour de l'application packagée passent par GitHub Releases via
+`electron-updater`. Un tag `v*` déclenche le workflow `.github/workflows/release.yml`,
+qui exécute les tests puis publie les artefacts macOS requis :
+
+- `Pickagent-*.dmg`
+- `Pickagent-*.zip`
+- `latest-mac.yml`
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+Pour une distribution macOS propre, configure les secrets GitHub
+`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et
+`APPLE_TEAM_ID` afin que le workflow puisse signer et préparer la notarisation
+des artefacts.
 
 ## Structure du projet
 
@@ -76,4 +107,5 @@ npm run package:dmg
 Les données sont stockées dans `~/.config/.pickagent/` :
 - `workspaces.json` — Configurations des espaces de travail
 - `flows/` — Définitions et logs des flows
+- `hook-state.json` — État de debounce des triggers hook
 - `sessions.json` — Métriques des sessions

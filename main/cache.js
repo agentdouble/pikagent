@@ -42,4 +42,30 @@ class Cache {
   }
 }
 
-module.exports = { Cache };
+/**
+ * Returns an async function that checks the cache first, and only calls `fn`
+ * on a cache miss. The result is stored in the cache before being returned.
+ *
+ * Eliminates the repetitive pattern:
+ *   const cached = cache.get();
+ *   if (cached) return cached;
+ *   const result = await computeExpensive();
+ *   cache.set(result);
+ *   return result;
+ *
+ * @param {Cache} cache - Cache instance to use
+ * @param {() => Promise<T>} fn - Async function to compute the value on cache miss
+ * @returns {() => Promise<T>}
+ * @template T
+ */
+function cachedAsync(cache, fn) {
+  return async () => {
+    const cached = cache.get();
+    if (cached) return cached;
+    const result = await fn();
+    cache.set(result);
+    return result;
+  };
+}
+
+module.exports = { Cache, cachedAsync };

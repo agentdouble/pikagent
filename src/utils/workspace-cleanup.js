@@ -4,10 +4,10 @@
  * Extracted from workspace-layout.js to break the circular dependency
  * between workspace-layout.js and workspace-serializer.js (issue #94).
  *
- * @typedef {{ tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, setActiveTabId: (id: string|null) => void }} DisposeAllTabsDeps
+ * @typedef {{ tabs: Map<string, import('./tab-types.js').WorkspaceTab>, setActiveTabId: (id: string|null) => void }} DisposeAllTabsDeps
  */
 
-import { TAB_DISPOSABLES } from './tab-manager-helpers.js';
+import { TAB_DISPOSABLES } from './tab-constants.js';
 import { disposeResources } from './disposable.js';
 
 // ── Tab disposal ──
@@ -15,7 +15,7 @@ import { disposeResources } from './disposable.js';
 /**
  * Dispose a single tab — call dispose() on all disposable sub-components
  * and remove the layout element from the DOM.
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  */
 export function disposeTab(tab) {
   disposeResources([

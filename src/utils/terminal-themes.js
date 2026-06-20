@@ -1,3 +1,5 @@
+import { persistedSetting } from './persisted-setting.js';
+
 const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
 
 function _buildTheme(chrome, ansi, bright) {
@@ -16,9 +18,9 @@ function _buildTheme(chrome, ansi, bright) {
 // TERMINAL_THEMES and light-theme detection are both derived from this table.
 const THEME_DEFS = [
   { name: 'Pikagent',
-    chrome: ['#1a1a2e', '#e0e0e0', '#e0e0e0', '#1a1a2e', '#3a3a5e'],
-    ansi:   ['#1a1a2e', '#ff6b6b', '#51cf66', '#ffd43b', '#74c0fc', '#da77f2', '#66d9e8', '#e0e0e0'],
-    bright: ['#555577', '#ff8787', '#69db7c', '#ffe066', '#91d5ff', '#e599f7', '#99e9f2', '#ffffff'] },
+    chrome: ['#161824', '#f5f3fb', '#f5f3fb', '#161824', '#333951'],
+    ansi:   ['#24283a', '#e16b6b', '#4cb782', '#d6a842', '#5aa7f2', '#a078e8', '#56b6c2', '#d7dbe3'],
+    bright: ['#8f95aa', '#f08a8a', '#63d29a', '#e3bd62', '#80bcf7', '#b996f0', '#73d4df', '#ffffff'] },
   { name: 'Dracula',
     chrome: ['#282a36', '#f8f8f2', '#f8f8f2', '#282a36', '#44475a'],
     ansi:   ['#21222c', '#ff5555', '#50fa7b', '#f1fa8c', '#bd93f9', '#ff79c6', '#8be9fd', '#f8f8f2'],
@@ -56,9 +58,9 @@ const THEME_DEFS = [
     ansi:   ['#0d1117', '#ff7b72', '#7ee787', '#d29922', '#79c0ff', '#d2a8ff', '#a5d6ff', '#c9d1d9'],
     bright: ['#484f58', '#ffa198', '#56d364', '#e3b341', '#79c0ff', '#d2a8ff', '#a5d6ff', '#f0f6fc'] },
   { name: 'Pikagent Light', light: true,
-    chrome: ['#ffffff', '#1f2937', '#1f2937', '#ffffff', '#c7d2fe'],
-    ansi:   ['#1f2937', '#dc2626', '#16a34a', '#ca8a04', '#2563eb', '#9333ea', '#0891b2', '#f3f4f6'],
-    bright: ['#6b7280', '#ef4444', '#22c55e', '#eab308', '#3b82f6', '#a855f7', '#06b6d4', '#ffffff'] },
+    chrome: ['#ffffff', '#101218', '#101218', '#ffffff', '#dde3ef'],
+    ansi:   ['#101218', '#c75050', '#2f8a61', '#9a7128', '#2f78c4', '#7d55c7', '#247f89', '#eef1f6'],
+    bright: ['#7a8290', '#d66363', '#3fa574', '#b8842f', '#438dde', '#9169dd', '#3299a5', '#ffffff'] },
   { name: 'Solarized Light', light: true,
     chrome: ['#fdf6e3', '#657b83', '#657b83', '#fdf6e3', '#eee8d5'],
     ansi:   ['#073642', '#dc322f', '#859900', '#b58900', '#268bd2', '#d33682', '#2aa198', '#eee8d5'],
@@ -75,28 +77,30 @@ export const TERMINAL_THEMES = Object.fromEntries(
 
 const LIGHT_THEMES = new Set(THEME_DEFS.filter((d) => d.light).map((d) => d.name));
 
-const STORAGE = { theme: 'pikagent-terminal-theme', prev: 'pikagent-terminal-theme-prev' };
 const DEFAULT_LIGHT = 'Pikagent Light';
 const DEFAULT_DARK = 'Pikagent';
 
+const themeSetting = persistedSetting('pikagent-terminal-theme', DEFAULT_DARK);
+const prevThemeSetting = persistedSetting('pikagent-terminal-theme-prev', DEFAULT_DARK);
+
 export function getTerminalTheme() {
-  const name = localStorage.getItem(STORAGE.theme) || DEFAULT_DARK;
+  const name = themeSetting.get();
   return TERMINAL_THEMES[name] || TERMINAL_THEMES[DEFAULT_DARK];
 }
 
 export function getTerminalThemeName() {
-  return localStorage.getItem(STORAGE.theme) || DEFAULT_DARK;
+  return themeSetting.get();
 }
 
 export function setTerminalTheme(name) {
-  localStorage.setItem(STORAGE.theme, name);
+  themeSetting.set(name);
 }
 
 export function switchTerminalForMode(mode) {
   const current = getTerminalThemeName();
   const wantLight = mode === 'light';
   if (wantLight === LIGHT_THEMES.has(current)) return false;
-  if (wantLight) localStorage.setItem(STORAGE.prev, current);
-  setTerminalTheme(wantLight ? DEFAULT_LIGHT : (localStorage.getItem(STORAGE.prev) || DEFAULT_DARK));
+  if (wantLight) prevThemeSetting.set(current);
+  setTerminalTheme(wantLight ? DEFAULT_LIGHT : prevThemeSetting.get());
   return true;
 }

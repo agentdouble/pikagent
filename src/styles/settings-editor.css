@@ -1,0 +1,77 @@
+.editor-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.editor-setting-copy {
+  min-width: 0;
+}
+
+.editor-setting-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.editor-setting-description {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.editor-setting-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.editor-setting-toggle-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.editor-setting-toggle-track {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.editor-setting-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.editor-setting-toggle-input:checked + .editor-setting-toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.editor-setting-toggle-input:checked + .editor-setting-toggle-track .editor-setting-toggle-thumb {
+  transform: translateX(16px);
+  background: var(--text-on-accent);
+}
+
+.editor-setting-toggle-input:focus-visible + .editor-setting-toggle-track {
+  box-shadow: var(--shadow-focus);
+}

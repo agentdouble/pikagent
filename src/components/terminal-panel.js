@@ -1,63 +1,72 @@
-import { bus, EVENTS } from '../utils/events.js';
-import { _el } from '../utils/dom.js';
-import { trackMouse } from '../utils/drag-helpers.js';
-import {
-  SplitNode, RESIZE_CURSOR,
-  isSameDirectionSplit, createSplitContainer, equalizeChildren, doResize,
-} from '../utils/terminal-panel-helpers.js';
-import { DropIndicatorManager } from '../utils/terminal-drop-indicator.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { serializeLayout, serializeElement } from '../utils/terminal-serializer.js';
-import { detachElement } from '../utils/split-layout.js';
+import {
+  setupDragHandler,
+  setupResizeHandler,
+  DropIndicatorManager,
+  detachElement,
+  RESIZE_CURSOR,
+  doResize,
+  emitLayoutChanged,
+} from '../utils/terminal-panel-drag.js';
+import {
+  serializeLayout,
+  serializeElement,
+  moveTerminal as moveTerminalHelper,
+  splitTerminal,
+  focusDirection as focusDirectionHelper,
+  emitTerminalRemoved,
+} from '../utils/terminal-panel-state.js';
 import {
   buildTopBar,
   createTerminalNode as createTerminalNodeHelper,
   buildFromTree as buildFromTreeHelper,
+  createSplitHandle as createSplitHandleHelper,
 } from '../utils/terminal-node-builder.js';
-import { moveTerminal as moveTerminalHelper, splitTerminal, focusDirection as focusDirectionHelper } from '../utils/terminal-split.js';
+import { terminalPanelFacade } from '../facades/terminal-panel-facade.js';
 
-export class TerminalPanel {
+class TerminalPanel {
   constructor(container, cwd) {
     this.container = container;
     this.cwd = cwd;
+    this._initState();
+    // Injected API methods forwarded to TerminalInstance (read-only, never mutated).
+    this._terminalApi = terminalPanelFacade;
+    this._initDragState();
+    this.init();
+  }
+
+  _initState() {
     this.root = null;
     this.activeTerminal = null;
     this.terminals = new Map();
+  }
 
-    // Injected API methods forwarded to TerminalInstance
-    this._terminalApi = {
-      openExternal: window.api.shell.openExternal,
-      homedir: window.api.fs.homedir,
-      openPath: window.api.shell.openPath,
-      ptyWrite: window.api.pty.write,
-      ptyOnData: window.api.pty.onData,
-      ptyOnExit: window.api.pty.onExit,
-      ptyCreate: window.api.pty.create,
-      ptyGetCwd: window.api.pty.getCwd,
-      ptyResize: window.api.pty.resize,
-      ptyKill: window.api.pty.kill,
-    };
-
+  _initDragState() {
     // Drag and drop state
     this._dragSourceId = null;
-    this._drop = new DropIndicatorManager(container);
+    this._drop = new DropIndicatorManager(this.container);
+  }
 
-    this.init();
+  // ===== Iteration Helper =====
+
+  _forEachTerminal(fn) {
+    for (const [id, node] of this.terminals) fn(id, node);
   }
 
   // ===== DOM Helpers =====
 
   _createSplitHandle(direction, splitEl) {
-    const handle = _el('div', `split-handle split-handle-${direction}`);
-    this.setupResizeHandle(handle, splitEl, direction);
-    return handle;
+    return createSplitHandleHelper(direction, splitEl, (h, s, d) =>
+      this.setupResizeHandle(h, s, d)
+    );
   }
 
   _findTerminalCwd(el) {
-    for (const [, node] of this.terminals) {
-      if (node.element === el) return node.terminal.cwd;
-    }
-    return this.cwd;
+    let found = this.cwd;
+    this._forEachTerminal((id, node) => {
+      if (node.element === el) found = node.terminal.cwd;
+    });
+    return found;
   }
 
   _resetContainer() {
@@ -82,9 +91,9 @@ export class TerminalPanel {
   }
 
   restoreFromTree(tree) {
-    for (const [id, node] of this.terminals) {
+    this._forEachTerminal((id, node) => {
       node.terminal.dispose();
-    }
+    });
     this.terminals.clear();
 
     this._resetContainer();
@@ -115,27 +124,26 @@ export class TerminalPanel {
   // ===== Drag & Drop =====
 
   setupDrag(handle, sourceNode) {
-    handle.addEventListener('mousedown', (e) => {
-      if (this.terminals.size < 2) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      this._dragSourceId = sourceNode.terminal.id;
-      sourceNode.element.classList.add('dragging');
-      this._drop.create();
-
-      trackMouse('grabbing',
-        (ev) => this._drop.update(ev.clientX, ev.clientY, this.terminals, this._dragSourceId),
-        () => {
-          sourceNode.element.classList.remove('dragging');
-          const { targetId, side } = this._drop;
-          this._drop.remove();
-          if (targetId && side && targetId !== this._dragSourceId) {
-            this.moveTerminal(this._dragSourceId, targetId, side);
-          }
-          this._dragSourceId = null;
-        },
-      );
+    setupDragHandler(handle, {
+      guard: () => this.terminals.size >= 2,
+      stopPropagation: true,
+      cursor: 'grabbing',
+      bodyClass: 'dragging',
+      onStart: () => {
+        this._dragSourceId = sourceNode.terminal.id;
+        sourceNode.element.classList.add('dragging');
+        this._drop.create();
+      },
+      onMove: (ev) => this._drop.update(ev.clientX, ev.clientY, this.terminals, this._dragSourceId),
+      onEnd: () => {
+        sourceNode.element.classList.remove('dragging');
+        const { targetId, side } = this._drop;
+        this._drop.remove();
+        if (targetId && side && targetId !== this._dragSourceId) {
+          this.moveTerminal(this._dragSourceId, targetId, side);
+        }
+        this._dragSourceId = null;
+      },
     });
   }
 
@@ -150,9 +158,9 @@ export class TerminalPanel {
   setActive(node) {
     if (node.type !== 'terminal') return;
 
-    for (const [, n] of this.terminals) {
+    this._forEachTerminal((id, n) => {
       n.terminal.cwdPollingPaused = true;
-    }
+    });
     node.terminal.cwdPollingPaused = false;
 
     this.container.querySelectorAll('.terminal-wrapper.active').forEach((el) => {
@@ -184,23 +192,21 @@ export class TerminalPanel {
   }
 
   setupResizeHandle(handle, splitEl, direction) {
-    handle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      trackMouse(RESIZE_CURSOR[direction],
-        (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
-        /** @fires layout:changed {undefined} — resize complete */
-        () => bus.emit(EVENTS.LAYOUT_CHANGED),
-      );
+    setupResizeHandler(handle, {
+      cursor: RESIZE_CURSOR[direction],
+      onMove: (ev) => doResize(ev, handle, splitEl, direction, () => this.fitAll()),
+      /** @fires layout:changed {undefined} — resize complete */
+      onDone: () => emitLayoutChanged(),
     });
   }
 
   fitAll() {
     requestAnimationFrame(() => {
-      for (const [id, node] of this.terminals) {
+      this._forEachTerminal((id, node) => {
         if (node.terminal) {
           node.terminal.fit();
         }
-      }
+      });
     });
   }
 
@@ -211,7 +217,7 @@ export class TerminalPanel {
     node.terminal.dispose();
     this.terminals.delete(termId);
     /** @fires terminal:removed {{ id: string }} */
-    bus.emit(EVENTS.TERMINAL_REMOVED, { id: termId });
+    emitTerminalRemoved({ id: termId });
 
     if (this.terminals.size === 0) {
       this.init();
@@ -239,15 +245,15 @@ export class TerminalPanel {
   }
 
   applyTheme(theme) {
-    for (const [id, node] of this.terminals) {
+    this._forEachTerminal((id, node) => {
       node.terminal.terminal.options.theme = theme;
-    }
+    });
   }
 
   dispose() {
-    for (const [id, node] of this.terminals) {
+    this._forEachTerminal((id, node) => {
       node.terminal.dispose();
-    }
+    });
     this.terminals.clear();
   }
 }

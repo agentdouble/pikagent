@@ -1,5 +1,5 @@
 import { detectLanguage } from '../utils/file-icons.js';
-import { _el } from '../utils/dom.js';
+import { _el } from '../utils/dom-api.js';
 import { parseDiff, buildSideBySideRows, wordDiff, countDiffStats, UNIFIED_CHANGE_CONFIG, VIEW_MODES, HUNK_FLASH_DURATION_MS } from '../utils/diff-parser.js';
 import { NAV_BUTTONS, WORD_DIFF_CLASS, capitalize } from '../utils/diff-viewer-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
@@ -8,17 +8,25 @@ import { registerComponent } from '../utils/component-registry.js';
  * DiffViewer component - renders a side-by-side diff with syntax highlighting,
  * line numbers, and navigation between hunks.
  */
-export class DiffViewer {
+class DiffViewer {
   constructor(container, diffText, filePath) {
     this.container = container;
     this.diffText = diffText;
     this.filePath = filePath;
-    this.lang = detectLanguage(filePath);
+    this._initState();
+    this._parseDiff();
+    this.render();
+  }
+
+  _initState() {
+    this.lang = detectLanguage(this.filePath);
     this.viewMode = 'split';
     this.currentHunkIndex = -1;
     this.hunkElements = [];
+  }
 
-    const parsed = parseDiff(diffText);
+  _parseDiff() {
+    const parsed = parseDiff(this.diffText);
     this.headerLines = parsed.headerLines;
     this.hunks = parsed.hunks;
     this.rows = buildSideBySideRows(this.hunks);
@@ -26,8 +34,6 @@ export class DiffViewer {
     const stats = countDiffStats(this.hunks);
     this._additions = stats.additions;
     this._deletions = stats.deletions;
-
-    this.render();
   }
 
   render() {
@@ -146,31 +152,38 @@ export class DiffViewer {
     const table = _el('div', 'diff-table diff-unified');
 
     for (const hunk of this.hunks) {
-      const hunkRow = _el('div', 'diff-row diff-row-hunk');
-      this.hunkElements.push(hunkRow);
-      hunkRow.appendChild(_el('div', 'diff-cell diff-cell-hunk diff-cell-full',
-        `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.context}`));
-      table.appendChild(hunkRow);
-
-      let oldLine = hunk.oldStart;
-      let newLine = hunk.newStart;
-
-      for (const change of hunk.changes) {
-        const config = UNIFIED_CHANGE_CONFIG[change.type];
-        if (!config) continue;
-
-        const row = _el('div', `diff-row ${config.cssClass}`);
-        row.append(
-          _el('div', 'diff-line-no', config.showOld ? oldLine++ : ''),
-          _el('div', 'diff-line-no', config.showNew ? newLine++ : ''),
-          _el('div', 'diff-prefix', config.prefix),
-          _el('div', 'diff-code', change.content),
-        );
-        table.appendChild(row);
-      }
+      table.appendChild(this._buildUnifiedHunkHeader(hunk));
+      this._appendUnifiedChanges(table, hunk);
     }
 
     this.content.appendChild(table);
+  }
+
+  _buildUnifiedHunkHeader(hunk) {
+    const hunkRow = _el('div', 'diff-row diff-row-hunk');
+    this.hunkElements.push(hunkRow);
+    hunkRow.appendChild(_el('div', 'diff-cell diff-cell-hunk diff-cell-full',
+      `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.context}`));
+    return hunkRow;
+  }
+
+  _appendUnifiedChanges(table, hunk) {
+    let oldLine = hunk.oldStart;
+    let newLine = hunk.newStart;
+
+    for (const change of hunk.changes) {
+      const config = UNIFIED_CHANGE_CONFIG[change.type];
+      if (!config) continue;
+
+      const row = _el('div', `diff-row ${config.cssClass}`);
+      row.append(
+        _el('div', 'diff-line-no', config.showOld ? oldLine++ : ''),
+        _el('div', 'diff-line-no', config.showNew ? newLine++ : ''),
+        _el('div', 'diff-prefix', config.prefix),
+        _el('div', 'diff-code', change.content),
+      );
+      table.appendChild(row);
+    }
   }
 
   _createCell(lineNo, content, type, wordSegments) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-const { parseNameStatus, parseUntracked, DIFF_MAX_BUFFER } = require('../../main/git-helpers');
+const { parseNameStatus, parseUntracked, DIFF_MAX_BUFFER, isNotGitRepositoryError } = require('../../main/git-helpers');
 
 describe('git-helpers', () => {
   describe('parseNameStatus', () => {
@@ -49,6 +49,18 @@ describe('git-helpers', () => {
   describe('DIFF_MAX_BUFFER', () => {
     it('is 5MB', () => {
       expect(DIFF_MAX_BUFFER).toBe(5 * 1024 * 1024);
+    });
+  });
+
+  describe('isNotGitRepositoryError', () => {
+    it('detects git non-repository errors from stderr', () => {
+      const err = { stderr: 'fatal: not a git repository (or any of the parent directories): .git' };
+      expect(isNotGitRepositoryError(err)).toBe(true);
+    });
+
+    it('ignores unrelated git errors', () => {
+      const err = { stderr: 'fatal: ambiguous argument HEAD' };
+      expect(isNotGitRepositoryError(err)).toBe(false);
     });
   });
 });

@@ -1,4 +1,5 @@
 const os = require('os');
+const { splitLines, matchFirst } = require('./parse-utils');
 
 const KNOWN_AGENTS = [
   ['claude', 'Claude'],
@@ -23,12 +24,11 @@ function matchAgent(psOutput) {
 }
 
 function parseChildPids(pgrepOutput) {
-  return pgrepOutput.trim().split('\n').filter(Boolean).map((p) => p.trim());
+  return splitLines(pgrepOutput, (p) => p.trim());
 }
 
 function parseCwdFromLsof(lsofOutput) {
-  const match = lsofOutput.match(/^n(.+)$/m);
-  return match ? match[1] : null;
+  return matchFirst(lsofOutput, /^n(.+)$/m, 1);
 }
 
 module.exports = {

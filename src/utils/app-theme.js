@@ -1,11 +1,13 @@
-const STORAGE_KEY = 'pikagent-app-theme';
+import { persistedSetting } from './persisted-setting.js';
+
+const appThemeSetting = persistedSetting('pikagent-app-theme', 'dark');
 
 export function getAppTheme() {
-  return localStorage.getItem(STORAGE_KEY) || 'dark';
+  return appThemeSetting.get();
 }
 
 export function setAppTheme(theme) {
-  localStorage.setItem(STORAGE_KEY, theme);
+  appThemeSetting.set(theme);
   applyAppTheme(theme);
 }
 

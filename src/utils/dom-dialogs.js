@@ -1,13 +1,14 @@
 /**
- * Dialog and prompt helpers — extracted from dom.js to reduce file length.
+ * Dialog and prompt helpers.
  *
- * This module provides high-level dialog builders (prompt, confirm, custom
- * modal).  For core DOM primitives (_el, createActionButton, renderButtonBar,
- * buildChevronRow, etc.) import directly from './dom.js'.
+ * This module provides high-level dialog builders (prompt, confirm) and the
+ * createModalOverlay primitive.  For core DOM primitives import from the
+ * appropriate sub-module (dom-core, dom-buttons, dom-tabs, dom-lists).
  */
 
-import { _el, createActionButton } from './dom.js';
-import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { _el } from './dom-core.js';
+import { createActionButton } from './dom-buttons.js';
+import { onKeyAction } from './event-helpers.js';
 
 /**
  * Create a modal overlay with click-outside-to-close behavior.
@@ -25,11 +26,33 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) onClose(); });
   return { overlay, modal };
 }
+/**
+ * Build a dialog button row containing a cancel button followed by a confirm
+ * button.  Extracts the cancel/confirm pair previously duplicated across
+ * showPromptDialog, showConfirmDialog and the worktree dialog.
+ *
+ * @param {{ containerClass: string,
+ *           confirmLabel?: string, cancelLabel?: string,
+ *           confirmClass?: string, cancelClass?: string,
+ *           onConfirm: () => void, onCancel: () => void }} opts
+ * @returns {HTMLElement} the button-row container element
+ */
+export function buildDialogButtons({
+  containerClass,
+  confirmLabel = 'OK', cancelLabel = 'Cancel',
+  confirmClass, cancelClass,
+  onConfirm, onCancel,
+}) {
+  return _el('div', containerClass,
+    createActionButton({ text: cancelLabel, cls: cancelClass, onClick: onCancel }),
+    createActionButton({ text: confirmLabel, cls: confirmClass, onClick: onConfirm }),
+  );
+}
 
-// ── Private dialog lifecycle ──
+// ── Dialog lifecycle ──
 
 /**
- * Private dialog lifecycle helper.
+ * Reusable dialog lifecycle helper.
  * Creates overlay + modal via createModalOverlay, calls builder to populate
  * content, appends to document.body, and wraps everything in a Promise.
  *
@@ -45,7 +68,7 @@ export function createModalOverlay(overlayClass, modalClass, onClose) {
  *   (useful for focusing elements).
  * @returns {Promise<unknown>}
  */
-function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCancel, builder }) {
+export function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCancel, builder }) {
   return new Promise((resolve) => {
     let overlay;
     const cleanup = (value) => { overlay.remove(); resolve(value); };
@@ -61,43 +84,6 @@ function createDialogBase({ overlayClass, modalClass, cancelValue = null, onCanc
 // ── Exported dialog builders ──
 
 /**
- * High-level modal builder: creates overlay + modal with a title bar,
- * content area, and optional close button. Appends to document.body and
- * returns a Promise that resolves when the modal is closed.
- *
- * @param {{ title?: string, content?: Node|Node[], onClose?: () => void,
- *           overlayClass?: string, modalClass?: string }} opts
- * @returns {Promise<null>}
- */
-export function createCustomModal({ title, content, onClose, overlayClass = 'modal-overlay', modalClass = 'modal' } = {}) {
-  return createDialogBase({
-    overlayClass,
-    modalClass,
-    onCancel: onClose,
-    builder({ modal, cancel }) {
-      if (title) {
-        const header = _el('div', `${modalClass}-header`,
-          _el('span', `${modalClass}-title`, title),
-          createActionButton({ text: '\u00D7', cls: `${modalClass}-close-btn`, onClick: cancel }),
-        );
-        modal.appendChild(header);
-      }
-
-      const body = _el('div', `${modalClass}-body`);
-      if (content) {
-        const nodes = Array.isArray(content) ? content : [content];
-        for (const node of nodes) {
-          if (node) body.appendChild(node);
-        }
-      }
-      modal.appendChild(body);
-
-      setupKeyboardShortcuts(modal, { onEscape: cancel });
-    },
-  });
-}
-
-/**
  * Show a prompt dialog for a single text value.
  * @returns {Promise<string|null>} trimmed value or null if cancelled
  */
@@ -108,17 +94,19 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
     builder({ modal, cleanup, cancel }) {
       const confirm = () => { const v = input.value.trim(); cleanup(v || null); };
       const input = _el('input', { className: 'prompt-dialog-input', type: 'text', value: defaultValue, placeholder });
-      setupKeyboardShortcuts(input, {
+      onKeyAction(input, {
         onEnter: () => confirm(),
         onEscape: cancel,
       });
       modal.append(
         _el('label', 'prompt-dialog-label', title),
         input,
-        _el('div', 'prompt-dialog-btns',
-          createActionButton({ text: cancelLabel, cls: 'prompt-dialog-cancel', onClick: cancel }),
-          createActionButton({ text: confirmLabel, cls: 'prompt-dialog-confirm', onClick: confirm }),
-        ),
+        buildDialogButtons({
+          containerClass: 'prompt-dialog-btns',
+          confirmLabel, cancelLabel,
+          confirmClass: 'prompt-dialog-confirm', cancelClass: 'prompt-dialog-cancel',
+          onConfirm: confirm, onCancel: cancel,
+        }),
       );
       return () => {
         input.focus();
@@ -126,6 +114,24 @@ export function showPromptDialog({ title, placeholder = '', defaultValue = '', c
       };
     },
   });
+}
+
+/**
+ * Shorthand for displaying a one-off error/info alert whose body is:
+ *   <p>{prefix}<code>{error || 'unknown error'}</code></p>
+ *
+ * Used across several flows (worktree creation/removal, open-PR, etc.) where
+ * the same pattern was previously copy-pasted.
+ *
+ * @param {string} prefix  Human-readable text before the code span.
+ * @param {string|null|undefined} error  Machine-readable detail shown in <code>.
+ * @returns {Promise<boolean>}
+ */
+export async function showErrorAlert(prefix, error) {
+  return showConfirmDialog(
+    _el('p', null, prefix, _el('code', null, error || 'unknown error')),
+    { confirmLabel: 'OK', cancelLabel: 'Close' },
+  );
 }
 
 /**
@@ -142,13 +148,15 @@ export function showConfirmDialog(message, { confirmLabel = 'OK', cancelLabel = 
       if (typeof message === 'string') modal.appendChild(_el('p', null, message));
       else modal.appendChild(message);
 
-      const btnRow = _el('div', 'confirm-buttons',
-        createActionButton({ text: cancelLabel, cls: 'confirm-cancel', onClick: cancel }),
-        createActionButton({ text: confirmLabel, cls: 'confirm-ok', onClick: () => cleanup(true) }),
-      );
+      const btnRow = buildDialogButtons({
+        containerClass: 'confirm-buttons',
+        confirmLabel, cancelLabel,
+        confirmClass: 'confirm-ok', cancelClass: 'confirm-cancel',
+        onConfirm: () => cleanup(true), onCancel: cancel,
+      });
       modal.appendChild(btnRow);
 
-      setupKeyboardShortcuts(overlay, {
+      onKeyAction(overlay, {
         onEscape: cancel,
         onEnter: () => cleanup(true),
       });

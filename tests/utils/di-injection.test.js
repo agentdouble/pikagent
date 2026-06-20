@@ -33,15 +33,20 @@ describe('DI: file-tree-context-menu', () => {
   let buildCommonContextItems, buildFileContextItems, buildDirContextItems;
 
   beforeAll(async () => {
-    vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
+    vi.doMock('../../src/utils/event-bus.js', () => {
+      const bus = { emit: vi.fn(), on: vi.fn() };
+      return { bus, createTypedEvent: (name) => ({ on: (cb) => bus.on(name, cb), emit: (data) => bus.emit(name, data) }) };
+    });
     vi.doMock('../../src/utils/file-tree-helpers.js', () => ({
       getRelativePath: (p, root) => p.replace(root + '/', ''),
+      getBaseName: (p) => p.split('/').filter(Boolean).pop() || '/',
+      extractFolderName: (p) => p.split('/').filter(Boolean).pop() || '/',
       INPUT_BLUR_DELAY: 100,
       computeIndent: () => 0,
     }));
 
     const mod = await import('../../src/utils/file-tree-context-menu.js');
-    buildCommonContextItems = mod.buildCommonContextItems;
+    buildCommonContextItems = mod._internals.buildCommonContextItems;
     buildFileContextItems = mod.buildFileContextItems;
     buildDirContextItems = mod.buildDirContextItems;
   });
@@ -115,12 +120,19 @@ describe('DI: file-tree-drop handleFileDrop', () => {
   let handleFileDrop;
 
   beforeAll(async () => {
-    vi.doMock('../../src/utils/dom.js', () => ({
+    vi.doMock('../../src/utils/dom-core.js', () => ({
       _el: () => ({}),
+    }));
+    vi.doMock('../../src/utils/form-helpers.js', () => ({
       setupInlineInput: vi.fn(),
     }));
-    vi.doMock('../../src/utils/events.js', () => ({ bus: { emit: vi.fn(), on: vi.fn() } }));
+    vi.doMock('../../src/utils/event-bus.js', () => {
+      const bus = { emit: vi.fn(), on: vi.fn() };
+      return { bus, createTypedEvent: (name) => ({ on: (cb) => bus.on(name, cb), emit: (data) => bus.emit(name, data) }) };
+    });
     vi.doMock('../../src/utils/file-tree-helpers.js', () => ({
+      getBaseName: (p) => p.split('/').filter(Boolean).pop() || '/',
+      extractFolderName: (p) => p.split('/').filter(Boolean).pop() || '/',
       INPUT_BLUR_DELAY: 100,
       computeIndent: () => 0,
     }));
@@ -153,7 +165,7 @@ describe('DI: file-editor-renderer saveFile', () => {
   let saveFile;
 
   beforeAll(async () => {
-    vi.doMock('../../src/utils/dom.js', () => ({
+    vi.doMock('../../src/utils/dom-core.js', () => ({
       _el: (tag, cls, text) => {
         return { tag, className: cls, textContent: text, replaceChildren: vi.fn(), classList: { add: vi.fn(), remove: vi.fn() } };
       },

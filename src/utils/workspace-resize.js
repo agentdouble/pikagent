@@ -3,16 +3,13 @@
  *
  * Handles panel resize interactions and panel toggle (collapse/expand).
  *
- * @typedef {{ getActiveTab: () => import('./tab-manager-helpers.js').WorkspaceTab|null, scheduleAutoSave: () => void }} PanelInteractionDeps
+ * @typedef {{ getActiveTab: () => import('./tab-types.js').WorkspaceTab|null, scheduleAutoSave: () => void }} PanelInteractionDeps
  */
 
-import { _el } from './dom.js';
-import { trackMouse } from './drag-helpers.js';
-import {
-  PANEL_MIN_WIDTH, FIT_DELAY_MS,
-  WORKSPACE_PANELS,
-  clampPanelWidth, panelArrowState,
-} from './tab-manager-helpers.js';
+import { _el } from './dom-api.js';
+import { setupResizeHandler } from './drag-helpers.js';
+import { WORKSPACE_FIT_DELAY_MS, WORKSPACE_PANELS } from './tab-constants.js';
+import { clampPanelWidth, panelArrowState } from './tab-manager-helpers.js';
 
 // ── Panel building ──
 
@@ -36,16 +33,14 @@ export function buildSidePanel(deps, { side, contentCls, title }) {
 }
 
 /**
- * Build the center panel with path info, branch badge, and terminal area.
+ * Build the path-info bar with collapse arrows, path text, and branch badge.
  * @param {PanelInteractionDeps} deps
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} leftPanel
  * @param {HTMLElement} rightPanel
+ * @returns {HTMLElement}
  */
-export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
-  const panel = _el('div', 'panel panel-center');
-  const header = _el('div', 'panel-header');
-
+function _buildPathInfo(deps, tab, leftPanel, rightPanel) {
   const pathInfo = _el('div', 'path-info');
 
   const pathArrowLeft = _el('span', 'path-arrow', '\u2190');
@@ -60,14 +55,29 @@ export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
   pathArrowRight.addEventListener('click', () => togglePanel(deps, rightPanel, 'right', pathArrowRight));
 
   pathInfo.append(pathArrowLeft, pathText, branchBadge, pathArrowRight);
-  header.appendChild(pathInfo);
+
+  tab.pathTextEl = pathText;
+  tab.branchBadgeEl = branchBadge;
+
+  return pathInfo;
+}
+
+/**
+ * Build the center panel with path info, branch badge, and terminal area.
+ * @param {PanelInteractionDeps} deps
+ * @param {import('./tab-types.js').WorkspaceTab} tab
+ * @param {HTMLElement} leftPanel
+ * @param {HTMLElement} rightPanel
+ */
+export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
+  const panel = _el('div', 'panel panel-center');
+  const header = _el('div', 'panel-header');
+
+  header.appendChild(_buildPathInfo(deps, tab, leftPanel, rightPanel));
   panel.appendChild(header);
 
   const termContainer = _el('div', 'terminal-area');
   panel.appendChild(termContainer);
-
-  tab.pathTextEl = pathText;
-  tab.branchBadgeEl = branchBadge;
 
   return { panel, termContainer };
 }
@@ -81,24 +91,18 @@ export function buildCenterPanel(deps, tab, leftPanel, rightPanel) {
  * @param {HTMLElement} panel
  * @param {string} side
  */
-export function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, panel, side) {
-  let startX = 0;
-  let startWidth = 0;
-
-  handle.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    startX = e.clientX;
-    startWidth = panel.getBoundingClientRect().width;
-    trackMouse('col-resize',
-      (ev) => {
-        const dx = ev.clientX - startX;
-        const newWidth = side === 'left' ? startWidth + dx : startWidth - dx;
-        panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
-        panel.style.flex = 'none';
-        getActiveTab()?.terminalPanel?.fitAll();
-      },
-      () => scheduleAutoSave(),
-    );
+function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, panel, side) {
+  setupResizeHandler(handle, {
+    cursor: 'col-resize',
+    onStart: (e) => ({ startX: e.clientX, startWidth: panel.getBoundingClientRect().width }),
+    onMove: (ev, ctx) => {
+      const dx = ev.clientX - ctx.startX;
+      const newWidth = side === 'left' ? ctx.startWidth + dx : ctx.startWidth - dx;
+      panel.style.width = `${clampPanelWidth(newWidth, side)}px`;
+      panel.style.flex = 'none';
+      getActiveTab()?.terminalPanel?.fitAll();
+    },
+    onDone: () => scheduleAutoSave(),
   });
 }
 
@@ -109,7 +113,7 @@ export function setupPanelResize({ getActiveTab, scheduleAutoSave }, handle, pan
  * @param {string} side
  * @param {HTMLElement} [arrowEl]
  */
-export function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arrowEl) {
+function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arrowEl) {
   panel.classList.add('animating');
   panel.classList.toggle('collapsed');
   const isCollapsed = panel.classList.contains('collapsed');
@@ -123,7 +127,7 @@ export function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arr
   setTimeout(() => {
     panel.classList.remove('animating');
     getActiveTab()?.terminalPanel?.fitAll();
-  }, FIT_DELAY_MS);
+  }, WORKSPACE_FIT_DELAY_MS);
   scheduleAutoSave();
 }
 
@@ -131,7 +135,7 @@ export function togglePanel({ getActiveTab, scheduleAutoSave }, panel, side, arr
 
 /**
  * Snapshot current panel widths and collapsed state into `tab._panelWidths`.
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  */
 export function capturePanelWidths(tab) {
   if (!tab.layoutElement) return;

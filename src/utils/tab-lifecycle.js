@@ -10,21 +10,19 @@
  *
  * @typedef {{ tabs: Map<string, WorkspaceTab>, defaultCwd: string, activeColorFilter: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void } }} CreateTabDeps
  *
- * @typedef {{ tabs: Map<string, WorkspaceTab>, activeTabId: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void }, worktreeApi?: import('./worktree-flow.js').GitWorktreeApi }} CloseTabDeps
+ * @typedef {{ tabs: Map<string, WorkspaceTab>, activeTabId: string|null, renderTabBar: () => void, configManager: { scheduleAutoSave: () => void } }} CloseTabDeps
  *
  * @typedef {{ tabs: Map<string, WorkspaceTab>, getActiveTabId: () => string|null, setActiveTabId: (id: string) => void, getSidebarMode: () => string, setSidebarMode: (mode: string) => void, workspaceContainer: HTMLElement, renderTabBar: () => void, renderActivityBar: () => void, renderWorkspace: (tab: WorkspaceTab) => void, detachSidebarView: (mode: string) => void }} SwitchToDeps
  */
 
 import { generateId } from './id.js';
-import { _el } from './dom.js';
+import { _el } from './dom-api.js';
 import { showConfirmDialog } from './dom-dialogs.js';
-import { bus, EVENTS } from './events.js';
-import { WorkspaceTab } from './tab-manager-helpers.js';
-import { reattachLayout, syncFileTree } from './workspace-layout.js';
-import { capturePanelWidths } from './workspace-resize.js';
-import { disposeTab } from './workspace-cleanup.js';
+import { emitWorkspaceActivated, emitTabWorktreeClosed } from './workspace-events.js';
+import { WorkspaceTab } from './tab-types.js';
+import { reattachLayout, syncFileTree, capturePanelWidths, disposeTab } from './workspace-ops.js';
 import { extractFolderName } from './file-tree-helpers.js';
-import { maybeRemoveWorktree } from './worktree-flow.js';
+
 
 // ── Tab creation ──
 
@@ -73,8 +71,8 @@ export async function closeTab(deps, createTabFn, switchToFn, id) {
   disposeTab(tab);
   deps.tabs.delete(id);
 
-  if (tab.worktree && deps.worktreeApi) {
-    await maybeRemoveWorktree(tab.worktree, tab.name, deps.worktreeApi);
+  if (tab.worktree) {
+    emitTabWorktreeClosed({ worktree: tab.worktree, tabName: tab.name });
   }
 
   if (deps.tabs.size === 0) {
@@ -117,7 +115,7 @@ function _activateTab(deps, tab) {
     reattachLayout({ workspaceContainer: deps.workspaceContainer }, tab);
     syncFileTree(tab);
     /** @emits workspace:activated {undefined} — tab switched */
-    bus.emit(EVENTS.WORKSPACE_ACTIVATED);
+    emitWorkspaceActivated();
   } else {
     // First time rendering this tab
     deps.renderWorkspace(tab);
@@ -177,6 +175,81 @@ export function findTabForTerminal(tabs, termId) {
 }
 
 /**
+ * Auto-rename a tab to the folder name when the first terminal's cwd changes
+ * and the user has not explicitly named the tab.
+ * @param {WorkspaceTab} tab
+ * @param {string} termId
+ * @param {string} cwd
+ * @param {(() => void)|undefined} renderTabBar
+ */
+function _autoRenameTab(tab, termId, cwd, renderTabBar) {
+  const firstTermId = tab.terminalPanel?.terminals
+    ? Array.from(tab.terminalPanel.terminals.keys())[0]
+    : null;
+  if (!tab.userNamed && firstTermId === termId) {
+    const newName = extractFolderName(cwd);
+    if (newName && newName !== tab.name) {
+      tab.name = newName;
+      renderTabBar?.();
+    }
+  }
+}
+
+function _isActiveTerminal(tab, activeTabId, termId) {
+  return (
+    tab.id === activeTabId &&
+    tab.terminalPanel?.activeTerminal?.terminal?.id === termId
+  );
+}
+
+function _setTabBranch(tab, branch) {
+  const normalized = branch || null;
+  const text = normalized ? ` ${normalized}` : '';
+  tab.currentBranch = normalized;
+  if (tab.branchBadgeEl && tab.branchBadgeEl.textContent !== text) {
+    tab.branchBadgeEl.textContent = text;
+  }
+}
+
+/**
+ * Refresh the branch badge for the active terminal, without requiring a cwd change.
+ * @param {Map<string, WorkspaceTab>} tabs
+ * @param {string|null} activeTabId
+ * @param {string} termId
+ * @param {string} cwd
+ * @param {{ gitBranch: (cwd: string) => Promise<string|null> }} api
+ * @returns {Promise<void>|undefined}
+ */
+export function refreshTerminalBranch(tabs, activeTabId, termId, cwd, { gitBranch }) {
+  const match = findTabForTerminal(tabs, termId);
+  if (!match) return undefined;
+
+  const { tab } = match;
+  if (!_isActiveTerminal(tab, activeTabId, termId)) return undefined;
+
+  const refreshId = Symbol('branch-refresh');
+  tab._branchRefreshId = refreshId;
+
+  return gitBranch(cwd)
+    .then((branch) => {
+      if (tab._branchRefreshId !== refreshId) return;
+      if (!_isActiveTerminal(tab, activeTabId, termId)) return;
+      _setTabBranch(tab, branch);
+    })
+    .catch((e) => console.warn('Failed to refresh git branch:', e));
+}
+
+/**
+ * Update the header path text and branch badge for the active tab.
+ * @param {WorkspaceTab} tab
+ * @param {string} cwd
+ */
+function _updateHeaderPath(tab, cwd) {
+  tab.cwd = cwd;
+  if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
+}
+
+/**
  * Handle terminal cwd changes — update file tree, active-tab header, and
  * auto-rename the tab (to the folder name) when the first terminal's cwd
  * changes and the user has not explicitly named the tab.
@@ -196,32 +269,14 @@ export function onTerminalCwdChanged(tabs, activeTabId, termId, cwd, { gitBranch
     tab.fileTree.setTerminalRoot(termId, cwd);
   }
 
-  // Auto-rename tab when the first terminal moves and the user hasn't
-  // defined a custom name.
-  const firstTermId = tab.terminalPanel?.terminals
-    ? Array.from(tab.terminalPanel.terminals.keys())[0]
-    : null;
-  if (!tab.userNamed && firstTermId === termId) {
-    const newName = extractFolderName(cwd);
-    if (newName && newName !== tab.name) {
-      tab.name = newName;
-      renderTabBar?.();
-    }
-  }
+  _autoRenameTab(tab, termId, cwd, renderTabBar);
 
   // Update header path/branch only for the active tab's active terminal
   if (
-    tab.id === activeTabId &&
-    tab.terminalPanel?.activeTerminal?.terminal?.id === termId
+    _isActiveTerminal(tab, activeTabId, termId)
   ) {
-    tab.cwd = cwd;
-    if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
-    if (tab.branchBadgeEl) {
-      gitBranch(cwd).then((branch) => {
-        if (tab.branchBadgeEl) {
-          tab.branchBadgeEl.textContent = branch ? ` ${branch}` : '';
-        }
-      });
-    }
+    _updateHeaderPath(tab, cwd);
+    return refreshTerminalBranch(tabs, activeTabId, termId, cwd, { gitBranch });
   }
+  return undefined;
 }

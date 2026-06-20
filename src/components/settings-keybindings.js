@@ -3,9 +3,10 @@
  * Extracted from settings-modal.js to reduce component size.
  */
 import { formatCombo } from '../utils/shortcut-helpers.js';
-import { _el, createActionButton } from '../utils/dom.js';
+import { _el } from '../utils/dom-api.js';
+import { createActionButton } from '../utils/dom-buttons.js';
 import { onClickStopped } from '../utils/event-helpers.js';
-import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 
 /**
@@ -17,7 +18,7 @@ import { registerComponent } from '../utils/component-registry.js';
  * @param {() => void} renderKeybindingsFn - callback to re-render
  * @returns {HTMLElement}
  */
-export function createKeyBadge(binding, index, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+function createKeyBadge(binding, index, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const wrapper = _el('div', 'keybinding-badge-wrapper');
 
   const badge = _el('span', 'keybinding-badge');
@@ -44,13 +45,47 @@ export function createKeyBadge(binding, index, shortcutManager, startRecordingFn
 }
 
 /**
+ * Build a single keybinding row with badge elements and an add button.
+ */
+function _buildKeysContainer(binding, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+  const keysContainer = _el('div', 'keybinding-keys');
+  for (let i = 0; i < binding.keys.length; i++) {
+    keysContainer.appendChild(createKeyBadge(binding, i, shortcutManager, startRecordingFn, renderKeybindingsFn));
+  }
+
+  const addBtn = createActionButton({
+    text: '+',
+    title: 'Add keybinding',
+    cls: 'keybinding-add-btn',
+    onClick: () => {
+      binding.keys.push('');
+      shortcutManager.updateBinding(binding.id, binding.keys);
+      renderKeybindingsFn();
+    },
+  });
+  keysContainer.appendChild(addBtn);
+
+  return keysContainer;
+}
+
+function _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+  return createSettingsItem({
+    cls: 'keybinding-row',
+    content: [
+      _el('div', 'keybinding-label', binding.label),
+      _buildKeysContainer(binding, shortcutManager, startRecordingFn, renderKeybindingsFn),
+    ],
+  });
+}
+
+/**
  * Render the Keybindings section into the given content element.
  * @param {HTMLElement} contentEl - the settings content container
  * @param {{ updateBinding: (id: string, keys: string[]) => void, getBindingsList: () => Array<{ id: string, label: string, keys: string[] }>, resetToDefaults: () => void }} shortcutManager
  * @param {(actionId: string, index: number, badgeEl: HTMLElement) => void} startRecordingFn
  * @param {() => void} renderKeybindingsFn - callback to re-render
  */
-export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
+function renderKeybindings(contentEl, shortcutManager, startRecordingFn, renderKeybindingsFn) {
   const resetBtn = createActionButton({
     text: 'Reset to defaults',
     cls: 'settings-reset-btn',
@@ -60,37 +95,12 @@ export function renderKeybindings(contentEl, shortcutManager, startRecordingFn, 
     },
   });
 
-  const list = _el('div', 'keybinding-list');
-
-  for (const binding of shortcutManager.getBindingsList()) {
-    const row = _el('div', 'keybinding-row');
-    row.appendChild(_el('div', 'keybinding-label', binding.label));
-
-    const keysContainer = _el('div', 'keybinding-keys');
-    for (let i = 0; i < binding.keys.length; i++) {
-      keysContainer.appendChild(createKeyBadge(binding, i, shortcutManager, startRecordingFn, renderKeybindingsFn));
-    }
-
-    const addBtn = createActionButton({
-      text: '+',
-      title: 'Add keybinding',
-      cls: 'keybinding-add-btn',
-      onClick: () => {
-        binding.keys.push('');
-        shortcutManager.updateBinding(binding.id, binding.keys);
-        renderKeybindingsFn();
-      },
-    });
-    keysContainer.appendChild(addBtn);
-
-    row.appendChild(keysContainer);
-    list.appendChild(row);
-  }
-
-  createSettingsSection(contentEl, {
+  buildSettingsSection(contentEl, {
     heading: 'Keyboard Shortcuts',
+    items: shortcutManager.getBindingsList(),
+    renderItem: (binding) => _renderBindingRow(binding, shortcutManager, startRecordingFn, renderKeybindingsFn),
+    listClass: 'keybinding-list',
     actions: [resetBtn],
-    content: [list],
   });
 }
 

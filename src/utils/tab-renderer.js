@@ -5,14 +5,16 @@
  * Functions receive explicit dependency objects instead of the full
  * TabManager instance.
  *
- * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-manager-helpers.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
+ * @typedef {{ activeTabId: string|null, tabs: Map<string, import('./tab-types.js').WorkspaceTab>, switchTo: (id: string) => void, closeTab: (id: string) => void, renameTab: (id: string, nameEl: HTMLElement) => void, setTabColorGroup: (id: string, colorGroupId: string|null) => void, toggleNoShortcut: (id: string) => void, dragDeps: import('./tab-drag.js').TabDragDeps }} TabElementDeps
  */
-import { _el } from './dom.js';
+import { _el } from './dom-api.js';
+import { buildChevronRow } from './dom-lists.js';
 import { startInlineRename } from './form-helpers.js';
-import { COLOR_GROUPS } from './tab-manager-helpers.js';
+import { COLOR_GROUPS } from './tab-constants.js';
 import { setupTabDrag } from './tab-drag.js';
 import { attachContextMenu } from './context-menu.js';
 import { onClickStopped } from './event-helpers.js';
+import { summarizeTabAgentStatus } from './agent-tab-status.js';
 
 /**
  * Generic tab element factory.
@@ -28,7 +30,22 @@ import { onClickStopped } from './event-helpers.js';
  * @returns {{ tabEl: HTMLElement, nameEl: HTMLElement }}
  */
 export function createTabElement(config) {
-  const tabEl = _el('div', config.className);
+  // Build close button (appended after name via extraChildren)
+  const closeChildren = [];
+  if (config.close) {
+    const closeEl = _el('span', config.close.className, config.close.text);
+    onClickStopped(closeEl, (e) => config.close.onClick(e));
+    closeChildren.push(closeEl);
+  }
+
+  const { name: nameEl, row: tabEl } = buildChevronRow({
+    containerClass: config.className,
+    nameClass: config.nameClass || '',
+    name: config.name,
+    prefixChildren: config.prefixEls || [],
+    extraChildren: closeChildren,
+  });
+
   if (config.isActive) tabEl.classList.add('active');
   if (config.extraClasses) {
     for (const cls of config.extraClasses) tabEl.classList.add(cls);
@@ -41,19 +58,6 @@ export function createTabElement(config) {
       if (k.startsWith('--')) tabEl.style.setProperty(k, v);
       else tabEl.style[k] = v;
     }
-  }
-
-  if (config.prefixEls) {
-    for (const el of config.prefixEls) tabEl.appendChild(el);
-  }
-
-  const nameEl = _el('span', config.nameClass || null, config.name);
-  tabEl.appendChild(nameEl);
-
-  if (config.close) {
-    const closeEl = _el('span', config.close.className, config.close.text);
-    onClickStopped(closeEl, (e) => config.close.onClick(e));
-    tabEl.appendChild(closeEl);
   }
 
   tabEl.addEventListener('click', () => config.onClick(tabEl));
@@ -69,13 +73,20 @@ export function createTabElement(config) {
  * Build a single tab DOM element.
  * @param {TabElementDeps} deps
  * @param {string} id
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  */
 export function buildTabElement(deps, id, tab) {
   const isActive = id === deps.activeTabId;
 
   // Build optional prefix elements
   const prefixEls = [];
+  const agentStatus = summarizeTabAgentStatus(tab);
+  if (agentStatus) {
+    const statusDot = _el('span', agentStatus.className);
+    statusDot.title = agentStatus.title;
+    prefixEls.push(statusDot);
+  }
+
   let accentColor = '';
   if (tab.colorGroup) {
     const cg = COLOR_GROUPS.find((c) => c.id === tab.colorGroup);
@@ -118,10 +129,10 @@ export function buildTabElement(deps, id, tab) {
  * @param {TabElementDeps} deps
  * @param {HTMLElement} tabEl
  * @param {string} id
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} nameEl
  */
-export function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
+function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
   attachContextMenu(tabEl, () => {
     const colorItems = COLOR_GROUPS.map((cg) => ({
       label: `${tab.colorGroup === cg.id ? '\u2713 ' : ''}${cg.label}`,
@@ -147,7 +158,7 @@ export function bindTabContextMenu(deps, tabEl, id, tab, nameEl) {
 
 /**
  * Inline rename a tab.
- * @param {import('./tab-manager-helpers.js').WorkspaceTab} tab
+ * @param {import('./tab-types.js').WorkspaceTab} tab
  * @param {HTMLElement} nameEl
  * @param {() => void} onCommit - callback after successful rename (re-render + save)
  * @param {() => void} onCancel - callback on cancel (re-render only, no save)
@@ -157,7 +168,7 @@ export function inlineRenameTab(tab, nameEl, onCommit, onCancel) {
     className: 'tab-rename-input',
     value: tab.name,
     onCommit: (newName) => {
-      if (newName) {
+      if (newName && newName !== tab.name) {
         tab.name = newName;
         tab.userNamed = true;
       }

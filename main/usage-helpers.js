@@ -1,9 +1,18 @@
 const os = require('os');
 const path = require('path');
 const { computeRate, computeDuration, perDay, DEFAULT_DAYS } = require('./stats-helpers');
-const { extractDateString } = require('./date-utils');
-const { countBy } = require('./collection-helpers');
-const { aggregateByKey, groupAndAggregate } = require('./aggregation-utils');
+const { extractDateString, toDateString } = require('../shared/date-utils');
+const {
+  aggregateByKey,
+  groupAndAggregate,
+  accumulateBy,
+  sumByKeys,
+  mapFields,
+  countBy,
+  rankTopByDesc,
+  initializeCounters,
+  createDomainMetricsBuilder,
+} = require('../shared/aggregation-utils');
 
 // ===== Declarative configs =====
 
@@ -25,28 +34,28 @@ const PERDAY_KEYS = TOKEN_FIELD_MAP.filter(f => f.perDay).map(f => f.key);
 
 const MAX_RUN_DURATION_MS = 24 * 60 * 60 * 1000;
 const TOP_PROJECTS_LIMIT = 10;
-const CACHE_TTL = 30000;
 const TOP_FILES_LIMIT = 15;
 const GIT_TIMEOUT_MS = 5000;
 
 // ===== Token helpers =====
 
 function newTokenTotals() {
-  return Object.fromEntries(TOKEN_FIELD_MAP.map(f => [f.key, 0]));
+  return initializeCounters(TOKEN_FIELD_MAP);
 }
 
 function newPerDayTotals() {
-  return Object.fromEntries(PERDAY_KEYS.map(k => [k, 0]));
+  return initializeCounters(PERDAY_KEYS);
 }
 
 /**
  * Add numeric token fields from `source` into `target` (in-place).
+ * Delegates to the generic accumulateBy helper.
  * @param {Record<string, number>} target
  * @param {Record<string, number>} source
  * @param {string[]} [keys=TOKEN_KEYS] - field names to accumulate
  */
 function addTokens(target, source, keys = TOKEN_KEYS) {
-  for (const k of keys) target[k] += source[k] || 0;
+  accumulateBy(target, source, keys);
 }
 
 /** @internal */
@@ -71,11 +80,11 @@ function parseTokenUsage(line, cutoffMs) {
   if (entry.timestamp) {
     const ts = typeof entry.timestamp === 'number' ? entry.timestamp : new Date(entry.timestamp).getTime();
     if (ts < cutoffMs) return null;
-    dateKey = extractDateString(new Date(ts).toISOString());
+    dateKey = toDateString(ts);
   }
 
   return {
-    ...Object.fromEntries(TOKEN_FIELD_MAP.map(f => [f.key, u[f.apiField] || 0])),
+    ...mapFields(u, TOKEN_FIELD_MAP),
     dateKey,
   };
 }
@@ -107,19 +116,21 @@ function buildGlobalPerDay(labels, projectResults) {
 /** @internal Aggregate per-project token data, sorted by total descending. */
 function buildPerProjectRanking(projectResults) {
   const perProjectAgg = aggregateByKey(
-    projectResults.filter(({ totals: pt }) => PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0) > 0),
+    projectResults.filter(({ totals: pt }) => sumByKeys(pt, PERDAY_KEYS) > 0),
     ({ proj }) => projectShortName(proj),
-    () => ({ ...Object.fromEntries(PERDAY_KEYS.map(k => [k, 0])), total: 0 }),
+    () => ({ ...initializeCounters(PERDAY_KEYS), total: 0 }),
     (bucket, { totals: pt }) => {
       addTokens(bucket, pt, PERDAY_KEYS);
-      bucket.total += PERDAY_KEYS.reduce((sum, k) => sum + pt[k], 0);
+      bucket.total += sumByKeys(pt, PERDAY_KEYS);
     },
   );
 
-  return Object.entries(perProjectAgg)
-    .map(([project, data]) => ({ project, ...data }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, TOP_PROJECTS_LIMIT);
+  return rankTopByDesc(
+    perProjectAgg,
+    (project, data) => ({ project, ...data }),
+    'total',
+    TOP_PROJECTS_LIMIT,
+  );
 }
 
 function aggregateTokenData(labels, projectResults) {
@@ -130,7 +141,7 @@ function aggregateTokenData(labels, projectResults) {
 
   const perDay = labels.map((day) => {
     const g = globalPerDay[day.date] || newPerDayTotals();
-    const total = PERDAY_KEYS.reduce((sum, k) => sum + g[k], 0);
+    const total = sumByKeys(g, PERDAY_KEYS);
     return { ...day, ...g, total };
   });
 
@@ -169,23 +180,14 @@ function getFlowRunDuration(run) {
 }
 
 /**
- * Shared metrics builder — computes rate, duration, and perDay from a list of
- * items and merges any extra fields supplied by the caller.
- *
- * @param {Array} items - The items to compute base metrics for
- * @param {{ durationMapper: (item: any) => number|null,
- *           dateExtractor: (item: any) => string,
- *           extra?: Record<string, unknown> }} opts
- * @returns {Record<string, unknown>}
+ * Domain-specific metrics builder — pre-configured with domain rate/perDay
+ * functions via createDomainMetricsBuilder, eliminating repeated config injection.
  */
-function buildMetrics(items, { durationMapper, dateExtractor, extra = {} }) {
-  return {
-    rate: computeRate(items),
-    duration: computeDuration(items.map(durationMapper)),
-    perDay: perDay(items, dateExtractor, DEFAULT_DAYS),
-    ...extra,
-  };
-}
+const buildMetrics = createDomainMetricsBuilder({
+  rateFn: computeRate,
+  perDayFn: perDay,
+  days: DEFAULT_DAYS,
+});
 
 function buildFlowMetrics(flows, flowRuns) {
   return buildMetrics(flowRuns, {
@@ -253,10 +255,12 @@ function buildFileKey(cwd, filePath) {
 
 function rankModifiedFiles(results, limit = TOP_FILES_LIMIT) {
   const allFiles = results.flatMap(({ cwd, files }) => files.map(f => buildFileKey(cwd, f)));
-  return Object.entries(countBy(allFiles, k => k))
-    .map(([file, count]) => ({ file, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
+  return rankTopByDesc(
+    countBy(allFiles, k => k),
+    (file, count) => ({ file, count }),
+    'count',
+    limit,
+  );
 }
 
 function collectUniqueCwds(flowRuns, sessions) {
@@ -267,7 +271,6 @@ function collectUniqueCwds(flowRuns, sessions) {
 }
 
 module.exports = {
-  CACHE_TTL,
   TOP_FILES_LIMIT,
   GIT_TIMEOUT_MS,
   newTokenTotals,

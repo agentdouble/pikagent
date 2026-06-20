@@ -6,8 +6,9 @@
  * directly on the "Create pull request" form.
  */
 
-import { showConfirmDialog } from './dom-dialogs.js';
-import { _el } from './dom.js';
+import { showConfirmDialog, showErrorAlert } from './dom-dialogs.js';
+import { _el } from './dom-api.js';
+import { gitFlowStep } from './git-flow-helpers.js';
 
 /**
  * Parse a remote URL (HTTPS or SSH) into { host, owner, repo }.
@@ -17,7 +18,7 @@ import { _el } from './dom.js';
  *   git@github.com:owner/repo.git      → same
  *   ssh://git@github.com/owner/repo    → same
  */
-export function parseRemoteUrl(url) {
+function parseRemoteUrl(url) {
   if (!url) return null;
   const trimmed = url.trim().replace(/\.git$/, '');
   const patterns = [
@@ -33,7 +34,7 @@ export function parseRemoteUrl(url) {
 }
 
 /** Build a provider-specific URL for opening a new PR/MR from `branch`. */
-export function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
+function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
   const b = encodeURIComponent(branch);
   if (host.endsWith('github.com')) {
     const base = baseBranch ? `${encodeURIComponent(baseBranch)}...${b}` : b;
@@ -65,8 +66,38 @@ export function buildPrUrl({ host, owner, repo }, branch, baseBranch) {
  * }} OpenPrApi
  */
 
-async function _alert(msg) {
-  await showConfirmDialog(msg, { confirmLabel: 'OK', cancelLabel: 'Close' });
+/**
+ * Handle the result of a failed `gh pr create` call.
+ * Returns true when the failure was surfaced to the user (caller should stop);
+ * false when the caller should fall back to the browser flow.
+ */
+async function _handleGhFailure(result) {
+  if (result?.code === 'gh-not-installed') return false;
+  const retryBrowser = await showConfirmDialog(
+    _el('div', null,
+      _el('p', null, 'gh pr create failed:'),
+      _el('pre', { style: { fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' } },
+        result?.error || 'unknown error'),
+      _el('p', null, 'Open in browser instead?'),
+    ),
+    { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+  );
+  return !retryBrowser;
+}
+
+/**
+ * Handle the result of a successful `gh pr create` call.
+ * Shows a dialog and optionally opens the PR URL in the browser.
+ */
+async function _handleGhSuccess(result, api) {
+  const open = await showConfirmDialog(
+    _el('div', null,
+      _el('p', null, result.existed ? 'PR already open: ' : 'PR created: ',
+        _el('code', null, result.url || '')),
+    ),
+    { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+  );
+  if (open && result.url) await api.openExternal(result.url);
 }
 
 /**
@@ -91,29 +122,64 @@ async function _tryGhFlow(cwd, branch, baseBranch, api) {
 
   const result = await api.ghPrCreate({ cwd, baseBranch });
 
-  if (!result?.ok) {
-    if (result?.code === 'gh-not-installed') return false;
-    const retryBrowser = await showConfirmDialog(
-      _el('div', null,
-        _el('p', null, 'gh pr create failed:'),
-        _el('pre', { style: { fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' } },
-          result?.error || 'unknown error'),
-        _el('p', null, 'Open in browser instead?'),
-      ),
-      { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+  if (!result?.ok) return _handleGhFailure(result);
+
+  await _handleGhSuccess(result, api);
+  return true;
+}
+
+/**
+ * Validate branch and remote, returning the parsed remote info or null
+ * (after showing the appropriate error dialog).
+ * @param {string} cwd
+ * @param {OpenPrApi} api
+ * @returns {Promise<{ branch: string, parsed: { host: string, owner: string, repo: string } } | null>}
+ */
+async function _validateBranchAndRemote(cwd, api) {
+  const [branch, remote] = await Promise.all([api.branch(cwd), api.remoteUrl(cwd)]);
+
+  if (!branch) {
+    await showErrorAlert('No git branch detected in ', cwd);
+    return null;
+  }
+  if (!remote) {
+    await showConfirmDialog(
+      _el('p', null, 'No ', _el('code', null, 'origin'), ' remote configured.'),
+      { confirmLabel: 'OK', cancelLabel: 'Close' },
     );
-    return !retryBrowser;
+    return null;
   }
 
-  const open = await showConfirmDialog(
+  const parsed = parseRemoteUrl(remote);
+  if (!parsed) {
+    await showErrorAlert('Could not parse remote URL: ', remote);
+    return null;
+  }
+
+  return { branch, parsed };
+}
+
+/**
+ * Prompt the user to push and open a browser-based PR flow.
+ * @param {string} cwd
+ * @param {string} branch
+ * @param {string} url - the compare/PR URL to open
+ * @param {OpenPrApi} api
+ */
+async function _browserPrFlow(cwd, branch, url, api) {
+  const ok = await showConfirmDialog(
     _el('div', null,
-      _el('p', null, result.existed ? 'PR already open: ' : 'PR created: ',
-        _el('code', null, result.url || '')),
+      _el('p', null, 'Push ', _el('code', null, branch), ' to ', _el('code', null, 'origin'), ' and open a PR?'),
+      _el('p', { style: { fontSize: '11px', color: 'var(--text-muted)' } }, url),
     ),
-    { confirmLabel: 'Open in browser', cancelLabel: 'Close' },
+    { confirmLabel: 'Push & open', cancelLabel: 'Cancel' },
   );
-  if (open && result.url) await api.openExternal(result.url);
-  return true;
+  if (!ok) return;
+
+  const push = await gitFlowStep(() => api.pushBranch({ cwd, branch }), 'Push failed: ');
+  if (!push) return;
+
+  await api.openExternal(url);
 }
 
 /**
@@ -127,22 +193,9 @@ async function _tryGhFlow(cwd, branch, baseBranch, api) {
  * @param {{ cwd: string, baseBranch?: string|null, api: OpenPrApi }} opts
  */
 export async function openPrFlow({ cwd, baseBranch = null, api }) {
-  const [branch, remote] = await Promise.all([api.branch(cwd), api.remoteUrl(cwd)]);
-
-  if (!branch) {
-    await _alert(_el('p', null, 'No git branch detected in ', _el('code', null, cwd)));
-    return;
-  }
-  if (!remote) {
-    await _alert(_el('p', null, 'No ', _el('code', null, 'origin'), ' remote configured.'));
-    return;
-  }
-
-  const parsed = parseRemoteUrl(remote);
-  if (!parsed) {
-    await _alert(_el('p', null, 'Could not parse remote URL: ', _el('code', null, remote)));
-    return;
-  }
+  const result = await _validateBranchAndRemote(cwd, api);
+  if (!result) return;
+  const { branch, parsed } = result;
 
   if (parsed.host.endsWith('github.com')) {
     const handled = await _tryGhFlow(cwd, branch, baseBranch, api);
@@ -151,24 +204,12 @@ export async function openPrFlow({ cwd, baseBranch = null, api }) {
 
   const url = buildPrUrl(parsed, branch, baseBranch);
   if (!url) {
-    await _alert(_el('p', null, 'Unsupported git provider: ', _el('code', null, parsed.host)));
+    await showErrorAlert('Unsupported git provider: ', parsed.host);
     return;
   }
 
-  const ok = await showConfirmDialog(
-    _el('div', null,
-      _el('p', null, 'Push ', _el('code', null, branch), ' to ', _el('code', null, 'origin'), ' and open a PR?'),
-      _el('p', { style: { fontSize: '11px', color: 'var(--text-muted)' } }, url),
-    ),
-    { confirmLabel: 'Push & open', cancelLabel: 'Cancel' },
-  );
-  if (!ok) return;
-
-  const push = await api.pushBranch({ cwd, branch });
-  if (!push?.ok) {
-    await _alert(_el('p', null, 'Push failed: ', _el('code', null, push?.error || 'unknown error')));
-    return;
-  }
-
-  await api.openExternal(url);
+  await _browserPrFlow(cwd, branch, url, api);
 }
+
+/** @internal Exposed for unit tests only. */
+export const _internals = { parseRemoteUrl, buildPrUrl };

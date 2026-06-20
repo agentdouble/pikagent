@@ -4,9 +4,10 @@
  */
 import { TERMINAL_THEMES, getTerminalThemeName, setTerminalTheme, getTerminalTheme, switchTerminalForMode } from '../utils/terminal-themes.js';
 import { getAppTheme, setAppTheme } from '../utils/app-theme.js';
-import { _el, createActionButton } from '../utils/dom.js';
+import { _el } from '../utils/dom-api.js';
+import { createActionButton } from '../utils/dom-buttons.js';
 import { MODE_BUTTONS, THEME_PREVIEW_LINES, COLOR_DOT_KEYS } from '../utils/settings-helpers.js';
-import { createSettingsSection } from '../utils/settings-section-builder.js';
+import { buildSettingsSection, createSettingsItem } from '../utils/settings-section-builder.js';
 import { registerComponent } from '../utils/component-registry.js';
 import { createAsyncHandler } from '../utils/event-helpers.js';
 
@@ -14,7 +15,7 @@ import { createAsyncHandler } from '../utils/event-helpers.js';
  * Apply the current terminal theme to all terminal panels across tabs.
  * @param {import('../components/tab-manager.js').TabManager|null} tabManager
  */
-export function applyThemeToTerminals(tabManager) {
+function applyThemeToTerminals(tabManager) {
   if (!tabManager) return;
   const theme = getTerminalTheme();
   for (const [, tab] of tabManager.tabs) {
@@ -32,11 +33,7 @@ function _createThemePreviewLine(segments, theme) {
   return line;
 }
 
-function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn) {
-  const card = _el('div', 'theme-card');
-  if (isActive) card.classList.add('theme-active');
-
-  // Preview block
+function _buildThemePreview(name, theme) {
   const preview = _el('div', 'theme-preview');
   preview.style.background = theme.background;
 
@@ -53,15 +50,23 @@ function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn)
   }
   preview.appendChild(dots);
 
-  card.appendChild(preview);
-  card.appendChild(_el('div', 'theme-card-label', name));
+  return preview;
+}
 
-  card.addEventListener('click', createAsyncHandler(
-    { stopProp: false, onSuccess: renderAppearanceFn },
-    () => { setTerminalTheme(name); applyThemeToTerminals(tabManager); },
-  ));
-
-  return card;
+function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn) {
+  return createSettingsItem({
+    cls: 'theme-card',
+    isActive,
+    activeCls: 'theme-active',
+    onClick: {
+      handler: () => { setTerminalTheme(name); applyThemeToTerminals(tabManager); },
+      opts: { stopProp: false, onSuccess: renderAppearanceFn },
+    },
+    content: [
+      _buildThemePreview(name, theme),
+      _el('div', 'theme-card-label', name),
+    ],
+  });
 }
 
 /**
@@ -70,7 +75,7 @@ function _createThemeCard(name, theme, isActive, tabManager, renderAppearanceFn)
  * @param {import('../components/tab-manager.js').TabManager|null} tabManager
  * @param {() => void} renderAppearanceFn - callback to re-render this section
  */
-export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
+function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
   // Day/Night mode toggle
   const modeRow = _el('div', 'theme-mode-row');
   modeRow.appendChild(_el('span', 'theme-mode-label', 'Mode'));
@@ -95,16 +100,14 @@ export function renderAppearance(contentEl, tabManager, renderAppearanceFn) {
 
   // Terminal theme grid
   const subHeading = _el('h4', 'theme-sub-heading', 'Terminal Theme');
-
   const currentThemeName = getTerminalThemeName();
-  const grid = _el('div', 'theme-grid');
-  for (const [name, theme] of Object.entries(TERMINAL_THEMES)) {
-    grid.appendChild(_createThemeCard(name, theme, name === currentThemeName, tabManager, renderAppearanceFn));
-  }
 
-  createSettingsSection(contentEl, {
+  buildSettingsSection(contentEl, {
     heading: 'Appearance',
-    content: [modeRow, subHeading, grid],
+    items: Object.entries(TERMINAL_THEMES),
+    renderItem: ([name, theme]) => _createThemeCard(name, theme, name === currentThemeName, tabManager, renderAppearanceFn),
+    listClass: 'theme-grid',
+    before: [modeRow, subHeading],
   });
 }
 

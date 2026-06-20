@@ -3,27 +3,16 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
-import { formatDateTime } from './date-utils.js';
+import { formatDateTime } from '../../shared/date-utils.js';
 import { getLastRun } from '../../shared/flow-utils.js';
 import { countBy, createLookupMap, resolveFromMap } from '../../shared/aggregation-utils.js';
 
-/**
- * Toggle a value in a Set (add if absent, delete if present).
- * @param {Set<string>} set
- * @param {string} value
- * @returns {boolean} true if the value is now in the set
- */
-export function toggleInSet(set, value) {
-  if (set.has(value)) { set.delete(value); return false; }
-  set.add(value);
-  return true;
-}
-
-export const FIT_DELAY_MS = 50;
+/** Delay before fitting xterm in flow cards (shorter — smaller terminals). */
+export const FLOW_FIT_DELAY_MS = 50;
 export const LOG_SCROLLBACK = 5000;
 export const LIVE_SCROLLBACK = 3000;
 
-export const STATUS_LABELS = { success: 'Succès', error: 'Erreur' };
+export const STATUS_LABELS = { running: 'En cours', success: 'Succès', error: 'Erreur' };
 export const NO_LOG_MESSAGE = '\r\n  Log non disponible pour ce run.\r\n';
 export const NO_LOG_MODAL_MESSAGE = '\r\n  Log non disponible.\r\n';
 export const EMPTY_LIST_MESSAGE = 'Aucun flow. Créez-en un pour automatiser vos tâches.';
@@ -32,8 +21,8 @@ export const UNCATEGORIZED = '_uncategorized';
 
 // --- Header button configuration ---
 export const HEADER_BUTTONS = [
-  { label: '+ Catégorie', action: 'addCategory' },
-  { label: '+ Nouveau', action: 'addFlow' },
+  { text: '+ Catégorie', action: 'addCategory' },
+  { text: '+ Nouveau', action: 'addFlow' },
 ];
 
 // --- Category action button configuration ---

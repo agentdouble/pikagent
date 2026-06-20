@@ -1,169 +1,199 @@
-const { exec } = require('child_process');
 const { app } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const { BASE_DIR } = require('./paths');
+const {
+  buildAvailableResult,
+  buildNotAvailableResult,
+  buildUpdateInfo,
+  toErrorMessage,
+} = require('./update-result-helpers');
 
-const SOURCE_CONFIG_FILE = path.join(BASE_DIR, 'source-config.json');
-const REPO_URL = 'https://github.com/agentdouble/pikagent.git';
-const DEFAULT_SOURCE_DIR = path.join(BASE_DIR, 'source');
+let autoUpdater = null;
+let updaterConfigured = false;
+let progressReporter = null;
+let pendingCheck = null;
+let pendingDownload = null;
+let lastUpdateInfo = null;
+let updateDownloaded = false;
 
-// Fallback PATH covering common locations for git/node/npm on macOS,
-// used when the app is launched from Finder (process.env.PATH is minimal).
-const PATH_FALLBACKS = [
-  '/opt/homebrew/bin',
-  '/opt/homebrew/sbin',
-  '/usr/local/bin',
-  '/usr/local/sbin',
-  '/usr/bin',
-  '/bin',
-  '/usr/sbin',
-  '/sbin',
-];
-
-// --- Config persistence ---
-
-function init() {
-  if (!app.isPackaged) {
-    _saveConfig({ root: app.getAppPath(), shellPath: process.env.PATH });
+function _getAutoUpdater() {
+  if (!autoUpdater) {
+    ({ autoUpdater } = require('electron-updater'));
   }
+  return autoUpdater;
 }
 
-function _saveConfig(config) {
-  fs.mkdirSync(BASE_DIR, { recursive: true });
-  fs.writeFileSync(SOURCE_CONFIG_FILE, JSON.stringify(config), 'utf8');
-}
-
-function _loadConfig() {
-  try {
-    return JSON.parse(fs.readFileSync(SOURCE_CONFIG_FILE, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-// --- Source resolution ---
-
-function _hasGitCheckout(dir) {
-  return !!dir && fs.existsSync(path.join(dir, '.git'));
-}
-
-function _resolveExistingRoot() {
-  if (!app.isPackaged) return app.getAppPath();
-  const config = _loadConfig();
-  if (_hasGitCheckout(config?.root)) return config.root;
-  if (_hasGitCheckout(DEFAULT_SOURCE_DIR)) {
-    _saveConfig({ root: DEFAULT_SOURCE_DIR, shellPath: _composeShellPath() });
-    return DEFAULT_SOURCE_DIR;
-  }
-  return null;
-}
-
-function _composeShellPath() {
-  const saved = _loadConfig()?.shellPath;
-  const parts = [saved, process.env.PATH, ...PATH_FALLBACKS].filter(Boolean);
-  return [...new Set(parts.join(':').split(':').filter(Boolean))].join(':');
-}
-
-function _getShellPath() {
-  if (!app.isPackaged) return process.env.PATH;
-  return _composeShellPath();
-}
-
-// --- Shell execution ---
-
-function _run(cmd, cwd) {
-  const shellPath = _getShellPath();
-  return new Promise((resolve, reject) => {
-    exec(cmd, {
-      cwd,
-      env: { ...process.env, PATH: shellPath },
-      maxBuffer: 10 * 1024 * 1024,
-    }, (err, stdout, stderr) => {
-      if (err) reject(new Error((stderr || err.message).slice(0, 500)));
-      else resolve(stdout.trim());
-    });
+function _sendProgress(label, percent = 0) {
+  if (typeof progressReporter !== 'function') return;
+  progressReporter({
+    step: Math.max(1, Math.min(100, Math.round(percent))),
+    total: 100,
+    label,
   });
 }
 
-// --- Cloning ---
+function _configureUpdater() {
+  if (updaterConfigured) return _getAutoUpdater();
 
-async function _cloneSource() {
-  fs.mkdirSync(BASE_DIR, { recursive: true });
-  if (fs.existsSync(DEFAULT_SOURCE_DIR)) {
-    await _run(`rm -rf "${DEFAULT_SOURCE_DIR}"`, BASE_DIR);
-  }
-  await _run(`git clone ${REPO_URL} "${DEFAULT_SOURCE_DIR}"`, BASE_DIR);
-  _saveConfig({ root: DEFAULT_SOURCE_DIR, shellPath: _composeShellPath() });
-  return DEFAULT_SOURCE_DIR;
+  const updater = _getAutoUpdater();
+  updater.autoDownload = false;
+  updater.autoInstallOnAppQuit = false;
+  updater.allowPrerelease = false;
+
+  updater.on('download-progress', (progress = {}) => {
+    const percent = Number.isFinite(progress.percent) ? progress.percent : 0;
+    _sendProgress(`Downloading update (${Math.round(percent)}%)...`, percent);
+  });
+
+  updaterConfigured = true;
+  return updater;
 }
 
-// --- Public API ---
+function init() {
+  if (app.isPackaged) _configureUpdater();
+}
 
 function getVersion() {
   return app.getVersion();
 }
 
-async function checkForUpdates() {
-  const root = _resolveExistingRoot();
-  if (!root) {
-    return {
-      available: true,
-      count: 1,
-      commits: ['First-time setup: source repository will be cloned'],
+function getUpdateInfo() {
+  return buildUpdateInfo(app, { updateInfo: lastUpdateInfo, updateDownloaded });
+}
+
+function _releaseUpdatesUnavailable() {
+  return {
+    available: false,
+    error: 'Release updates are only available from the packaged app.',
+    info: getUpdateInfo(),
+  };
+}
+
+function _finishCheck(resolve, cleanup, result) {
+  cleanup();
+  resolve(result);
+}
+
+async function _checkForUpdates() {
+  if (!app.isPackaged) return _releaseUpdatesUnavailable();
+
+  const updater = _configureUpdater();
+  const info = getUpdateInfo();
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      _finishCheck(resolve, cleanup, result);
     };
+    const onAvailable = (updateInfo) => {
+      lastUpdateInfo = updateInfo;
+      updateDownloaded = false;
+      finish(buildAvailableResult(updateInfo, getUpdateInfo()));
+    };
+    const onNotAvailable = () => {
+      lastUpdateInfo = null;
+      updateDownloaded = false;
+      finish(buildNotAvailableResult(getUpdateInfo()));
+    };
+    const onError = (err) => {
+      finish({ available: false, error: toErrorMessage(err), info });
+    };
+    const cleanup = () => {
+      updater.removeListener('update-available', onAvailable);
+      updater.removeListener('update-not-available', onNotAvailable);
+      updater.removeListener('error', onError);
+    };
+
+    updater.once('update-available', onAvailable);
+    updater.once('update-not-available', onNotAvailable);
+    updater.once('error', onError);
+
+    _sendProgress('Checking published releases...', 5);
+    updater.checkForUpdates().catch(onError);
+  });
+}
+
+function checkForUpdates() {
+  if (!pendingCheck) {
+    pendingCheck = _checkForUpdates().finally(() => {
+      pendingCheck = null;
+    });
   }
-  try {
-    await _run('git fetch origin', root);
-    const branch = await _run('git rev-parse --abbrev-ref HEAD', root);
-    const log = await _run(`git log HEAD..origin/${branch} --oneline`, root);
-    const commits = log ? log.split('\n').filter(Boolean) : [];
-    return { available: commits.length > 0, commits, count: commits.length };
-  } catch (err) {
-    return { available: false, error: err.message };
-  }
+  return pendingCheck;
+}
+
+function _downloadUpdate(updater) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let downloadedFiles = [];
+    const finishSuccess = (updateInfo = lastUpdateInfo) => {
+      lastUpdateInfo = updateInfo || lastUpdateInfo;
+      updateDownloaded = true;
+      _sendProgress('Update downloaded. Restart to install.', 100);
+      finish(resolve, {
+        success: true,
+        version: lastUpdateInfo?.version || null,
+        files: downloadedFiles,
+        info: getUpdateInfo(),
+      });
+    };
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn(value);
+    };
+    const onDownloaded = (updateInfo) => {
+      finishSuccess(updateInfo);
+    };
+    const onError = (err) => {
+      finish(reject, new Error(toErrorMessage(err)));
+    };
+    const cleanup = () => {
+      updater.removeListener('update-downloaded', onDownloaded);
+      updater.removeListener('error', onError);
+    };
+
+    updater.once('update-downloaded', onDownloaded);
+    updater.once('error', onError);
+
+    _sendProgress('Downloading update...', 10);
+    updater.downloadUpdate()
+      .then((files) => {
+        downloadedFiles = files || [];
+        finishSuccess();
+      })
+      .catch(onError);
+  });
 }
 
 async function performUpdate(sendProgress) {
-  let root = _resolveExistingRoot();
-  const willClone = !root;
+  progressReporter = sendProgress;
+  if (!app.isPackaged) throw new Error(_releaseUpdatesUnavailable().error);
 
-  const steps = [
-    willClone
-      ? {
-          label: 'Cloning source repository (first run, ~1-2 min)...',
-          action: async () => { root = await _cloneSource(); },
-        }
-      : {
-          label: 'Pulling latest changes...',
-          action: async () => {
-            const branch = await _run('git rev-parse --abbrev-ref HEAD', root);
-            await _run(`git pull origin ${branch}`, root);
-          },
-        },
-    { label: 'Installing dependencies...', action: () => _run('npm install', root) },
-    { label: 'Packaging application...', action: () => _run('npm run package', root) },
-    {
-      label: 'Installing to Applications...',
-      action: async () => {
-        const src = path.join(root, 'release', 'mac-arm64', 'Pickagent.app');
-        const dest = '/Applications/Pickagent.app';
-        await _run(`rm -rf "${dest}" && cp -R "${src}" "${dest}"`, root);
-      },
-    },
-  ];
-
-  for (let i = 0; i < steps.length; i++) {
-    sendProgress({ step: i + 1, total: steps.length, label: steps[i].label });
-    await steps[i].action();
+  const updater = _configureUpdater();
+  if (!lastUpdateInfo) {
+    const check = await checkForUpdates();
+    if (check.error) throw new Error(check.error);
+    if (!check.available) throw new Error('No update available.');
   }
 
-  return { success: true };
+  if (!pendingDownload) {
+    pendingDownload = _downloadUpdate(updater).finally(() => {
+      pendingDownload = null;
+    });
+  }
+  return pendingDownload;
 }
 
 function relaunch() {
+  if (app.isPackaged && updateDownloaded) {
+    _configureUpdater().quitAndInstall(false, true);
+    return;
+  }
+
   app.relaunch();
   setTimeout(() => app.exit(0), 300);
 }
 
-module.exports = { init, getVersion, checkForUpdates, performUpdate, relaunch };
+module.exports = { init, getVersion, getUpdateInfo, checkForUpdates, performUpdate, relaunch };

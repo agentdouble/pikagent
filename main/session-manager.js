@@ -1,12 +1,15 @@
 const os = require('os');
 const { BASE_DIR, SESSIONS_FILE } = require('./paths');
-const { readJson, writeJson, ensureDirOnce } = require('./fs-utils');
-const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
+const { ensureDirOnce } = require('./fs-utils');
+const { isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('./session-helpers');
+const { nowISO } = require('../shared/date-utils');
+const { generateId } = require('../shared/id-utils');
 const { createPollingManager } = require('../shared/polling-manager');
-const { Cache } = require('./cache');
-const { createLogger, trySafe } = require('./logger');
+const { CachedJsonFile } = require('./cached-json-file');
+const { createLogger, createManagerSafe } = require('./logger');
 
 const log = createLogger('session-manager');
+const _safe = createManagerSafe(log, 'session-manager');
 const POLL_INTERVAL_MS = 5000;
 
 const ensureDir = ensureDirOnce(BASE_DIR);
@@ -25,7 +28,7 @@ class SessionManager {
     this._previousAgents = {};
     this._activeSessions = {};
     this._polling = false;
-    this._sessionsCache = new Cache();
+    this._sessionsFile = new CachedJsonFile(SESSIONS_FILE, ensureDir, []);
   }
 
   async start(ptyManager) {
@@ -42,7 +45,7 @@ class SessionManager {
     if (!this._ptyManager || this._polling) return;
     this._polling = true;
     try {
-      await trySafe(async () => {
+      await _safe(async () => {
         const currentAgents = await this._ptyManager.checkAgents();
 
         for (const [termId, agentName] of Object.entries(currentAgents)) {
@@ -58,7 +61,7 @@ class SessionManager {
         }
 
         this._previousAgents = { ...currentAgents };
-      }, undefined, { log, label: 'poll' });
+      }, undefined);
     } finally {
       this._polling = false;
     }
@@ -67,18 +70,17 @@ class SessionManager {
   async _startSession(termId, agentName) {
     if (isFlowTerminal(termId)) return;
 
-    const cwd = await trySafe(
+    const cwd = await _safe(
       () => this._ptyManager.getCwd(termId),
       null,
-      { log, label: 'getCwd' },
     );
 
     this._activeSessions[termId] = {
-      id: generateSessionId(),
+      id: generateId('session'),
       termId,
       agent: agentName,
       cwd: cwd || os.homedir(),
-      startedAt: new Date().toISOString(),
+      startedAt: nowISO(),
     };
   }
 
@@ -98,24 +100,21 @@ class SessionManager {
   }
 
   async _saveRecord(record) {
-    await ensureDir();
+    const current = this._sessionsFile.get() || [];
+    const sessions = trimSessions([...current, record]);
 
-    const sessions = trimSessions([...(this._sessionsCache.get() || []), record]);
-    this._sessionsCache.set(sessions);
-
-    trySafe(
-      () => writeJson(SESSIONS_FILE, sessions),
+    _safe(
+      () => this._sessionsFile.write(sessions),
       undefined,
-      { log, label: 'write' },
     );
   }
 
   async _loadAll() {
-    this._sessionsCache.set((await readJson(SESSIONS_FILE)) || []);
+    await this._sessionsFile.read();
   }
 
   getSessions() {
-    return this._sessionsCache.get() || [];
+    return this._sessionsFile.get() || [];
   }
 
   getActiveSessions() {

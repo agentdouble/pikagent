@@ -3,10 +3,13 @@
  * Handles category headers, collapse state, and drag-drop zone setup.
  * Extracted from flow-view.js to reduce component size.
  */
-import { _el, renderButtonBar, buildChevronRow } from './dom.js';
+import { _el } from './dom-api.js';
+import { buildDomainButtonBar } from './dom-buttons.js';
+import { buildChevronRow } from './dom-lists.js';
 import { setupDropZone } from './drop-zone-helpers.js';
-import { CATEGORY_ACTIONS, UNCATEGORIZED } from './flow-view-helpers.js';
+import { CATEGORY_ACTIONS } from './flow-view-helpers.js';
 import { computeInsertionIndex } from './drag-helpers.js';
+import { clearIndicators } from './flow-drag-cleanup.js';
 
 /**
  * Create a category group DOM element with header and flow items.
@@ -46,30 +49,22 @@ export function createCategoryGroup(params) {
 }
 
 function _buildCategoryHeader(cat, flows, isUncategorized, collapsedCategories, onToggleCollapse, onRenameCategory, onDeleteCategory) {
-  const header = _el('div', 'flow-category-header');
-
-  const { chevron, name } = buildChevronRow({
+  const count = _el('span', 'flow-category-count', `${flows.length}`);
+  const { chevron, name, row: header } = buildChevronRow({
     chevronClass: 'flow-category-chevron',
     nameClass: 'flow-category-name',
     name: cat.name,
     chevronText: '▼',
+    containerClass: 'flow-category-header',
+    extraChildren: [count],
   });
-  const count = _el('span', 'flow-category-count', `${flows.length}`);
-  header.append(chevron, name, count);
 
   if (!isUncategorized) {
     const catHandlers = {
       rename: () => onRenameCategory(cat.id, name),
       delete: () => onDeleteCategory(cat.id),
     };
-    const configs = CATEGORY_ACTIONS.map(({ text, title, cls, action }) => ({
-      text,
-      title,
-      cls: cls ? `flow-category-btn ${cls}` : 'flow-category-btn',
-      action,
-      stopPropagation: true,
-    }));
-    header.appendChild(renderButtonBar({ containerClass: 'flow-category-actions', configs, handlers: catHandlers }));
+    header.appendChild(buildDomainButtonBar('flow-category-btn', 'flow-category-actions', CATEGORY_ACTIONS, catHandlers));
   }
 
   header.addEventListener('click', () => onToggleCollapse(cat.id));
@@ -105,10 +100,15 @@ function _setupCategoryDropZone(items, catId, onDropFlow, dragState) {
 
 // --- Drop indicator helpers ---
 
+/** Return all direct .flow-card children of the given container. */
+function _getFlowCards(container) {
+  return [...container.querySelectorAll(':scope > .flow-card')];
+}
+
 function _updateDropIndicator(container, clientY) {
   clearIndicators(container, '.flow-drop-indicator');
 
-  const cards = [...container.querySelectorAll(':scope > .flow-card')];
+  const cards = _getFlowCards(container);
   if (cards.length === 0) return;
 
   const idx = computeInsertionIndex(cards, clientY, 'y');
@@ -122,27 +122,6 @@ function _updateDropIndicator(container, clientY) {
   }
 }
 
-/**
- * Remove all elements matching `selector` from `container`.
- * Shared by _updateDropIndicator / _setupCategoryDropZone / cleanupAllDragState.
- */
-function clearIndicators(container, selector) {
-  for (const el of container.querySelectorAll(selector)) {
-    el.remove();
-  }
-}
-
 function _getDropIndex(container, clientY) {
-  const cards = [...container.querySelectorAll(':scope > .flow-card')];
-  return computeInsertionIndex(cards, clientY, 'y');
-}
-
-/**
- * Remove all drag state indicators from the document.
- */
-export function cleanupAllDragState() {
-  clearIndicators(document, '.flow-drop-indicator');
-  for (const el of document.querySelectorAll('.flow-drop-zone-active')) {
-    el.classList.remove('flow-drop-zone-active');
-  }
+  return computeInsertionIndex(_getFlowCards(container), clientY, 'y');
 }

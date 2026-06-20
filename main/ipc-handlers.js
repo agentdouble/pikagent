@@ -3,22 +3,26 @@ const { registerManagerHandlers, safeSend } = require('./ipc-helpers');
 const { createSafeHandler } = require('./safe-handler');
 
 /**
+ * Channels with custom handlers (registered manually in `register()`).
+ */
+const CUSTOM_CHANNELS = ['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder'];
+
+/**
  * Register all IPC handlers.
  *
  * Manager initialization and dependency wiring are handled externally by
  * `manager-init.js`.  This module only cares about IPC dispatching.
  *
  * @param {() => import('electron').BrowserWindow} getWindow
- * @param {{ targets: Record<string, Record<string, (...args: unknown[]) => unknown>>, ptyManager: { create: (opts: { id: string, cwd: string, cols: number, rows: number }) => { pid: number, onData: (cb: (data: string) => void) => void, onExit: (cb: (info: { exitCode: number }) => void) => void }, processes: Map<string, unknown> }, sessionManager: { onTerminalExit: (id: string) => void } }} deps
+ * @param {{ targets: Record<string, Record<string, (...args: unknown[]) => unknown>>, ptyManager: { create: (opts: { id: string, cwd: string, cols: number, rows: number }) => { pid: number, onData: (cb: (data: string) => void) => void, onExit: (cb: (info: { exitCode: number }) => void) => void }, processes: import('./flow-executor.js').PtyProcessMap }, sessionManager: { onTerminalExit: (id: string) => void } }} deps
  */
 function register(getWindow, { targets, ptyManager, sessionManager }) {
   const { shell, dialog } = require('electron');
 
-  // Channels with custom handlers (registered below) — skip declarative registration.
-  const customChannels = new Set(['pty:create', 'fs:watch', 'fs:trash', 'dialog:openFolder']);
+  const customSet = new Set(CUSTOM_CHANNELS);
 
   // Register all declarative forward/spread handlers in one pass.
-  registerManagerHandlers(ipcMain, targets, customChannels);
+  registerManagerHandlers(ipcMain, targets, customSet);
 
   // -- Custom handlers that cannot be expressed declaratively --
 

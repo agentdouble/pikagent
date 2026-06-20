@@ -1,0 +1,94 @@
+/* ===== Flow Modal — Actions & States ===== */
+
+/* ===== Modal Actions ===== */
+.flow-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.flow-modal-btn {
+  padding: 9px 22px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  border: none;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.flow-modal-btn:active {
+  transform: scale(0.97);
+}
+
+.flow-modal-btn-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.flow-modal-btn-cancel:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.flow-modal-btn-create {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  padding: 9px 24px;
+}
+
+.flow-modal-btn-create:hover {
+  background: var(--accent-bright);
+}
+
+.flow-modal-error {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 3px var(--red-soft) !important;
+  animation: flow-modal-shake 0.3s var(--ease-out);
+}
+
+@keyframes flow-modal-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* ===== Log Status Badges ===== */
+.flow-log-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.flow-log-status-success {
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.flow-log-status-running {
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  animation: flow-pulse 1.5s ease-in-out infinite;
+}
+
+.flow-log-status-error {
+  background: var(--red-soft);
+  color: var(--red);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}

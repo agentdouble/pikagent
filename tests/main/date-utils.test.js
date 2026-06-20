@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-const { extractDateString, generateDateRange, formatDateTime } = require('../../main/date-utils');
+const { extractDateString, generateDateRange, formatDateTime, nowISO, toLogFilename, toDateString } = require('../../shared/date-utils');
 
 describe('date-utils', () => {
   describe('extractDateString', () => {
@@ -58,6 +58,52 @@ describe('date-utils', () => {
     it('returns date only when no timestamp', () => {
       expect(formatDateTime('2025-03-15', null)).toBe('2025-03-15');
       expect(formatDateTime('2025-03-15', 0)).toBe('2025-03-15');
+    });
+  });
+
+  describe('nowISO', () => {
+    it('returns a valid ISO 8601 string', () => {
+      const result = nowISO();
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    });
+
+    it('is close to current time', () => {
+      const before = Date.now();
+      const result = new Date(nowISO()).getTime();
+      const after = Date.now();
+      expect(result).toBeGreaterThanOrEqual(before);
+      expect(result).toBeLessThanOrEqual(after);
+    });
+  });
+
+  describe('toLogFilename', () => {
+    it('replaces colons and dots with dashes', () => {
+      expect(toLogFilename('2025-03-29T14:32:00.000Z')).toBe('2025-03-29T14-32-00-000Z');
+    });
+
+    it('defaults to current timestamp when no argument', () => {
+      const result = toLogFilename();
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/);
+    });
+  });
+
+  describe('toDateString', () => {
+    it('extracts YYYY-MM-DD from a Date object', () => {
+      const d = new Date('2025-06-15T14:30:00.000Z');
+      expect(toDateString(d)).toBe('2025-06-15');
+    });
+
+    it('extracts YYYY-MM-DD from a numeric timestamp', () => {
+      const ts = new Date('2025-06-15T14:30:00.000Z').getTime();
+      expect(toDateString(ts)).toBe('2025-06-15');
+    });
+
+    it('handles epoch zero', () => {
+      expect(toDateString(0)).toBe('1970-01-01');
+    });
+
+    it('handles Date constructed from epoch', () => {
+      expect(toDateString(new Date(0))).toBe('1970-01-01');
     });
   });
 });

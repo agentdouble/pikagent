@@ -8,8 +8,8 @@
  * @typedef {{ getTabElements: () => Map<string, HTMLElement>, reorderTab: (fromId: string, toId: string, before: boolean) => void }} TabDragDeps
  */
 
-import { DRAG_THRESHOLD } from './tab-manager-helpers.js';
-import { trackMouse, computeInsertionIndex } from './drag-helpers.js';
+import { DRAG_THRESHOLD } from './tab-constants.js';
+import { trackMouse, computeInsertionIndex, setupSimpleDragState, setupDragHandler } from './drag-helpers.js';
 
 // ── Internal helpers ────────────────────────────────────────────────
 
@@ -116,17 +116,10 @@ function initDragState() {
 }
 
 /**
- * Apply visual drag-start effects: add CSS class and create a floating
- * ghost clone of the tab element.
- *
- * Body cursor/userSelect are managed by trackMouse() — not set here.
- *
+ * Create a floating ghost clone of the tab element.
  * @returns {HTMLElement} the ghost element appended to document.body
  */
-function handleDragStart(tabEl) {
-  tabEl.classList.add('tab-dragging');
-
-  // Create floating ghost clone
+function createTabGhost(tabEl) {
   const ghost = tabEl.cloneNode(true);
   ghost.className = 'tab tab-ghost';
   if (tabEl.classList.contains('active')) ghost.classList.add('active');
@@ -135,32 +128,45 @@ function handleDragStart(tabEl) {
   ghost.style.height = `${r.height}px`;
   ghost.style.top = `${r.top}px`;
   document.body.appendChild(ghost);
-
   return ghost;
 }
 
 /**
- * Clean up after a drag operation: remove visual effects, commit the
- * reorder if the tab was dropped on a valid target, and reset state.
+ * Build the paired start / end helpers for a tab drag using the shared
+ * setupSimpleDragState pattern (class toggle + state bookkeeping).
  *
- * Body cursor/userSelect are cleared by trackMouse() — not here.
+ * Body cursor/userSelect are managed by trackMouse() — not set here.
  *
  * @param {TabDragDeps} deps
  * @param {HTMLElement} tabEl
- * @param {HTMLElement|null} ghost
  * @param {{ dropTargetId: string|null, dropBefore: boolean|null }} state
  * @param {string} tabId
+ * @returns {{ startDrag: () => HTMLElement, endDrag: (ghost: HTMLElement|null) => void }}
  */
-function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabId) {
-  tabEl.classList.remove('tab-dragging');
-  if (ghost) { ghost.remove(); }
-  clearTabShifts(getTabElements);
+function buildTabDragHandlers(deps, tabEl, state, tabId) {
+  const { getTabElements, reorderTab } = deps;
 
-  if (state.dropTargetId && state.dropTargetId !== tabId) {
-    reorderTab(tabId, state.dropTargetId, state.dropBefore);
-  }
-  state.dropTargetId = null;
-  state.dropBefore = null;
+  const { onDragStart, onDragEnd } = setupSimpleDragState(
+    tabEl, 'tab-dragging', state, 'dropTargetId', null, {
+      onEnd: () => { state.dropBefore = null; },
+    },
+  );
+
+  return {
+    startDrag() {
+      onDragStart();
+      return createTabGhost(tabEl);
+    },
+    endDrag(ghost) {
+      if (ghost) { ghost.remove(); }
+      clearTabShifts(getTabElements);
+
+      if (state.dropTargetId && state.dropTargetId !== tabId) {
+        reorderTab(tabId, state.dropTargetId, state.dropBefore);
+      }
+      onDragEnd();
+    },
+  };
 }
 
 // ── Public API ──────────────────────────────────────────────────────
@@ -170,8 +176,9 @@ function handleDragEnd({ getTabElements, reorderTab }, tabEl, ghost, state, tabI
  * @internal
  */
 function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
-  const { getTabElements, reorderTab } = deps;
-  ctx.ghost = handleDragStart(tabEl);
+  const { getTabElements } = deps;
+  const { startDrag, endDrag } = buildTabDragHandlers(deps, tabEl, state, tabId);
+  ctx.ghost = startDrag();
   ctx.ghost.style.left = `${ev.clientX - ctx.offsetX}px`;
   updateTabDropTarget(getTabElements, state, ev.clientX, tabId);
 
@@ -181,7 +188,7 @@ function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
       updateTabDropTarget(getTabElements, state, mv.clientX, tabId);
     },
     () => {
-      handleDragEnd(deps, tabEl, ctx.ghost, state, tabId);
+      endDrag(ctx.ghost);
       ctx.ghost = null;
     },
     { bodyClass: 'dragging' },
@@ -189,29 +196,11 @@ function activateDrag(deps, tabEl, tabId, state, ctx, ev) {
 }
 
 /**
- * Install threshold listeners that wait for a minimum drag distance
- * before activating the full drag phase.
- * @internal
- */
-function installThresholdListeners(deps, tabEl, tabId, state, ctx) {
-  const onThresholdMove = (ev) => {
-    if (Math.abs(ev.clientX - ctx.startX) <= DRAG_THRESHOLD) return;
-    document.removeEventListener('mousemove', onThresholdMove);
-    document.removeEventListener('mouseup', onThresholdUp);
-    activateDrag(deps, tabEl, tabId, state, ctx, ev);
-  };
-
-  const onThresholdUp = () => {
-    document.removeEventListener('mousemove', onThresholdMove);
-    document.removeEventListener('mouseup', onThresholdUp);
-  };
-
-  document.addEventListener('mousemove', onThresholdMove);
-  document.addEventListener('mouseup', onThresholdUp);
-}
-
-/**
  * Wire drag-to-reorder behaviour on a single tab element.
+ *
+ * Uses setupDragHandler for the initial mousedown capture with a lightweight
+ * threshold phase (empty cursor / bodyClass).  Once the drag distance exceeds
+ * DRAG_THRESHOLD the full drag is activated via activateDrag / trackMouse.
  *
  * @param {TabDragDeps} deps  — explicit dependency interface
  * @param {HTMLElement} tabEl — the tab DOM element
@@ -219,13 +208,22 @@ function installThresholdListeners(deps, tabEl, tabId, state, ctx) {
  */
 export function setupTabDrag(deps, tabEl, tabId) {
   const state = initDragState();
-  const ctx = { startX: 0, ghost: null, offsetX: 0 };
 
-  tabEl.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    ctx.startX = e.clientX;
-    const rect = tabEl.getBoundingClientRect();
-    ctx.offsetX = e.clientX - rect.left;
-    installThresholdListeners(deps, tabEl, tabId, state, ctx);
+  setupDragHandler(tabEl, {
+    cursor: '',
+    bodyClass: '',
+    preventDefault: false,
+    guard: (e) => e.button === 0,
+    onStart: (e) => {
+      const rect = tabEl.getBoundingClientRect();
+      return { startX: e.clientX, ghost: null, offsetX: e.clientX - rect.left, activated: false };
+    },
+    onMove: (ev, ctx) => {
+      if (ctx.activated) return;
+      if (Math.abs(ev.clientX - ctx.startX) <= DRAG_THRESHOLD) return;
+      ctx.activated = true;
+      activateDrag(deps, tabEl, tabId, state, ctx, ev);
+    },
+    onEnd: () => { /* threshold phase ended without activation — nothing to clean up */ },
   });
 }

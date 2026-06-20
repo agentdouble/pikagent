@@ -4,9 +4,32 @@
  * Provides utilities for inline <input> wiring and inline rename workflows.
  */
 
-import { _el } from './dom.js';
-import { onClickStopped } from './event-helpers.js';
-import { setupKeyboardShortcuts } from './keyboard-helpers.js';
+import { _el } from './dom-api.js';
+import { onClickStopped, onKeyAction } from './event-helpers.js';
+
+/**
+ * Create a <select> element from an array of option values.
+ *
+ * Each entry in `items` can be a string (used as both value and label)
+ * or an `{ value, label, disabled, selected }` descriptor.
+ *
+ * @param {Array<string|{ value: string, label?: string, disabled?: boolean, selected?: boolean }>} items
+ * @param {{ className?: string, selected?: string }} [opts]
+ * @returns {HTMLSelectElement}
+ */
+export function buildSelect(items, { className, selected } = {}) {
+  const select = _el('select', { className: className || '' });
+  for (const item of items) {
+    const isObj = typeof item === 'object';
+    const val = isObj ? item.value : item;
+    const label = isObj && item.label ? item.label : val;
+    const opt = _el('option', { value: val, textContent: label });
+    if (isObj && item.disabled) opt.disabled = true;
+    if ((isObj && item.selected) || val === selected) opt.selected = true;
+    select.appendChild(opt);
+  }
+  return select;
+}
 
 /**
  * Create a guard that ensures `fn` is called at most once.
@@ -32,7 +55,7 @@ export function setupInlineInput(input, { onCommit, onCancel, blurDelay = 0 }) {
     else input.remove();
   });
 
-  setupKeyboardShortcuts(input, {
+  onKeyAction(input, {
     onEnter: (e) => { e.preventDefault(); e.stopPropagation(); commit(); },
     onEscape: (e) => { e.stopPropagation(); cancel(); },
   });

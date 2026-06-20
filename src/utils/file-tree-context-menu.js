@@ -2,8 +2,8 @@
  * Context menu builders for the file tree.
  * Extracted from FileTree to reduce component size.
  */
-import { bus, EVENTS } from './events.js';
-import { getRelativePath } from './file-tree-helpers.js';
+import { emitWorkspaceOpenFromFolder, emitWorkspaceCreateWorktree } from './workspace-events.js';
+import { getRelativePath, getBaseName } from './file-tree-helpers.js';
 
 /**
  * Build the common context menu items shared between files and directories.
@@ -15,8 +15,8 @@ import { getRelativePath } from './file-tree-helpers.js';
  * @param {{ clipboardWrite: (text: string) => void, fsCopy: (path: string) => void, showInFolder: (path: string) => void, fsTrash: (path: string) => void }} api - injected API methods
  * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
-export function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, deleteLabel, { clipboardWrite, fsCopy, showInFolder, fsTrash }) {
-  const displayName = entryPath.split('/').pop();
+function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, deleteLabel, { clipboardWrite, fsCopy, showInFolder, fsTrash }) {
+  const displayName = getBaseName(entryPath);
   return [
     { label: 'Rename', action: () => promptRenameFn(entryPath, nameEl) },
     { separator: true },
@@ -64,20 +64,23 @@ export function buildFileContextItems(entryPath, nameEl, rootCwd, promptRenameFn
  * @returns {Array<{ label?: string, separator?: boolean, action?: () => void }>} menu items
  */
 export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl, promptRenameFn, promptNewEntryFn, api) {
-  const dirName = dirPath.split('/').pop();
+  const dirName = getBaseName(dirPath);
   return [
     { label: 'New File', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'file') },
     { label: 'New Folder', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'folder') },
     { separator: true },
     { label: 'Open as Workspace', action: () => {
       /** @fires workspace:openFromFolder {{ cwd: string }} */
-      bus.emit(EVENTS.WORKSPACE_OPEN_FROM_FOLDER, { cwd: dirPath });
+      emitWorkspaceOpenFromFolder({ cwd: dirPath });
     } },
     { label: 'New Worktree…', action: () => {
       /** @fires workspace:createWorktree {{ repoCwd: string }} */
-      bus.emit(EVENTS.WORKSPACE_CREATE_WORKTREE, { repoCwd: dirPath });
+      emitWorkspaceCreateWorktree({ repoCwd: dirPath });
     } },
     { separator: true },
     ...buildCommonContextItems(dirPath, nameEl, rootCwd, promptRenameFn, `Delete folder "${dirName}" and all its contents?`, api),
   ];
 }
+
+/** @internal Exposed for unit tests only. */
+export const _internals = { buildCommonContextItems };

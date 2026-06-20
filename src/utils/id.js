@@ -1,5 +1,1 @@
-let counter = 0;
-
-export function generateId(prefix = 'id') {
-  return `${prefix}_${++counter}_${Date.now()}`;
-}
+export { generateId } from '../../shared/id-utils.js';

@@ -2,8 +2,8 @@
  * Color filter logic for tab manager.
  * Extracted from tab-manager.js to reduce component size.
  */
-import { _el } from './dom.js';
-import { COLOR_GROUPS } from './tab-manager-helpers.js';
+import { _el } from './dom-api.js';
+import { COLOR_GROUPS } from './tab-constants.js';
 import { attachContextMenu } from './context-menu.js';
 
 /**
@@ -17,7 +17,61 @@ export function isTabVisible(tab, activeColorFilter, excludedColors) {
 
 /**
  * Build the color filter bar DOM element.
- * @param {Map<string, import('./tab-manager-helpers.js').WorkspaceTab>} tabs
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
+ * @param {string|null} activeColorFilter
+ * @param {Set<string>} excludedColors
+ * @param {{ onClearFilter: () => void, onSetFilter: (colorGroupId: string) => void, onToggleExclude: (colorGroupId: string) => void }} handlers
+ * @returns {HTMLElement|null}
+ */
+/**
+ * Apply "include only this color" filter and ensure a visible tab is active.
+ * @param {{ activeColorFilter: string|null, excludedColors: Set<string> }} state
+ * @param {string} colorGroupId
+ * @param {() => void} renderTabBar
+ * @param {() => void} ensureVisibleTabActive
+ */
+export function setColorFilter(state, colorGroupId, renderTabBar, ensureVisibleTabActive) {
+  state.excludedColors.clear();
+  state.activeColorFilter = state.activeColorFilter === colorGroupId ? null : colorGroupId;
+  renderTabBar();
+  ensureVisibleTabActive();
+}
+
+/**
+ * Toggle exclusion of a color group and ensure a visible tab is active.
+ * @param {{ activeColorFilter: string|null, excludedColors: Set<string> }} state
+ * @param {string} colorGroupId
+ * @param {() => void} renderTabBar
+ * @param {() => void} ensureVisibleTabActive
+ */
+export function toggleExcludeColor(state, colorGroupId, renderTabBar, ensureVisibleTabActive) {
+  state.activeColorFilter = null;
+  if (state.excludedColors.has(colorGroupId)) state.excludedColors.delete(colorGroupId);
+  else state.excludedColors.add(colorGroupId);
+  renderTabBar();
+  ensureVisibleTabActive();
+}
+
+/**
+ * If the active tab is not visible under the current filter, switch to
+ * the first visible tab.
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
+ * @param {() => import('./tab-types.js').WorkspaceTab|undefined} getActiveTab
+ * @param {string|null} activeColorFilter
+ * @param {Set<string>} excludedColors
+ * @param {(id: string) => void} switchTo
+ */
+export function ensureVisibleTabActive(tabs, getActiveTab, activeColorFilter, excludedColors, switchTo) {
+  const active = getActiveTab();
+  if (active && isTabVisible(active, activeColorFilter, excludedColors)) return;
+  for (const [id, tab] of tabs) {
+    if (isTabVisible(tab, activeColorFilter, excludedColors)) { switchTo(id); return; }
+  }
+}
+
+/**
+ * Build the color filter bar DOM element.
+ * @param {Map<string, import('./tab-types.js').WorkspaceTab>} tabs
  * @param {string|null} activeColorFilter
  * @param {Set<string>} excludedColors
  * @param {{ onClearFilter: () => void, onSetFilter: (colorGroupId: string) => void, onToggleExclude: (colorGroupId: string) => void }} handlers

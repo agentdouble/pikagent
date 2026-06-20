@@ -5,16 +5,33 @@
  * Pure DOM helper — no component dependencies.
  */
 
-/** Set cursor and disable text selection on document.body during a drag. */
-export function setDragBodyState(cursor) {
-  document.body.style.cursor = cursor;
-  document.body.style.userSelect = 'none';
-}
+/**
+ * Save the current cursor and userSelect on document.body, apply overrides,
+ * and return a function that restores the originals.  Calling restore is
+ * idempotent — subsequent calls are no-ops.
+ *
+ * @param {string} cursor     - CSS cursor value to apply (e.g. 'grabbing')
+ * @param {string} [userSelect='none'] - CSS user-select value to apply
+ * @returns {{ restore: () => void }}
+ */
+function withBodyStyle(cursor, userSelect = 'none') {
+  const prev = {
+    cursor: document.body.style.cursor,
+    userSelect: document.body.style.userSelect,
+  };
+  let restored = false;
 
-/** Clear cursor and re-enable text selection on document.body after a drag. */
-export function clearDragBodyState() {
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
+  document.body.style.cursor = cursor;
+  document.body.style.userSelect = userSelect;
+
+  return {
+    restore() {
+      if (restored) return;
+      restored = true;
+      document.body.style.cursor = prev.cursor;
+      document.body.style.userSelect = prev.userSelect;
+    },
+  };
 }
 
 /**
@@ -26,22 +43,117 @@ export function clearDragBodyState() {
  */
 export function trackMouse(cursor, onMove, onDone, { bodyClass = 'resizing' } = {}) {
   let rafPending = false;
+  const bodyStyle = withBodyStyle(cursor);
   const move = (e) => {
     if (rafPending) return;
     rafPending = true;
     requestAnimationFrame(() => { rafPending = false; onMove(e); });
   };
-  const up = () => {
+  const cleanup = () => {
     document.removeEventListener('mousemove', move);
     document.removeEventListener('mouseup', up);
-    clearDragBodyState();
+    bodyStyle.restore();
     if (bodyClass) document.body.classList.remove(bodyClass);
+  };
+  const up = () => {
+    cleanup();
     onDone();
   };
-  setDragBodyState(cursor);
   if (bodyClass) document.body.classList.add(bodyClass);
   document.addEventListener('mousemove', move);
   document.addEventListener('mouseup', up);
+  return cleanup;
+}
+
+/**
+ * Add an event listener to a target and return a cleanup function that
+ * removes it.  Calling the cleanup is idempotent.
+ *
+ * Replaces the repeated "removeEventListener + addEventListener" pattern
+ * used to ensure only one listener is active at a time.
+ *
+ * @param {EventTarget} target
+ * @param {string} type
+ * @param {EventListener} handler
+ * @param {boolean|AddEventListenerOptions} [options]
+ * @returns {() => void} cleanup — removes the listener when called
+ */
+export function addListener(target, type, handler, options) {
+  target.addEventListener(type, handler, options);
+  return () => target.removeEventListener(type, handler, options);
+}
+
+/**
+ * Attach a mousedown → trackMouse drag handler to an element.
+ * Generalises the repeated mousedown + preventDefault + optional stopPropagation
+ * + capture-state + trackMouse + cleanup boilerplate.
+ *
+ * @param {HTMLElement} element — the element to listen on
+ * @param {{
+ *   cursor?: string,
+ *   onStart?: (e: MouseEvent) => unknown,
+ *   onMove: (e: MouseEvent, ctx: unknown) => void,
+ *   onEnd?: (ctx: unknown) => void,
+ *   guard?: (e: MouseEvent) => boolean,
+ *   stopPropagation?: boolean,
+ *   preventDefault?: boolean,
+ *   bodyClass?: string
+ * }} opts
+ */
+export function setupDragHandler(element, { cursor = 'default', onStart, onMove, onEnd, guard, stopPropagation = false, preventDefault = true, bodyClass = 'resizing' }) {
+  element.addEventListener('mousedown', (e) => {
+    if (guard && !guard(e)) return;
+    if (preventDefault) e.preventDefault();
+    if (stopPropagation) e.stopPropagation();
+    const ctx = onStart ? onStart(e) : undefined;
+    trackMouse(cursor,
+      (ev) => onMove(ev, ctx),
+      () => { if (onEnd) onEnd(ctx); },
+      { bodyClass },
+    );
+  });
+}
+
+/**
+ * Attach a mousedown → trackMouse resize handler to a handle element.
+ * Convenience wrapper around setupDragHandler for resize interactions.
+ *
+ * @param {HTMLElement} handle  — the resize handle element
+ * @param {{ cursor: string, onStart?: (e: MouseEvent) => unknown, onMove: (e: MouseEvent, ctx: unknown) => void, onDone?: (ctx: unknown) => void }} opts
+ */
+export function setupResizeHandler(handle, { cursor, onStart, onMove, onDone }) {
+  setupDragHandler(handle, { cursor, onStart, onMove, onEnd: onDone });
+}
+
+/**
+ * Build dragstart / dragend handlers that toggle a CSS class on the element
+ * and set / clear a key on a shared state object.
+ *
+ * This extracts the repeated pattern found in flow-card-setup and tab-drag:
+ *   dragstart → element.classList.add(dragClass), stateObj[stateKey] = value
+ *   dragend   → element.classList.remove(dragClass), stateObj[stateKey] = null
+ *
+ * @param {HTMLElement} element   — the draggable element
+ * @param {string} dragClass     — CSS class toggled during the drag
+ * @param {Record<string, unknown>} stateObj — mutable state object
+ * @param {string} stateKey      — key to set on stateObj
+ * @param {unknown} value        — value written at dragstart (cleared to null at dragend)
+ * @param {{ onStart?: (e?: DragEvent) => void, onEnd?: (e?: DragEvent) => void }} [extras]
+ *        — optional extra work to run after the class/state bookkeeping
+ * @returns {{ onDragStart: (e?: DragEvent) => void, onDragEnd: (e?: DragEvent) => void }}
+ */
+export function setupSimpleDragState(element, dragClass, stateObj, stateKey, value, { onStart, onEnd } = {}) {
+  const onDragStart = (e) => {
+    stateObj[stateKey] = value;
+    element.classList.add(dragClass);
+    if (onStart) onStart(e);
+  };
+  const onDragEnd = (e) => {
+    element.classList.remove(dragClass);
+    stateObj[stateKey] = null;
+    if (onEnd) onEnd(e);
+  };
+  return { onDragStart, onDragEnd };
 }
 
 /**

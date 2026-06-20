@@ -1,29 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-const { generateSessionId, durationSec, isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('../../main/session-helpers');
+const { isFlowTerminal, buildEndedRecord, buildActiveRecord, trimSessions } = require('../../main/session-helpers');
 
 describe('session-helpers', () => {
-  describe('generateSessionId', () => {
-    it('starts with "session-"', () => {
-      expect(generateSessionId()).toMatch(/^session-\d+-[a-z0-9]+$/);
-    });
-
-    it('generates unique ids', () => {
-      const a = generateSessionId();
-      const b = generateSessionId();
-      expect(a).not.toBe(b);
-    });
-  });
-
-  describe('durationSec', () => {
-    it('computes seconds since startedAt', () => {
-      const now = Date.now();
-      vi.setSystemTime(now);
-      const startedAt = new Date(now - 5000).toISOString();
-      expect(durationSec(startedAt)).toBe(5);
-      vi.useRealTimers();
-    });
-  });
-
   describe('isFlowTerminal', () => {
     it('returns true for flow- prefix', () => {
       expect(isFlowTerminal('flow-abc-123')).toBe(true);

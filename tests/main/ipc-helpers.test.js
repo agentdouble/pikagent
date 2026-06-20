@@ -175,17 +175,20 @@ describe('ipc-helpers', () => {
     });
   });
 
+  // registerForward / registerSpread now derive the target method from the
+  // channel suffix (domain:method) and resolve the target via a `resolveTarget`
+  // callback — the same path used in production by registerManagerHandlers.
   describe('registerForward', () => {
     it('registers ipc handlers that forward a single arg to target methods', async () => {
       const handlers = {};
       const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
-      const target = { doSomething: vi.fn().mockReturnValue('ok') };
+      const target = { forward: vi.fn().mockReturnValue('ok') };
 
-      registerForward(ipc, target, [['test:forward', 'doSomething']]);
+      registerForward(ipc, [['test:forward', 'test']], () => target);
 
       expect(ipc.handle).toHaveBeenCalledWith('test:forward', expect.any(Function));
       const result = await handlers['test:forward']({}, { foo: 1 });
-      expect(target.doSomething).toHaveBeenCalledWith({ foo: 1 });
+      expect(target.forward).toHaveBeenCalledWith({ foo: 1 });
       expect(result).toBe('ok');
     });
 
@@ -193,10 +196,10 @@ describe('ipc-helpers', () => {
       const ipc = { handle: vi.fn() };
       const target = { a: vi.fn(), b: vi.fn() };
 
-      registerForward(ipc, target, [
-        ['ch:a', 'a'],
-        ['ch:b', 'b'],
-      ]);
+      registerForward(ipc, [
+        ['ch:a', 'ch'],
+        ['ch:b', 'ch'],
+      ], () => target);
 
       expect(ipc.handle).toHaveBeenCalledTimes(2);
       const channels = ipc.handle.mock.calls.map(([ch]) => ch);
@@ -204,25 +207,31 @@ describe('ipc-helpers', () => {
       expect(channels).toContain('ch:b');
     });
 
+    it('skips entries whose target cannot be resolved', () => {
+      const ipc = { handle: vi.fn() };
+      registerForward(ipc, [['ch:a', 'ch']], () => undefined);
+      expect(ipc.handle).not.toHaveBeenCalled();
+    });
+
     it('works with expected forward-style channels like pty:checkAgents and fs:readdir', async () => {
       const handlers = {};
       const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
-      const target = {
-        checkAgents: vi.fn().mockReturnValue(['agent1']),
-        readDirectory: vi.fn().mockReturnValue([]),
+      const targets = {
+        pty: { checkAgents: vi.fn().mockReturnValue(['agent1']) },
+        fs: { readdir: vi.fn().mockReturnValue([]) },
       };
 
-      registerForward(ipc, target, [
-        ['pty:checkAgents', 'checkAgents'],
-        ['fs:readdir', 'readDirectory'],
-      ]);
+      registerForward(ipc, [
+        ['pty:checkAgents', 'pty'],
+        ['fs:readdir', 'fs'],
+      ], ([, domain]) => targets[domain]);
 
       const agents = await handlers['pty:checkAgents']({}, '/some/path');
-      expect(target.checkAgents).toHaveBeenCalledWith('/some/path');
+      expect(targets.pty.checkAgents).toHaveBeenCalledWith('/some/path');
       expect(agents).toEqual(['agent1']);
 
       const entries = await handlers['fs:readdir']({}, '/tmp');
-      expect(target.readDirectory).toHaveBeenCalledWith('/tmp');
+      expect(targets.fs.readdir).toHaveBeenCalledWith('/tmp');
       expect(entries).toEqual([]);
     });
   });
@@ -233,7 +242,7 @@ describe('ipc-helpers', () => {
       const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
       const target = { write: vi.fn().mockReturnValue(true) };
 
-      registerSpread(ipc, target, [['pty:write', 'write', ['id', 'data']]]);
+      registerSpread(ipc, [['pty:write', 'pty', ['id', 'data']]], () => target);
 
       expect(ipc.handle).toHaveBeenCalledWith('pty:write', expect.any(Function));
       const result = await handlers['pty:write']({}, { id: 'term-1', data: 'hello' });
@@ -245,10 +254,10 @@ describe('ipc-helpers', () => {
       const ipc = { handle: vi.fn() };
       const target = { write: vi.fn(), resize: vi.fn() };
 
-      registerSpread(ipc, target, [
-        ['pty:write', 'write', ['id', 'data']],
-        ['pty:resize', 'resize', ['id', 'cols', 'rows']],
-      ]);
+      registerSpread(ipc, [
+        ['pty:write', 'pty', ['id', 'data']],
+        ['pty:resize', 'pty', ['id', 'cols', 'rows']],
+      ], () => target);
 
       expect(ipc.handle).toHaveBeenCalledTimes(2);
       const channels = ipc.handle.mock.calls.map(([ch]) => ch);
@@ -261,10 +270,16 @@ describe('ipc-helpers', () => {
       const ipc = { handle: vi.fn((channel, fn) => { handlers[channel] = fn; }) };
       const target = { resize: vi.fn() };
 
-      registerSpread(ipc, target, [['pty:resize', 'resize', ['id', 'cols', 'rows']]]);
+      registerSpread(ipc, [['pty:resize', 'pty', ['id', 'cols', 'rows']]], () => target);
 
       await handlers['pty:resize']({}, { id: 'term-1', cols: 80, rows: 24 });
       expect(target.resize).toHaveBeenCalledWith('term-1', 80, 24);
+    });
+
+    it('skips entries whose target cannot be resolved', () => {
+      const ipc = { handle: vi.fn() };
+      registerSpread(ipc, [['pty:write', 'pty', ['id']]], () => undefined);
+      expect(ipc.handle).not.toHaveBeenCalled();
     });
 
     it('has no overlap between forward and spread channel patterns', () => {
@@ -273,10 +288,10 @@ describe('ipc-helpers', () => {
       const spreadHandlers = {};
       const forwardIpc = { handle: vi.fn((ch, fn) => { forwardHandlers[ch] = fn; }) };
       const spreadIpc = { handle: vi.fn((ch, fn) => { spreadHandlers[ch] = fn; }) };
-      const target = { a: vi.fn(), b: vi.fn() };
+      const target = { test: vi.fn() };
 
-      registerForward(forwardIpc, target, [['shared:test', 'a']]);
-      registerSpread(spreadIpc, target, [['spread:test', 'b', ['key1']]]);
+      registerForward(forwardIpc, [['shared:test', 'shared']], () => target);
+      registerSpread(spreadIpc, [['spread:test', 'spread', ['key1']]], () => target);
 
       const forwardChannels = new Set(Object.keys(forwardHandlers));
       const spreadChannels = new Set(Object.keys(spreadHandlers));
