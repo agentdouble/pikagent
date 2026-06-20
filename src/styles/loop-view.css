@@ -117,10 +117,6 @@
   min-height: 0;
 }
 
-.loop-board-layout.is-inspector-collapsed {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .loop-board-canvas {
   background:
     linear-gradient(var(--border-subtle) 1px, transparent 1px),
@@ -213,6 +209,202 @@
 
 .loop-inspector-reopen:hover {
   border-color: var(--accent);
+}
+
+.loop-side-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.loop-side-rail.has-inspector .loop-headless-panel {
+  flex: 0 0 auto;
+  max-height: 280px;
+}
+
+.loop-side-rail.has-inspector .loop-inspector {
+  flex: 1 1 auto;
+}
+
+.loop-headless-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.loop-headless-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.loop-headless-header h3 {
+  color: var(--text-primary);
+  font-size: 13px;
+  margin: 0;
+}
+
+.loop-headless-header span {
+  color: var(--text-muted);
+  display: block;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.loop-headless-refresh {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+}
+
+.loop-headless-errors {
+  background: var(--red-soft);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 8px;
+}
+
+.loop-headless-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.loop-headless-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.loop-headless-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loop-headless-group h4 {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.loop-headless-agent {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px;
+}
+
+.loop-headless-agent.is-linked {
+  border-color: rgba(76, 183, 130, 0.7);
+  box-shadow: 0 0 0 1px rgba(76, 183, 130, 0.24);
+  cursor: pointer;
+}
+
+.loop-headless-agent.is-linked:hover {
+  border-color: var(--green);
+}
+
+.loop-headless-agent-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.loop-headless-agent-header strong {
+  color: var(--text-primary);
+  display: block;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loop-headless-agent-header span {
+  color: var(--text-muted);
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+.loop-headless-stop {
+  background: var(--red-soft);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 7px;
+}
+
+.loop-headless-stop:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.loop-headless-agent-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.loop-headless-agent-meta span,
+.loop-headless-agent-meta code {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.loop-headless-agent-meta code {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  padding: 4px 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loop-headless-agent-preview {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  margin: 0;
+  max-height: 118px;
+  overflow: hidden;
+  padding: 7px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .loop-board-links {

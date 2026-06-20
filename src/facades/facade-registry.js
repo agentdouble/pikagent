@@ -60,6 +60,7 @@ const definitions = [
 
   ['loopFacade', [
     [loopApi, ['list', 'get', 'save', 'create', 'delete', 'runNode', 'runPipeline', 'stopNode', 'stopPipeline', 'snapshot', 'getNodeLog']],
+    [agentsApi, { headlessList: 'list', headlessKill: 'kill' }],
     [shellApi, ['openPath']],
   ]],
 

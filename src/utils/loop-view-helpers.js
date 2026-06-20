@@ -149,6 +149,29 @@ export function runningCount(snapshot) {
   return (snapshot?.processes || []).filter((process) => process.status === 'running').length;
 }
 
+export function splitHeadlessAgentsForBoard(agents, boardId = 'main') {
+  const current = [];
+  const other = [];
+  for (const agent of agents || []) {
+    if (agent?.loopBoardId === boardId) current.push(agent);
+    else other.push(agent);
+  }
+  return { current, other };
+}
+
+export function formatHeadlessAgentLabel(agent) {
+  if (agent?.loopNodeId) return agent.loopNodeId;
+  if (agent?.taskId && agent?.title) return `${agent.taskId} - ${agent.title}`;
+  if (agent?.worktreeName) return agent.worktreeName;
+  if (agent?.cwd) return String(agent.cwd).split('/').filter(Boolean).at(-1) || agent.cwd;
+  return `PID ${(agent?.pids || [])[0] || '-'}`;
+}
+
+export function formatHeadlessAgentPreview(agent, maxLines = 8) {
+  const lines = Array.isArray(agent?.lastLogLines) ? agent.lastLogLines : [];
+  return lines.length ? lines.slice(-maxLines).join('\n') : 'Aucun log lisible.';
+}
+
 export function captureLogScrollState(el, threshold = LOG_SCROLL_BOTTOM_THRESHOLD) {
   if (!el) return null;
   const maxScrollTop = Math.max(0, el.scrollHeight - el.clientHeight);

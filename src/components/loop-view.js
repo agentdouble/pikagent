@@ -32,6 +32,8 @@ import {
   defaultAgentHookTrigger,
   defaultAgentSchedule,
   formatAgentTrigger,
+  formatHeadlessAgentLabel,
+  formatHeadlessAgentPreview,
   getNodeColor,
   getNodePreview,
   getNodeTitle,
@@ -39,6 +41,7 @@ import {
   restoreLogScrollState,
   runningCount,
   selectedEdges,
+  splitHeadlessAgentsForBoard,
 } from '../utils/loop-view-helpers.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -60,6 +63,8 @@ class LoopView extends ComponentBase {
     this.activeBoardId = readStoredActiveBoardId();
     this.loop = createDefaultLoop();
     this.snapshot = null;
+    this.headlessSnapshot = { generatedAt: '', agents: [], errors: [] };
+    this.killingHeadlessAgentIds = new Set();
     this.selectedNodeId = null;
     this.linkSourceId = null;
     this.inspectorCollapsed = true;
@@ -78,10 +83,12 @@ class LoopView extends ComponentBase {
   _afterInit() {
     void this.refresh();
     const snapshotTimer = window.setInterval(() => void this._refreshSnapshot(), REFRESH_MS);
+    const headlessTimer = window.setInterval(() => void this._refreshHeadlessAgents(), REFRESH_MS);
     const logTimer = window.setInterval(() => void this._refreshNodeLog(), REFRESH_MS);
     const onFocus = () => void this.refresh();
     window.addEventListener('focus', onFocus);
     this._track(() => window.clearInterval(snapshotTimer));
+    this._track(() => window.clearInterval(headlessTimer));
     this._track(() => window.clearInterval(logTimer));
     this._track(() => window.removeEventListener('focus', onFocus));
   }
@@ -91,6 +98,7 @@ class LoopView extends ComponentBase {
     await this._loadBoards();
     await this._loadLoop();
     await this._refreshSnapshot(false);
+    await this._refreshHeadlessAgents(false);
     await this._refreshNodeLog(false);
     this._render();
   }
@@ -146,6 +154,21 @@ class LoopView extends ComponentBase {
     }
   }
 
+  async _refreshHeadlessAgents(shouldRender = true) {
+    if (this.disposed) return;
+    try {
+      this.headlessSnapshot = await loopApi.headlessList();
+      if (shouldRender) this._renderUnlessEditing();
+    } catch (err) {
+      this.headlessSnapshot = {
+        generatedAt: '',
+        agents: [],
+        errors: [err?.message || String(err)],
+      };
+      if (shouldRender) this._renderUnlessEditing();
+    }
+  }
+
   async _refreshNodeLog(shouldRender = true) {
     if (this.disposed) return;
     if (!this.selectedNodeId) {
@@ -177,6 +200,7 @@ class LoopView extends ComponentBase {
   _render() {
     if (!this.el || this.disposed) return;
     const inspectorScrollTop = this.el.querySelector('.loop-inspector')?.scrollTop ?? 0;
+    const headlessScrollTop = this.el.querySelector('.loop-headless-panel')?.scrollTop ?? 0;
     const logScrollState = captureLogScrollState(this.el.querySelector('.loop-log-output'));
     const previousSelectedNodeId = this.selectedNodeId;
     const selectedNode = this.selectedNode;
@@ -186,6 +210,8 @@ class LoopView extends ComponentBase {
       this.error ? _el('div', { className: 'loop-builder-error', textContent: this.error }) : null,
       this._renderBoardLayout(inspectorVisible, selectedNode),
     );
+    const headlessPanel = this.el.querySelector('.loop-headless-panel');
+    if (headlessPanel) headlessPanel.scrollTop = headlessScrollTop;
     if (previousSelectedNodeId && previousSelectedNodeId === this.selectedNodeId) {
       const inspector = this.el.querySelector('.loop-inspector');
       if (inspector) inspector.scrollTop = inspectorScrollTop;
@@ -262,10 +288,16 @@ class LoopView extends ComponentBase {
   }
 
   _renderBoardLayout(inspectorVisible, selectedNode) {
-    const className = `loop-board-layout${inspectorVisible ? '' : ' is-inspector-collapsed'}`;
-    const children = [this._renderCanvas()];
+    return _el('div', 'loop-board-layout',
+      this._renderCanvas(),
+      this._renderSideRail(inspectorVisible, selectedNode),
+    );
+  }
+
+  _renderSideRail(inspectorVisible, selectedNode) {
+    const children = [this._renderHeadlessPanel()];
     if (inspectorVisible && selectedNode) children.push(this._renderInspector(selectedNode));
-    return _el('div', className, ...children);
+    return _el('div', `loop-side-rail${inspectorVisible ? ' has-inspector' : ''}`, ...children);
   }
 
   _renderCanvas() {
@@ -842,6 +874,87 @@ class LoopView extends ComponentBase {
     );
   }
 
+  _renderHeadlessPanel() {
+    const boardId = this.loop.id || this.activeBoardId || 'main';
+    const agents = this.headlessSnapshot?.agents || [];
+    const { current, other } = splitHeadlessAgentsForBoard(agents, boardId);
+    const errors = this.headlessSnapshot?.errors || [];
+
+    return _el('section', 'loop-headless-panel',
+      _el('div', 'loop-headless-header',
+        _el('div', null,
+          _el('h3', { textContent: 'Agents headless' }),
+          _el('span', { textContent: `${agents.length} running` }),
+        ),
+        this._button('Refresh', 'loop-secondary-btn loop-headless-refresh', () =>
+          void this._refreshHeadlessAgents()
+        ),
+      ),
+      errors.length
+        ? _el('div', 'loop-headless-errors', ...errors.map((error) =>
+          _el('div', { textContent: error }),
+        ))
+        : null,
+      current.length || other.length
+        ? _el('div', 'loop-headless-groups',
+          current.length ? this._renderHeadlessGroup('Board actif', current) : null,
+          other.length ? this._renderHeadlessGroup('Autres headless', other) : null,
+        )
+        : _el('div', { className: 'loop-headless-empty', textContent: 'Aucun agent headless actif.' }),
+    );
+  }
+
+  _renderHeadlessGroup(title, agents) {
+    return _el('div', 'loop-headless-group',
+      _el('h4', { textContent: title }),
+      ...agents.map((agent) => this._renderHeadlessAgent(agent)),
+    );
+  }
+
+  _renderHeadlessAgent(agent) {
+    const linkedNode = agent.loopBoardId === (this.loop.id || this.activeBoardId || 'main')
+      ? this.loop.nodes.find((node) => node.id === agent.loopNodeId)
+      : null;
+    const killing = this.killingHeadlessAgentIds.has(agent.id);
+    const pids = (agent.pids || []).join(', ');
+    return _el('article', {
+      className: `loop-headless-agent${linkedNode ? ' is-linked' : ''}`,
+      tabIndex: linkedNode ? 0 : -1,
+      title: linkedNode ? 'Selectionner le node lie' : 'Agent headless',
+      onClick: () => {
+        if (linkedNode) this._selectNode(agent.loopNodeId);
+      },
+      onKeyDown: (event) => {
+        if (!linkedNode || (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        this._selectNode(agent.loopNodeId);
+      },
+    },
+      _el('div', 'loop-headless-agent-header',
+        _el('div', null,
+          _el('strong', { textContent: linkedNode ? getNodeTitle(linkedNode) : formatHeadlessAgentLabel(agent) }),
+          _el('span', { textContent: agent.agent || 'agent' }),
+        ),
+        _el('button', {
+          className: 'loop-headless-stop',
+          disabled: killing,
+          title: 'Stopper cet agent headless',
+          type: 'button',
+          textContent: killing ? '...' : 'Stop',
+          onClick: (event) => {
+            event.stopPropagation();
+            void this._killHeadlessAgent(agent.id);
+          },
+        }),
+      ),
+      _el('div', 'loop-headless-agent-meta',
+        pids ? _el('span', { textContent: `PID ${pids}` }) : null,
+        agent.cwd ? _el('code', { textContent: agent.cwd }) : null,
+      ),
+      _el('pre', { className: 'loop-headless-agent-preview', textContent: formatHeadlessAgentPreview(agent) }),
+    );
+  }
+
   _button(text, cls, onClick, extra = {}) {
     return _el('button', {
       className: cls,
@@ -1124,6 +1237,24 @@ class LoopView extends ComponentBase {
       this._render();
     } catch (err) {
       this._setError(err);
+    }
+  }
+
+  async _killHeadlessAgent(agentId) {
+    if (!agentId || this.killingHeadlessAgentIds.has(agentId)) return;
+    this.killingHeadlessAgentIds.add(agentId);
+    this._render();
+    try {
+      await loopApi.headlessKill(agentId);
+      await this._refreshSnapshot(false);
+      await this._refreshHeadlessAgents(false);
+      if (this.selectedNodeId) await this._refreshNodeLog(false);
+      this._render();
+    } catch (err) {
+      this._setError(err);
+    } finally {
+      this.killingHeadlessAgentIds.delete(agentId);
+      this._renderUnlessEditing();
     }
   }
 
