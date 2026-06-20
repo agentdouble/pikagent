@@ -429,13 +429,10 @@
 
 .loop-board-link {
   fill: none;
+  pointer-events: stroke;
   stroke: var(--accent);
   stroke-linecap: round;
   stroke-width: 2;
-}
-
-.loop-board-link.is-dashed {
-  stroke-dasharray: 8 7;
 }
 
 .loop-board-link-arrow {
@@ -445,9 +442,15 @@
 .loop-board-link-handle {
   cursor: move;
   fill: var(--bg-surface);
+  opacity: 0;
   pointer-events: auto;
   stroke: var(--accent-bright);
   stroke-width: 2;
+  transition: opacity 0.12s ease, fill 0.12s ease;
+}
+
+.loop-board-link-group:hover .loop-board-link-handle {
+  opacity: 1;
 }
 
 .loop-board-link-handle:hover {
@@ -672,8 +675,18 @@
   border-radius: var(--radius-pill);
   cursor: crosshair;
   height: 14px;
+  opacity: 0;
+  pointer-events: none;
   position: absolute;
+  transition: opacity 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
   width: 14px;
+}
+
+.loop-board-node:hover .loop-node-port,
+.loop-board-node.is-selected .loop-node-port,
+.loop-board-canvas.is-linking .loop-node-port {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .loop-node-port-top {
@@ -1027,44 +1040,6 @@
   display: flex;
   flex: 0 0 auto;
   gap: 6px;
-}
-
-.loop-edge-row-options {
-  display: grid;
-  gap: 7px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.loop-edge-row-options label,
-.loop-edge-checkbox {
-  color: var(--text-muted);
-  display: flex;
-  flex-direction: column;
-  font-size: 10px;
-  font-weight: 800;
-  gap: 4px;
-  text-transform: uppercase;
-}
-
-.loop-edge-row-options select {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 11px;
-  min-width: 0;
-  padding: 5px 7px;
-}
-
-.loop-edge-checkbox {
-  align-items: center;
-  flex-direction: row;
-  text-transform: none;
-}
-
-.loop-edge-checkbox input {
-  flex: 0 0 auto;
 }
 
 .loop-edge-row button {

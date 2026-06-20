@@ -23,7 +23,6 @@ import {
 } from '../utils/flow-trigger-helpers.js';
 import {
   AGENT_OPTIONS,
-  EDGE_PATH_TYPES,
   EDGE_PORTS,
   NODE_COLOR_OPTIONS,
   NODE_SIZE,
@@ -420,7 +419,7 @@ class LoopView extends ComponentBase {
     group.setAttribute('class', 'loop-board-link-group');
     group.dataset.edgeId = edge.id;
     const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('class', `loop-board-link${edge.dashed ? ' is-dashed' : ''}`);
+    path.setAttribute('class', 'loop-board-link');
     path.setAttribute('d', geometry.d);
     path.setAttribute('marker-end', `url(#${LINK_ARROW_MARKER_ID})`);
     group.appendChild(path);
@@ -870,7 +869,6 @@ class LoopView extends ComponentBase {
         : _el('div', null, ...edges.map((edge) => {
           const from = this.loop.nodes.find((node) => node.id === edge.from);
           const to = this.loop.nodes.find((node) => node.id === edge.to);
-          const defaults = from && to ? defaultEdgePorts(from, to) : { fromPort: 'right', toPort: 'left' };
           return _el('div', 'loop-edge-row',
             _el('div', 'loop-edge-row-main',
               _el('span', {
@@ -889,30 +887,6 @@ class LoopView extends ComponentBase {
                   onClick: () => this._deleteEdge(edge.id),
                 }),
               ),
-            ),
-            _el('div', 'loop-edge-row-options',
-              this._label('Trace', this._select(EDGE_PATH_TYPES, edge.pathType || 'curve', (value) =>
-                this._updateEdge(edge.id, { pathType: value })
-              )),
-              this._label('Depart', this._select(EDGE_PORTS, edge.fromPort || defaults.fromPort, (value) =>
-                this._updateEdge(edge.id, { fromPort: value })
-              )),
-              this._label('Arrivee', this._select(EDGE_PORTS, edge.toPort || defaults.toPort, (value) =>
-                this._updateEdge(edge.id, { toPort: value })
-              )),
-              _el('label', 'loop-edge-checkbox',
-                _el('input', {
-                  type: 'checkbox',
-                  checked: Boolean(edge.dashed),
-                  onChange: (event) => this._updateEdge(edge.id, { dashed: event.target.checked }),
-                }),
-                _el('span', { textContent: 'Pointille' }),
-              ),
-              _el('button', {
-                type: 'button',
-                textContent: 'Recentrer',
-                onClick: () => this._resetEdgeBend(edge.id),
-              }),
             ),
           );
         })),
@@ -1136,10 +1110,6 @@ class LoopView extends ComponentBase {
     }), shouldRender);
   }
 
-  _resetEdgeBend(edgeId) {
-    this._updateEdge(edgeId, { bendX: 0, bendY: 0 });
-  }
-
   _handleNodePortClick(nodeId, port) {
     if (!this.linkSourceId || this.linkSourceId === nodeId) {
       this.linkSourceId = nodeId;
@@ -1172,8 +1142,6 @@ class LoopView extends ComponentBase {
       to: to.id,
       fromPort: edgeInput.fromPort || defaults.fromPort,
       toPort: edgeInput.toPort || defaults.toPort,
-      pathType: 'curve',
-      dashed: false,
       bendX: 0,
       bendY: 0,
     };
