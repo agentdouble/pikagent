@@ -47,6 +47,7 @@ import {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const POINTER_CLICK_THRESHOLD = 4;
 const ACTIVE_BOARD_STORAGE_KEY = 'pickagent.loop.activeBoardId';
+const HEADLESS_PANEL_STORAGE_KEY = 'pickagent.loop.headlessPanelCollapsed';
 const LINK_ARROW_MARKER_ID = 'loop-board-link-arrow';
 const LOOP_TRIGGER_TYPE_LABELS = {
   ...TRIGGER_TYPE_LABELS,
@@ -65,6 +66,7 @@ class LoopView extends ComponentBase {
     this.snapshot = null;
     this.headlessSnapshot = { generatedAt: '', agents: [], errors: [] };
     this.killingHeadlessAgentIds = new Set();
+    this.headlessPanelCollapsed = readStoredBoolean(HEADLESS_PANEL_STORAGE_KEY, false);
     this.selectedNodeId = null;
     this.linkSourceId = null;
     this.inspectorCollapsed = true;
@@ -233,9 +235,16 @@ class LoopView extends ComponentBase {
 
   _renderHeader() {
     const runningNodes = runningCount(this.snapshot);
+    const headlessCount = this.headlessSnapshot?.agents?.length || 0;
     const actions = _el('div', 'loop-builder-actions',
       _el('span', { textContent: `${this.loop.nodes.length} nodes` }),
       _el('span', { textContent: `${runningNodes} running` }),
+      _el('span', { textContent: `${headlessCount} headless` }),
+      this._button(
+        this.headlessPanelCollapsed ? 'Afficher headless' : 'Masquer headless',
+        'loop-secondary-btn',
+        () => this._setHeadlessPanelCollapsed(!this.headlessPanelCollapsed),
+      ),
       this._button('Run pipeline', 'loop-primary-btn', () => void this._runPipeline(), {
         disabled: this.saving,
       }),
@@ -288,14 +297,15 @@ class LoopView extends ComponentBase {
   }
 
   _renderBoardLayout(inspectorVisible, selectedNode) {
-    return _el('div', 'loop-board-layout',
-      this._renderCanvas(),
-      this._renderSideRail(inspectorVisible, selectedNode),
-    );
+    const hasSideRail = !this.headlessPanelCollapsed || Boolean(inspectorVisible && selectedNode);
+    const children = [this._renderCanvas()];
+    if (hasSideRail) children.push(this._renderSideRail(inspectorVisible, selectedNode));
+    return _el('div', `loop-board-layout${hasSideRail ? '' : ' is-side-rail-hidden'}`, ...children);
   }
 
   _renderSideRail(inspectorVisible, selectedNode) {
-    const children = [this._renderHeadlessPanel()];
+    const children = [];
+    if (!this.headlessPanelCollapsed) children.push(this._renderHeadlessPanel());
     if (inspectorVisible && selectedNode) children.push(this._renderInspector(selectedNode));
     return _el('div', `loop-side-rail${inspectorVisible ? ' has-inspector' : ''}`, ...children);
   }
@@ -886,8 +896,13 @@ class LoopView extends ComponentBase {
           _el('h3', { textContent: 'Agents headless' }),
           _el('span', { textContent: `${agents.length} running` }),
         ),
-        this._button('Refresh', 'loop-secondary-btn loop-headless-refresh', () =>
-          void this._refreshHeadlessAgents()
+        _el('div', 'loop-headless-header-actions',
+          this._button('Refresh', 'loop-secondary-btn loop-headless-refresh', () =>
+            void this._refreshHeadlessAgents()
+          ),
+          this._button('Masquer', 'loop-secondary-btn loop-headless-refresh', () =>
+            this._setHeadlessPanelCollapsed(true)
+          ),
         ),
       ),
       errors.length
@@ -963,6 +978,13 @@ class LoopView extends ComponentBase {
       onClick,
       ...extra,
     });
+  }
+
+  _setHeadlessPanelCollapsed(collapsed) {
+    this.headlessPanelCollapsed = Boolean(collapsed);
+    writeStoredBoolean(HEADLESS_PANEL_STORAGE_KEY, this.headlessPanelCollapsed);
+    if (!this.headlessPanelCollapsed) void this._refreshHeadlessAgents(false);
+    this._render();
   }
 
   _label(text, control) {
@@ -1365,6 +1387,22 @@ function readStoredActiveBoardId() {
 function writeStoredActiveBoardId(boardId) {
   try {
     window.localStorage.setItem(ACTIVE_BOARD_STORAGE_KEY, boardId || 'main');
+  } catch {}
+}
+
+function readStoredBoolean(key, fallback = false) {
+  try {
+    const value = window.localStorage.getItem(key);
+    if (value === null) return fallback;
+    return value === '1';
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStoredBoolean(key, value) {
+  try {
+    window.localStorage.setItem(key, value ? '1' : '0');
   } catch {}
 }
 

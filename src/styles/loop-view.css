@@ -117,6 +117,10 @@
   min-height: 0;
 }
 
+.loop-board-layout.is-side-rail-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .loop-board-canvas {
   background:
     linear-gradient(var(--border-subtle) 1px, transparent 1px),
@@ -259,6 +263,12 @@
   display: block;
   font-size: 11px;
   margin-top: 3px;
+}
+
+.loop-headless-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
 }
 
 .loop-headless-refresh {
