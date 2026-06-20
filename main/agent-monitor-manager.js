@@ -89,15 +89,16 @@ function parsePsOutput(output) {
 
 function groupAgentProcesses(rows) {
   const groups = new Map();
+  const headlessRows = rows.filter((row) => isHeadlessAgentCommand(row.command));
+  const headlessByPid = new Map(headlessRows.map((row) => [row.pid, row]));
 
-  for (const row of rows) {
-    if (!isHeadlessAgentCommand(row.command)) continue;
-
+  for (const row of headlessRows) {
     const cwd = extractArg(row.command, '--cwd') || extractArg(row.command, '--cd');
     const logFile = extractArg(row.command, '--log-file');
     const lastMessageFile = extractArg(row.command, '--output-last-message');
     const derivedLog = logFile || deriveLogFile(lastMessageFile, cwd);
-    const key = derivedLog || cwd || `${detectAgent(row.command)}:${row.pid}`;
+    const rootPid = findHeadlessRootPid(row, headlessByPid);
+    const key = derivedLog || cwd || `${detectAgent(row.command)}:${rootPid}`;
     const helper = row.command.includes('run_headless_agent.py');
 
     const existing = groups.get(key);
@@ -130,6 +131,16 @@ function groupAgentProcesses(rows) {
   }
 
   return [...groups.values()];
+}
+
+function findHeadlessRootPid(row, headlessByPid) {
+  let current = row;
+  const seen = new Set();
+  while (headlessByPid.has(current.ppid) && !seen.has(current.ppid)) {
+    seen.add(current.pid);
+    current = headlessByPid.get(current.ppid);
+  }
+  return current.pid;
 }
 
 function isHeadlessAgentCommand(command) {
@@ -173,10 +184,11 @@ function deriveLogFile(lastMessageFile, cwd) {
 }
 
 async function hydrateAgent(draft, errors) {
+  const cwd = draft.cwd || await readProcessCwd(draft.pids[0], errors);
   const log = draft.logFile ? await readLogInfo(draft.logFile, errors) : null;
   const metadata = parseMetadata(log?.text || '');
   const worktreeName = metadata.worktreeName
-    || (draft.cwd ? deriveWorktreeName(draft.cwd) : undefined)
+    || (cwd ? deriveWorktreeName(cwd) : undefined)
     || (draft.logFile ? path.basename(path.dirname(draft.logFile)) : undefined);
 
   return {
@@ -186,7 +198,7 @@ async function hydrateAgent(draft, errors) {
     pids: uniqueNumbers(draft.pids),
     parentPids: uniqueNumbers(draft.parentPids),
     command: draft.command,
-    cwd: draft.cwd,
+    cwd,
     logFile: draft.logFile,
     lastMessageFile: draft.lastMessageFile,
     worktreeName,
@@ -198,6 +210,25 @@ async function hydrateAgent(draft, errors) {
     lastLogLines: log?.lines || [],
     source: 'headless',
   };
+}
+
+async function readProcessCwd(pid, errors) {
+  if (!pid) return undefined;
+  try {
+    const { stdout } = await execFileAsync('lsof', [
+      '-a',
+      '-p',
+      String(pid),
+      '-d',
+      'cwd',
+      '-Fn',
+    ], { timeout: 2000 });
+    const match = stdout.match(/^n(.+)$/m);
+    return match?.[1];
+  } catch (err) {
+    if (err?.code !== 1) errors.push(`cwd read failed for PID ${pid}: ${String(err)}`);
+    return undefined;
+  }
 }
 
 async function readLogInfo(filePath, errors) {
@@ -318,6 +349,7 @@ module.exports._internals = {
   deriveLogFile,
   detectAgent,
   extractArg,
+  findHeadlessRootPid,
   groupAgentProcesses,
   isHeadlessAgentCommand,
   parseMetadata,

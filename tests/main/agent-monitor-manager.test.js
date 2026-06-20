@@ -57,6 +57,36 @@ describe('agent-monitor-manager', () => {
     expect(groups[0].pids).toEqual([10, 11]);
   });
 
+  it('groups shell, node wrapper, and binary from the same codex exec tree', () => {
+    const rows = [
+      {
+        pid: 15309,
+        ppid: 82468,
+        startedAt: '2026-06-20T17:08:47.000Z',
+        command: "/bin/sh -c codex --sandbox workspace-write --ask-for-approval never exec --skip-git-repo-check 'task'",
+      },
+      {
+        pid: 15310,
+        ppid: 15309,
+        startedAt: '2026-06-20T17:08:47.000Z',
+        command: 'node /opt/homebrew/bin/codex --sandbox workspace-write --ask-for-approval never exec --skip-git-repo-check task',
+      },
+      {
+        pid: 15311,
+        ppid: 15310,
+        startedAt: '2026-06-20T17:08:47.000Z',
+        command: '/opt/homebrew/bin/codex --sandbox workspace-write --ask-for-approval never exec --skip-git-repo-check task',
+      },
+    ];
+
+    const groups = _internals.groupAgentProcesses(rows);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('codex:15309');
+    expect(groups[0].pids).toEqual([15309, 15310, 15311]);
+    expect(_internals.findHeadlessRootPid(rows[2], new Map(rows.map((row) => [row.pid, row])))).toBe(15309);
+  });
+
   it('collects process descendants before killing a group', () => {
     const rows = [
       { pid: 1, ppid: 0, command: 'root' },
