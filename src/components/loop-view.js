@@ -23,6 +23,8 @@ import {
 } from '../utils/flow-trigger-helpers.js';
 import {
   AGENT_OPTIONS,
+  EDGE_PATH_TYPES,
+  EDGE_PORTS,
   NODE_COLOR_OPTIONS,
   NODE_SIZE,
   REFRESH_MS,
@@ -31,6 +33,8 @@ import {
   createNode,
   defaultAgentHookTrigger,
   defaultAgentSchedule,
+  defaultEdgePorts,
+  edgeGeometry,
   formatAgentTrigger,
   formatHeadlessAgentLabel,
   formatHeadlessAgentPreview,
@@ -69,8 +73,10 @@ class LoopView extends ComponentBase {
     this.headlessPanelCollapsed = readStoredBoolean(HEADLESS_PANEL_STORAGE_KEY, false);
     this.selectedNodeId = null;
     this.linkSourceId = null;
+    this.linkSourcePort = 'right';
     this.inspectorCollapsed = true;
     this.drag = null;
+    this.edgeDrag = null;
     this.pan = null;
     this.panOffset = { x: 0, y: 0 };
     this.zoom = 0.85;
@@ -409,30 +415,39 @@ class LoopView extends ComponentBase {
   }
 
   _renderEdgePath(edge, from, to) {
-    const targetIsRight = to.x >= from.x;
-    const direction = targetIsRight ? 1 : -1;
-    const startX = targetIsRight ? from.x + NODE_SIZE + 8 : from.x - 8;
-    const startY = from.y + NODE_SIZE / 2;
-    const endX = targetIsRight ? to.x - 8 : to.x + NODE_SIZE + 8;
-    const endY = to.y + NODE_SIZE / 2;
-    const curve = Math.max(80, Math.abs(endX - startX) / 2);
-    const d = [
-      `M ${startX} ${startY}`,
-      `C ${startX + direction * curve} ${startY},`,
-      `${endX - direction * curve} ${endY},`,
-      `${endX} ${endY}`,
-    ].join(' ');
+    const geometry = edgeGeometry(edge, from, to);
     const group = document.createElementNS(SVG_NS, 'g');
+    group.setAttribute('class', 'loop-board-link-group');
+    group.dataset.edgeId = edge.id;
     const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('class', 'loop-board-link');
-    path.setAttribute('d', d);
+    path.setAttribute('class', `loop-board-link${edge.dashed ? ' is-dashed' : ''}`);
+    path.setAttribute('d', geometry.d);
     path.setAttribute('marker-end', `url(#${LINK_ARROW_MARKER_ID})`);
     group.appendChild(path);
+    if (geometry.hasHandle) {
+      const handle = document.createElementNS(SVG_NS, 'circle');
+      handle.setAttribute('class', 'loop-board-link-handle');
+      handle.setAttribute('cx', String(geometry.handle.x));
+      handle.setAttribute('cy', String(geometry.handle.y));
+      handle.setAttribute('r', '7');
+      handle.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.edgeDrag = {
+          id: edge.id,
+          startX: event.clientX,
+          startY: event.clientY,
+          originBendX: Number(edge.bendX || 0),
+          originBendY: Number(edge.bendY || 0),
+        };
+      });
+      group.appendChild(handle);
+    }
     if (edge.label) {
       const text = document.createElementNS(SVG_NS, 'text');
       text.setAttribute('class', 'loop-board-link-label');
-      text.setAttribute('x', String((startX + endX) / 2));
-      text.setAttribute('y', String((startY + endY) / 2 - 6));
+      text.setAttribute('x', String(geometry.handle.x));
+      text.setAttribute('y', String(geometry.handle.y - 12));
       text.textContent = edge.label;
       group.appendChild(text);
     }
@@ -538,18 +553,22 @@ class LoopView extends ComponentBase {
         controls,
       ),
       body,
-      _el('button', {
-        className: 'loop-node-port',
-        title: 'Creer un lien depuis ce node',
-        type: 'button',
-        onClick: (event) => {
-          event.stopPropagation();
-          this.linkSourceId = node.id;
-          this._render();
-        },
-      }),
+      ...Object.keys(EDGE_PORTS).map((port) => this._renderNodePort(node, port)),
     );
     return article;
+  }
+
+  _renderNodePort(node, port) {
+    const isSource = this.linkSourceId === node.id && this.linkSourcePort === port;
+    return _el('button', {
+      className: `loop-node-port loop-node-port-${port}${isSource ? ' is-link-source' : ''}`,
+      title: `Lien ${EDGE_PORTS[port].toLowerCase()}`,
+      type: 'button',
+      onClick: (event) => {
+        event.stopPropagation();
+        this._handleNodePortClick(node.id, port);
+      },
+    });
   }
 
   _renderInspector(node) {
@@ -820,6 +839,7 @@ class LoopView extends ComponentBase {
       this._button('Supprimer', 'loop-secondary-btn', () => this._deleteSelected()),
       this._button('Lier', 'loop-secondary-btn', () => {
         this.linkSourceId = node.id;
+        this.linkSourcePort = 'right';
         this._render();
       }),
     ];
@@ -850,21 +870,48 @@ class LoopView extends ComponentBase {
         : _el('div', null, ...edges.map((edge) => {
           const from = this.loop.nodes.find((node) => node.id === edge.from);
           const to = this.loop.nodes.find((node) => node.id === edge.to);
+          const defaults = from && to ? defaultEdgePorts(from, to) : { fromPort: 'right', toPort: 'left' };
           return _el('div', 'loop-edge-row',
-            _el('span', {
-              className: 'loop-edge-direction',
-              textContent: `${from ? getNodeTitle(from) : edge.from} -> ${to ? getNodeTitle(to) : edge.to}`,
-            }),
-            _el('div', 'loop-edge-row-actions',
-              _el('button', {
-                type: 'button',
-                textContent: 'Inverser',
-                onClick: () => this._reverseEdge(edge.id),
+            _el('div', 'loop-edge-row-main',
+              _el('span', {
+                className: 'loop-edge-direction',
+                textContent: `${from ? getNodeTitle(from) : edge.from} -> ${to ? getNodeTitle(to) : edge.to}`,
               }),
+              _el('div', 'loop-edge-row-actions',
+                _el('button', {
+                  type: 'button',
+                  textContent: 'Inverser',
+                  onClick: () => this._reverseEdge(edge.id),
+                }),
+                _el('button', {
+                  type: 'button',
+                  textContent: 'Supprimer',
+                  onClick: () => this._deleteEdge(edge.id),
+                }),
+              ),
+            ),
+            _el('div', 'loop-edge-row-options',
+              this._label('Trace', this._select(EDGE_PATH_TYPES, edge.pathType || 'curve', (value) =>
+                this._updateEdge(edge.id, { pathType: value })
+              )),
+              this._label('Depart', this._select(EDGE_PORTS, edge.fromPort || defaults.fromPort, (value) =>
+                this._updateEdge(edge.id, { fromPort: value })
+              )),
+              this._label('Arrivee', this._select(EDGE_PORTS, edge.toPort || defaults.toPort, (value) =>
+                this._updateEdge(edge.id, { toPort: value })
+              )),
+              _el('label', 'loop-edge-checkbox',
+                _el('input', {
+                  type: 'checkbox',
+                  checked: Boolean(edge.dashed),
+                  onChange: (event) => this._updateEdge(edge.id, { dashed: event.target.checked }),
+                }),
+                _el('span', { textContent: 'Pointille' }),
+              ),
               _el('button', {
                 type: 'button',
-                textContent: 'Supprimer',
-                onClick: () => this._deleteEdge(edge.id),
+                textContent: 'Recentrer',
+                onClick: () => this._resetEdgeBend(edge.id),
               }),
             ),
           );
@@ -1031,6 +1078,7 @@ class LoopView extends ComponentBase {
     this.selectedNodeId = nextNode.id;
     this.inspectorCollapsed = false;
     this.linkSourceId = null;
+    this.linkSourcePort = 'right';
     this._render();
     this._scheduleAutoSave(0);
   }
@@ -1042,7 +1090,10 @@ class LoopView extends ComponentBase {
       edges: current.edges.filter((edge) => edge.from !== nodeId && edge.to !== nodeId),
     }), false);
     if (this.selectedNodeId === nodeId) this.selectedNodeId = null;
-    if (this.linkSourceId === nodeId) this.linkSourceId = null;
+    if (this.linkSourceId === nodeId) {
+      this.linkSourceId = null;
+      this.linkSourcePort = 'right';
+    }
     this._render();
   }
 
@@ -1061,23 +1112,95 @@ class LoopView extends ComponentBase {
     this._updateLoop((current) => ({
       ...current,
       edges: current.edges.map((edge) =>
-        edge.id === edgeId ? { ...edge, from: edge.to, to: edge.from } : edge
+        edge.id === edgeId
+          ? {
+            ...edge,
+            from: edge.to,
+            to: edge.from,
+            fromPort: edge.toPort,
+            toPort: edge.fromPort,
+            bendX: -Number(edge.bendX || 0),
+            bendY: -Number(edge.bendY || 0),
+          }
+          : edge
       ),
     }));
   }
 
+  _updateEdge(edgeId, patch, shouldRender = true) {
+    this._updateLoop((current) => ({
+      ...current,
+      edges: current.edges.map((edge) =>
+        edge.id === edgeId ? { ...edge, ...patch } : edge
+      ),
+    }), shouldRender);
+  }
+
+  _resetEdgeBend(edgeId) {
+    this._updateEdge(edgeId, { bendX: 0, bendY: 0 });
+  }
+
+  _handleNodePortClick(nodeId, port) {
+    if (!this.linkSourceId || this.linkSourceId === nodeId) {
+      this.linkSourceId = nodeId;
+      this.linkSourcePort = port;
+      this._render();
+      return;
+    }
+
+    this._createEdge({
+      from: this.linkSourceId,
+      to: nodeId,
+      fromPort: this.linkSourcePort,
+      toPort: port,
+    });
+    this.linkSourceId = null;
+    this.linkSourcePort = 'right';
+    this.selectedNodeId = nodeId;
+    this.inspectorCollapsed = false;
+    this._render();
+  }
+
+  _createEdge(edgeInput) {
+    const from = this.loop.nodes.find((node) => node.id === edgeInput.from);
+    const to = this.loop.nodes.find((node) => node.id === edgeInput.to);
+    if (!from || !to || from.id === to.id) return;
+    const defaults = defaultEdgePorts(from, to);
+    const edge = {
+      id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      from: from.id,
+      to: to.id,
+      fromPort: edgeInput.fromPort || defaults.fromPort,
+      toPort: edgeInput.toPort || defaults.toPort,
+      pathType: 'curve',
+      dashed: false,
+      bendX: 0,
+      bendY: 0,
+    };
+    this._updateLoop((current) => {
+      const exists = current.edges.some((item) =>
+        item.from === edge.from
+        && item.to === edge.to
+        && item.fromPort === edge.fromPort
+        && item.toPort === edge.toPort
+      );
+      return exists ? current : { ...current, edges: [...current.edges, edge] };
+    }, false);
+  }
+
   _selectNode(nodeId) {
     if (this.linkSourceId && this.linkSourceId !== nodeId) {
-      const edge = {
-        id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      const from = this.loop.nodes.find((node) => node.id === this.linkSourceId);
+      const to = this.loop.nodes.find((node) => node.id === nodeId);
+      const defaults = from && to ? defaultEdgePorts(from, to) : {};
+      this._createEdge({
         from: this.linkSourceId,
         to: nodeId,
-      };
-      this._updateLoop((current) => {
-        const exists = current.edges.some((item) => item.from === edge.from && item.to === edge.to);
-        return exists ? current : { ...current, edges: [...current.edges, edge] };
-      }, false);
+        fromPort: this.linkSourcePort || defaults.fromPort,
+        toPort: defaults.toPort,
+      });
       this.linkSourceId = null;
+      this.linkSourcePort = 'right';
     }
     this.selectedNodeId = nodeId;
     this.inspectorCollapsed = false;
@@ -1088,8 +1211,10 @@ class LoopView extends ComponentBase {
   _resetBoardInteraction() {
     this.selectedNodeId = null;
     this.linkSourceId = null;
+    this.linkSourcePort = 'right';
     this.inspectorCollapsed = true;
     this.drag = null;
+    this.edgeDrag = null;
     this.pan = null;
     this.nodeLog = '';
     this.snapshot = null;
@@ -1303,7 +1428,8 @@ class LoopView extends ComponentBase {
     if (
       target.closest('.loop-board-node') ||
       target.closest('.loop-zoom-controls') ||
-      target.closest('.loop-inspector-reopen')
+      target.closest('.loop-inspector-reopen') ||
+      target.closest('.loop-board-link-handle')
     ) {
       return;
     }
@@ -1317,6 +1443,14 @@ class LoopView extends ComponentBase {
   }
 
   _handleCanvasMove(event) {
+    if (this.edgeDrag) {
+      this._updateEdge(this.edgeDrag.id, {
+        bendX: this.edgeDrag.originBendX + (event.clientX - this.edgeDrag.startX) / this.zoom,
+        bendY: this.edgeDrag.originBendY + (event.clientY - this.edgeDrag.startY) / this.zoom,
+      }, false);
+      this._render();
+      return;
+    }
     if (this.drag) {
       const rect = event.currentTarget.getBoundingClientRect();
       const x = (event.clientX - rect.left - this.panOffset.x) / this.zoom - this.drag.dx;
@@ -1339,6 +1473,13 @@ class LoopView extends ComponentBase {
   }
 
   _handleCanvasUp(event) {
+    if (this.edgeDrag) {
+      this.edgeDrag = null;
+      this._scheduleAutoSave();
+      this._render();
+      return;
+    }
+
     if (this.drag) {
       const drag = this.drag;
       const movement = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
@@ -1364,8 +1505,9 @@ class LoopView extends ComponentBase {
   }
 
   _endPointerWork() {
-    const hadWork = this.drag || this.pan;
+    const hadWork = this.drag || this.edgeDrag || this.pan;
     this.drag = null;
+    this.edgeDrag = null;
     this.pan = null;
     if (hadWork) this._render();
   }

@@ -15,6 +15,17 @@ import {
 export const REFRESH_MS = 2000;
 export const NODE_SIZE = 220;
 export const LOG_SCROLL_BOTTOM_THRESHOLD = 8;
+export const EDGE_PORTS = {
+  top: 'Haut',
+  right: 'Droite',
+  bottom: 'Bas',
+  left: 'Gauche',
+};
+export const EDGE_PATH_TYPES = {
+  curve: 'Courbe',
+  straight: 'Droit',
+  elbow: 'Angle',
+};
 
 export const AGENT_OPTIONS = {
   claude: 'Claude',
@@ -141,6 +152,82 @@ export function selectedEdges(loop, selectedNodeId) {
   return loop.edges.filter((edge) => edge.from === selectedNodeId || edge.to === selectedNodeId);
 }
 
+export function normalizeEdgePort(value, fallback = 'right') {
+  return Object.hasOwn(EDGE_PORTS, value) ? value : fallback;
+}
+
+export function normalizeEdgePathType(value) {
+  return Object.hasOwn(EDGE_PATH_TYPES, value) ? value : 'curve';
+}
+
+export function defaultEdgePorts(from, to) {
+  const fromCenter = nodeCenter(from);
+  const toCenter = nodeCenter(to);
+  const dx = toCenter.x - fromCenter.x;
+  const dy = toCenter.y - fromCenter.y;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0
+      ? { fromPort: 'right', toPort: 'left' }
+      : { fromPort: 'left', toPort: 'right' };
+  }
+  return dy >= 0
+    ? { fromPort: 'bottom', toPort: 'top' }
+    : { fromPort: 'top', toPort: 'bottom' };
+}
+
+export function nodePortPoint(node, port, offset = 8) {
+  const normalized = normalizeEdgePort(port);
+  const center = nodeCenter(node);
+  if (normalized === 'top') return { x: center.x, y: node.y - offset };
+  if (normalized === 'bottom') return { x: center.x, y: node.y + NODE_SIZE + offset };
+  if (normalized === 'left') return { x: node.x - offset, y: center.y };
+  return { x: node.x + NODE_SIZE + offset, y: center.y };
+}
+
+export function edgeGeometry(edge, from, to) {
+  const defaults = defaultEdgePorts(from, to);
+  const fromPort = normalizeEdgePort(edge?.fromPort, defaults.fromPort);
+  const toPort = normalizeEdgePort(edge?.toPort, defaults.toPort);
+  const start = nodePortPoint(from, fromPort);
+  const end = nodePortPoint(to, toPort);
+  const bendX = numberValue(edge?.bendX, 0);
+  const bendY = numberValue(edge?.bendY, 0);
+  const handle = {
+    x: (start.x + end.x) / 2 + bendX,
+    y: (start.y + end.y) / 2 + bendY,
+  };
+  const pathType = normalizeEdgePathType(edge?.pathType);
+  const d = buildEdgePathD(pathType, start, handle, end);
+
+  return {
+    d,
+    end,
+    fromPort,
+    handle,
+    hasHandle: pathType !== 'straight',
+    pathType,
+    start,
+    toPort,
+  };
+}
+
+function buildEdgePathD(pathType, start, handle, end) {
+  if (pathType === 'straight') {
+    return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+  }
+  if (pathType === 'elbow') {
+    return `M ${start.x} ${start.y} L ${handle.x} ${start.y} L ${handle.x} ${end.y} L ${end.x} ${end.y}`;
+  }
+  return `M ${start.x} ${start.y} Q ${handle.x} ${handle.y} ${end.x} ${end.y}`;
+}
+
+function nodeCenter(node) {
+  return {
+    x: Number(node?.x || 0) + NODE_SIZE / 2,
+    y: Number(node?.y || 0) + NODE_SIZE / 2,
+  };
+}
+
 export function processMap(snapshot) {
   return new Map((snapshot?.processes || []).map((process) => [process.nodeId, process]));
 }
@@ -184,4 +271,9 @@ export function captureLogScrollState(el, threshold = LOG_SCROLL_BOTTOM_THRESHOL
 export function restoreLogScrollState(el, state) {
   if (!el || !state) return;
   el.scrollTop = state.wasAtBottom ? el.scrollHeight : state.scrollTop;
+}
+
+function numberValue(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
