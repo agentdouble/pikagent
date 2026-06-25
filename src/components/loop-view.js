@@ -26,6 +26,7 @@ import {
   CODEX_MODEL_SUGGESTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   CODEX_SERVICE_TIER_OPTIONS,
+  DEFAULT_LOOP_VIEWPORT,
   EDGE_PORTS,
   NODE_COLOR_OPTIONS,
   NODE_SIZE,
@@ -44,6 +45,7 @@ import {
   getNodeColor,
   getNodePreview,
   getNodeTitle,
+  normalizeLoopViewport,
   processMap,
   restoreLogScrollState,
   runningCount,
@@ -57,6 +59,7 @@ const POINTER_CLICK_THRESHOLD = 4;
 const ACTIVE_BOARD_STORAGE_KEY = 'pickagent.loop.activeBoardId';
 const HEADLESS_PANEL_STORAGE_KEY = 'pickagent.loop.headlessPanelCollapsed';
 const EDGE_ROUTING_STORAGE_KEY = 'pickagent.loop.edgeRoutingMode';
+const BOARD_VIEWPORT_STORAGE_PREFIX = 'pickagent.loop.boardViewport.';
 const LINK_ARROW_MARKER_ID = 'loop-board-link-arrow';
 const LOOP_TRIGGER_TYPE_LABELS = {
   ...TRIGGER_TYPE_LABELS,
@@ -85,8 +88,9 @@ class LoopView extends ComponentBase {
     this.drag = null;
     this.edgeDrag = null;
     this.pan = null;
-    this.panOffset = { x: 0, y: 0 };
-    this.zoom = 0.85;
+    const viewport = readStoredBoardViewport(this.activeBoardId);
+    this.panOffset = viewport.panOffset;
+    this.zoom = viewport.zoom;
     this.nodeLog = '';
     this.error = '';
     this.saving = false;
@@ -123,6 +127,7 @@ class LoopView extends ComponentBase {
   }
 
   dispose() {
+    this._persistBoardViewport();
     super.dispose();
     this._clearAutoSave();
     this.el.remove();
@@ -139,6 +144,7 @@ class LoopView extends ComponentBase {
       if (!this.boards.some((board) => board.id === this.activeBoardId)) {
         this.activeBoardId = this.boards[0].id;
         writeStoredActiveBoardId(this.activeBoardId);
+        this._restoreBoardViewport();
       }
     } catch (err) {
       this._setError(err);
@@ -148,9 +154,11 @@ class LoopView extends ComponentBase {
   async _loadLoop() {
     try {
       const next = await loopApi.get(this.activeBoardId);
+      const previousBoardId = this.activeBoardId;
       this.loop = next || createDefaultLoop();
       this.activeBoardId = this.loop.id || 'main';
       writeStoredActiveBoardId(this.activeBoardId);
+      if (this.activeBoardId !== previousBoardId) this._restoreBoardViewport();
       if (this.selectedNodeId && !this.loop.nodes.some((node) => node.id === this.selectedNodeId)) {
         this.selectedNodeId = null;
       }
@@ -402,6 +410,7 @@ class LoopView extends ComponentBase {
       this._button('+', '', () => this._adjustZoom(0.1)),
       this._button('Reset', '', () => {
         this.zoom = 1;
+        this._persistBoardViewport();
         this._render();
       }),
     );
@@ -1288,12 +1297,13 @@ class LoopView extends ComponentBase {
     this.pan = null;
     this.nodeLog = '';
     this.snapshot = null;
-    this.panOffset = { x: 0, y: 0 };
+    this._restoreBoardViewport();
   }
 
   async _switchBoard(boardId) {
     if (!boardId || boardId === this.activeBoardId) return;
     this._clearAutoSave();
+    this._persistBoardViewport();
     const saved = await this._saveLoop(this.loop, { render: false, reloadBoards: false });
     if (!saved) return;
     this.activeBoardId = boardId;
@@ -1576,6 +1586,7 @@ class LoopView extends ComponentBase {
     this.zoom = next.zoom;
     this.panOffset = next.panOffset;
     this._applyBoardViewport();
+    this._persistBoardViewport();
   }
 
   _handleCanvasUp(event) {
@@ -1613,15 +1624,31 @@ class LoopView extends ComponentBase {
 
   _endPointerWork() {
     const hadWork = this.drag || this.edgeDrag || this.pan;
+    const hadPan = Boolean(this.pan);
     this.drag = null;
     this.edgeDrag = null;
     this.pan = null;
+    if (hadPan) this._persistBoardViewport();
     if (hadWork) this._render();
   }
 
   _adjustZoom(delta) {
     this.zoom = clampZoom(Number((this.zoom + delta).toFixed(2)));
+    this._persistBoardViewport();
     this._render();
+  }
+
+  _restoreBoardViewport() {
+    const viewport = readStoredBoardViewport(this.activeBoardId);
+    this.zoom = viewport.zoom;
+    this.panOffset = viewport.panOffset;
+  }
+
+  _persistBoardViewport() {
+    writeStoredBoardViewport(this.activeBoardId, {
+      zoom: this.zoom,
+      panOffset: this.panOffset,
+    });
   }
 }
 
@@ -1636,6 +1663,29 @@ function readStoredActiveBoardId() {
 function writeStoredActiveBoardId(boardId) {
   try {
     window.localStorage.setItem(ACTIVE_BOARD_STORAGE_KEY, boardId || 'main');
+  } catch {}
+}
+
+function boardViewportStorageKey(boardId) {
+  return `${BOARD_VIEWPORT_STORAGE_PREFIX}${boardId || 'main'}`;
+}
+
+function readStoredBoardViewport(boardId) {
+  try {
+    const raw = window.localStorage.getItem(boardViewportStorageKey(boardId));
+    if (!raw) return normalizeLoopViewport(DEFAULT_LOOP_VIEWPORT);
+    return normalizeLoopViewport(JSON.parse(raw));
+  } catch {
+    return normalizeLoopViewport(DEFAULT_LOOP_VIEWPORT);
+  }
+}
+
+function writeStoredBoardViewport(boardId, viewport) {
+  try {
+    window.localStorage.setItem(
+      boardViewportStorageKey(boardId),
+      JSON.stringify(normalizeLoopViewport(viewport)),
+    );
   } catch {}
 }
 

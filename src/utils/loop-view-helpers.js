@@ -15,8 +15,12 @@ import {
 export const REFRESH_MS = 2000;
 export const NODE_SIZE = 220;
 export const LOG_SCROLL_BOTTOM_THRESHOLD = 8;
-export const MIN_ZOOM = 0.45;
+export const MIN_ZOOM = 0.25;
 export const MAX_ZOOM = 1.4;
+export const DEFAULT_LOOP_VIEWPORT = {
+  zoom: 0.85,
+  panOffset: { x: 0, y: 0 },
+};
 export const EDGE_PORTS = {
   top: 'Haut',
   right: 'Droite',
@@ -266,6 +270,29 @@ export function runningCount(snapshot) {
 export function clampZoom(value) {
   const parsed = Number(value);
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number.isFinite(parsed) ? parsed : 1));
+}
+
+export function normalizeLoopViewport(viewport, fallback = DEFAULT_LOOP_VIEWPORT) {
+  const source = viewport && typeof viewport === 'object' ? viewport : {};
+  const fallbackSource = fallback && typeof fallback === 'object' ? fallback : DEFAULT_LOOP_VIEWPORT;
+  const fallbackPan = fallbackSource.panOffset && typeof fallbackSource.panOffset === 'object'
+    ? fallbackSource.panOffset
+    : DEFAULT_LOOP_VIEWPORT.panOffset;
+  const panSource = source.panOffset && typeof source.panOffset === 'object'
+    ? source.panOffset
+    : {};
+  const parsedZoom = Number(source.zoom);
+  const parsedFallbackZoom = Number(fallbackSource.zoom);
+
+  return {
+    zoom: clampZoom(Number.isFinite(parsedZoom)
+      ? parsedZoom
+      : (Number.isFinite(parsedFallbackZoom) ? parsedFallbackZoom : DEFAULT_LOOP_VIEWPORT.zoom)),
+    panOffset: {
+      x: numberValue(panSource.x, numberValue(fallbackPan.x, DEFAULT_LOOP_VIEWPORT.panOffset.x)),
+      y: numberValue(panSource.y, numberValue(fallbackPan.y, DEFAULT_LOOP_VIEWPORT.panOffset.y)),
+    },
+  };
 }
 
 export function zoomAtPoint({ zoom, panOffset, point, nextZoom }) {

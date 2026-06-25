@@ -8,6 +8,7 @@ import {
   formatHeadlessAgentLabel,
   formatHeadlessAgentPreview,
   nodePortPoint,
+  normalizeLoopViewport,
   restoreLogScrollState,
   splitHeadlessAgentsForBoard,
   zoomAtPoint,
@@ -35,10 +36,30 @@ describe('loop-view-helpers', () => {
   });
 
   it('clamps board zoom to the supported range', () => {
-    expect(clampZoom(0.1)).toBe(0.45);
+    expect(clampZoom(0.1)).toBe(0.25);
     expect(clampZoom(2)).toBe(1.4);
     expect(clampZoom(0.85)).toBe(0.85);
     expect(clampZoom('bad')).toBe(1);
+  });
+
+  it('normalizes stored board viewport values', () => {
+    expect(normalizeLoopViewport({
+      zoom: '0.2',
+      panOffset: { x: '12.5', y: -8 },
+    })).toEqual({
+      zoom: 0.25,
+      panOffset: { x: 12.5, y: -8 },
+    });
+    expect(normalizeLoopViewport({
+      zoom: 'bad',
+      panOffset: { x: 'bad' },
+    }, {
+      zoom: 0.7,
+      panOffset: { x: 3, y: 4 },
+    })).toEqual({
+      zoom: 0.7,
+      panOffset: { x: 3, y: 4 },
+    });
   });
 
   it('keeps the cursor anchor stable when zooming around a board point', () => {
