@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engineering Daily Report"
+  short_description: "PR merges du jour par projet"
+  default_prompt: "Use $software-engineering-daily-report to summarize today's software engineering pipeline activity by project."

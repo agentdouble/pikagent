@@ -9,7 +9,7 @@ const { pathExists } = require('./fs-manager-helpers');
 const { JsonStore } = require('./json-store');
 const { CachedJsonFile } = require('./cached-json-file');
 const { sanitizeSegment } = require('../shared/string-utils');
-const { installPickagentSkill: installPickagentSkillFiles } = require('./skill-install-helpers');
+const { installBundledSkills: installBundledSkillFiles } = require('./skill-install-helpers');
 
 const store = new JsonStore(BASE_DIR, 'skills-manager');
 const log = store.log;
@@ -167,7 +167,11 @@ const resetRoot = _safe(async function resetRoot() {
 }, { success: false });
 
 const installPickagentSkill = _safe(async function installPickagentSkill() {
-  return installPickagentSkillFiles();
+  return installBundledSkillFiles({ skillIds: ['pickagent'] });
+}, { success: false, targets: [] });
+
+const installBundledSkills = _safe(async function installBundledSkills() {
+  return installBundledSkillFiles();
 }, { success: false, targets: [] });
 
 async function _isAllowedPath(p) {
@@ -180,6 +184,7 @@ async function _isAllowedPath(p) {
 module.exports = {
   list, read, write, create,
   getRoot, setRoot, resetRoot,
+  installBundledSkills,
   installPickagentSkill,
   // `delete` and `import` are reserved words — aliases required.
   delete: remove,

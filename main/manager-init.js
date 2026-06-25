@@ -161,7 +161,7 @@ function initManagers(getWindow, options = {}) {
   // Access order matters: updateManager first, then flow, session, usage.
   managers.updateManager.init();
   if (options.installBundledSkills) {
-    managers.skillsManager.installPickagentSkill();
+    managers.skillsManager.installBundledSkills();
   }
   managers.flowManager.start(getWindow, managers.ptyManager);
   managers.sessionManager.start(managers.ptyManager);

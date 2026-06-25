@@ -4,8 +4,11 @@ const os = require('os');
 const path = require('path');
 const {
   PICKAGENT_SKILL_CONTENT,
+  SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID,
+  ensureBundledSkill,
   ensurePickagentSkill,
   getDefaultPickagentSkillRoots,
+  installBundledSkills,
   installPickagentSkill,
 } = require('../../main/skill-install-helpers');
 
@@ -54,5 +57,37 @@ describe('skill-install-helpers', () => {
     expect(result.targets).toHaveLength(1);
     expect(await fsp.readFile(path.join(root, 'pickagent', 'SKILL.md'), 'utf-8'))
       .toBe(PICKAGENT_SKILL_CONTENT);
+  });
+
+  it('installs bundled skills with their resource files', async () => {
+    const root = await makeTempDir();
+    const result = await ensureBundledSkill(root, SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID);
+
+    expect(result).toMatchObject({
+      success: true,
+      created: true,
+      skillId: SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID,
+    });
+    expect(await fsp.readFile(path.join(root, SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID, 'SKILL.md'), 'utf-8'))
+      .toContain('Report what the local software engineering pipeline did today');
+    expect(await fsp.readFile(path.join(root, SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID, 'agents', 'openai.yaml'), 'utf-8'))
+      .toContain('$software-engineering-daily-report');
+    expect(await fsp.readFile(path.join(root, SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID, 'scripts', 'software_engineering_daily_report.rb'), 'utf-8'))
+      .toContain('Bilan software engineering');
+  });
+
+  it('installs every bundled skill into every unique root', async () => {
+    const root = await makeTempDir();
+    const result = await installBundledSkills({ roots: [root, root] });
+
+    expect(result.success).toBe(true);
+    expect(result.targets.map((target) => target.skillId).sort()).toEqual([
+      'pickagent',
+      SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID,
+    ].sort());
+    expect(await fsp.readFile(path.join(root, 'pickagent', 'SKILL.md'), 'utf-8'))
+      .toBe(PICKAGENT_SKILL_CONTENT);
+    expect(await fsp.readFile(path.join(root, SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID, 'SKILL.md'), 'utf-8'))
+      .toContain('software engineering pipeline');
   });
 });
