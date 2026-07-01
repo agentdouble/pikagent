@@ -19,6 +19,7 @@ const {
 const { generateId } = require('../shared/id-utils');
 
 const LAST_LOG_LINES = 80;
+const LOG_READ_BYTES = 256 * 1024;
 const DEFAULT_SCHEDULE = { type: 'weekdays', time: '09:00' };
 const DEFAULT_HOOK_TRIGGER = {
   type: 'hook',
@@ -304,11 +305,9 @@ class LoopManager {
 
   async getNodeLog(arg) {
     const { boardId, nodeId } = normalizeNodeArg(arg);
-    try {
-      return await fsp.readFile(loopNodeLogPath(boardId, nodeId), 'utf-8');
-    } catch {
-      return null;
-    }
+    const file = loopNodeLogPath(boardId, nodeId);
+    const log = await readLogTail(file);
+    return log ? formatNodeLog(file, log) : null;
   }
 
   async cleanup() {
@@ -717,12 +716,52 @@ async function appendLog(logFile, data) {
 }
 
 async function readLastLines(file) {
+  const log = await readLogTail(file);
+  return log ? log.text.split(/\r?\n/).filter(Boolean).slice(-LAST_LOG_LINES) : [];
+}
+
+async function readLogTail(file, maxBytes = LOG_READ_BYTES) {
   try {
-    const raw = await fsp.readFile(file, 'utf-8');
-    return raw.split(/\r?\n/).filter(Boolean).slice(-LAST_LOG_LINES);
+    const stat = await fsp.stat(file);
+    const byteLimit = Math.max(1, Number(maxBytes) || LOG_READ_BYTES);
+    const start = Math.max(0, stat.size - byteLimit);
+    const handle = await fsp.open(file, 'r');
+    try {
+      const buffer = Buffer.alloc(stat.size - start);
+      await handle.read(buffer, 0, buffer.length, start);
+      let text = buffer.toString('utf-8');
+      if (start > 0) {
+        const firstNewline = text.indexOf('\n');
+        if (firstNewline >= 0) text = text.slice(firstNewline + 1);
+      }
+      return {
+        text,
+        size: stat.size,
+        bytesRead: buffer.length,
+        truncated: start > 0,
+      };
+    } finally {
+      await handle.close();
+    }
   } catch {
-    return [];
+    return null;
   }
+}
+
+function formatNodeLog(file, log) {
+  if (!log.truncated) return log.text;
+  return [
+    `[pickagent-loop] Showing last ${formatBytes(log.bytesRead)} of ${formatBytes(log.size)}. Full log: ${file}`,
+    '',
+    log.text,
+  ].join('\n');
+}
+
+function formatBytes(bytes) {
+  const value = Math.max(0, Number(bytes) || 0);
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KiB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
 const loopManager = new LoopManager();
@@ -742,6 +781,7 @@ module.exports._internals = {
   normalizeNode,
   normalizeVisited,
   pipelineStarterNodes,
+  readLogTail,
   runningKey,
   sanitizeLoopId,
   safeCwd,

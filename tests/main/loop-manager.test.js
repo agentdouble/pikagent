@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const { LoopManager, _internals } = require('../../main/loop-manager');
@@ -87,6 +90,22 @@ describe('loop-manager', () => {
     expect(node.model).toBe('gpt-5.4');
     expect(node.reasoningEffort).toBe('high');
     expect(node.serviceTier).toBe('standard');
+  });
+
+  it('reads only the bounded tail of large node logs', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pickagent-loop-log-'));
+    const file = path.join(dir, 'node.log');
+    try {
+      await fs.writeFile(file, `${'x'.repeat(1024)}\nlast useful line\n`, 'utf-8');
+
+      const log = await _internals.readLogTail(file, 64);
+
+      expect(log.truncated).toBe(true);
+      expect(log.size).toBeGreaterThan(64);
+      expect(log.text).toBe('last useful line\n');
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('keeps node process identities scoped by board', () => {
