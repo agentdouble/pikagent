@@ -13,6 +13,8 @@ const HOOK_STATE_FILE = path.join(BASE_DIR, 'hook-state.json');
 const SESSIONS_FILE = path.join(BASE_DIR, 'sessions.json');
 const META_FILE = path.join(BASE_DIR, 'meta.json');
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
+const CODEX_HOME = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+const CODEX_SESSIONS_DIR = path.join(CODEX_HOME, 'sessions');
 
 function loopNodeLogPath(boardIdOrNodeId, nodeId) {
   if (nodeId !== undefined) {
@@ -42,6 +44,8 @@ module.exports = {
   SESSIONS_FILE,
   META_FILE,
   CLAUDE_PROJECTS_DIR,
+  CODEX_HOME,
+  CODEX_SESSIONS_DIR,
   loopBoardPath,
   loopNodeLogPath,
   loopNodeRunPath,

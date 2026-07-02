@@ -8,6 +8,8 @@ import { usageFacade as usageApi } from '../facades/usage-facade.js';
 
 // --- Component ---
 
+const USAGE_AUTO_REFRESH_MS = 60_000;
+
 class UsageView extends ComponentBase {
   constructor(container) {
     super(container);
@@ -18,6 +20,15 @@ class UsageView extends ComponentBase {
     this.container.appendChild(this.el);
     this.activeTab = 'agents';
     this.metrics = null;
+    this._loadingMetrics = false;
+  }
+
+  _afterInit() {
+    const refreshTimer = window.setInterval(() => this.refresh(), USAGE_AUTO_REFRESH_MS);
+    this._track(() => window.clearInterval(refreshTimer));
+    const onFocus = () => this.refresh();
+    window.addEventListener('focus', onFocus);
+    this._track(() => window.removeEventListener('focus', onFocus));
   }
 
   async render() {
@@ -27,7 +38,7 @@ class UsageView extends ComponentBase {
       baseClass: 'usage',
       title: 'Usage',
       wrapLeft: true,
-      actions: _el('button', { className: 'usage-refresh-btn', textContent: 'Refresh', onClick: () => this.render() }),
+      actions: _el('button', { className: 'usage-refresh-btn', textContent: 'Refresh', onClick: () => this.refresh(true) }),
     }));
 
     const { bar, setActive } = buildTabBar(TABS, {
@@ -46,16 +57,23 @@ class UsageView extends ComponentBase {
     this.bodyEl = _el('div', { className: 'usage-body' });
     this.el.appendChild(this.bodyEl);
 
-    this._renderEmpty('Chargement des métriques...');
+    await this._loadMetrics({ showLoading: true });
+  }
 
+  async _loadMetrics({ force = false, showLoading = false } = {}) {
+    if (this.disposed || this._loadingMetrics) return;
+    this._loadingMetrics = true;
+    if (showLoading) this._renderEmpty('Chargement des métriques...');
     try {
-      this.metrics = await usageApi.getMetrics();
+      this.metrics = await usageApi.getMetrics({ force });
     } catch {
       this._renderEmpty('Erreur lors du chargement');
       return;
+    } finally {
+      this._loadingMetrics = false;
     }
 
-    this._renderBody();
+    if (!this.disposed) this._renderBody();
   }
 
   _renderBody() {
@@ -75,8 +93,8 @@ class UsageView extends ComponentBase {
     for (const table of config.tables) this._renderTable(this.bodyEl, table);
   }
 
-  refresh() {
-    this.render();
+  refresh(force = false) {
+    return this._loadMetrics({ force });
   }
 
   dispose() {

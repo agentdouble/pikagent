@@ -8,6 +8,7 @@ const {
   collectUniqueCwds,
 } = require('./token-collector');
 const { getMostModifiedFiles } = require('./git-metrics-collector');
+const { getCodexUsageMetrics } = require('./codex-usage-collector');
 
 let _sessionManager = null;
 const CACHE_TTL = 30_000;
@@ -19,7 +20,7 @@ function init(sessionMgr) {
 
 // ===== Aggregation =====
 
-const getMetrics = cachedAsync(_metricsCache, async () => {
+const getCachedMetrics = cachedAsync(_metricsCache, async () => {
   const flows = await getAllFlows();
   const flowRuns = getFlowRuns(flows);
 
@@ -29,18 +30,25 @@ const getMetrics = cachedAsync(_metricsCache, async () => {
 
   const agentMetrics = buildAgentMetrics(sessions, activeSessions);
 
-  const [tokens, mostModifiedFiles] = await Promise.all([
+  const [tokens, mostModifiedFiles, codexUsage] = await Promise.all([
     getTokenMetrics(),
     getMostModifiedFiles(collectUniqueCwds(flowRuns, allSessions)),
+    getCodexUsageMetrics(),
   ]);
 
   return {
     tokens,
+    codexUsage,
     flow: buildFlowMetrics(flows, flowRuns),
     agent: agentMetrics,
     mostModifiedFiles,
-    hasData: flows.length > 0 || allSessions.length > 0 || tokens.total > 0,
+    hasData: flows.length > 0 || allSessions.length > 0 || tokens.total > 0 || !!codexUsage.available,
   };
 });
+
+async function getMetrics(options = {}) {
+  if (options?.force) _metricsCache.clear();
+  return getCachedMetrics();
+}
 
 module.exports = { init, getMetrics };

@@ -36,7 +36,7 @@ vi.mock('../../src/utils/dom-core.js', () => ({
 class FakeNode {}
 globalThis.Node = globalThis.Node ?? FakeNode;
 
-const { _internals } = await import('../../src/utils/usage-view-helpers.js');
+const { getTabConfig, _internals } = await import('../../src/utils/usage-view-helpers.js');
 const { buildTableRow } = _internals;
 
 describe('buildTableRow', () => {
@@ -97,5 +97,38 @@ describe('buildTableRow', () => {
     const td = row.children[0];
     expect(td.className).toBe('');
     expect(td.title).toBe('');
+  });
+});
+
+describe('token tab config', () => {
+  it('adds Codex rate-limit cards and table when available', () => {
+    const config = getTabConfig('tokens', {
+      tokens: {
+        total: 10,
+        totalInput: 6,
+        totalOutput: 4,
+        totalCacheRead: 0,
+        totalCacheCreate: 0,
+        sessionTotal: 100,
+        sessionCount: 2,
+        perDay: [],
+        perProject: [],
+        perTokenConsumer: [],
+        perTokenSession: [],
+      },
+      codexUsage: {
+        available: true,
+        sampledAt: '2026-07-02T10:00:41.234Z',
+        planType: 'pro',
+        totalTokenUsage: { totalTokens: 323951 },
+        limits: [
+          { key: 'primary', label: '5h', usedPercent: 11, remainingPercent: 89, resetsAt: '2026-07-02T14:23:39.000Z' },
+          { key: 'secondary', label: 'Hebdo', usedPercent: 48, remainingPercent: 52, resetsAt: '2026-07-08T11:43:07.000Z' },
+        ],
+      },
+    });
+
+    expect(config.cards.map((card) => card.label)).toContain('Codex hebdo');
+    expect(config.tables[0].title).toBe('Limites Codex');
   });
 });
