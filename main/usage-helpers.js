@@ -35,6 +35,8 @@ const PERDAY_KEYS = TOKEN_FIELD_MAP.filter(f => f.perDay).map(f => f.key);
 const MAX_RUN_DURATION_MS = 24 * 60 * 60 * 1000;
 const TOP_PROJECTS_LIMIT = 10;
 const TOP_FILES_LIMIT = 15;
+const TOP_TOKEN_SESSIONS_LIMIT = 15;
+const TOP_TOKEN_CONSUMERS_LIMIT = 15;
 const GIT_TIMEOUT_MS = 5000;
 
 // ===== Token helpers =====
@@ -86,6 +88,106 @@ function parseTokenUsage(line, cutoffMs) {
   return {
     ...mapFields(u, TOKEN_FIELD_MAP),
     dateKey,
+  };
+}
+
+function parseHumanTokenCount(text) {
+  const match = String(text || '').match(/\d[\d\s\u00a0\u202f,._]*/);
+  if (!match) return 0;
+  const digits = match[0].replace(/[^\d]/g, '');
+  const total = Number(digits);
+  return Number.isSafeInteger(total) ? total : 0;
+}
+
+function parseTextTokenUsageSessions(text, meta = {}) {
+  const lines = String(text || '').split(/\r?\n/);
+  const records = [];
+  let sessionId = meta.sessionId || '';
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const sessionMatch = lines[i].match(/\bsession id:\s*([0-9a-f-]{16,})/i);
+    if (sessionMatch) sessionId = sessionMatch[1];
+    if (!/tokens used/i.test(lines[i])) continue;
+
+    let total = parseHumanTokenCount(lines[i].replace(/tokens used/i, ''));
+    if (!total) {
+      for (let j = i + 1; j < Math.min(lines.length, i + 6); j += 1) {
+        total = parseHumanTokenCount(lines[j]);
+        if (total) break;
+      }
+    }
+    if (!total) continue;
+
+    records.push({
+      sessionId,
+      total,
+      label: meta.label || 'Session',
+      source: meta.source || 'log',
+      consumerKey: meta.consumerKey || meta.label || meta.logFile || 'log',
+      logFile: meta.logFile || '',
+      runIndex: records.length + 1,
+      ...(meta.consumerType ? { consumerType: meta.consumerType } : {}),
+    });
+  }
+
+  return records;
+}
+
+function tokenSessionSourceRank(item) {
+  if (item.consumerType === 'agent') return 4;
+  if (item.consumerType === 'flow') return 3;
+  if (item.consumerType === 'executable') return 1;
+  return 2;
+}
+
+function tokenSessionKey(item) {
+  return item.sessionId
+    ? `session:${item.sessionId}`
+    : `entry:${item.consumerKey || item.label}:${item.logFile}:${item.runIndex}:${item.total}`;
+}
+
+function mergeTokenSession(existing, item) {
+  if (!existing) return item;
+  const preferred = tokenSessionSourceRank(item) > tokenSessionSourceRank(existing) ? item : existing;
+  return { ...preferred, total: Math.max(existing.total || 0, item.total || 0) };
+}
+
+function dedupeTokenSessions(tokenSessions) {
+  const byKey = new Map();
+  for (const item of tokenSessions) {
+    const key = tokenSessionKey(item);
+    byKey.set(key, mergeTokenSession(byKey.get(key), item));
+  }
+  return [...byKey.values()];
+}
+
+function buildTokenSessionRankings(tokenSessions) {
+  const deduped = dedupeTokenSessions(tokenSessions);
+  const sessionTotal = deduped.reduce((sum, item) => sum + (item.total || 0), 0);
+  const perConsumerAgg = aggregateByKey(
+    deduped,
+    (item) => item.consumerKey || item.label || 'unknown',
+    () => ({ label: '', source: '', total: 0, runs: 0 }),
+    (bucket, item) => {
+      bucket.label = bucket.label || item.label || item.consumerKey || 'Unknown';
+      bucket.source = bucket.source || item.source || 'log';
+      bucket.total += item.total || 0;
+      bucket.runs += 1;
+    },
+  );
+
+  return {
+    sessionTotal,
+    sessionCount: deduped.length,
+    perTokenConsumer: rankTopByDesc(
+      perConsumerAgg,
+      (consumerKey, data) => ({ consumerKey, ...data }),
+      'total',
+      TOP_TOKEN_CONSUMERS_LIMIT,
+    ),
+    perTokenSession: [...deduped]
+      .sort((a, b) => (b.total || 0) - (a.total || 0))
+      .slice(0, TOP_TOKEN_SESSIONS_LIMIT),
   };
 }
 
@@ -276,6 +378,9 @@ module.exports = {
   newTokenTotals,
   addTokens,
   parseTokenUsage,
+  parseHumanTokenCount,
+  parseTextTokenUsageSessions,
+  buildTokenSessionRankings,
   aggregateTokenData,
   accumulatePerDay,
   rankModifiedFiles,

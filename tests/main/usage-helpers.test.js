@@ -3,6 +3,9 @@ const {
   newTokenTotals,
   addTokens,
   parseTokenUsage,
+  parseHumanTokenCount,
+  parseTextTokenUsageSessions,
+  buildTokenSessionRankings,
   getFlowRuns,
   accumulatePerDay,
   rankModifiedFiles,
@@ -67,6 +70,99 @@ describe('usage-helpers', () => {
         message: { usage: { input_tokens: 10, output_tokens: 5 } },
       });
       expect(parseTokenUsage(line, Date.now())).toBe(null);
+    });
+  });
+
+  describe('parseHumanTokenCount', () => {
+    it('parses token counts with narrow non-breaking spaces', () => {
+      expect(parseHumanTokenCount('79\u202f462')).toBe(79462);
+    });
+
+    it('parses token counts with commas', () => {
+      expect(parseHumanTokenCount('tokens used: 12,345')).toBe(12345);
+    });
+  });
+
+  describe('parseTextTokenUsageSessions', () => {
+    it('parses codex token summaries and carries the session id', () => {
+      const sessions = parseTextTokenUsageSessions([
+        'session id: 019f0112-a7c0-7150-834c-b857a605527b',
+        'work output',
+        'tokens used',
+        '51\u202f835',
+      ].join('\n'), {
+        label: 'software engineering / Journey generator',
+        source: 'Boucles',
+        consumerKey: 'loop:main:node-18',
+        logFile: '/tmp/node-18.log',
+      });
+
+      expect(sessions).toEqual([{
+        sessionId: '019f0112-a7c0-7150-834c-b857a605527b',
+        total: 51835,
+        label: 'software engineering / Journey generator',
+        source: 'Boucles',
+        consumerKey: 'loop:main:node-18',
+        logFile: '/tmp/node-18.log',
+        runIndex: 1,
+      }]);
+    });
+
+    it('parses token counts written on the same line', () => {
+      const sessions = parseTextTokenUsageSessions('tokens used: 12,345', { label: 'Flow / A' });
+      expect(sessions[0].total).toBe(12345);
+      expect(sessions[0].label).toBe('Flow / A');
+    });
+  });
+
+  describe('buildTokenSessionRankings', () => {
+    it('ranks individual sessions and aggregates consumers', () => {
+      const rankings = buildTokenSessionRankings([
+        { sessionId: 'a', consumerKey: 'loop:1', label: 'Codeur', source: 'Boucles', total: 100 },
+        { sessionId: 'b', consumerKey: 'loop:2', label: 'Reviewer', source: 'Boucles', total: 300 },
+        { sessionId: 'c', consumerKey: 'loop:1', label: 'Codeur', source: 'Boucles', total: 250 },
+      ]);
+
+      expect(rankings.sessionTotal).toBe(650);
+      expect(rankings.sessionCount).toBe(3);
+      expect(rankings.perTokenSession.map((item) => item.sessionId)).toEqual(['b', 'c', 'a']);
+      expect(rankings.perTokenConsumer[0]).toMatchObject({
+        consumerKey: 'loop:1',
+        label: 'Codeur',
+        runs: 2,
+        total: 350,
+      });
+    });
+
+    it('deduplicates copied session output and prefers agent nodes', () => {
+      const rankings = buildTokenSessionRankings([
+        {
+          sessionId: 'same-session',
+          consumerKey: 'loop:watcher',
+          label: 'Watcher reviewer',
+          source: 'Boucles',
+          consumerType: 'executable',
+          total: 900,
+        },
+        {
+          sessionId: 'same-session',
+          consumerKey: 'loop:reviewer',
+          label: 'Reviewer',
+          source: 'Boucles',
+          consumerType: 'agent',
+          total: 900,
+        },
+      ]);
+
+      expect(rankings.sessionCount).toBe(1);
+      expect(rankings.sessionTotal).toBe(900);
+      expect(rankings.perTokenSession[0]).toMatchObject({
+        sessionId: 'same-session',
+        consumerKey: 'loop:reviewer',
+        label: 'Reviewer',
+      });
+      expect(rankings.perTokenConsumer).toHaveLength(1);
+      expect(rankings.perTokenConsumer[0].consumerKey).toBe('loop:reviewer');
     });
   });
 
