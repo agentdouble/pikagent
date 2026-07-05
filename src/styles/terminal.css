@@ -2,11 +2,13 @@
 .terminal-area {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 .terminal-panel {
   height: 100%;
   width: 100%;
+  min-height: 0;
 }
 
 .terminal-wrapper {
@@ -116,11 +118,13 @@
 .terminal-container {
   flex: 1;
   overflow: hidden;
-  padding: 4px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .terminal-container .xterm {
   height: 100%;
+  padding: 4px;
 }
 
 .terminal-container .xterm-viewport {
