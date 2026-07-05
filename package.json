@@ -11,8 +11,8 @@
     "hook": "node bin/pickagent-hook.cjs",
     "rebuild": "npx @electron/rebuild",
     "package": "npm run build && electron-builder --mac dir",
-    "package:dmg": "npm run build && electron-builder --mac dmg zip",
-    "release:mac": "npm run build && electron-builder --mac dmg zip --publish always",
+    "package:dmg": "npm run build && electron-builder --mac --publish never",
+    "release:mac": "npm run build && electron-builder --mac --publish always",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -73,8 +73,20 @@
       "icon": "assets/icon.icns",
       "notarize": true,
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ]
     }
   }
