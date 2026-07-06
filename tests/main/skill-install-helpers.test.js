@@ -3,6 +3,7 @@ const fsp = require('fs/promises');
 const os = require('os');
 const path = require('path');
 const {
+  LEGACY_PICKAGENT_PLACEHOLDER_CONTENT,
   PICKAGENT_SKILL_CONTENT,
   SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID,
   ensureBundledSkill,
@@ -25,15 +26,18 @@ describe('skill-install-helpers', () => {
     ]);
   });
 
-  it('creates the pickagent skill placeholder in a root', async () => {
+  it('creates the pickagent workflow guide in a root', async () => {
     const root = await makeTempDir();
     const result = await ensurePickagentSkill(root);
     const content = await fsp.readFile(result.path, 'utf-8');
+    const metadata = await fsp.readFile(path.join(root, 'pickagent', 'agents', 'openai.yaml'), 'utf-8');
 
     expect(result).toMatchObject({ success: true, created: true });
     expect(result.path).toBe(path.join(root, 'pickagent', 'SKILL.md'));
     expect(content).toBe(PICKAGENT_SKILL_CONTENT);
-    expect(content.trim().endsWith('*')).toBe(true);
+    expect(content).toContain('Pickagent Workflow Builder');
+    expect(content).toContain('pickagent-hook emit <event>');
+    expect(metadata).toContain('$pickagent');
   });
 
   it('does not overwrite an existing pickagent skill', async () => {
@@ -45,11 +49,27 @@ describe('skill-install-helpers', () => {
     const result = await ensurePickagentSkill(root);
     const content = await fsp.readFile(skillPath, 'utf-8');
 
-    expect(result).toMatchObject({ success: true, created: false });
+    expect(result).toMatchObject({ success: true, created: false, updated: false, changed: false });
     expect(content).toBe('custom content');
+    await expect(fsp.access(path.join(root, 'pickagent', 'agents', 'openai.yaml')))
+      .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  it('installs the placeholder once per unique root', async () => {
+  it('migrates the legacy pickagent placeholder without overwriting custom skills', async () => {
+    const root = await makeTempDir();
+    const skillPath = path.join(root, 'pickagent', 'SKILL.md');
+    await fsp.mkdir(path.dirname(skillPath), { recursive: true });
+    await fsp.writeFile(skillPath, LEGACY_PICKAGENT_PLACEHOLDER_CONTENT, 'utf-8');
+
+    const result = await ensurePickagentSkill(root);
+    const content = await fsp.readFile(skillPath, 'utf-8');
+
+    expect(result).toMatchObject({ success: true, created: true, updated: true, changed: true });
+    expect(content).toBe(PICKAGENT_SKILL_CONTENT);
+    expect(content).toContain('Treat a Pickagent workflow as a reusable operational object');
+  });
+
+  it('installs the workflow guide once per unique root', async () => {
     const root = await makeTempDir();
     const result = await installPickagentSkill({ roots: [root, root] });
 
@@ -57,6 +77,8 @@ describe('skill-install-helpers', () => {
     expect(result.targets).toHaveLength(1);
     expect(await fsp.readFile(path.join(root, 'pickagent', 'SKILL.md'), 'utf-8'))
       .toBe(PICKAGENT_SKILL_CONTENT);
+    expect(await fsp.readFile(path.join(root, 'pickagent', 'agents', 'openai.yaml'), 'utf-8'))
+      .toContain('Pickagent Workflows');
   });
 
   it('installs bundled skills with their resource files', async () => {

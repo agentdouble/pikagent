@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pickagent Workflows"
+  short_description: "Create reusable Pickagent workflows"
+  default_prompt: "Use $pickagent to design a reusable Pickagent workflow with triggers, nodes, validation, and handoff rules."

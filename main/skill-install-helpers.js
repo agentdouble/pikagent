@@ -7,6 +7,13 @@ const PICKAGENT_SKILL_ID = 'pickagent';
 const SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID = 'software-engineering-daily-report';
 const SKILL_FILE = 'SKILL.md';
 const BUNDLED_SKILLS_DIR = path.join(__dirname, 'bundled-skills');
+const LEGACY_PICKAGENT_PLACEHOLDER_CONTENT = `---
+name: pickagent
+description: Use when working with the Pickagent app, repository, or workflows.
+---
+
+*
+`;
 
 const BUNDLED_SKILLS = [
   {
@@ -60,15 +67,35 @@ async function listBundledFiles(dir, prefix = '') {
   return files;
 }
 
-async function writeBundledFile(sourcePath, targetPath) {
+function isLegacyPickagentPlaceholder(content) {
+  return String(content || '').replace(/\r\n/g, '\n').trim()
+    === LEGACY_PICKAGENT_PLACEHOLDER_CONTENT.trim();
+}
+
+function shouldUpdateExistingBundledFile(skillId, relativePath, content) {
+  return skillId === PICKAGENT_SKILL_ID
+    && relativePath === SKILL_FILE
+    && isLegacyPickagentPlaceholder(content);
+}
+
+async function writeBundledFile(sourcePath, targetPath, options = {}) {
   const content = await fsp.readFile(sourcePath);
   await fsp.mkdir(path.dirname(targetPath), { recursive: true });
 
   try {
     await fsp.writeFile(targetPath, content, { flag: 'wx' });
-    return true;
+    return { created: true, updated: false };
   } catch (err) {
-    if (err && err.code === 'EEXIST') return false;
+    if (err && err.code === 'EEXIST') {
+      if (options.shouldUpdateExisting) {
+        const existing = await fsp.readFile(targetPath, 'utf-8');
+        if (options.shouldUpdateExisting(existing)) {
+          await fsp.writeFile(targetPath, content);
+          return { created: false, updated: true };
+        }
+      }
+      return { created: false, updated: false };
+    }
     throw err;
   }
 }
@@ -80,19 +107,40 @@ async function ensureBundledSkill(rootDir, skillId) {
   const filePath = path.join(dir, SKILL_FILE);
   const bundledFiles = await listBundledFiles(skill.sourceDir);
   const files = [];
+  let skipCompanionFiles = false;
 
   await fsp.mkdir(dir, { recursive: true });
+  if (skill.id === PICKAGENT_SKILL_ID) {
+    try {
+      const existingSkill = await fsp.readFile(filePath, 'utf-8');
+      skipCompanionFiles = !isLegacyPickagentPlaceholder(existingSkill);
+    } catch (err) {
+      if (!err || err.code !== 'ENOENT') throw err;
+    }
+  }
 
   for (const relativePath of bundledFiles) {
     const targetPath = path.join(dir, relativePath);
     const sourcePath = path.join(skill.sourceDir, relativePath);
-    const created = await writeBundledFile(sourcePath, targetPath);
-    files.push({ path: targetPath, relativePath, created });
+    if (skipCompanionFiles && relativePath !== SKILL_FILE) {
+      files.push({ path: targetPath, relativePath, created: false, updated: false, skipped: true });
+      continue;
+    }
+    const result = await writeBundledFile(sourcePath, targetPath, {
+      shouldUpdateExisting: (content) => shouldUpdateExistingBundledFile(
+        skill.id,
+        relativePath,
+        content,
+      ),
+    });
+    files.push({ path: targetPath, relativePath, ...result });
   }
 
   return {
     success: true,
     created: files.some((file) => file.created),
+    updated: files.some((file) => file.updated),
+    changed: files.some((file) => file.created || file.updated),
     skillId: skill.id,
     root,
     dir,
@@ -139,6 +187,7 @@ async function installPickagentSkill(options = {}) {
 module.exports = {
   BUNDLED_SKILLS,
   BUNDLED_SKILLS_DIR,
+  LEGACY_PICKAGENT_PLACEHOLDER_CONTENT,
   PICKAGENT_SKILL_CONTENT,
   PICKAGENT_SKILL_ID,
   SKILL_FILE,
