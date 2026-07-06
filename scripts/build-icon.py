@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Compose a blue rounded-square (macOS "squircle") background behind the
+Compose a black rounded-square (macOS "squircle") background behind the
 pickagent circular logo, then emit every size the iconset needs.
 
 Usage: python3 scripts/build-icon.py [hex-color]
-Default color: #2563eb (Tailwind blue-600).
+Default color: #000000.
 """
 
 import os
@@ -44,7 +44,7 @@ def build(size: int, color_rgb):
 
 
 def main():
-    color = sys.argv[1] if len(sys.argv) > 1 else "#2563eb"
+    color = sys.argv[1] if len(sys.argv) > 1 else "#000000"
     rgb = hex_to_rgb(color)
     os.makedirs(ICONSET, exist_ok=True)
 
