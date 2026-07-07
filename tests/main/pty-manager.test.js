@@ -5,7 +5,7 @@ const PtyManager = require('../../main/pty-manager');
 describe('PtyManager', () => {
   describe('_getChildPids', () => {
     it('returns an empty list when pgrep finds no child process', async () => {
-      const manager = new PtyManager();
+      const manager = new PtyManager({ platform: 'darwin' });
       manager._exec = vi.fn().mockRejectedValue(Object.assign(new Error('Command failed: pgrep -P 1234'), {
         code: 1,
       }));
@@ -15,7 +15,7 @@ describe('PtyManager', () => {
     });
 
     it('rethrows pgrep errors that are not the no-match exit code', async () => {
-      const manager = new PtyManager();
+      const manager = new PtyManager({ platform: 'darwin' });
       const error = Object.assign(new Error('pgrep failed'), { code: 2 });
       manager._exec = vi.fn().mockRejectedValue(error);
 

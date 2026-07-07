@@ -21,8 +21,8 @@ describe('skill-install-helpers', () => {
   it('targets Codex and Claude skills roots under the provided home dir', () => {
     const roots = getDefaultPickagentSkillRoots('/tmp/home');
     expect(roots).toEqual([
-      '/tmp/home/.codex/skills',
-      '/tmp/home/.claude/skills',
+      path.join('/tmp/home', '.codex', 'skills'),
+      path.join('/tmp/home', '.claude', 'skills'),
     ]);
   });
 

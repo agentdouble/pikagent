@@ -99,7 +99,7 @@ describe('flow-helpers', () => {
   describe('buildFlowCommand', () => {
     it('builds claude command by default', () => {
       const flow = { prompt: 'fix bugs', agent: 'claude' };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('claude');
       expect(cmd).toContain('fix bugs');
       expect(cmd).toContain('; exit\n');
@@ -107,7 +107,7 @@ describe('flow-helpers', () => {
 
     it('builds codex command with workspace-write by default', () => {
       const flow = { prompt: 'test', agent: 'codex' };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('codex');
       expect(cmd).toContain('--sandbox workspace-write');
       expect(cmd).toContain('--ask-for-approval never');
@@ -116,7 +116,7 @@ describe('flow-helpers', () => {
 
     it('builds codex command with danger-full-access when dangerouslySkipPermissions', () => {
       const flow = { prompt: 'test', agent: 'codex', dangerouslySkipPermissions: true };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('--sandbox danger-full-access');
     });
 
@@ -128,7 +128,7 @@ describe('flow-helpers', () => {
         reasoningEffort: 'high',
         serviceTier: 'fast',
       };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
 
       expect(cmd).toContain("--model 'gpt-5.5'");
       expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
@@ -142,14 +142,14 @@ describe('flow-helpers', () => {
         agent: 'codex',
         serviceTier: 'standard',
       };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
 
       expect(cmd).toContain("-c 'service_tier=\"standard\"'");
     });
 
     it('escapes single quotes in prompt', () => {
       const flow = { prompt: "it's a test", agent: 'claude' };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain("it'\\''s a test");
     });
 
@@ -170,7 +170,7 @@ describe('flow-helpers', () => {
 
     it('supports dangerouslySkipPermissions', () => {
       const flow = { prompt: 'fix', agent: 'claude', dangerouslySkipPermissions: true };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('--dangerously-skip-permissions');
     });
   });
