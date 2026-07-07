@@ -19,6 +19,8 @@ class SkillsView extends ComponentBase {
     this.skills = [];
     this.selectedId = null;
     this.rootPath = '';
+    this.rootPaths = [];
+    this.activeRootPath = '';
     this.editorDirty = false;
     this.editorValue = '';
     this.el = _el('div', 'skills-container');
@@ -28,7 +30,10 @@ class SkillsView extends ComponentBase {
   async refresh() {
     if (this.disposed) return;
     this.skills = await skillsViewFacade.list();
-    if (!this.rootPath) this.rootPath = await skillsViewFacade.getRoot();
+    const rootState = await skillsViewFacade.getRoots();
+    this.rootPaths = rootState?.roots || [];
+    this.activeRootPath = rootState?.activeRoot || this.rootPaths[0] || await skillsViewFacade.getRoot();
+    this.rootPath = this.activeRootPath || '';
     if (this.selectedId && !this.skills.find((s) => s.id === this.selectedId)) {
       this.selectedId = null;
     }
@@ -38,7 +43,7 @@ class SkillsView extends ComponentBase {
 
   render() {
     this.el.replaceChildren();
-    const { header, rootBadgeEl } = renderHeader(this.rootPath, {
+    const { header, rootBadgeEl } = renderHeader(this.rootPaths, this.activeRootPath || this.rootPath, {
       onConfigurePath: () => this._configurePath(),
       onOpenRoot: () => this._openRoot(),
       onImport: () => this._importSkill(),
@@ -59,7 +64,12 @@ class SkillsView extends ComponentBase {
 
   _renderList() {
     if (!this.listEl) return;
-    if (this._rootBadgeEl) this._rootBadgeEl.textContent = this.rootPath;
+    if (this._rootBadgeEl) {
+      this._rootBadgeEl.textContent = this.rootPaths.length > 1
+        ? `${this.activeRootPath} + ${this.rootPaths.length - 1}`
+        : this.rootPath;
+      this._rootBadgeEl.title = this.rootPaths.join('\n');
+    }
     renderSkillList(this.listEl, this.skills, this.selectedId, {
       onSelect: (id) => this._selectSkill(id),
       onDelete: (id) => this._deleteSkill(id),
@@ -87,7 +97,7 @@ class SkillsView extends ComponentBase {
   }
 
   // --- Actions (delegated via unified facade) ---
-  async _openRoot() { await openRoot(this.rootPath, skillsViewFacade); }
+  async _openRoot() { await openRoot(this.activeRootPath || this.rootPath, skillsViewFacade); }
   async _configurePath() { await configurePath(this, { dialogApi: skillsViewFacade, skillsApi: skillsViewFacade }); }
   async _importSkill() { await importSkill(this, { dialogApi: skillsViewFacade, skillsApi: skillsViewFacade }); }
   async _createSkill() { await createSkill(this, skillsViewFacade); }

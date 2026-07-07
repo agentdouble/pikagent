@@ -40,6 +40,13 @@
   white-space: nowrap;
 }
 
+.skills-paths-textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.45;
+  white-space: pre;
+}
+
 .skills-header-right {
   display: flex;
   align-items: center;

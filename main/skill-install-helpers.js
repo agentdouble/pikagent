@@ -2,6 +2,7 @@ const fs = require('fs');
 const fsp = fs.promises;
 const os = require('os');
 const path = require('path');
+const { getDefaultSkillRoots, normalizeRoots } = require('./skills-paths');
 
 const PICKAGENT_SKILL_ID = 'pickagent';
 const SOFTWARE_ENGINEERING_DAILY_REPORT_SKILL_ID = 'software-engineering-daily-report';
@@ -32,16 +33,7 @@ const PICKAGENT_SKILL_CONTENT = fs.readFileSync(
 );
 
 function getDefaultPickagentSkillRoots(homeDir = os.homedir()) {
-  return [
-    path.join(homeDir, '.codex', 'skills'),
-    path.join(homeDir, '.claude', 'skills'),
-  ];
-}
-
-function normalizeRoots(roots) {
-  return [...new Set((roots || [])
-    .filter(Boolean)
-    .map((root) => path.resolve(root)))];
+  return getDefaultSkillRoots(homeDir);
 }
 
 function getBundledSkill(skillId) {

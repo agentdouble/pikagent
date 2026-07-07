@@ -105,7 +105,12 @@ const API_SCHEMA = {
     delete:    { type: 'fwd' },
     import:    { type: 'fwd' },
     getRoot:   { type: 'fwd' },
+    getRoots:  { type: 'fwd' },
     setRoot:   { type: 'fwd' },
+    setRoots:  { type: 'fwd' },
+    addRoot:   { type: 'fwd' },
+    removeRoot: { type: 'fwd' },
+    setActiveRoot: { type: 'fwd' },
     resetRoot: { type: 'fwd' },
   },
   config: {

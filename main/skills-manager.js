@@ -10,15 +10,23 @@ const { JsonStore } = require('./json-store');
 const { CachedJsonFile } = require('./cached-json-file');
 const { sanitizeSegment } = require('../shared/string-utils');
 const { installBundledSkills: installBundledSkillFiles } = require('./skill-install-helpers');
+const {
+  buildSkillListId,
+  getDefaultSkillRoots,
+  normalizeRoots,
+  normalizeSkillSettings,
+  parseSkillListId,
+  rootSourceLabel,
+} = require('./skills-paths');
 
 const store = new JsonStore(BASE_DIR, 'skills-manager');
 const log = store.log;
 
-const DEFAULT_SKILLS_DIR = path.join(os.homedir(), '.claude', 'skills');
+const DEFAULT_SKILLS_DIRS = getDefaultSkillRoots(os.homedir());
 const SETTINGS_FILE = path.join(BASE_DIR, 'skills-settings.json');
 
 const _metaFile = new CachedJsonFile(SETTINGS_FILE, () => store.ensureDir(), null);
-let _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
+const _ensureRootDirs = new Map();
 
 const _managerSafe = createManagerSafe(log, 'skills-manager');
 
@@ -49,14 +57,22 @@ function parseFrontmatter(md) {
   return out;
 }
 
-async function _loadRoot() {
-  const settings = await _metaFile.read();
-  return (settings && settings.root) ? settings.root : DEFAULT_SKILLS_DIR;
+function _ensureRootDir(root) {
+  const resolved = path.resolve(root);
+  if (!_ensureRootDirs.has(resolved)) _ensureRootDirs.set(resolved, ensureDirOnce(resolved));
+  return _ensureRootDirs.get(resolved);
 }
 
-async function _saveRoot(newRoot) {
-  await _metaFile.write({ root: newRoot });
-  _ensureRootDir = ensureDirOnce(newRoot);
+async function _loadSettings() {
+  const settings = await _metaFile.read();
+  return normalizeSkillSettings(settings, os.homedir());
+}
+
+async function _saveSettings(nextSettings) {
+  const roots = normalizeRoots(nextSettings.roots);
+  const activeCandidate = normalizeRoots([nextSettings.activeRoot])[0];
+  const activeRoot = roots.includes(activeCandidate) ? activeCandidate : roots[0];
+  await _metaFile.write({ roots, activeRoot });
 }
 
 const _readSkillDir = _safe(async function readSkillDir(rootDir, skillName) {
@@ -67,20 +83,33 @@ const _readSkillDir = _safe(async function readSkillDir(rootDir, skillName) {
   const raw = await fsp.readFile(skillPath, 'utf-8');
   const meta = parseFrontmatter(raw);
   return {
-    id: skillName,
+    id: buildSkillListId(rootDir, skillName),
+    skillId: skillName,
     name: meta.name || skillName,
     description: meta.description || '',
+    root: path.resolve(rootDir),
     dir,
     path: skillPath,
-    source: 'user',
+    source: rootSourceLabel(rootDir),
   };
 }, null);
 
+async function _listRoot(root) {
+  try {
+    const dirs = await listDirNames(root);
+    const skills = await Promise.all(dirs.map((name) => _readSkillDir(root, name)));
+    return skills.filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 const list = _safe(async function list() {
-  const root = await _loadRoot();
-  const dirs = await listDirNames(root);
-  const skills = await Promise.all(dirs.map((name) => _readSkillDir(root, name)));
-  return skills.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+  const { roots } = await _loadSettings();
+  const skills = (await Promise.all(roots.map((root) => _listRoot(root)))).flat();
+  return skills.sort((a, b) =>
+    a.name.localeCompare(b.name) || a.source.localeCompare(b.source) || a.path.localeCompare(b.path),
+  );
 }, []);
 
 const read = _safe(async function read(filePath) {
@@ -98,7 +127,7 @@ const write = _safe(async function write({ filePath, content }) {
 const create = _safe(async function create({ id, description }) {
   const safeId = sanitizeSegment(String(id || '').trim());
   if (!safeId) return { success: false, error: 'Invalid id' };
-  const root = await _loadRoot();
+  const { activeRoot: root } = await _loadSettings();
   const dir = path.join(root, safeId);
   const filePath = path.join(dir, 'SKILL.md');
   await fsp.mkdir(dir, { recursive: true });
@@ -109,13 +138,15 @@ const create = _safe(async function create({ id, description }) {
   const desc = (description || '').replace(/\n/g, ' ').trim();
   const body = `---\nname: ${safeId}\ndescription: ${desc}\n---\n\n# ${safeId}\n\nDécris ici ce que fait ce skill.\n`;
   await fsp.writeFile(filePath, body, 'utf-8');
-  return { success: true, id: safeId, path: filePath };
+  return { success: true, id: buildSkillListId(root, safeId), skillId: safeId, path: filePath };
 }, { success: false });
 
 const remove = _safe(async function remove(id) {
-  const safeId = String(id || '').trim();
+  const parsed = parseSkillListId(id);
+  const { activeRoot } = await _loadSettings();
+  const safeId = parsed?.skillName || String(id || '').trim();
   if (!safeId) return false;
-  const root = await _loadRoot();
+  const root = parsed?.root || activeRoot;
   const dir = path.join(root, safeId);
   if (!(await _isAllowedPath(dir))) return false;
   await fsp.rm(dir, { recursive: true, force: true });
@@ -132,8 +163,8 @@ const importFrom = _safe(async function importFrom(srcDir) {
   } catch {
     return { success: false, error: 'No SKILL.md found in folder' };
   }
-  const root = await _loadRoot();
-  await _ensureRootDir();
+  const { activeRoot: root } = await _loadSettings();
+  await _ensureRootDir(root)();
   const baseName = path.basename(srcDir);
   let destName = baseName;
   let destDir = path.join(root, destName);
@@ -143,27 +174,74 @@ const importFrom = _safe(async function importFrom(srcDir) {
     destDir = path.join(root, destName);
   }
   await fsp.cp(srcDir, destDir, { recursive: true });
-  return { success: true, id: destName, path: path.join(destDir, 'SKILL.md') };
+  return { success: true, id: buildSkillListId(root, destName), skillId: destName, path: path.join(destDir, 'SKILL.md') };
 }, { success: false, error: 'Import failed' });
 
 const getRoot = _safe(async function getRoot() {
-  return _loadRoot();
+  const { activeRoot } = await _loadSettings();
+  return activeRoot;
 }, null);
+
+const getRoots = _safe(async function getRoots() {
+  return _loadSettings();
+}, { roots: DEFAULT_SKILLS_DIRS, activeRoot: DEFAULT_SKILLS_DIRS[0] });
 
 const setRoot = _safe(async function setRoot(newRoot) {
   if (!newRoot) return { success: false, error: 'Empty path' };
   const resolved = path.resolve(newRoot);
   await fsp.mkdir(resolved, { recursive: true });
-  await _saveRoot(resolved);
+  await _saveSettings({ roots: [resolved], activeRoot: resolved });
   return { success: true, root: resolved };
 }, { success: false, error: 'Could not set path' });
+
+const setRoots = _safe(async function setRoots(input) {
+  const rootsInput = Array.isArray(input) ? input : input?.roots;
+  const roots = normalizeRoots(rootsInput);
+  if (!roots.length) return { success: false, error: 'At least one path is required' };
+  const activeInput = Array.isArray(input) ? roots[0] : input?.activeRoot;
+  const activeCandidate = normalizeRoots([activeInput])[0];
+  const activeRoot = roots.includes(activeCandidate) ? activeCandidate : roots[0];
+  await Promise.all(roots.map((root) => fsp.mkdir(root, { recursive: true })));
+  await _saveSettings({ roots, activeRoot });
+  return { success: true, roots, activeRoot, root: activeRoot };
+}, { success: false, error: 'Could not set paths' });
+
+const addRoot = _safe(async function addRoot(newRoot) {
+  if (!newRoot) return { success: false, error: 'Empty path' };
+  const { roots } = await _loadSettings();
+  const resolved = path.resolve(newRoot);
+  const nextRoots = normalizeRoots([...roots, resolved]);
+  await fsp.mkdir(resolved, { recursive: true });
+  await _saveSettings({ roots: nextRoots, activeRoot: resolved });
+  return { success: true, roots: nextRoots, activeRoot: resolved, root: resolved };
+}, { success: false, error: 'Could not add path' });
+
+const removeRoot = _safe(async function removeRoot(rootToRemove) {
+  const { roots, activeRoot } = await _loadSettings();
+  const resolved = normalizeRoots([rootToRemove])[0];
+  const nextRoots = roots.filter((root) => root !== resolved);
+  if (!resolved || nextRoots.length === roots.length) {
+    return { success: false, error: 'Path not configured' };
+  }
+  if (!nextRoots.length) return { success: false, error: 'At least one path is required' };
+  const nextActive = activeRoot === resolved ? nextRoots[0] : activeRoot;
+  await _saveSettings({ roots: nextRoots, activeRoot: nextActive });
+  return { success: true, roots: nextRoots, activeRoot: nextActive, root: nextActive };
+}, { success: false, error: 'Could not remove path' });
+
+const setActiveRoot = _safe(async function setActiveRoot(root) {
+  const { roots } = await _loadSettings();
+  const resolved = normalizeRoots([root])[0];
+  if (!roots.includes(resolved)) return { success: false, error: 'Path is not configured' };
+  await _saveSettings({ roots, activeRoot: resolved });
+  return { success: true, roots, activeRoot: resolved, root: resolved };
+}, { success: false, error: 'Could not set active path' });
 
 const resetRoot = _safe(async function resetRoot() {
   await fsp.unlink(SETTINGS_FILE).catch(() => {});
   _metaFile.invalidate();
-  _ensureRootDir = ensureDirOnce(DEFAULT_SKILLS_DIR);
-  const root = await _loadRoot();
-  return { success: true, root };
+  const { roots, activeRoot } = await _loadSettings();
+  return { success: true, root: activeRoot, roots, activeRoot };
 }, { success: false });
 
 const installPickagentSkill = _safe(async function installPickagentSkill() {
@@ -176,14 +254,17 @@ const installBundledSkills = _safe(async function installBundledSkills() {
 
 async function _isAllowedPath(p) {
   if (!p) return false;
-  const root = path.resolve(await _loadRoot());
+  const { roots } = await _loadSettings();
   const resolved = path.resolve(p);
-  return resolved === root || resolved.startsWith(root + path.sep);
+  return roots.some((root) => {
+    const resolvedRoot = path.resolve(root);
+    return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep);
+  });
 }
 
 module.exports = {
   list, read, write, create,
-  getRoot, setRoot, resetRoot,
+  getRoot, getRoots, setRoot, setRoots, addRoot, removeRoot, setActiveRoot, resetRoot,
   installBundledSkills,
   installPickagentSkill,
   // `delete` and `import` are reserved words — aliases required.
