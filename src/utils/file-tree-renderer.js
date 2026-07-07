@@ -154,8 +154,11 @@ export function renderFileEntry(entry, parentEl, depth, callbacks) {
  * @param {Record<string, () => void>} actionDispatcher - action name -> handler
  * @returns {HTMLElement} container with action buttons
  */
-export function buildSectionActions(actionDispatcher) {
-  const actionBtns = HEADER_ACTIONS.map(({ key, title, action }) =>
+export function buildSectionActions(actionDispatcher, allowedKeys = null) {
+  const actions = allowedKeys
+    ? HEADER_ACTIONS.filter(({ key }) => allowedKeys.includes(key))
+    : HEADER_ACTIONS;
+  const actionBtns = actions.map(({ key, title, action }) =>
     createActionButton({
       title,
       cls: 'file-tree-action-btn',

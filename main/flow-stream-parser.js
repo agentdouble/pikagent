@@ -27,13 +27,32 @@ function formatToolUse(block) {
 
 /** Declarative map: message content block type → formatter function. */
 const BLOCK_FORMATTERS = {
-  text:     (block) => block.text ? `\r\n${block.text.replace(/\n/g, '\r\n')}\r\n` : '',
-  tool_use: formatToolUse,
+  text:        (block) => block.text ? `\r\n${block.text.replace(/\n/g, '\r\n')}\r\n` : '',
+  output_text: (block) => block.text ? `\r\n${block.text.replace(/\n/g, '\r\n')}\r\n` : '',
+  tool_use:    formatToolUse,
 };
 
 function formatAssistant(message) {
   if (!message?.content) return '';
   return message.content.reduce((out, block) => out + (BLOCK_FORMATTERS[block.type]?.(block) || ''), '');
+}
+
+function formatMessage(event) {
+  if (event.role && event.role !== 'assistant') return '';
+  return formatAssistant(event);
+}
+
+function formatCodexFunctionCall(item) {
+  const name = item?.name || item?.call_id || 'tool';
+  return `\r\n${DEFAULT_TOOL_COLOR}${BOLD}[${name}]${RESET}\r\n`;
+}
+
+function formatResponseItem(event) {
+  const item = event.payload || event.item || event.response_item;
+  if (!item?.type) return '';
+  if (item.type === 'message') return formatMessage(item);
+  if (item.type === 'function_call') return formatCodexFunctionCall(item);
+  return '';
 }
 
 /** Declarative map: result subtype → ANSI color and display label. */
@@ -65,8 +84,10 @@ function formatResult(event) {
 }
 
 const EVENT_FORMATTERS = {
-  assistant: (e) => formatAssistant(e.message),
-  result:    (e) => formatResult(e),
+  assistant:     (e) => formatAssistant(e.message),
+  message:       formatMessage,
+  response_item: formatResponseItem,
+  result:        (e) => formatResult(e),
 };
 
 function formatEvent(event) {

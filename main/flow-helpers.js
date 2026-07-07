@@ -30,8 +30,8 @@ const _AGENT_CMD_OVERRIDES = {
   },
   codex: {
     permModes: [
-      '--sandbox workspace-write --ask-for-approval never exec --skip-git-repo-check',
-      '--sandbox danger-full-access --ask-for-approval never exec --skip-git-repo-check',
+      '--sandbox workspace-write --ask-for-approval never exec --json --skip-git-repo-check',
+      '--sandbox danger-full-access --ask-for-approval never exec --json --skip-git-repo-check',
     ],
     modelFlag: '--model',
     reasoningEffortConfigKey: 'model_reasoning_effort',
@@ -155,7 +155,7 @@ function _createSafeAppender(maxBytes) {
 }
 
 function createOutputProcessor(agent) {
-  const parser = (agent || 'claude') === 'claude' ? createStreamParser() : null;
+  const parser = ['claude', 'codex'].includes(agent || 'claude') ? createStreamParser() : null;
   const output = _createSafeAppender(MAX_OUTPUT_BYTES);
   const raw = _createSafeAppender(MAX_OUTPUT_BYTES);
 

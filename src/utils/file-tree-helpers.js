@@ -3,6 +3,8 @@
  * No DOM — deterministic functions that can be tested in isolation.
  */
 
+import { getTreeBaseName } from './remote-path.js';
+
 const INDENT_BASE = 12;
 const INDENT_STEP = 16;
 export const CHEVRON_EXPANDED = '▾';
@@ -41,6 +43,7 @@ export function getRelativePath(fullPath, rootCwd) {
  * @returns {string}
  */
 export function getBaseName(path) {
+  if (typeof path === 'string' && path.startsWith('ssh://')) return getTreeBaseName(path);
   return path.split('/').filter(Boolean).pop() || '/';
 }
 

@@ -16,6 +16,7 @@ import {
   CHEVRON_EXPANDED, CHEVRON_COLLAPSED,
   extractFolderName,
 } from './file-tree-helpers.js';
+import { formatTreePath, isSshPath } from './remote-path.js';
 import { buildSectionActions } from './file-tree-renderer.js';
 import { buildDirContextItems } from './file-tree-context-menu.js';
 
@@ -64,13 +65,14 @@ export function rebuildSectionDOM(section, cwd, callbacks) {
  * @param {SectionDOMCallbacks} callbacks
  */
 function _buildSectionHeader(cwd, contentEl, wasCollapsed, expandedDirs, callbacks) {
+  const isRemote = isSshPath(cwd);
   const actionsContainer = buildSectionActions({
     newFile:     () => callbacks.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'file'),
     newFolder:   () => callbacks.promptNewEntry(cwd, contentEl, 0, expandedDirs, 'folder'),
     newWorktree: () => emitWorkspaceCreateWorktree({ repoCwd: cwd }),
     openPr:      () => emitWorkspaceOpenPr({ repoCwd: cwd }),
     refresh:     () => callbacks.refreshSection(cwd),
-  });
+  }, isRemote ? ['newFile', 'newFolder', 'refresh'] : null);
 
   const { chevron, name: labelEl, row: header } = buildChevronRow({
     chevronClass: 'file-tree-section-chevron',
@@ -80,7 +82,7 @@ function _buildSectionHeader(cwd, contentEl, wasCollapsed, expandedDirs, callbac
     containerClass: 'file-tree-section-header',
     extraChildren: [actionsContainer],
   });
-  labelEl.title = cwd;
+  labelEl.title = formatTreePath(cwd);
 
   header.addEventListener('click', () => {
     toggleCollapsible(_sectionExpandedState, cwd, chevron, SECTION_CHEVRON_TEXTS, { el: contentEl, absentCls: 'collapsed' });

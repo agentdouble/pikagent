@@ -111,7 +111,7 @@ describe('flow-helpers', () => {
       expect(cmd).toContain('codex');
       expect(cmd).toContain('--sandbox workspace-write');
       expect(cmd).toContain('--ask-for-approval never');
-      expect(cmd).toContain('exec --skip-git-repo-check');
+      expect(cmd).toContain('exec --json --skip-git-repo-check');
     });
 
     it('builds codex command with danger-full-access when dangerouslySkipPermissions', () => {
@@ -133,7 +133,7 @@ describe('flow-helpers', () => {
       expect(cmd).toContain("--model 'gpt-5.5'");
       expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
       expect(cmd).toContain("-c 'service_tier=\"fast\"'");
-      expect(cmd).toContain('exec --skip-git-repo-check');
+      expect(cmd).toContain('exec --json --skip-git-repo-check');
     });
 
     it('builds codex command with standard service tier when fast is disabled', () => {

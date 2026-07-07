@@ -45,4 +45,32 @@ describe('PtyManager', () => {
       await expect(manager._checkAgent('term-1', { pid: 1234 })).resolves.toBe('Codex');
     });
   });
+
+  describe('getCwd ssh detection', () => {
+    it('returns a remote ssh URI when the terminal shell has an ssh child', async () => {
+      const manager = new PtyManager({
+        platform: 'darwin',
+        getDirectChildProcesses: vi.fn().mockResolvedValue([
+          { pid: 222, ppid: 1234, command: 'ssh sfpl' },
+        ]),
+        readProcessCwd: vi.fn().mockResolvedValue('/Users/local/project'),
+        resolveSshPwd: vi.fn().mockResolvedValue('/home/jeremy'),
+      });
+      manager.processes.set('term-1', { pid: 1234 });
+
+      await expect(manager.getCwd('term-1')).resolves.toBe('ssh://sfpl/home/jeremy');
+    });
+
+    it('falls back to the local cwd when there is no ssh child', async () => {
+      const manager = new PtyManager({
+        platform: 'darwin',
+        getDirectChildProcesses: vi.fn().mockResolvedValue([]),
+        readProcessCwd: vi.fn().mockResolvedValue('/Users/local/project'),
+        resolveSshPwd: vi.fn(),
+      });
+      manager.processes.set('term-1', { pid: 1234 });
+
+      await expect(manager.getCwd('term-1')).resolves.toBe('/Users/local/project');
+    });
+  });
 });
