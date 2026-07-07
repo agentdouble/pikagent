@@ -54,16 +54,21 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $assets = @(
-            Get-ChildItem release -File -Filter "*.exe",
-            Get-ChildItem release -File -Filter "*.exe.blockmap",
-            Get-ChildItem release -File -Filter "*-win.zip",
-            Get-ChildItem release -File -Filter "*-win.zip.blockmap",
-            Get-ChildItem release -File -Filter "latest.yml"
-          ) | Select-Object -ExpandProperty FullName
+          $patterns = @(
+            "*.exe",
+            "*.exe.blockmap",
+            "*-win.zip",
+            "*-win.zip.blockmap",
+            "latest.yml"
+          )
+          $assets = foreach ($pattern in $patterns) {
+            Get-ChildItem -Path release -File -Filter $pattern | Select-Object -ExpandProperty FullName
+          }
+          $assets = @($assets | Sort-Object -Unique)
 
           if (-not $assets -or $assets.Count -eq 0) {
             throw "No Windows release assets found in release/"
           }
 
+          $assets | ForEach-Object { Write-Host "Uploading $_" }
           gh release upload $env:RELEASE_TAG @assets --clobber
