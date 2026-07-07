@@ -89,7 +89,7 @@ Pour une distribution macOS propre, configure les secrets GitHub
 des artefacts.
 
 Les artefacts Windows x64 sont construits par `npm run release:win` sur
-`windows-latest`. Sans certificat de signature Windows, l'installateur peut
+`windows-2022`. Sans certificat de signature Windows, l'installateur peut
 afficher un avertissement SmartScreen même si le build est valide.
 
 ## Structure du projet
