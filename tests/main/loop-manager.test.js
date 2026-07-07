@@ -182,6 +182,23 @@ describe('loop-manager', () => {
     ]);
   });
 
+  it('selects only enabled persistent executable nodes for watcher runs', () => {
+    const loop = {
+      nodes: [
+        { id: 'watcher', type: 'executable', persistent: true, enabled: true },
+        { id: 'legacy-watcher', type: 'executable', watcher: true, enabled: true },
+        { id: 'exec', type: 'executable', enabled: true },
+        { id: 'disabled-watcher', type: 'executable', persistent: true, enabled: false },
+        { id: 'agent', type: 'agent', enabled: true },
+      ],
+    };
+
+    expect(_internals.watcherNodes(loop).map((node) => node.id)).toEqual([
+      'watcher',
+      'legacy-watcher',
+    ]);
+  });
+
   it('runs only executable nodes without following links', async () => {
     const manager = new LoopManager();
     manager.get = async () => ({
@@ -210,6 +227,36 @@ describe('loop-manager', () => {
     ]);
     expect(result.started.map((item) => item.nodeId)).toEqual(['exec-idle']);
     expect(result.skipped).toEqual([{ nodeId: 'exec-running', reason: 'running' }]);
+  });
+
+  it('runs only watcher nodes without following links', async () => {
+    const manager = new LoopManager();
+    manager.get = async () => ({
+      nodes: [
+        { id: 'watcher-idle', type: 'executable', persistent: true, enabled: true },
+        { id: 'watcher-running', type: 'executable', persistent: true, enabled: true },
+        { id: 'exec', type: 'executable', enabled: true },
+        { id: 'agent', type: 'agent', triggerType: 'schedule', enabled: true },
+        { id: 'disabled-watcher', type: 'executable', persistent: true, enabled: false },
+      ],
+    });
+    manager._isNodeRunning = async (_boardId, nodeId) => nodeId === 'watcher-running';
+    const runCalls = [];
+    manager.runNode = async (arg, context) => {
+      runCalls.push({ arg, context });
+      return { nodeId: arg.nodeId, status: 'running' };
+    };
+
+    const result = await manager.runWatchers({ boardId: 'board-1' });
+
+    expect(runCalls).toEqual([
+      {
+        arg: { boardId: 'board-1', nodeId: 'watcher-idle' },
+        context: { trigger: 'watchers', followLinks: false },
+      },
+    ]);
+    expect(result.started.map((item) => item.nodeId)).toEqual(['watcher-idle']);
+    expect(result.skipped).toEqual([{ nodeId: 'watcher-running', reason: 'running' }]);
   });
 
   it('treats disabled runnable nodes as stoppable when they are already running', () => {

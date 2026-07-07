@@ -89,6 +89,7 @@ const API_SCHEMA = {
     runNode:    { type: 'fwd' },
     runPipeline: { type: 'fwd' },
     runExecutables: { type: 'fwd' },
+    runWatchers: { type: 'fwd' },
     stopNode:   { type: 'fwd' },
     stopPipeline: { type: 'fwd' },
     snapshot:   { type: 'fwd' },

@@ -10,6 +10,7 @@ Application desktop de gestion d'espaces de travail terminaux, conçue pour supe
 - **Explorateur de fichiers** — Arborescence avec lazy loading, création/renommage/suppression, watch du système de fichiers
 - **Visionneuse de code** — Coloration syntaxique (highlight.js), diff Git staged/unstaged
 - **Flows d'automatisation** — Prompts agent planifiables ou déclenchés par hooks/events
+- **Boucles** — Boards visuels avec agents, executables, watchers persistants et liens de continuation
 - **Métriques** — Suivi des sessions agents, tokens consommés et exécutions de flows
 - **Raccourcis clavier** — Navigation rapide entre onglets et actions courantes
 

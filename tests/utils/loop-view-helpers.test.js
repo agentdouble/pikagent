@@ -7,6 +7,8 @@ import {
   edgeGeometry,
   formatHeadlessAgentLabel,
   formatHeadlessAgentPreview,
+  getNodeColor,
+  isWatcherNode,
   nodePortPoint,
   normalizeLoopViewport,
   restoreLogScrollState,
@@ -83,6 +85,20 @@ describe('loop-view-helpers', () => {
     expect(node.model).toBe('');
     expect(node.reasoningEffort).toBe('');
     expect(node.serviceTier).toBe('');
+  });
+
+  it('creates watcher nodes as persistent executable cards', () => {
+    const node = createNode('watcher', 0);
+
+    expect(node).toMatchObject({
+      type: 'executable',
+      title: 'Watcher',
+      command: './start.sh',
+      persistent: true,
+      color: 'green',
+    });
+    expect(isWatcherNode(node)).toBe(true);
+    expect(getNodeColor({ type: 'executable', persistent: true })).toBe('green');
   });
 
   it('splits headless agents by active loop board', () => {

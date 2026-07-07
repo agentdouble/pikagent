@@ -208,26 +208,19 @@ class LoopManager {
   async runExecutables(arg = 'main') {
     const boardId = normalizeBoardIdArg(arg);
     const loop = await this.get(boardId);
-    const starters = executableNodes(loop);
-    const started = [];
-    const skipped = [];
+    return this._runRunnableNodes(boardId, executableNodes(loop), {
+      trigger: 'executables',
+      followLinks: false,
+    });
+  }
 
-    for (const node of starters) {
-      if (await this._isNodeRunning(boardId, node.id)) {
-        skipped.push({ nodeId: node.id, reason: 'running' });
-        continue;
-      }
-      try {
-        started.push(await this.runNode(
-          { boardId, nodeId: node.id },
-          { trigger: 'executables', followLinks: false },
-        ));
-      } catch (err) {
-        skipped.push({ nodeId: node.id, reason: 'error', error: err.message });
-      }
-    }
-
-    return { boardId, started, skipped };
+  async runWatchers(arg = 'main') {
+    const boardId = normalizeBoardIdArg(arg);
+    const loop = await this.get(boardId);
+    return this._runRunnableNodes(boardId, watcherNodes(loop), {
+      trigger: 'watchers',
+      followLinks: false,
+    });
   }
 
   async stopPipeline(arg = 'main') {
@@ -317,6 +310,28 @@ class LoopManager {
   async _isNodeRunning(boardId, nodeId) {
     return this.running.has(runningKey(boardId, nodeId))
       || Boolean(await readActiveLoopNodeRun(boardId, nodeId));
+  }
+
+  async _runRunnableNodes(boardId, nodes, context) {
+    const started = [];
+    const skipped = [];
+
+    for (const node of nodes) {
+      if (await this._isNodeRunning(boardId, node.id)) {
+        skipped.push({ nodeId: node.id, reason: 'running' });
+        continue;
+      }
+      try {
+        started.push(await this.runNode(
+          { boardId, nodeId: node.id },
+          context,
+        ));
+      } catch (err) {
+        skipped.push({ nodeId: node.id, reason: 'error', error: err.message });
+      }
+    }
+
+    return { boardId, started, skipped };
   }
 
   async _triggerLinkedTargets(boardId, fromNodeId, visited) {
@@ -497,6 +512,10 @@ function pipelineStarterNodes(loop) {
 function executableNodes(loop) {
   if (!loop || !Array.isArray(loop.nodes)) return [];
   return loop.nodes.filter((node) => node?.type === 'executable' && node.enabled !== false);
+}
+
+function watcherNodes(loop) {
+  return executableNodes(loop).filter((node) => Boolean(node.persistent || node.watcher));
 }
 
 async function stopExternalRun(run) {
@@ -770,4 +789,5 @@ module.exports._internals = {
   safeCwd,
   stopExternalRun,
   loopRunStatusFromClose,
+  watcherNodes,
 };

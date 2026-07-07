@@ -81,6 +81,7 @@ export function createDefaultLoop() {
 
 export function createNode(type, index) {
   if (type === 'agent') return createAgentNode(index);
+  if (type === 'watcher') return createWatcherNode(index);
   if (type === 'executable') return createExecutableNode(index);
   return createDisplayNode(index);
 }
@@ -127,6 +128,28 @@ function createExecutableNode(index) {
   };
 }
 
+function createWatcherNode(index) {
+  const now = new Date().toISOString();
+  return {
+    id: generateId('node'),
+    type: 'executable',
+    title: 'Watcher',
+    x: 120 + index * 40,
+    y: 120 + index * 40,
+    color: 'green',
+    cwd: '',
+    command: './start.sh',
+    persistent: true,
+    enabled: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function isWatcherNode(node) {
+  return node?.type === 'executable' && Boolean(node.persistent);
+}
+
 function createDisplayNode(index) {
   const now = new Date().toISOString();
   return {
@@ -155,7 +178,7 @@ export function getNodeColor(node) {
   if (node.color) return node.color;
   if (node.type === 'agent') return 'blue';
   if (node.type === 'display') return 'yellow';
-  if (node.type === 'executable' && node.persistent) return 'green';
+  if (isWatcherNode(node)) return 'green';
   return 'default';
 }
 

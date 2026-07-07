@@ -45,6 +45,7 @@ import {
   getNodeColor,
   getNodePreview,
   getNodeTitle,
+  isWatcherNode,
   normalizeLoopViewport,
   processMap,
   restoreLogScrollState,
@@ -275,15 +276,20 @@ class LoopView extends ComponentBase {
       this._button('Run pipeline', 'loop-primary-btn', () => void this._runPipeline(), {
         disabled: this.saving,
       }),
+      this._button('Run watchers', 'loop-secondary-btn', () => void this._runWatchers(), {
+        disabled: this.saving,
+        title: 'Lancer uniquement les cartes Watcher',
+      }),
       this._button('Run executables', 'loop-secondary-btn', () => void this._runExecutables(), {
         disabled: this.saving,
-        title: 'Lancer uniquement les cartes Executable / Watcher',
+        title: 'Lancer toutes les cartes Executable, watchers inclus',
       }),
       this._button('Stop pipeline', 'loop-danger-btn', () => void this._stopPipeline(), {
         disabled: this.saving || runningNodes === 0,
       }),
       this._button('+ Agent', 'loop-secondary-btn', () => this._addNode('agent')),
       this._button('+ Executable', 'loop-secondary-btn', () => this._addNode('executable')),
+      this._button('+ Watcher', 'loop-secondary-btn', () => this._addNode('watcher')),
       this._button('+ Fichier', 'loop-secondary-btn', () => this._addNode('display')),
       this._button('+ Board', 'loop-secondary-btn', () => void this._createBoard()),
       this._button('Supprimer board', 'loop-danger-btn', () => void this._deleteBoard(), {
@@ -567,7 +573,7 @@ class LoopView extends ComponentBase {
         className: `loop-node-run-btn${nodeRunning ? ' is-stop' : ''}`,
         disabled: this.saving && !nodeRunning,
         type: 'button',
-        textContent: nodeRunning ? 'Stop' : 'Run',
+        textContent: nodeRunning ? 'Stop' : isWatcherNode(node) ? 'Run watcher' : 'Run',
         onClick: (event) => {
           event.stopPropagation();
           if (nodeRunning) void this._stopNodeCard(node.id);
@@ -874,8 +880,9 @@ class LoopView extends ComponentBase {
   }
 
   _renderExecutableFields(node) {
+    const watcher = isWatcherNode(node);
     return [
-      this._label('Commande executable', _el('textarea', {
+      this._label(watcher ? 'Commande watcher' : 'Commande executable', _el('textarea', {
         className: 'loop-inspector-textarea',
         value: node.command || '',
         onInput: (event) => this._updateNode(node.id, { command: event.target.value }, false),
@@ -886,7 +893,7 @@ class LoopView extends ComponentBase {
           checked: Boolean(node.persistent),
           onChange: (event) => this._updateNode(node.id, { persistent: event.target.checked }),
         }),
-        _el('span', { textContent: 'Watcher / run persistant' }),
+        _el('span', { textContent: 'Watcher / process persistant' }),
       ),
     ];
   }
@@ -920,7 +927,7 @@ class LoopView extends ComponentBase {
         actions.push(this._button('Stop', 'loop-danger-btn', () => void this._stopSelected()));
       } else {
         actions.push(this._button(
-          node.type === 'executable' && node.persistent ? 'Run watcher' : 'Run',
+          isWatcherNode(node) ? 'Run watcher' : 'Run',
           'loop-primary-btn',
           () => void this._runSelected(),
         ));
@@ -1105,7 +1112,7 @@ class LoopView extends ComponentBase {
         String(node.serviceTier || '').trim(),
       ].filter(Boolean).join(' / ');
     }
-    if (node.type === 'executable') return node.persistent ? 'watcher' : 'exec';
+    if (node.type === 'executable') return isWatcherNode(node) ? 'watcher' : 'exec';
     return 'fichier';
   }
 
@@ -1438,6 +1445,19 @@ class LoopView extends ComponentBase {
     if (!saved) return;
     try {
       await loopApi.runExecutables({ boardId: this.loop.id || this.activeBoardId || 'main' });
+      await this._refreshSnapshot(false);
+      await this._refreshNodeLog(false);
+      this._render();
+    } catch (err) {
+      this._setError(err);
+    }
+  }
+
+  async _runWatchers() {
+    const saved = await this._saveLoop();
+    if (!saved) return;
+    try {
+      await loopApi.runWatchers({ boardId: this.loop.id || this.activeBoardId || 'main' });
       await this._refreshSnapshot(false);
       await this._refreshNodeLog(false);
       this._render();
