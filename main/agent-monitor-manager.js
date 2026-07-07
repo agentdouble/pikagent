@@ -6,6 +6,7 @@ const {
   listProcesses,
   parsePosixPsOutput,
   readProcessCwd: readPlatformProcessCwd,
+  terminateProcessTree,
 } = require('./process-helpers');
 
 const LOG_READ_BYTES = 256 * 1024;
@@ -53,17 +54,31 @@ async function kill(agentId) {
     .filter((pid) => pid > 0 && pid !== process.pid);
   const errors = [];
 
-  for (const pid of targetedPids) {
-    const error = sendSignal(pid, 'SIGTERM');
-    if (error) errors.push(error);
+  if (process.platform === 'win32') {
+    for (const pid of rootPids) {
+      const error = await terminateProcessTree(pid);
+      if (error) errors.push(error);
+    }
+  } else {
+    for (const pid of targetedPids) {
+      const error = sendSignal(pid, 'SIGTERM');
+      if (error) errors.push(error);
+    }
   }
 
   await delay(KILL_GRACE_MS);
 
   const stillAlive = targetedPids.filter((pid) => isProcessAlive(pid));
-  for (const pid of stillAlive) {
-    const error = sendSignal(pid, 'SIGKILL');
-    if (error) errors.push(error);
+  if (process.platform === 'win32') {
+    for (const pid of rootPids.filter((pid) => stillAlive.includes(pid))) {
+      const error = await terminateProcessTree(pid);
+      if (error) errors.push(error);
+    }
+  } else {
+    for (const pid of stillAlive) {
+      const error = sendSignal(pid, 'SIGKILL');
+      if (error) errors.push(error);
+    }
   }
 
   await delay(100);

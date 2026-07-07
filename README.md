@@ -55,7 +55,7 @@ La commande lit les flows dans `~/.config/.pickagent/flows/`, matche `event`, `p
 ## Packaging
 
 ```bash
-# Application macOS (.app)
+# Application de la plateforme courante (macOS ici, Windows sur Windows)
 npm run package
 
 # Installeur DMG + ZIP d'update macOS

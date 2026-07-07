@@ -7,7 +7,7 @@ require "optparse"
 require "time"
 require "yaml"
 
-DEFAULT_ROOT = "/Users/jeremy/lab/orch"
+DEFAULT_ROOT = ENV.fetch("PICKAGENT_ORCH_ROOT", File.expand_path("~/lab/orch"))
 MERGE_DATE_FIELDS = %w[merged_at merge_completed_at merge_started_at completed_at].freeze
 RUN_TIME_FIELDS = %w[fix_started_at review_started_at merge_started_at launched_at completed_at].freeze
 
