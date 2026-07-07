@@ -15,6 +15,8 @@ const { MAX_FLOW_RUNTIME_MS, MAX_RUN_HISTORY, buildFlowCommand } = require('./fl
 const { flowMatchesHookEvent, debounceKey } = require('./flow-triggers');
 const { linkedRunnableNodes, shouldTriggerLinkedTargets } = require('./loop-link-helpers');
 const { beginLoopNodeRun, finishLoopNodeRun, readActiveLoopNodeRun } = require('./loop-run-state');
+const { buildShellSpawn, shouldDetachChild } = require('./platform-helpers');
+const { terminateProcessTree } = require('./process-helpers');
 const { nowISO, toLogFilename, extractDateString } = require('../shared/date-utils');
 
 const DEFAULT_PROVIDER = 'manual';
@@ -471,20 +473,19 @@ async function runCommand(flow, event, context = {}) {
   ].join('\n');
 
   writeInitialTargetLog(flow, runTimestamp, initialOutput);
-  const child = spawn(command, {
+  const shellSpawn = buildShellSpawn(command, {
     cwd,
-    shell: true,
     env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
-    detached: process.platform !== 'win32',
+    detached: shouldDetachChild(),
   });
+  const child = spawn(shellSpawn.command, shellSpawn.args, shellSpawn.options);
 
   const result = new Promise((resolve) => {
     const timeout = setTimeout(() => {
-      try {
-        if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, 'SIGTERM');
-        else child.kill('SIGTERM');
-      } catch {}
+      void terminateProcessTree(child.pid).then(() => {
+        try { child.kill('SIGTERM'); } catch {}
+      });
     }, MAX_FLOW_RUNTIME_MS);
 
     child.stdout.on('data', (data) => {

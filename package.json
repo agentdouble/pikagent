@@ -10,9 +10,13 @@
     "dev": "node scripts/dev.js",
     "hook": "node bin/pickagent-hook.cjs",
     "rebuild": "npx @electron/rebuild",
-    "package": "npm run build && electron-builder --mac dir",
+    "package": "npm run package:mac",
+    "package:mac": "npm run build && electron-builder --mac dir",
     "package:dmg": "npm run build && electron-builder --mac --publish never",
+    "package:win": "npm run build && electron-builder --win --publish never",
     "release:mac": "npm run build && electron-builder --mac --publish always",
+    "release:win": "npm run build && electron-builder --win --publish always",
+    "release:all": "npm run build && electron-builder --mac --win --publish always",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -88,6 +92,27 @@
           ]
         }
       ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
     }
   }
 }

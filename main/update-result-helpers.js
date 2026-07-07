@@ -3,7 +3,7 @@ const RELEASE_UPDATE = {
   providerLabel: 'GitHub Releases',
   repository: 'agentdouble/pikagent',
   channel: 'latest',
-  artifacts: 'dmg + zip + latest-mac.yml',
+  artifacts: 'macOS dmg/zip/latest-mac.yml + Windows nsis/zip/latest.yml',
 };
 
 function _stringifyNote(note) {

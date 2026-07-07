@@ -3,6 +3,7 @@ const { LOGS_DIR } = require('./paths');
 const { createStreamParser } = require('./flow-stream-parser');
 const { getLastRun } = require('../shared/flow-utils');
 const { isHookFlow } = require('./flow-triggers');
+const { buildShellInputLine, shellQuote } = require('./platform-helpers');
 const AGENT_IDS = ['claude', 'codex', 'opencode'];
 const { toDateString } = require('../shared/date-utils');
 
@@ -48,26 +49,23 @@ const AGENT_CONFIG = Object.fromEntries(
 
 function _buildAgentCmd(agent, prompt, opts = {}) {
   const cfg = AGENT_CONFIG[agent] || AGENT_CONFIG.claude;
+  const platform = opts.platform || process.platform;
   const parts = [agent];
   const model = stringValue(opts.model).trim();
   const reasoningEffort = normalizeCodexReasoningEffort(opts.reasoningEffort);
   const serviceTier = normalizeCodexServiceTier(opts.serviceTier);
-  if (cfg.modelFlag && model) parts.push(cfg.modelFlag, shellQuote(model));
+  if (cfg.modelFlag && model) parts.push(cfg.modelFlag, shellQuote(model, platform));
   if (cfg.reasoningEffortConfigKey && reasoningEffort) {
-    parts.push('-c', shellQuote(`${cfg.reasoningEffortConfigKey}="${reasoningEffort}"`));
+    parts.push('-c', shellQuote(`${cfg.reasoningEffortConfigKey}="${reasoningEffort}"`, platform));
   }
   if (cfg.serviceTierConfigKey && serviceTier) {
-    parts.push('-c', shellQuote(`${cfg.serviceTierConfigKey}="${serviceTier}"`));
+    parts.push('-c', shellQuote(`${cfg.serviceTierConfigKey}="${serviceTier}"`, platform));
   }
   if (cfg.permModes) parts.push(cfg.permModes[opts.dangerouslySkipPermissions ? 1 : 0]);
   if (cfg.flags) parts.push(cfg.flags);
   if (cfg.promptPrefix) parts.push(cfg.promptPrefix);
-  parts.push(shellQuote(prompt));
+  parts.push(shellQuote(prompt, platform));
   return parts.join(' ');
-}
-
-function shellQuote(value) {
-  return `'${String(value || '').replace(/'/g, "'\\''")}'`;
 }
 
 function stringValue(value) {
@@ -119,14 +117,15 @@ function shouldRun(flow, now) {
   return dayFilter(now.getDay(), schedule) && _notRunToday(lastRun, now);
 }
 
-function buildFlowCommand(flow) {
+function buildFlowCommand(flow, opts = {}) {
   const agent = flow.agent || 'claude';
-  return `${_buildAgentCmd(agent, flow.prompt || '', {
+  return buildShellInputLine(_buildAgentCmd(agent, flow.prompt || '', {
     dangerouslySkipPermissions: !!flow.dangerouslySkipPermissions,
     model: flow.model,
     reasoningEffort: flow.reasoningEffort,
     serviceTier: flow.serviceTier,
-  })}; exit\n`;
+    platform: opts.platform,
+  }), opts.platform || process.platform);
 }
 
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB cap per flow

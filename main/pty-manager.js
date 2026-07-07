@@ -3,6 +3,12 @@ const fs = require('fs');
 const pty = require('node-pty');
 const { execFileAsync } = require('./command-utils');
 const { createLogger } = require('./logger');
+const { isWindows } = require('./platform-helpers');
+const {
+  getDirectChildProcesses,
+  readProcessCwd,
+  terminateProcessTree,
+} = require('./process-helpers');
 
 const log = createLogger('pty-manager');
 
@@ -19,19 +25,26 @@ function safeCwd(cwd) {
 }
 const {
   EXEC_TIMEOUT_MS,
-  CWD_TIMEOUT_MS,
   DEFAULT_COLS,
   DEFAULT_ROWS,
   TERM,
   DEFAULT_SHELL,
   matchAgent,
   parseChildPids,
-  parseCwdFromLsof,
 } = require('./pty-helpers');
 
 class PtyManager {
-  constructor() {
+  constructor({
+    platform = process.platform,
+    getDirectChildProcesses: childProcessReader = getDirectChildProcesses,
+    readProcessCwd: cwdReader = readProcessCwd,
+    terminateProcessTree: processTreeTerminator = terminateProcessTree,
+  } = {}) {
     this.processes = new Map();
+    this.platform = platform;
+    this._getDirectChildProcesses = childProcessReader;
+    this._readProcessCwd = cwdReader;
+    this._terminateProcessTree = processTreeTerminator;
   }
 
   _getProc(id) {
@@ -73,12 +86,9 @@ class PtyManager {
     const proc = this._getProc(id);
     if (!proc) return null;
     try {
-      const out = await this._exec(
-        'lsof',
-        ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'],
-        CWD_TIMEOUT_MS,
-      );
-      return parseCwdFromLsof(out);
+      if (isWindows(this.platform)) return null;
+      const cwd = await this._readProcessCwd(proc.pid, { platform: this.platform });
+      return cwd || null;
     } catch {
       return null;
     }
@@ -95,9 +105,8 @@ class PtyManager {
   kill(id) {
     const proc = this._getProc(id);
     if (!proc) return;
-    // Kill the entire process group to clean up child processes (agents)
-    try { process.kill(-proc.pid, 'SIGTERM'); } catch {}
-    proc.kill();
+    void this._terminateProcessTree(proc.pid, { platform: this.platform });
+    try { proc.kill(); } catch {}
     this.processes.delete(id);
   }
 
@@ -116,6 +125,10 @@ class PtyManager {
   }
 
   async _getChildPids(pid) {
+    if (isWindows(this.platform)) {
+      const children = await this._getDirectChildProcesses(pid, { platform: this.platform });
+      return children.map((child) => String(child.pid));
+    }
     try {
       const out = await this._exec('pgrep', ['-P', String(pid)]);
       return parseChildPids(out);
@@ -127,6 +140,12 @@ class PtyManager {
 
   async _checkAgent(id, proc) {
     try {
+      if (isWindows(this.platform)) {
+        const children = await this._getDirectChildProcesses(proc.pid, { platform: this.platform });
+        if (children.length === 0) return null;
+        return matchAgent(children.map((child) => child.command).join('\n'));
+      }
+
       const childPids = await this._getChildPids(proc.pid);
       if (childPids.length === 0) return null;
 
@@ -138,8 +157,8 @@ class PtyManager {
 
   killAll() {
     for (const proc of this.processes.values()) {
-      try { process.kill(-proc.pid, 'SIGTERM'); } catch {}
-      proc.kill();
+      void this._terminateProcessTree(proc.pid, { platform: this.platform });
+      try { proc.kill(); } catch {}
     }
     this.processes.clear();
   }

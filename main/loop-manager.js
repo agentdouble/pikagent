@@ -6,6 +6,8 @@ const { spawn } = require('child_process');
 const { LOOP_FILE, LOOPS_DIR, loopBoardPath, loopNodeLogPath } = require('./paths');
 const { ensureDirOnce, readJson, writeJson } = require('./fs-utils');
 const { buildFlowCommand } = require('./flow-helpers');
+const { buildEnvWithPath, buildShellSpawn, shouldDetachChild } = require('./platform-helpers');
+const { terminateProcessTree } = require('./process-helpers');
 const {
   isLinkTriggeredNode,
   linkedRunnableNodes,
@@ -121,16 +123,13 @@ class LoopManager {
     await appendLog(logFile, `\n[pickagent-loop] run ${node.title}\n`);
     await appendLog(logFile, buildRunHeader(node, cwd, command));
 
-    const child = spawn(command, {
+    const shellSpawn = buildShellSpawn(command, {
       cwd,
-      shell: true,
-      env: {
-        ...process.env,
-        PATH: buildPathEnv(),
-      },
+      env: buildEnvWithPath(),
       stdio: ['ignore', 'pipe', 'pipe'],
-      detached: process.platform !== 'win32',
+      detached: shouldDetachChild(),
     });
+    const child = spawn(shellSpawn.command, shellSpawn.args, shellSpawn.options);
 
     const running = {
       child,
@@ -260,7 +259,7 @@ class LoopManager {
     if (!running) {
       const externalRun = await readActiveLoopNodeRun(boardId, nodeId);
       if (!externalRun) return this._stoppedProcess(boardId, nodeId);
-      const error = stopExternalRun(externalRun);
+      const error = await stopExternalRun(externalRun);
       await finishLoopNodeRun({
         boardId,
         nodeId,
@@ -272,11 +271,9 @@ class LoopManager {
     }
 
     try {
-      if (process.platform !== 'win32' && running.child.pid) {
-        process.kill(-running.child.pid, 'SIGTERM');
-      } else {
-        running.child.kill('SIGTERM');
-      }
+      const error = await terminateProcessTree(running.child.pid);
+      if (error) running.error = error;
+      try { running.child.kill('SIGTERM'); } catch {}
     } catch (err) {
       running.error = err.message;
     }
@@ -502,14 +499,9 @@ function executableNodes(loop) {
   return loop.nodes.filter((node) => node?.type === 'executable' && node.enabled !== false);
 }
 
-function stopExternalRun(run) {
+async function stopExternalRun(run) {
   try {
-    if (process.platform !== 'win32' && run.pid) {
-      process.kill(-run.pid, 'SIGTERM');
-    } else if (run.pid) {
-      process.kill(run.pid, 'SIGTERM');
-    }
-    return null;
+    return await terminateProcessTree(run.pid);
   } catch (err) {
     return err.message;
   }
@@ -606,15 +598,6 @@ function buildRunHeader(node, cwd, command) {
       ? 'persistent watcher'
       : 'executable';
   return `[cwd] ${cwd}\n[mode] ${mode}\n[cmd] ${command.trim()}\n`;
-}
-
-function buildPathEnv() {
-  return [
-    path.join(os.homedir(), '.local', 'bin'),
-    '/opt/homebrew/bin',
-    '/usr/local/bin',
-    process.env.PATH || '',
-  ].join(path.delimiter);
 }
 
 function defaultTitle(type) {

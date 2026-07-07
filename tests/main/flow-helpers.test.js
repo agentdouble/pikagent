@@ -153,6 +153,21 @@ describe('flow-helpers', () => {
       expect(cmd).toContain("it'\\''s a test");
     });
 
+    it('builds PowerShell-compatible commands for Windows', () => {
+      const flow = {
+        prompt: "it's a test",
+        agent: 'codex',
+        model: 'gpt-5.5',
+        reasoningEffort: 'high',
+      };
+      const cmd = buildFlowCommand(flow, { platform: 'win32' });
+
+      expect(cmd).toContain("--model 'gpt-5.5'");
+      expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
+      expect(cmd).toContain("'it''s a test'");
+      expect(cmd.endsWith('; exit\r\n')).toBe(true);
+    });
+
     it('supports dangerouslySkipPermissions', () => {
       const flow = { prompt: 'fix', agent: 'claude', dangerouslySkipPermissions: true };
       const cmd = buildFlowCommand(flow);

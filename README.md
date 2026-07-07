@@ -60,17 +60,23 @@ npm run package
 
 # Installeur DMG + ZIP d'update macOS
 npm run package:dmg
+
+# Installeur NSIS + ZIP Windows
+npm run package:win
 ```
 
 ## Releases et mises à jour
 
 Les mises à jour de l'application packagée passent par GitHub Releases via
 `electron-updater`. Un tag `v*` déclenche le workflow `.github/workflows/release.yml`,
-qui exécute les tests puis publie les artefacts macOS requis :
+qui exécute les tests puis publie les artefacts macOS et Windows requis :
 
 - `Pickagent-*.dmg`
-- `Pickagent-*.zip`
+- `Pickagent-*-mac.zip`
 - `latest-mac.yml`
+- `Pickagent Setup *.exe`
+- `Pickagent-*-win.zip`
+- `latest.yml`
 
 ```bash
 git tag v1.0.1
@@ -81,6 +87,10 @@ Pour une distribution macOS propre, configure les secrets GitHub
 `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et
 `APPLE_TEAM_ID` afin que le workflow puisse signer et préparer la notarisation
 des artefacts.
+
+Les artefacts Windows x64 sont construits par `npm run release:win` sur
+`windows-latest`. Sans certificat de signature Windows, l'installateur peut
+afficher un avertissement SmartScreen même si le build est valide.
 
 ## Structure du projet
 
@@ -104,7 +114,8 @@ des artefacts.
 
 ## Configuration
 
-Les données sont stockées dans `~/.config/.pickagent/` :
+Les données sont stockées dans `~/.config/.pickagent/` (sur Windows :
+`%USERPROFILE%\.config\.pickagent`) :
 - `workspaces.json` — Configurations des espaces de travail
 - `flows/` — Définitions et logs des flows
 - `hook-state.json` — État de debounce des triggers hook
