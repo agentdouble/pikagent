@@ -2,7 +2,13 @@ const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
-const { MAX_FILE_SIZE, wrapSafe, doCopy, dirFirstCompare } = require('./fs-manager-helpers');
+const {
+  MAX_FILE_SIZE,
+  wrapSafe,
+  doCopy,
+  dirFirstCompare,
+  describeDirEntry,
+} = require('./fs-manager-helpers');
 const { createLogger } = require('./logger');
 
 const log = createLogger('fs-manager');
@@ -44,11 +50,10 @@ function unwatchAll() {
 async function readdir(dirPath) {
   try {
     const entries = await fsp.readdir(dirPath, { withFileTypes: true });
-    return entries.sort(dirFirstCompare).map((e) => ({
-      name: e.name,
-      path: path.join(dirPath, e.name),
-      isDirectory: e.isDirectory(),
-    }));
+    const describedEntries = await Promise.all(
+      entries.map((entry) => describeDirEntry(dirPath, entry)),
+    );
+    return describedEntries.sort(dirFirstCompare);
   } catch {
     return [];
   }

@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
-const { MAX_FILE_SIZE, wrapSafe, dirFirstCompare } = require('../../main/fs-manager-helpers');
+import { describe, it, expect, vi } from 'vitest';
+const {
+  MAX_FILE_SIZE,
+  wrapSafe,
+  dirFirstCompare,
+  describeDirEntry,
+} = require('../../main/fs-manager-helpers');
 
 describe('fs-manager-helpers', () => {
   describe('MAX_FILE_SIZE', () => {
@@ -38,6 +43,44 @@ describe('fs-manager-helpers', () => {
 
     it('returns 0 for identical entries', () => {
       expect(dirFirstCompare(file('x'), file('x'))).toBe(0);
+    });
+
+    it('also sorts resolved entry objects', () => {
+      expect(
+        dirFirstCompare(
+          { name: 'junction', isDirectory: true },
+          { name: 'file.txt', isDirectory: false },
+        ),
+      ).toBe(-1);
+    });
+  });
+
+  describe('describeDirEntry', () => {
+    it('follows a Windows junction to detect its directory target', async () => {
+      const entry = {
+        name: 'Mes documents',
+        isDirectory: () => false,
+        isSymbolicLink: () => true,
+      };
+      const stat = vi.fn().mockResolvedValue({ isDirectory: () => true });
+
+      await expect(describeDirEntry('C:\\Users\\rekta', entry, stat)).resolves.toEqual({
+        name: 'Mes documents',
+        path: 'C:\\Users\\rekta\\Mes documents',
+        isDirectory: true,
+      });
+      expect(stat).toHaveBeenCalledWith('C:\\Users\\rekta\\Mes documents');
+    });
+
+    it('leaves a broken junction visible without failing the directory listing', async () => {
+      const entry = {
+        name: 'Broken link',
+        isDirectory: () => false,
+        isSymbolicLink: () => true,
+      };
+
+      await expect(describeDirEntry('C:\\root', entry, vi.fn().mockRejectedValue(new Error('ENOENT'))))
+        .resolves.toMatchObject({ name: 'Broken link', isDirectory: false });
     });
   });
 });

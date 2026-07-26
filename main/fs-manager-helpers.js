@@ -46,8 +46,36 @@ async function doCopy(srcPath, destDir, alwaysUnique) {
 
 /** Sort comparator: directories first, then alphabetical. */
 function dirFirstCompare(a, b) {
-  if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+  const aIsDirectory = typeof a.isDirectory === 'function' ? a.isDirectory() : a.isDirectory;
+  const bIsDirectory = typeof b.isDirectory === 'function' ? b.isDirectory() : b.isDirectory;
+  if (aIsDirectory !== bIsDirectory) return aIsDirectory ? -1 : 1;
   return a.name.localeCompare(b.name);
 }
 
-module.exports = { MAX_FILE_SIZE, wrapSafe, pathExists, doCopy, dirFirstCompare };
+/**
+ * Convert a Dirent to the renderer-facing shape. Symbolic links and Windows
+ * junctions need a stat call because Dirent.isDirectory() is false for them.
+ */
+async function describeDirEntry(dirPath, entry, stat = fsp.stat) {
+  const entryPath = path.join(dirPath, entry.name);
+  let isDirectory = entry.isDirectory();
+
+  if (!isDirectory && entry.isSymbolicLink()) {
+    try {
+      isDirectory = (await stat(entryPath)).isDirectory();
+    } catch {
+      // Keep broken or inaccessible links visible as files.
+    }
+  }
+
+  return { name: entry.name, path: entryPath, isDirectory };
+}
+
+module.exports = {
+  MAX_FILE_SIZE,
+  wrapSafe,
+  pathExists,
+  doCopy,
+  dirFirstCompare,
+  describeDirEntry,
+};
