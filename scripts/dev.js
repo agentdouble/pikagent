@@ -4,8 +4,10 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const BIN_EXT = process.platform === 'win32' ? '.cmd' : '';
-const ELECTRON_BIN = path.join(ROOT, 'node_modules', '.bin', `electron${BIN_EXT}`);
+// Do not spawn the `.bin/electron` shim: on Windows it is a `.cmd` file and
+// `child_process.spawn` cannot execute it without a shell. Invoking Electron's
+// JavaScript CLI through the current Node process works on every platform.
+const ELECTRON_CLI = path.join(ROOT, 'node_modules', 'electron', 'cli.js');
 
 const children = new Set();
 let shuttingDown = false;
@@ -74,4 +76,4 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('exit', () => stopChildren());
 
 spawnChild('build watcher', process.execPath, ['build.js', '--watch']);
-spawnChild('electron', ELECTRON_BIN, ['.']);
+spawnChild('electron', process.execPath, [ELECTRON_CLI, '.']);
