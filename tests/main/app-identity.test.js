@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+const os = require('os');
 const path = require('path');
 const {
   APP_NAME,
@@ -50,7 +51,7 @@ describe('app-identity', () => {
 
   it('allows an explicit userData override', () => {
     const app = createAppMock({ isPackaged: true });
-    const override = '/tmp/pickagent-dev-profile';
+    const override = path.join(os.tmpdir(), 'pickagent-dev-profile');
 
     expect(configureAppIdentity(app, '/repo/2-pikagent-copy', { [USER_DATA_ENV]: override })).toBe(override);
     expect(app.setPath).toHaveBeenCalledWith('userData', override);

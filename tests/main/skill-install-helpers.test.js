@@ -19,10 +19,11 @@ async function makeTempDir() {
 
 describe('skill-install-helpers', () => {
   it('targets Codex and Claude skills roots under the provided home dir', () => {
-    const roots = getDefaultPickagentSkillRoots('/tmp/home');
+    const homeDir = path.join(os.tmpdir(), 'home');
+    const roots = getDefaultPickagentSkillRoots(homeDir);
     expect(roots).toEqual([
-      '/tmp/home/.codex/skills',
-      '/tmp/home/.claude/skills',
+      path.join(homeDir, '.codex', 'skills'),
+      path.join(homeDir, '.claude', 'skills'),
     ]);
   });
 

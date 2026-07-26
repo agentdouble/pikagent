@@ -3,6 +3,7 @@ const {
   isHookFlow,
   flowMatchesHookEvent,
   debounceKey,
+  normalizeCwd,
 } = require('../../main/flow-triggers');
 
 describe('flow-triggers', () => {
@@ -50,6 +51,6 @@ describe('flow-triggers', () => {
     expect(debounceKey(
       { id: 'flow_1' },
       { type: 'file.changed', provider: 'watcher', cwd: '/repo' },
-    )).toBe('flow_1|file.changed|watcher|/repo');
+    )).toBe(`flow_1|file.changed|watcher|${normalizeCwd('/repo')}`);
   });
 });
