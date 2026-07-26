@@ -89,5 +89,11 @@
         }
       ]
     }
+  },
+  "allowScripts": {
+    "electron@41.0.3": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.27.4": true,
+    "node-pty@1.1.0": true
   }
 }
