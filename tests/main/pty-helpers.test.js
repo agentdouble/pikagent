@@ -60,6 +60,8 @@ describe('pty-helpers', () => {
       const args = getShellArgs('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', 'win32');
 
       expect(args).toEqual(['-NoExit', '-Command', expect.stringContaining('CurrentDir=')]);
+      expect(args[2]).toContain('[char]27');
+      expect(args[2]).not.toContain('`e');
       expect(getShellArgs('cmd.exe', 'win32')).toEqual([]);
       expect(getShellArgs('powershell.exe', 'darwin')).toEqual([]);
     });

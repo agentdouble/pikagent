@@ -21,7 +21,7 @@ const MAX_CWD_OSC_BUFFER = 32 * 1024;
 const POWERSHELL_CWD_SCRIPT = [
   '$global:__pickagentOriginalPrompt = $function:prompt;',
   'function global:prompt {',
-  '  [Console]::Write("`e]1337;CurrentDir=$((Get-Location).Path)`a");',
+  '  [Console]::Write(([char]27) + "]1337;CurrentDir=$((Get-Location).Path)" + ([char]7));',
   '  if ($global:__pickagentOriginalPrompt) { & $global:__pickagentOriginalPrompt }',
   '  else { "PS $((Get-Location).Path)> " }',
   '}',
