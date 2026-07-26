@@ -31,7 +31,6 @@ function register(getWindow, { targets, ptyManager, sessionManager }) {
     const proc = ptyManager.create({ id, cwd, cols, rows });
     proc.onData((data) => safeSend(getWindow, 'pty:data', { id, data }));
     proc.onExit(({ exitCode }) => {
-      ptyManager.processes.delete(id);
       sessionManager.onTerminalExit(id);
       safeSend(getWindow, 'pty:exit', { id, exitCode });
     });
