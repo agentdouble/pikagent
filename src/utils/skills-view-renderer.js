@@ -10,21 +10,26 @@ import { buildViewHeader } from './view-header.js';
 
 /**
  * Build the top header bar with action buttons.
- * @param {string} rootPath
+ * @param {string[]} rootPaths
+ * @param {string} activeRootPath
  * @param {{ onConfigurePath: () => void, onOpenRoot: () => void, onImport: () => void, onCreate: () => void, onRefresh: () => void }} handlers
  * @returns {{ header: HTMLElement, rootBadgeEl: HTMLElement }}
  */
-export function renderHeader(rootPath, handlers) {
+export function renderHeader(rootPaths, activeRootPath, handlers) {
+  const roots = Array.isArray(rootPaths) ? rootPaths : [rootPaths].filter(Boolean);
+  const badgeText = roots.length > 1
+    ? `${activeRootPath || roots[0]} + ${roots.length - 1}`
+    : activeRootPath || roots[0] || '…';
   const rootBadgeEl = _el('div', {
     className: 'skills-root-badge',
-    title: 'Dossier des skills utilisateur',
-    textContent: rootPath || '…',
+    title: roots.join('\n') || 'Dossiers des skills utilisateur',
+    textContent: badgeText,
   });
 
   const actions = _el('div', 'skills-header-right',
     _el('button', {
       className: 'skills-btn skills-btn-secondary',
-      textContent: 'Configurer le chemin…',
+      textContent: 'Configurer les chemins…',
       onClick: handlers.onConfigurePath,
     }),
     _el('button', {

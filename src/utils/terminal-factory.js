@@ -4,6 +4,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { getTerminalTheme } from './terminal-themes.js';
 import { FilePathLinkProvider } from './file-link-provider.js';
 import { disposeResources } from './disposable.js';
+import { createExternalLinkHandler } from './terminal-links.js';
 
 /** Safely call fitAddon.fit(), swallowing errors from detached terminals. */
 export function _safeFit(fitAddon) {
@@ -77,17 +78,28 @@ export function disposeTerminalMap(map) {
 }
 
 /**
- * Load the WebLinksAddon and register the FilePathLinkProvider on a terminal.
+ * Route plain-text URLs and OSC 8 hyperlinks through the operating system.
+ * xterm otherwise handles OSC 8 links with window.open(), which creates an
+ * Electron page inside Pickagent.
+ *
+ * @param {Terminal} term
+ * @param {(url: string) => void | Promise<unknown>} openExternal
+ */
+export function setupTerminalWebLinks(term, openExternal) {
+  const linkHandler = createExternalLinkHandler(openExternal);
+  term.options.linkHandler = linkHandler;
+  term.loadAddon(new WebLinksAddon(linkHandler.activate));
+}
+
+/**
+ * Load web-link handling and register the FilePathLinkProvider on a terminal.
  * Centralises the addon wiring shared by BoardView and TerminalInstance.
  *
  * @param {Terminal} term
  * @param {{ openExternal: (url: string) => void, getCwd: () => string|null, homedir: () => Promise<string>, openPath: (path: string) => void }} opts
  */
 export function setupTerminalAddons(term, { openExternal, getCwd, homedir, openPath }) {
-  term.loadAddon(new WebLinksAddon((e, url) => {
-    e.preventDefault();
-    openExternal(url);
-  }));
+  setupTerminalWebLinks(term, openExternal);
   term.registerLinkProvider(new FilePathLinkProvider(term, getCwd, { homedir, openPath }));
 }
 
@@ -101,7 +113,7 @@ export function setupTerminalAddons(term, { openExternal, getCwd, homedir, openP
  *   3. Return all handles needed for cleanup.
  *
  * @param {HTMLElement} container - DOM element the terminal opens into.
- * @param {{ onPtyData?: (cb: (data: string) => void) => (() => void), termOpts?: import('@xterm/xterm').ITerminalOptions, readonly?: boolean, fitDelay?: number }} options
+ * @param {{ onPtyData?: (cb: (data: string) => void) => (() => void), termOpts?: import('@xterm/xterm').ITerminalOptions, readonly?: boolean, fitDelay?: number, openExternal?: (url: string) => void | Promise<unknown> }} options
  * @param {(cb: (data: string) => void) => (() => void)} options.onPtyData
  *   Subscribe to PTY output — receives a callback that writes to the
  *   terminal; must return an unsubscribe function.
@@ -112,15 +124,25 @@ export function setupTerminalAddons(term, { openExternal, getCwd, homedir, openP
  *   autoResize enabled.
  * @param {number}  [options.fitDelay=0]  Delay (ms) before the first fit()
  *   call — forwarded to the underlying createTerminal / createReadonlyTerminal.
+ * @param {(url: string) => void | Promise<unknown>} [options.openExternal]
+ *   Opens plain-text and OSC 8 hyperlinks in the operating system browser.
  * @returns {{ term: Terminal, fitAddon: FitAddon, resizeObs: ResizeObserver|null, unsubData: (() => void)|null }}
  */
-export function createPtyBoundTerminal(container, { onPtyData, termOpts = {}, readonly = true, fitDelay = 0 } = {}) {
+export function createPtyBoundTerminal(container, {
+  onPtyData,
+  termOpts = {},
+  readonly = true,
+  fitDelay = 0,
+  openExternal,
+} = {}) {
   const create = readonly ? createReadonlyTerminal : createTerminal;
   const { term, fitAddon, resizeObs } = create(container, {
     autoResize: true,
     fitDelay,
     ...termOpts,
   });
+
+  if (openExternal) setupTerminalWebLinks(term, openExternal);
 
   const unsubData = onPtyData ? onPtyData((data) => term.write(data)) : null;
 

@@ -22,6 +22,7 @@ import { emitWorkspaceActivated, emitTabWorktreeClosed } from './workspace-event
 import { WorkspaceTab } from './tab-types.js';
 import { reattachLayout, syncFileTree, capturePanelWidths, disposeTab } from './workspace-ops.js';
 import { extractFolderName } from './file-tree-helpers.js';
+import { formatTreePath } from './remote-path.js';
 
 
 // ── Tab creation ──
@@ -246,7 +247,7 @@ export function refreshTerminalBranch(tabs, activeTabId, termId, cwd, { gitBranc
  */
 function _updateHeaderPath(tab, cwd) {
   tab.cwd = cwd;
-  if (tab.pathTextEl) tab.pathTextEl.textContent = cwd;
+  if (tab.pathTextEl) tab.pathTextEl.textContent = formatTreePath(cwd);
 }
 
 /**

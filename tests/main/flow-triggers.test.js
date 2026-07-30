@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+const path = require('path');
 const {
   isHookFlow,
   flowMatchesHookEvent,
@@ -50,6 +51,6 @@ describe('flow-triggers', () => {
     expect(debounceKey(
       { id: 'flow_1' },
       { type: 'file.changed', provider: 'watcher', cwd: '/repo' },
-    )).toBe('flow_1|file.changed|watcher|/repo');
+    )).toBe(`flow_1|file.changed|watcher|${path.resolve('/repo')}`);
   });
 });

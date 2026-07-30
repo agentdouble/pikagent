@@ -12,7 +12,7 @@ import {
   formatRunDateTime,
 } from '../utils/flow-view-helpers.js';
 import { registerComponent } from '../utils/component-registry.js';
-import { ptyApi, flowApi } from '../facades/flow-card-terminal-services.js';
+import { ptyApi, flowApi, shellApi } from '../facades/flow-card-terminal-services.js';
 
 class FlowCardTerminalManager {
   constructor() {
@@ -44,6 +44,7 @@ class FlowCardTerminalManager {
     const record = createPtyBoundTerminal(containerEl, {
       termOpts: { scrollback: LIVE_SCROLLBACK, ...opts },
       fitDelay: FLOW_FIT_DELAY_MS,
+      openExternal: shellApi.openExternal,
       ...(onPtyData ? { onPtyData } : {}),
     });
     if (setupFn) setupFn(record);
@@ -119,6 +120,7 @@ class FlowCardTerminalManager {
     const { term, resizeObs } = createPtyBoundTerminal(termContainer, {
       termOpts: { scrollback: LOG_SCROLLBACK },
       fitDelay: FLOW_FIT_DELAY_MS,
+      openExternal: shellApi.openExternal,
     });
 
     term.write(log || NO_LOG_MODAL_MESSAGE);

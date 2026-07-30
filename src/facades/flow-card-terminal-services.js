@@ -5,3 +5,4 @@
  */
 export { default as ptyApi } from '../services/terminal-api.js';
 export { default as flowApi } from '../services/flow-api.js';
+export { default as shellApi } from '../services/shell-api.js';

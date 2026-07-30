@@ -1,8 +1,13 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const { setTimeout: delay } = require('timers/promises');
-const { execFileAsync } = require('./command-utils');
 const { readActiveLoopNodeRuns } = require('./loop-run-state');
+const {
+  listProcesses,
+  parsePosixPsOutput,
+  readProcessCwd: readPlatformProcessCwd,
+  terminateProcessTree,
+} = require('./process-helpers');
 
 const LOG_READ_BYTES = 256 * 1024;
 const LOG_TAIL_LINES = 90;
@@ -13,7 +18,7 @@ async function list() {
   let rows = [];
 
   try {
-    rows = parsePsOutput(await runPs());
+    rows = await runPs();
   } catch (err) {
     errors.push(`ps failed: ${String(err)}`);
   }
@@ -39,7 +44,7 @@ async function listActiveLoopRuns(errors) {
 }
 
 async function kill(agentId) {
-  const rows = parsePsOutput(await runPs());
+  const rows = await runPs();
   const draft = groupAgentProcesses(rows).find((agent) => agent.key === agentId);
   if (!draft) throw new Error(`Headless agent not found or already stopped: ${agentId}`);
 
@@ -49,17 +54,31 @@ async function kill(agentId) {
     .filter((pid) => pid > 0 && pid !== process.pid);
   const errors = [];
 
-  for (const pid of targetedPids) {
-    const error = sendSignal(pid, 'SIGTERM');
-    if (error) errors.push(error);
+  if (process.platform === 'win32') {
+    for (const pid of rootPids) {
+      const error = await terminateProcessTree(pid);
+      if (error) errors.push(error);
+    }
+  } else {
+    for (const pid of targetedPids) {
+      const error = sendSignal(pid, 'SIGTERM');
+      if (error) errors.push(error);
+    }
   }
 
   await delay(KILL_GRACE_MS);
 
   const stillAlive = targetedPids.filter((pid) => isProcessAlive(pid));
-  for (const pid of stillAlive) {
-    const error = sendSignal(pid, 'SIGKILL');
-    if (error) errors.push(error);
+  if (process.platform === 'win32') {
+    for (const pid of rootPids.filter((pid) => stillAlive.includes(pid))) {
+      const error = await terminateProcessTree(pid);
+      if (error) errors.push(error);
+    }
+  } else {
+    for (const pid of stillAlive) {
+      const error = sendSignal(pid, 'SIGKILL');
+      if (error) errors.push(error);
+    }
   }
 
   await delay(100);
@@ -73,30 +92,10 @@ async function kill(agentId) {
 }
 
 async function runPs() {
-  const { stdout } = await execFileAsync('ps', [
-    '-axo',
-    'pid=,ppid=,lstart=,command=',
-  ]);
-  return stdout;
+  return listProcesses();
 }
 
-function parsePsOutput(output) {
-  const rows = [];
-  for (const line of String(output || '').split('\n')) {
-    const match = line.match(
-      /^\s*(\d+)\s+(\d+)\s+(\w{3}\s+\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}\s+\d{4})\s+(.+)$/,
-    );
-    if (!match) continue;
-    const parsedDate = new Date(match[3]);
-    rows.push({
-      pid: Number(match[1]),
-      ppid: Number(match[2]),
-      startedAt: Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate.toISOString(),
-      command: match[4],
-    });
-  }
-  return rows;
-}
+const parsePsOutput = parsePosixPsOutput;
 
 function groupAgentProcesses(rows) {
   const groups = new Map();
@@ -254,16 +253,7 @@ async function hydrateAgent(draft, errors) {
 async function readProcessCwd(pid, errors) {
   if (!pid) return undefined;
   try {
-    const { stdout } = await execFileAsync('lsof', [
-      '-a',
-      '-p',
-      String(pid),
-      '-d',
-      'cwd',
-      '-Fn',
-    ], { timeout: 2000 });
-    const match = stdout.match(/^n(.+)$/m);
-    return match?.[1];
+    return await readPlatformProcessCwd(pid);
   } catch (err) {
     if (err?.code !== 1) errors.push(`cwd read failed for PID ${pid}: ${String(err)}`);
     return undefined;

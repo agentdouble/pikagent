@@ -1,5 +1,6 @@
 const os = require('os');
 const { splitLines, matchFirst } = require('./parse-utils');
+const { getDefaultShell } = require('./platform-helpers');
 
 const KNOWN_AGENTS = [
   ['claude', 'Claude'],
@@ -12,8 +13,7 @@ const CWD_TIMEOUT_MS = 2000;
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 const TERM = 'xterm-256color';
-const DEFAULT_SHELL =
-  process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/zsh');
+const DEFAULT_SHELL = getDefaultShell({ platform: os.platform(), env: process.env });
 
 function matchAgent(psOutput) {
   const lower = psOutput.toLowerCase();

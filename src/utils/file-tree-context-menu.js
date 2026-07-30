@@ -4,6 +4,7 @@
  */
 import { emitWorkspaceOpenFromFolder, emitWorkspaceCreateWorktree } from './workspace-events.js';
 import { getRelativePath, getBaseName } from './file-tree-helpers.js';
+import { isSshPath } from './remote-path.js';
 
 /**
  * Build the common context menu items shared between files and directories.
@@ -17,6 +18,14 @@ import { getRelativePath, getBaseName } from './file-tree-helpers.js';
  */
 function buildCommonContextItems(entryPath, nameEl, rootCwd, promptRenameFn, deleteLabel, { clipboardWrite, fsCopy, showInFolder, fsTrash }) {
   const displayName = getBaseName(entryPath);
+  if (isSshPath(entryPath)) {
+    return [
+      ...(nameEl ? [{ label: 'Rename', action: () => promptRenameFn(entryPath, nameEl) }] : []),
+      ...(nameEl ? [{ separator: true }] : []),
+      { label: 'Copy Path', action: () => clipboardWrite(entryPath) },
+      { label: 'Copy Relative Path', action: () => clipboardWrite(getRelativePath(entryPath, rootCwd)) },
+    ];
+  }
   return [
     { label: 'Rename', action: () => promptRenameFn(entryPath, nameEl) },
     { separator: true },
@@ -65,6 +74,14 @@ export function buildFileContextItems(entryPath, nameEl, rootCwd, promptRenameFn
  */
 export function buildDirContextItems(dirPath, rootCwd, contentEl, depth, expandedDirs, nameEl, promptRenameFn, promptNewEntryFn, api) {
   const dirName = getBaseName(dirPath);
+  if (isSshPath(dirPath)) {
+    return [
+      { label: 'New File', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'file') },
+      { label: 'New Folder', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'folder') },
+      { separator: true },
+      ...buildCommonContextItems(dirPath, nameEl, rootCwd, promptRenameFn, `Delete folder "${dirName}" and all its contents?`, api),
+    ];
+  }
   return [
     { label: 'New File', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'file') },
     { label: 'New Folder', action: () => promptNewEntryFn(dirPath, contentEl, depth, expandedDirs, 'folder') },

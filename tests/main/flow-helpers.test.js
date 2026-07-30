@@ -99,7 +99,7 @@ describe('flow-helpers', () => {
   describe('buildFlowCommand', () => {
     it('builds claude command by default', () => {
       const flow = { prompt: 'fix bugs', agent: 'claude' };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('claude');
       expect(cmd).toContain('fix bugs');
       expect(cmd).toContain('; exit\n');
@@ -107,16 +107,16 @@ describe('flow-helpers', () => {
 
     it('builds codex command with workspace-write by default', () => {
       const flow = { prompt: 'test', agent: 'codex' };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('codex');
       expect(cmd).toContain('--sandbox workspace-write');
       expect(cmd).toContain('--ask-for-approval never');
-      expect(cmd).toContain('exec --skip-git-repo-check');
+      expect(cmd).toContain('exec --json --skip-git-repo-check');
     });
 
     it('builds codex command with danger-full-access when dangerouslySkipPermissions', () => {
       const flow = { prompt: 'test', agent: 'codex', dangerouslySkipPermissions: true };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('--sandbox danger-full-access');
     });
 
@@ -128,12 +128,12 @@ describe('flow-helpers', () => {
         reasoningEffort: 'high',
         serviceTier: 'fast',
       };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
 
       expect(cmd).toContain("--model 'gpt-5.5'");
       expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
       expect(cmd).toContain("-c 'service_tier=\"fast\"'");
-      expect(cmd).toContain('exec --skip-git-repo-check');
+      expect(cmd).toContain('exec --json --skip-git-repo-check');
     });
 
     it('builds codex command with standard service tier when fast is disabled', () => {
@@ -142,20 +142,35 @@ describe('flow-helpers', () => {
         agent: 'codex',
         serviceTier: 'standard',
       };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
 
       expect(cmd).toContain("-c 'service_tier=\"standard\"'");
     });
 
     it('escapes single quotes in prompt', () => {
       const flow = { prompt: "it's a test", agent: 'claude' };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain("it'\\''s a test");
+    });
+
+    it('builds PowerShell-compatible commands for Windows', () => {
+      const flow = {
+        prompt: "it's a test",
+        agent: 'codex',
+        model: 'gpt-5.5',
+        reasoningEffort: 'high',
+      };
+      const cmd = buildFlowCommand(flow, { platform: 'win32' });
+
+      expect(cmd).toContain("--model 'gpt-5.5'");
+      expect(cmd).toContain("-c 'model_reasoning_effort=\"high\"'");
+      expect(cmd).toContain("'it''s a test'");
+      expect(cmd.endsWith('; exit\r\n')).toBe(true);
     });
 
     it('supports dangerouslySkipPermissions', () => {
       const flow = { prompt: 'fix', agent: 'claude', dangerouslySkipPermissions: true };
-      const cmd = buildFlowCommand(flow);
+      const cmd = buildFlowCommand(flow, { platform: 'darwin' });
       expect(cmd).toContain('--dangerously-skip-permissions');
     });
   });

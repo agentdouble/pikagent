@@ -3,6 +3,15 @@ const fs = require('fs');
 const pty = require('node-pty');
 const { execFileAsync } = require('./command-utils');
 const { createLogger } = require('./logger');
+const { isWindows } = require('./platform-helpers');
+const { parseSshCommand } = require('./ssh-command-parser');
+const { buildSshPath } = require('./ssh-path-utils');
+const { resolveRemotePwd } = require('./ssh-fs-manager');
+const {
+  getDirectChildProcesses,
+  readProcessCwd,
+  terminateProcessTree,
+} = require('./process-helpers');
 
 const log = createLogger('pty-manager');
 
@@ -19,19 +28,29 @@ function safeCwd(cwd) {
 }
 const {
   EXEC_TIMEOUT_MS,
-  CWD_TIMEOUT_MS,
   DEFAULT_COLS,
   DEFAULT_ROWS,
   TERM,
   DEFAULT_SHELL,
   matchAgent,
   parseChildPids,
-  parseCwdFromLsof,
 } = require('./pty-helpers');
 
 class PtyManager {
-  constructor() {
+  constructor({
+    platform = process.platform,
+    getDirectChildProcesses: childProcessReader = getDirectChildProcesses,
+    readProcessCwd: cwdReader = readProcessCwd,
+    terminateProcessTree: processTreeTerminator = terminateProcessTree,
+    resolveSshPwd: sshPwdResolver = resolveRemotePwd,
+  } = {}) {
     this.processes = new Map();
+    this.platform = platform;
+    this._getDirectChildProcesses = childProcessReader;
+    this._readProcessCwd = cwdReader;
+    this._terminateProcessTree = processTreeTerminator;
+    this._resolveSshPwd = sshPwdResolver;
+    this._sshRoots = new Map();
   }
 
   _getProc(id) {
@@ -73,13 +92,44 @@ class PtyManager {
     const proc = this._getProc(id);
     if (!proc) return null;
     try {
-      const out = await this._exec(
-        'lsof',
-        ['-a', '-p', String(proc.pid), '-d', 'cwd', '-Fn'],
-        CWD_TIMEOUT_MS,
-      );
-      return parseCwdFromLsof(out);
+      const sshCwd = await this._getSshCwd(proc);
+      if (sshCwd) return sshCwd;
+      if (isWindows(this.platform)) return null;
+      const cwd = await this._readProcessCwd(proc.pid, { platform: this.platform });
+      return cwd || null;
     } catch {
+      return null;
+    }
+  }
+
+  async _getSshCwd(proc) {
+    let children;
+    try {
+      children = await this._getDirectChildProcesses(proc.pid, { platform: this.platform });
+    } catch {
+      return null;
+    }
+    const sshChild = children
+      .map((child) => ({ child, parsed: parseSshCommand(child.command) }))
+      .find(({ parsed }) => parsed);
+    if (!sshChild) {
+      this._sshRoots.delete(proc.pid);
+      return null;
+    }
+
+    const destination = sshChild.parsed.destination;
+    const cacheKey = `${sshChild.child.pid}:${destination}`;
+    const cached = this._sshRoots.get(proc.pid);
+    if (cached?.cacheKey === cacheKey) return cached.cwd;
+
+    try {
+      const remotePath = await this._resolveSshPwd(destination);
+      const cwd = buildSshPath(destination, remotePath);
+      this._sshRoots.set(proc.pid, { cacheKey, cwd });
+      return cwd;
+    } catch (err) {
+      log.warn(`ssh cwd detection failed for ${destination}`, err);
+      this._sshRoots.delete(proc.pid);
       return null;
     }
   }
@@ -95,10 +145,10 @@ class PtyManager {
   kill(id) {
     const proc = this._getProc(id);
     if (!proc) return;
-    // Kill the entire process group to clean up child processes (agents)
-    try { process.kill(-proc.pid, 'SIGTERM'); } catch {}
-    proc.kill();
+    void this._terminateProcessTree(proc.pid, { platform: this.platform });
+    try { proc.kill(); } catch {}
     this.processes.delete(id);
+    this._sshRoots.delete(proc.pid);
   }
 
   async checkAgents() {
@@ -116,6 +166,10 @@ class PtyManager {
   }
 
   async _getChildPids(pid) {
+    if (isWindows(this.platform)) {
+      const children = await this._getDirectChildProcesses(pid, { platform: this.platform });
+      return children.map((child) => String(child.pid));
+    }
     try {
       const out = await this._exec('pgrep', ['-P', String(pid)]);
       return parseChildPids(out);
@@ -127,6 +181,12 @@ class PtyManager {
 
   async _checkAgent(id, proc) {
     try {
+      if (isWindows(this.platform)) {
+        const children = await this._getDirectChildProcesses(proc.pid, { platform: this.platform });
+        if (children.length === 0) return null;
+        return matchAgent(children.map((child) => child.command).join('\n'));
+      }
+
       const childPids = await this._getChildPids(proc.pid);
       if (childPids.length === 0) return null;
 
@@ -138,10 +198,11 @@ class PtyManager {
 
   killAll() {
     for (const proc of this.processes.values()) {
-      try { process.kill(-proc.pid, 'SIGTERM'); } catch {}
-      proc.kill();
+      void this._terminateProcessTree(proc.pid, { platform: this.platform });
+      try { proc.kill(); } catch {}
     }
     this.processes.clear();
+    this._sshRoots.clear();
   }
 
   cleanup() {

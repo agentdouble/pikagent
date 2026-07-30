@@ -1,6 +1,7 @@
 const { ipcMain } = require('electron');
 const { registerManagerHandlers, safeSend } = require('./ipc-helpers');
 const { createSafeHandler } = require('./safe-handler');
+const { isSshPath } = require('./ssh-path-utils');
 
 /**
  * Channels with custom handlers (registered manually in `register()`).
@@ -47,6 +48,7 @@ function register(getWindow, { targets, ptyManager, sessionManager }) {
 
   // FS: trash needs Electron shell
   ipcMain.handle('fs:trash', createSafeHandler(async (_, filePath) => {
+    if (isSshPath(filePath)) return { error: 'Delete is not supported for SSH paths yet' };
     await shell.trashItem(filePath);
   }));
 

@@ -1,6 +1,6 @@
 ---
 name: software-engineering-daily-report
-description: Report what the local software engineering pipeline did today by reading the orch workspace, especially merged GitHub PRs grouped by project. Use when the user asks for today's software engineering pipeline status, what PRs were merged today, a concise daily engineering recap, or a human-readable report for /Users/jeremy/lab/orch.
+description: Report what the local software engineering pipeline did today by reading the orch workspace, especially merged GitHub PRs grouped by project. Use when the user asks for today's software engineering pipeline status, what PRs were merged today, a concise daily engineering recap, or a human-readable report for an orch workspace.
 ---
 
 # Software Engineering Daily Report
@@ -13,7 +13,7 @@ The default report answers: "Which PRs were merged today, grouped by project?" I
 
 ## Source Files
 
-Default root: `/Users/jeremy/lab/orch`
+Default root: `$PICKAGENT_ORCH_ROOT` when set, otherwise `~/lab/orch`.
 
 Read:
 
@@ -73,3 +73,4 @@ Useful options:
 - `--timezone TZ`
 - `--root PATH`
 - `--json`
+- `PICKAGENT_ORCH_ROOT=/path/to/orch` environment override

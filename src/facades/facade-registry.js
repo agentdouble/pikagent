@@ -65,7 +65,7 @@ const definitions = [
   ]],
 
   ['skillsViewFacade', [
-    [skillsApi, ['list', 'getRoot', 'read', 'write', 'importSkill', 'create', 'deleteSkill', 'setRoot']],
+    [skillsApi, ['list', 'getRoot', 'getRoots', 'read', 'write', 'importSkill', 'create', 'deleteSkill', 'setRoot', 'setRoots', 'addRoot', 'removeRoot', 'setActiveRoot']],
     [shellApi, ['openPath']],
     [dialogApi, ['openFolder']],
   ]],

@@ -51,8 +51,9 @@ describe('app-identity', () => {
   it('allows an explicit userData override', () => {
     const app = createAppMock({ isPackaged: true });
     const override = '/tmp/pickagent-dev-profile';
+    const resolvedOverride = path.resolve(override);
 
-    expect(configureAppIdentity(app, '/repo/2-pikagent-copy', { [USER_DATA_ENV]: override })).toBe(override);
-    expect(app.setPath).toHaveBeenCalledWith('userData', override);
+    expect(configureAppIdentity(app, '/repo/2-pikagent-copy', { [USER_DATA_ENV]: override })).toBe(resolvedOverride);
+    expect(app.setPath).toHaveBeenCalledWith('userData', resolvedOverride);
   });
 });

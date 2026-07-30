@@ -9,7 +9,6 @@ import {
   _el,
   buildDialogButtons,
   createDialogBase,
-  showPromptDialog,
   showConfirmDialog,
 } from './dom-api.js';
 import { onKeyAction } from './event-helpers.js';
@@ -26,24 +25,33 @@ export async function openRoot(rootPath, shellApi) {
 /**
  * Configure the skills root path.
  * @param {import('../components/skills-view.js').SkillsView} sv - SkillsView instance (state is mutated)
- * @param {{ dialogApi: { openFolder: () => Promise<string|null> }, skillsApi: { setRoot: (path: string) => Promise<{ success: boolean, root: string }> }, chooseRootPathMode?: () => Promise<'browse'|'manual'|null>, promptPath?: (currentPath: string) => Promise<string|null> }} deps
+ * @param {{ dialogApi: { openFolder: () => Promise<string|null> }, skillsApi: { setRoots: (payload: { roots: string[], activeRoot?: string }) => Promise<{ success: boolean, roots: string[], activeRoot: string }>, addRoot?: (path: string) => Promise<{ success: boolean, roots: string[], activeRoot: string }> }, chooseRootPathMode?: () => Promise<'browse'|'manual'|null>, promptPaths?: (currentPaths: string[]) => Promise<string[]|null> }} deps
  */
 export async function configurePath(sv, deps) {
   const mode = await (deps.chooseRootPathMode || chooseRootPathMode)();
-  let nextRoot = null;
+  let result = null;
 
   if (mode === 'browse') {
-    nextRoot = await deps.dialogApi.openFolder();
+    const picked = await deps.dialogApi.openFolder();
+    if (!picked) return;
+    if (deps.skillsApi.addRoot) {
+      result = await deps.skillsApi.addRoot(picked);
+    } else {
+      const roots = [...new Set([...(sv.rootPaths || [sv.rootPath].filter(Boolean)), picked])];
+      result = await deps.skillsApi.setRoots({ roots, activeRoot: picked });
+    }
   } else if (mode === 'manual') {
-    nextRoot = await (deps.promptPath || promptRootPath)(sv.rootPath || '');
+    const nextRoots = await (deps.promptPaths || promptRootPaths)(sv.rootPaths?.length ? sv.rootPaths : [sv.rootPath].filter(Boolean));
+    if (!nextRoots?.length) return;
+    result = await deps.skillsApi.setRoots({ roots: nextRoots, activeRoot: nextRoots[0] });
   } else {
     return;
   }
 
-  if (!nextRoot) return;
-  const res = await deps.skillsApi.setRoot(nextRoot);
-  if (res && res.success) {
-    sv.rootPath = res.root;
+  if (result && result.success) {
+    sv.rootPaths = result.roots || [];
+    sv.activeRootPath = result.activeRoot || result.root || sv.rootPaths[0] || '';
+    sv.rootPath = sv.activeRootPath;
     sv.selectedId = null;
     sv.editorDirty = false;
     await sv.refresh();
@@ -56,11 +64,11 @@ function chooseRootPathMode() {
     modalClass: 'confirm-box',
     cancelValue: null,
     builder({ overlay, modal, cleanup, cancel }) {
-      modal.appendChild(_el('p', null, 'Configurer le dossier des skills.'));
+      modal.appendChild(_el('p', null, 'Configurer les chemins des skills.'));
       modal.appendChild(buildDialogButtons({
         containerClass: 'confirm-buttons',
         confirmLabel: 'Naviguer',
-        cancelLabel: 'Entrer un path',
+        cancelLabel: 'Éditer la liste',
         confirmClass: 'confirm-ok',
         cancelClass: 'confirm-cancel',
         onConfirm: () => cleanup('browse'),
@@ -76,13 +84,48 @@ function chooseRootPathMode() {
   });
 }
 
-function promptRootPath(currentPath) {
-  return showPromptDialog({
-    title: 'Path des skills',
-    placeholder: '/Users/jeremy/.claude/skills',
-    defaultValue: currentPath,
-    confirmLabel: 'Utiliser ce path',
-    cancelLabel: 'Annuler',
+function promptRootPaths(currentPaths) {
+  return createDialogBase({
+    overlayClass: 'prompt-dialog-overlay',
+    modalClass: 'prompt-dialog-box',
+    cancelValue: null,
+    builder({ modal, cleanup, cancel }) {
+      const textarea = _el('textarea', {
+        className: 'prompt-dialog-input skills-paths-textarea',
+        value: (currentPaths || []).join('\n'),
+        placeholder: [
+          '/Users/jeremy/.codex/skills',
+          '/Users/jeremy/.claude/skills',
+          '/Users/jeremy/.opencode/skills',
+        ].join('\n'),
+      });
+      const confirm = () => {
+        const roots = textarea.value.split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        cleanup(roots.length ? roots : null);
+      };
+      onKeyAction(textarea, {
+        onEscape: cancel,
+      });
+      modal.append(
+        _el('label', 'prompt-dialog-label', 'Chemins des skills'),
+        textarea,
+        buildDialogButtons({
+          containerClass: 'prompt-dialog-btns',
+          confirmLabel: 'Utiliser ces chemins',
+          cancelLabel: 'Annuler',
+          confirmClass: 'prompt-dialog-confirm',
+          cancelClass: 'prompt-dialog-cancel',
+          onConfirm: confirm,
+          onCancel: cancel,
+        }),
+      );
+      return () => {
+        textarea.focus();
+        textarea.select();
+      };
+    },
   });
 }
 
@@ -139,8 +182,10 @@ export async function createSkill(sv, skillsApi) {
  * @param {{ deleteSkill: (id: string) => Promise<unknown> }} skillsApi
  */
 export async function deleteSkill(sv, id, skillsApi) {
+  const skill = sv.skills.find((candidate) => candidate.id === id);
+  const label = skill?.name || skill?.skillId || id;
   const ok = await showConfirmDialog(
-    `Supprimer le skill "${id}" ? Cette action est irréversible.`,
+    `Supprimer le skill "${label}" ? Cette action est irréversible.`,
     { confirmLabel: 'Supprimer', cancelLabel: 'Annuler' },
   );
   if (!ok) return;

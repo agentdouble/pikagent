@@ -2,6 +2,7 @@ const { DIFF_MAX_BUFFER, execOpts, isNotGitRepositoryError, parseNameStatus, par
 const { splitLines, matchFirst } = require('./parse-utils');
 const { createLogger, trySafe } = require('./logger');
 const { execFileAsync } = require('./command-utils');
+const { isSshPath } = require('./ssh-path-utils');
 
 const log = createLogger('git-manager');
 
@@ -11,6 +12,7 @@ const log = createLogger('git-manager');
 
 /** Run a git command, return trimmed stdout or `fallback` on error. */
 async function runGit(cwd, args, { fallback = null, maxBuffer, silentNotRepo = false } = {}) {
+  if (isSshPath(cwd)) return fallback;
   const opts = maxBuffer ? execOpts(cwd, { maxBuffer }) : execOpts(cwd);
   try {
     const { stdout } = await execFileAsync('git', args, opts);

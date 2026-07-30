@@ -8,6 +8,7 @@ import { _el } from './dom-api.js';
 import { setupInlineInput, startInlineRename } from './form-helpers.js';
 import { setupDropZone as _setupDropZone } from './drop-zone-helpers.js';
 import { INPUT_BLUR_DELAY, computeIndent, getBaseName } from './file-tree-helpers.js';
+import { joinTreePath } from './remote-path.js';
 
 /**
  * Attach dragover / dragleave / drop listeners to an element so that files
@@ -108,7 +109,7 @@ export function promptNewEntry(dirPath, parentContentEl, depth, expandedDirs, ty
     onCommit: async (name) => {
       input.remove();
       if (!name) return;
-      const newPath = dirPath + '/' + name;
+      const newPath = joinTreePath(dirPath, name);
       if (type === 'folder') {
         await mkdir(newPath);
       } else {
