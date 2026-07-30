@@ -79,8 +79,11 @@ qui exécute les tests puis publie les artefacts macOS et Windows requis :
 - `latest.yml`
 
 ```bash
-git tag v1.0.1
-git push origin v1.0.1
+npm version 1.0.2 --no-git-tag-version
+git commit -am "Release 1.0.2"
+git push origin main
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
 Pour une distribution macOS propre, configure les secrets GitHub

@@ -1,6 +1,6 @@
 {
   "name": "pickagent",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "pickagent terminal workspace manager with split panels",
   "main": "main.js",
   "productName": "Pickagent",
